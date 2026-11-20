@@ -184,11 +184,18 @@ async def test_portfolio_execute_trade_accepts_reason_and_persists():
     from execution.portfolio import Portfolio
 
     mock_db = MagicMock()
-    mock_table = MagicMock()
-    mock_db.table.return_value = mock_table
-    mock_table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-test-1"}])
-    mock_table.upsert.return_value.execute.return_value = MagicMock(data=[])
-    mock_table.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_db.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "trade_id": "trade-test-1",
+            "cash_balance": 9280.0,
+            "sma": 9280.0,
+            "quantity": 6,
+            "total_cost": 720.0,
+            "position_quantity": 6,
+            "position_avg_cost": 120.0,
+            "idempotent_replay": False,
+        }
+    )
 
     p = Portfolio("sys-future-forces")
     p.id = "portfolio-ff-123"
@@ -205,9 +212,10 @@ async def test_portfolio_execute_trade_accepts_reason_and_persists():
         )
 
     assert trade_id == "trade-test-1"
-    insert_call = mock_table.insert.call_args[0][0]
-    assert insert_call["ticker"] == "AVAV"
-    assert insert_call["reasoning"] == "future_force_buy: Autonomous Warfare & Defense Modernization"
+    rpc_name, rpc_params = mock_db.rpc.call_args[0]
+    assert rpc_name == "execute_portfolio_trade"
+    assert rpc_params["p_ticker"] == "AVAV"
+    assert rpc_params["p_reason"] == "future_force_buy: Autonomous Warfare & Defense Modernization"
 
 
 @pytest.mark.asyncio

@@ -84,9 +84,18 @@ async def test_portfolio_execute_trade_cash_only_deduction(monkeypatch):
     from unittest.mock import MagicMock
 
     mock_client = MagicMock()
-    mock_client.table.return_value.upsert.return_value.execute.return_value = MagicMock(data=[])
-    mock_client.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-1"}])
-    mock_client.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+    mock_client.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "trade_id": "trade-1",
+            "cash_balance": 2000.00,
+            "sma": 2000.00,
+            "quantity": 6,
+            "total_cost": 3000.00,
+            "position_quantity": 6,
+            "position_avg_cost": 500.00,
+            "idempotent_replay": False,
+        }
+    )
 
     monkeypatch.setattr("execution.portfolio.get_supabase_client", lambda: mock_client)
 

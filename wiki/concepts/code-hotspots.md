@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **302**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **308**).
 
 ## Top Hotspots
 
@@ -13,19 +13,19 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/web/src/routes/__root.tsx` | 18 | 12 | 66.7% | 349 | 216 | **CRITICAL** |
+| `apps/web/src/routes/__root.tsx` | 19 | 12 | 63.2% | 349 | 228 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 22 | 8 | 36.4% | 358 | 176 | **CRITICAL** |
+| `apps/web/src/routes/-__root.test.tsx` | 15 | 9 | 60.0% | 530 | 135 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 22 | 6 | 27.3% | 328 | 132 | **CRITICAL** |
-| `apps/web/src/routes/-__root.test.tsx` | 14 | 9 | 64.3% | 530 | 126 | **CRITICAL** |
-| `apps/free_llm_proxy/server.py` | 17 | 5 | 29.4% | 777 | 85 | **HIGH** |
+| `apps/free_llm_proxy/server.py` | 18 | 5 | 27.8% | 777 | 90 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
 | `apps/engine/tasks/daily_predictor.py` | 19 | 4 | 21.1% | 673 | 76 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 15 | 5 | 33.3% | 452 | 75 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 12 | 6 | 50.0% | 186 | 72 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 12 | 6 | 50.0% | 226 | 72 | **HIGH** |
+| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 16 | 4 | 25.0% | 395 | 64 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 16 | 4 | 25.0% | 501 | 64 | **HIGH** |
 | `apps/web/src/components/ui/DefaultCatchBoundary.tsx` | 9 | 7 | 77.8% | 201 | 63 | **HIGH** |
-| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 15 | 4 | 26.7% | 395 | 60 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | 14 | 4 | 28.6% | 383 | 56 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 13 | 4 | 30.8% | 973 | 52 | **HIGH** |
 
@@ -35,8 +35,8 @@ Files that consistently change in the same commit indicate implicit architectura
 
 | Primary File | Coupled File | Shared Commits | Coupling Strength |
 | :--- | :--- | :---: | :---: |
-| `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 13 | 93% |
 | `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 13 | 87% |
+| `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 13 | 87% |
 | `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 13 | 76% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/tests/test_proxy.py` | 11 | 79% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/server.py` | 10 | 71% |
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **302**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **308**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **302**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 302 | 100.0% |
+| `g-vega-cl` | 308 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **302**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 145 | ▇▇▇▇▇▇▇ |
+| 2026-11 | 151 | ▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

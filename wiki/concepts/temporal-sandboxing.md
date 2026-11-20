@@ -41,8 +41,20 @@ To ensure complete isolation of the simulated environment:
 ### 4. Live Account Mirror Prevention
 Backtesting executes mock trades using actual simulated pricing. To prevent these trades from being mirrored to the live third-party broker (Alpaca paper endpoint), the execution is configured with `skip_alpaca_mirror=True`. This prevents API authentication or buying power errors and guarantees that backtest runs are entirely mock-only.
 
+### 5. Offline RPC Sandbox (`apps/engine/tasks/backtest_sandbox_rpc.py`)
+
+`MockSimulatedSupabaseClient.rpc()` no longer proxies arbitrary RPCs to the real client. Every RPC call is routed through the offline sandbox module, which either executes locally in SQLite or fails closed:
+
+* **`execute_portfolio_trade` runs locally in SQLite** — `execute_sqlite_portfolio_trade(params, t_sim, db_path)` reproduces the PostgreSQL RPC contract inside a single `BEGIN IMMEDIATE` transaction: it reads the locked `portfolios` row, validates ticker/signal/quantity/price, applies the BUY/SELL to `portfolio_positions` (weighted-average cost basis on adds, `LEAST(p_quantity, held)` capping and `realized_pnl` on sells), inserts the `trades` ledger row, and derives the cash-only metrics (`cash_balance`, `sma`, `total_equity`, `buying_power`, `excess_liquidity`, `maintenance_margin = 0`, `realized`) from the post-trade position set. Any exception rolls back and re-raises, so a simulated trade is all-or-nothing exactly like production. See [[concepts/atomic-trade-execution]].
+* **Idempotent replay** — `_replay_sqlite_trade` looks up `trades.idempotency_key`; a matching replay returns the original `trade_id` with `idempotent_replay: true` and writes nothing, while a key already used by a different portfolio/ticker raises `Idempotency key … already used by another trade`. `init_backtest_db()` adds `idempotency_key TEXT UNIQUE` to the local `trades` schema.
+* **Simulated timestamps** — `executed_at` and `last_updated_at` are written as the ISO-formatted $t_{\text{sim}}$ (falling back to `datetime.now(UTC)` when no simulation clock is supplied), never as `now()`.
+* **Allowlisted read-only RPCs only** — `build_temporal_rpc_wrapper` accepts only `match_memories` and `match_decisions` (`ALLOWED_TEMPORAL_RPCS`). Any other RPC raises `ValueError("RPC '<name>' is not allowlisted in offline backtest sandbox")`, so a backtest can never mutate production state through an unmodelled RPC.
+* **Point-in-time filtering** — `_filter_temporal_rpc_rows` drops any returned row whose `created_at` is after $t_{\text{sim}}$, preserving the no-lookahead guarantee for semantic retrieval.
+* **Small, testable helpers** — the module is decomposed into `_apply_sqlite_buy`, `_apply_sqlite_sell`, `_compute_sqlite_equity`, `_replay_sqlite_trade`, and `_filter_temporal_rpc_rows`, each kept at or below a cyclomatic complexity of 6.
+
 ## Related
 
 - [[entities/autoresearch]] — Karpathy-style autonomous prompt improvement loop
 - [[concepts/execution]] — Pre-market validation, Reg T checks, trade settlement
+- [[concepts/atomic-trade-execution]] — the production RPC this sandbox mirrors
 - [[sources/reg-t-calculations-source]] — Margin account formulas & guardrails

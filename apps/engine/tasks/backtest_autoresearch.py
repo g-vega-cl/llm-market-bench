@@ -102,7 +102,8 @@ def init_backtest_db():
             alpaca_order_id TEXT,
             alpaca_status TEXT,
             alpaca_submitted_at TEXT,
-            alpaca_filled_at TEXT
+            alpaca_filled_at TEXT,
+            idempotency_key TEXT UNIQUE
         )
     """)
 
@@ -490,49 +491,18 @@ class MockSimulatedSupabaseClient:
         return TemporalQueryBuilderWrapper(self.real_client.table(name), name, self.t_sim)
 
     def rpc(self, fn_name, params):
-        real_rpc = self.real_client.rpc(fn_name, params)
-        t_sim = self.t_sim
-        real_client = self.real_client
+        from tasks.backtest_sandbox_rpc import build_temporal_rpc_wrapper, execute_sqlite_portfolio_trade
 
-        class RPCWrapper:
-            def execute(self):
-                res = real_rpc.execute()
-                if not res.data:
-                    return res
+        if fn_name == "execute_portfolio_trade":
+            t_sim = self.t_sim
 
-                row_ids = [r["id"] for r in res.data if "id" in r]
-                if not row_ids:
-                    return res
+            class LocalTradeRPCWrapper:
+                def execute(self):
+                    return execute_sqlite_portfolio_trade(params, t_sim, DB_PATH)
 
-                target_table = "memories" if fn_name == "match_memories" else "decisions"
+            return LocalTradeRPCWrapper()
 
-                meta_res = real_client.table(target_table).select("id, created_at").in_("id", row_ids).execute()
-
-                created_at_map = {}
-                for row in meta_res.data or []:
-                    try:
-                        from dateutil import parser
-
-                        dt = parser.isoparse(row["created_at"])
-                        if dt.tzinfo is None:
-                            dt = dt.replace(tzinfo=UTC)
-                        created_at_map[row["id"]] = dt
-                    except Exception:
-                        pass
-
-                filtered_data = []
-                for row in res.data:
-                    row_id = row.get("id")
-                    if row_id in created_at_map:
-                        if created_at_map[row_id] <= t_sim:
-                            filtered_data.append(row)
-                    else:
-                        filtered_data.append(row)
-
-                res.data = filtered_data
-                return res
-
-        return RPCWrapper()
+        return build_temporal_rpc_wrapper(self.real_client, fn_name, params, self.t_sim)
 
 
 # Mock Point-In-Time Financial Provider

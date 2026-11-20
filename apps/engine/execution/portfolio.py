@@ -6,12 +6,14 @@ for each LLM agent, utilizing the database for persistence.
 
 import asyncio
 import logging
+import math
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
+from zoneinfo import ZoneInfo
 
-from core.db import get_supabase_client
+from core.db import async_with_retry, get_supabase_client
 
 from .reg_t_validation import (
     RegTMetrics,
@@ -272,17 +274,25 @@ class Portfolio:
             return
 
         supabase = get_supabase_client()
-        supabase.table("portfolios").update(
-            {
-                "total_equity": self.metrics.total_equity,
-                "buying_power": self.metrics.buying_power,
-                "excess_liquidity": self.metrics.excess_liquidity,
-                "maintenance_margin": self.metrics.maintenance_margin_req,
-                "sma": self.metrics.sma,
-                "realized": self.metrics.realized,
-                "last_updated_at": "now()",
-            }
-        ).eq("id", self.id).execute()
+        await async_with_retry(
+            lambda: (
+                supabase.table("portfolios")
+                .update(
+                    {
+                        "total_equity": self.metrics.total_equity,
+                        "buying_power": self.metrics.buying_power,
+                        "excess_liquidity": self.metrics.excess_liquidity,
+                        "maintenance_margin": self.metrics.maintenance_margin_req,
+                        "sma": self.metrics.sma,
+                        "realized": self.metrics.realized,
+                        "last_updated_at": "now()",
+                    }
+                )
+                .eq("id", self.id)
+                .execute()
+            ),
+            f"save_metrics_{self.owner_id}",
+        )
 
         logger.info(f"Updated portfolios summary table for {self.owner_id}.")
 
@@ -307,53 +317,38 @@ class Portfolio:
             is_sell_tool_used=is_sell_tool_used,
         )
 
-    def _apply_trade_to_local_state(
-        self, ticker: str, quantity: int, price: float, signal: str
-    ) -> tuple[int, float, bool]:
-        """Update cash_balance, positions, and sma in-memory for BUY or SELL."""
+    def _validate_trade_preflight(self, ticker: str, quantity: int, price: float, signal: str) -> tuple[int, bool]:
+        """Validate trade parameters and local cash/position bounds without mutating state."""
         sig = signal.upper()
-        total_cost = price * quantity
+        if quantity <= 0 or not math.isfinite(price) or price <= 0:
+            logger.error(f"REJECTED: Invalid trade quantity={quantity} or price={price} for {ticker}.")
+            return quantity, False
 
         if sig == "BUY":
+            total_cost = price * quantity
             if total_cost > self.cash_balance:
                 logger.error(
                     f"REJECTED: Cannot buy {quantity} {ticker} for ${total_cost:,.2f}. "
                     f"Available cash balance is only ${self.cash_balance:,.2f}."
                 )
-                return quantity, total_cost, False
-
-            self.cash_balance -= total_cost
-            if ticker in self.positions:
-                pos = self.positions[ticker]
-                new_cost = (pos.average_cost_basis * pos.quantity) + total_cost
-                pos.quantity += quantity
-                pos.average_cost_basis = new_cost / pos.quantity
-            else:
-                self.positions[ticker] = Position(ticker=ticker, quantity=quantity, average_cost_basis=price)
-            self.sma = max(0.0, self.cash_balance)
-            return quantity, total_cost, True
+                return quantity, False
+            return quantity, True
 
         if sig == "SELL":
             if ticker not in self.positions:
                 logger.warning(f"REJECTED: Selling {ticker} but not held in portfolio.")
-                return quantity, total_cost, False
-
-            pos = self.positions[ticker]
-            if quantity > pos.quantity:
+                return quantity, False
+            held_qty = self.positions[ticker].quantity
+            if quantity > held_qty:
                 logger.warning(
-                    f"Attempted to sell {quantity} shares of {ticker} but only held {pos.quantity}. "
+                    f"Attempted to sell {quantity} shares of {ticker} but only held {held_qty}. "
                     "Capping sell to owned quantity."
                 )
-                quantity = pos.quantity
+                quantity = held_qty
+            return quantity, True
 
-            total_cost = price * quantity
-            self.cash_balance += total_cost
-            pos.quantity -= quantity
-            if pos.quantity == 0:
-                del self.positions[ticker]
-            self.sma = max(0.0, self.cash_balance)
-
-        return quantity, total_cost, True
+        logger.error(f"REJECTED: Invalid trade signal '{signal}' for {ticker}.")
+        return quantity, False
 
     async def execute_trade(
         self,
@@ -366,7 +361,7 @@ class Portfolio:
         skip_alpaca_mirror: bool = False,
         reason: str | None = None,
     ) -> UUID | None:
-        """Executes the trade by updating cash, positions, and ledger.
+        """Executes the trade atomically via the execute_portfolio_trade Postgres RPC.
 
         Args:
             ticker: Symbol.
@@ -383,93 +378,88 @@ class Portfolio:
         """
         if not self.id:
             logger.error("Cannot execute trade on uninitialized portfolio.")
-            return
+            return None
 
         ticker = ticker.upper()
+        sig = signal.upper()
         supabase = get_supabase_client()
 
-        old_avg_cost = (
-            self.positions[ticker].average_cost_basis if signal.upper() == "SELL" and ticker in self.positions else None
-        )
-
-        quantity, total_cost, ok = self._apply_trade_to_local_state(ticker, quantity, price, signal)
+        quantity, ok = self._validate_trade_preflight(ticker, quantity, price, sig)
         if not ok:
             return None
 
-        # Persist changes
+        merged_prices = (
+            dict(current_prices)
+            if current_prices is not None
+            else {t: p.average_cost_basis for t, p in self.positions.items()}
+        )
+        merged_prices[ticker] = price
+
+        idempotency_key = str(uuid4())
+        rpc_params = {
+            "p_portfolio_id": str(self.id),
+            "p_ticker": ticker,
+            "p_signal": sig,
+            "p_quantity": quantity,
+            "p_price": price,
+            "p_decision_id": str(decision_id) if decision_id else None,
+            "p_reason": reason,
+            "p_idempotency_key": idempotency_key,
+            "p_mark_prices": merged_prices,
+        }
+
         try:
-            current_pos = self.positions.get(ticker)
-            if current_pos:
-                supabase.table("portfolio_positions").upsert(
-                    {
-                        "portfolio_id": str(self.id),
-                        "ticker": ticker,
-                        "quantity": current_pos.quantity,
-                        "average_cost_basis": current_pos.average_cost_basis,
-                    },
-                    on_conflict="portfolio_id,ticker",
-                ).execute()
-            else:
-                supabase.table("portfolio_positions").delete().match(
-                    {"portfolio_id": str(self.id), "ticker": ticker}
-                ).execute()
-
-            trade_data = {
-                "portfolio_id": str(self.id),
-                "ticker": ticker,
-                "signal": signal,
-                "quantity": quantity,
-                "price": price,
-                "total_cost": total_cost,
-                "executed_at": "now()",
-                "decision_id": decision_id,
-            }
-
-            if reason:
-                trade_data["reasoning"] = reason
-
-            if signal.upper() == "SELL" and old_avg_cost is not None:
-                trade_data["realized_pnl"] = (price - old_avg_cost) * quantity
-                trade_data["realized_pnl_pct"] = ((price / old_avg_cost) - 1) * 100 if old_avg_cost > 0 else 0
-
-            trade_res = supabase.table("trades").insert(trade_data).execute()
-            trade_id = trade_res.data[0]["id"] if trade_res.data else None
-
-            supabase.table("portfolios").update(
-                {"cash_balance": self.cash_balance, "sma": self.sma, "last_updated_at": "now()"}
-            ).eq("id", self.id).execute()
-
-            logger.info(f"Executed {signal} {quantity} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
-            logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
-
-            if current_prices is None:
-                current_prices = {t: p.average_cost_basis for t, p in self.positions.items()}
-            current_prices[ticker] = price
-
-            self.calculate_reg_t_metrics(current_prices)
-            await self.save_metrics()
-
-            if not skip_alpaca_mirror:
-                from execution.alpaca_broker import AlpacaBroker
-
-                broker = AlpacaBroker()
-                alpaca_limit = round(price * 1.005, 2) if signal.upper() == "BUY" else round(price * 0.995, 2)
-                asyncio.create_task(
-                    broker.submit_limit_order(
-                        trade_id=trade_id,
-                        ticker=ticker,
-                        quantity=quantity,
-                        signal=signal,
-                        limit_price=alpaca_limit,
-                        agent_id=self.owner_id,
-                    )
-                )
-
-            return trade_id
-
-        except Exception as e:
-            logger.error(f"DB Error executing trade for {ticker}: {e}")
+            rpc_res = await async_with_retry(
+                lambda: supabase.rpc("execute_portfolio_trade", rpc_params).execute(),
+                f"execute_portfolio_trade_{ticker}",
+            )
+            payload = rpc_res.data if isinstance(rpc_res.data, dict) else {}
+            trade_id = payload.get("trade_id")
+            if not trade_id:
+                raise RuntimeError(f"execute_portfolio_trade returned no trade_id for {ticker}: {rpc_res.data}")
+        except Exception:
+            logger.exception(f"Atomic trade execution failed for {ticker}")
             return None
+
+        self._sync_local_state_from_rpc(ticker, payload, merged_prices)
+        exec_qty = int(payload.get("quantity") or quantity)
+        logger.info(f"Executed {sig} {exec_qty} {ticker} @ ${price:.2f}. New Cash: ${self.cash_balance:,.2f}")
+        logger.info(f"Trade successfully ledged. TradeID: {trade_id}")
+
+        if not skip_alpaca_mirror:
+            from execution.alpaca_broker import AlpacaBroker
+
+            broker = AlpacaBroker()
+            alpaca_limit = round(price * 1.005, 2) if sig == "BUY" else round(price * 0.995, 2)
+            asyncio.create_task(
+                broker.submit_limit_order(
+                    trade_id=trade_id,
+                    ticker=ticker,
+                    quantity=exec_qty,
+                    signal=sig,
+                    limit_price=alpaca_limit,
+                    agent_id=self.owner_id,
+                )
+            )
+
+        return trade_id
+
+    def _sync_local_state_from_rpc(
+        self, ticker: str, payload: dict[str, Any], current_prices: dict[str, float]
+    ) -> None:
+        """Align in-memory cash, positions, and metrics with the committed RPC result."""
+        if payload.get("cash_balance") is not None:
+            self.cash_balance = float(payload["cash_balance"])
+        if payload.get("sma") is not None:
+            self.sma = float(payload["sma"])
+        if "position_quantity" in payload:
+            pos_qty = int(payload.get("position_quantity") or 0)
+            if pos_qty > 0:
+                avg_cost = float(payload.get("position_avg_cost") or 0.0)
+                self.positions[ticker] = Position(ticker=ticker, quantity=pos_qty, average_cost_basis=avg_cost)
+            else:
+                self.positions.pop(ticker, None)
+        self.calculate_reg_t_metrics(current_prices)
 
     async def _check_and_sell_dust_positions(self, current_prices: dict[str, float]):
         """Check all positions and automatically sell any that are below 10% of portfolio equity.
@@ -484,18 +474,14 @@ class Portfolio:
 
         total_equity = self.metrics.total_equity
         threshold = total_equity * 0.10  # 10% of portfolio equity
-        supabase = get_supabase_client()
 
         dust_positions_to_sell = []
-
-        # Check each position
         for pos_ticker, pos in self.positions.items():
-            pos_value = current_prices.get(pos_ticker, 0.0) * pos.quantity
+            pos_price = current_prices.get(pos_ticker, 0.0)
+            pos_value = pos_price * pos.quantity
+            if 0 < pos_value < threshold:
+                dust_positions_to_sell.append((pos_ticker, pos.quantity, pos_price))
 
-            if pos_value < threshold and pos_value > 0:
-                dust_positions_to_sell.append((pos_ticker, pos.quantity, current_prices.get(pos_ticker, 0.0)))
-
-        # Sell all dust positions
         for dust_ticker, dust_qty, dust_price in dust_positions_to_sell:
             if dust_qty <= 0 or dust_price <= 0:
                 continue
@@ -505,61 +491,15 @@ class Portfolio:
                 f"{dust_qty} shares @ ${dust_price:.2f} = ${dust_qty * dust_price:,.2f} "
                 f"(below 10% threshold of ${threshold:,.2f} for ${total_equity:,.2f} portfolio)"
             )
-
-            try:
-                # Capture cost basis for PnL
-                old_avg_cost = self.positions[dust_ticker].average_cost_basis if dust_ticker in self.positions else None
-
-                # Update local state
-                self.cash_balance += dust_price * dust_qty
-                if dust_ticker in self.positions:
-                    del self.positions[dust_ticker]
-
-                # Cash-only: SMA tracks available cash
-                self.sma = max(0.0, self.cash_balance)
-
-                # Delete position from DB
-                supabase.table("portfolio_positions").delete().match(
-                    {"portfolio_id": str(self.id), "ticker": dust_ticker}
-                ).execute()
-
-                # Insert trade ledger entry
-                trade_data = {
-                    "portfolio_id": str(self.id),
-                    "ticker": dust_ticker,
-                    "signal": "SELL",
-                    "quantity": dust_qty,
-                    "price": dust_price,
-                    "total_cost": dust_price * dust_qty,
-                    "executed_at": "now()",
-                    "decision_id": None,  # System-generated, not from LLM decision
-                    "reasoning": "Automatic dust position cleanup: Position value below 10% of portfolio equity",
-                }
-
-                # Add PnL info
-                if old_avg_cost is not None:
-                    realized_pnl = (dust_price - old_avg_cost) * dust_qty
-                    realized_pnl_pct = ((dust_price / old_avg_cost) - 1) * 100 if old_avg_cost > 0 else 0
-                    trade_data["realized_pnl"] = realized_pnl
-                    trade_data["realized_pnl_pct"] = realized_pnl_pct
-
-                trade_res = supabase.table("trades").insert(trade_data).execute()
-                logger.info(
-                    f"[DUST CLEANUP] Sold {dust_ticker}. TradeID: {trade_res.data[0]['id'] if trade_res.data else 'N/A'}"
-                )
-
-            except Exception as e:
-                logger.error(f"[DUST CLEANUP] Failed to sell dust position {dust_ticker}: {e}")
-
-        # Update portfolio cash and SMA if we sold any dust
-        if dust_positions_to_sell:
-            supabase.table("portfolios").update(
-                {"cash_balance": self.cash_balance, "sma": self.sma, "last_updated_at": "now()"}
-            ).eq("id", self.id).execute()
-
-            # Recalculate metrics after dust cleanup using correct current prices
-            self.calculate_reg_t_metrics(current_prices)
-            await self.save_metrics()
+            await self.execute_trade(
+                ticker=dust_ticker,
+                quantity=dust_qty,
+                price=dust_price,
+                signal="SELL",
+                current_prices=current_prices,
+                skip_alpaca_mirror=True,
+                reason="Automatic dust position cleanup: Position value below 10% of portfolio equity",
+            )
 
     async def record_performance_snapshot(self, current_prices: dict[str, float]):
         """Records an immutable daily performance snapshot of the portfolio."""
@@ -572,33 +512,33 @@ class Portfolio:
 
         supabase = get_supabase_client()
         try:
-            # We use an explicit date and on_conflict to ensure idempotency.
-            from datetime import date
+            today = datetime.now(ZoneInfo("America/New_York")).date().isoformat()
 
-            today = date.today().isoformat()
-
-            res = (
-                supabase.table("portfolio_performance")
-                .upsert(
-                    {
-                        "portfolio_id": str(self.id),
-                        "total_equity": metrics.total_equity,
-                        "cash_balance": self.cash_balance,
-                        "buying_power": metrics.buying_power,
-                        "sma": metrics.sma,
-                        "initial_margin_req": metrics.initial_margin_req,
-                        "maintenance_margin_req": metrics.maintenance_margin_req,
-                        "available_funds": metrics.available_funds,
-                        "excess_liquidity": metrics.excess_liquidity,
-                        "realized": metrics.realized,
-                        "date": today,
-                    },
-                    on_conflict="portfolio_id,date",
-                )
-                .execute()
+            res = await async_with_retry(
+                lambda: (
+                    supabase.table("portfolio_performance")
+                    .upsert(
+                        {
+                            "portfolio_id": str(self.id),
+                            "total_equity": metrics.total_equity,
+                            "cash_balance": self.cash_balance,
+                            "buying_power": metrics.buying_power,
+                            "sma": metrics.sma,
+                            "initial_margin_req": metrics.initial_margin_req,
+                            "maintenance_margin_req": metrics.maintenance_margin_req,
+                            "available_funds": metrics.available_funds,
+                            "excess_liquidity": metrics.excess_liquidity,
+                            "realized": metrics.realized,
+                            "date": today,
+                        },
+                        on_conflict="portfolio_id,date",
+                    )
+                    .execute()
+                ),
+                f"record_performance_snapshot_{self.owner_id}",
             )
 
             if res.data:
                 logger.info(f"Performance snapshot saved for {self.owner_id}. Equity: ${metrics.total_equity:,.2f}")
-        except Exception as e:
-            logger.error(f"Failed to save performance snapshot for {self.owner_id}: {e}")
+        except Exception:
+            logger.exception(f"Failed to save performance snapshot for {self.owner_id}")

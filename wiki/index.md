@@ -107,6 +107,9 @@
 
 ## Concepts
 
+- [[concepts/sentiment-fader-reentry-cooldown]] — same-day ET exit cooldown and fail-closed ticks for the options sentiment fader
+- [[concepts/atomic-trade-execution]] — single-transaction `execute_portfolio_trade` RPC, idempotency keys, retry classification, and sandbox parity
+- [[concepts/portfolio-leaderboard-view]] — Auto-indexed page
 - [[concepts/deploy-skew-payload-tolerance]] — normalizing loader payloads so a stale client bundle renders an empty state instead of the error boundary
 - [[concepts/recipe-builder-compiler]] — Auto-indexed page
 - [[concepts/recipe-backtest-concurrency]] — three concurrent backtests with counted and per-recipe guards

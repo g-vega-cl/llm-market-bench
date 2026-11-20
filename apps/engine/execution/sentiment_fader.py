@@ -122,6 +122,7 @@ def compute_sentiment_fader_rebalance_orders(
     available_cash: float,
     max_holdings: int = len(DEFAULT_SENTIMENT_UNIVERSE),
     slippage_bps: float = DEFAULT_FADER_SLIPPAGE_BPS,
+    cooldown_tickers: set[str] | frozenset[str] | None = None,
 ) -> dict[str, Any]:
     """Computes liquidations and equal-weighted entries for the Sentiment Fader portfolio."""
     slip_factor = slippage_bps / 10000.0
@@ -153,10 +154,14 @@ def compute_sentiment_fader_rebalance_orders(
             retained.append(h)
 
     # 2. Open slots & candidate allocation
+    # Block retained tickers AND any ticker exited this tick or already sold today (prevents stop-loss churn).
     open_slots = max(0, max_holdings - len(retained))
     retained_tickers = {h["ticker"].upper() for h in retained}
+    exited_tickers = {s["ticker"].upper() for s in sales}
+    normalized_cooldown = {t.upper() for t in (cooldown_tickers or ())}
+    blocked_tickers = retained_tickers | exited_tickers | normalized_cooldown
 
-    eligible_candidates = [c for c in qualified_candidates if c.get("ticker", "").upper() not in retained_tickers]
+    eligible_candidates = [c for c in qualified_candidates if c.get("ticker", "").upper() not in blocked_tickers]
     # Sort eligible candidates by highest Put/Call volume ratio descending (most extreme panic first)
     eligible_candidates.sort(
         key=lambda c: float(c.get("pv_ratio", 0.0)),

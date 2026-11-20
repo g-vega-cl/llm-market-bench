@@ -28,6 +28,7 @@ Positions are managed dynamically with strict downside and time-horizon risk con
 - **Euphoria Exit (Take Profit)**: When options volume flips into extreme call complacency (`pv_ratio <= 0.60`), open long legs are systematically liquidated to lock in mean-reversion gains.
 - **Adverse Stop Loss**: A 1.5% drop below entry price immediately triggers liquidation to protect capital against severe macro trend breakdowns.
 - **Maximum Holding Horizon**: All positions have a hard 3-day holding ceiling, ensuring capital does not stay locked in dead money if an oversold bounce fails to develop promptly.
+- **Same-Day Re-Entry Cooldown**: Any ticker exited (`SELL`) on the current `America/New_York` trading day is excluded from `eligible_candidates` for the rest of that session (both within the same rebalance pass and across subsequent 5-minute intraday ticks) so stop-losses and horizon exits cannot immediately churn back into the same position.
 
 ## Sizing and Defaults
 

@@ -349,3 +349,449 @@ def test_calculate_reg_t_metrics_with_positions():
     assert metrics.total_equity == 8200.0
     assert metrics.maintenance_margin_req == 0.0
     assert metrics.buying_power == 5000.0
+
+
+class _AtomicTradeRpcDB:
+    """Hermetic Supabase RPC stub mimicking `execute_portfolio_trade` ACID semantics."""
+
+    def __init__(
+        self,
+        *,
+        cash_balance: float = 10000.0,
+        sma: float = 10000.0,
+        positions: dict[str, tuple[int, float]] | None = None,
+        rpc_errors: list[Exception] | None = None,
+    ):
+        self.portfolio = {
+            "id": "port-atomic-1",
+            "cash_balance": cash_balance,
+            "sma": sma,
+            "total_equity": cash_balance,
+            "buying_power": cash_balance,
+            "excess_liquidity": cash_balance,
+            "maintenance_margin": 0.0,
+            "realized": cash_balance,
+        }
+        self.positions: dict[str, dict] = {
+            t: {"portfolio_id": "port-atomic-1", "ticker": t, "quantity": q, "average_cost_basis": c}
+            for t, (q, c) in (positions or {}).items()
+        }
+        self.trades: list[dict] = []
+        self.rpc_errors = list(rpc_errors or [])
+        self.seen_idempotency_keys: list[str] = []
+        self._trade_seq = 0
+
+    def rpc(self, name: str, params: dict):
+        assert name == "execute_portfolio_trade"
+        return _RpcCallStub(self, params)
+
+
+class _RpcCallStub:
+    def __init__(self, db: _AtomicTradeRpcDB, params: dict):
+        self.db = db
+        self.params = params
+
+    def execute(self):
+        idem_key = self.params.get("p_idempotency_key")
+        if idem_key:
+            self.db.seen_idempotency_keys.append(idem_key)
+
+        if self.db.rpc_errors:
+            raise self.db.rpc_errors.pop(0)
+
+        for existing in self.db.trades:
+            if idem_key and existing.get("idempotency_key") == idem_key:
+                pos = self.db.positions.get(existing["ticker"], {})
+                return MagicMock(
+                    data={
+                        "trade_id": existing["id"],
+                        "cash_balance": self.db.portfolio["cash_balance"],
+                        "sma": self.db.portfolio["sma"],
+                        "quantity": existing["quantity"],
+                        "total_cost": existing["total_cost"],
+                        "realized_pnl": existing.get("realized_pnl"),
+                        "realized_pnl_pct": existing.get("realized_pnl_pct"),
+                        "position_quantity": pos.get("quantity", 0),
+                        "position_avg_cost": pos.get("average_cost_basis", 0.0),
+                        "idempotent_replay": True,
+                    }
+                )
+
+        ticker = self.params["p_ticker"]
+        sig = self.params["p_signal"]
+        qty = int(self.params["p_quantity"])
+        price = float(self.params["p_price"])
+        cost = qty * price
+
+        if sig == "BUY":
+            if cost > self.db.portfolio["cash_balance"]:
+                raise RuntimeError("Insufficient cash balance")
+            self.db.portfolio["cash_balance"] -= cost
+            if ticker in self.db.positions:
+                cur = self.db.positions[ticker]
+                new_qty = cur["quantity"] + qty
+                cur["average_cost_basis"] = ((cur["average_cost_basis"] * cur["quantity"]) + cost) / new_qty
+                cur["quantity"] = new_qty
+            else:
+                self.db.positions[ticker] = {
+                    "portfolio_id": "port-atomic-1",
+                    "ticker": ticker,
+                    "quantity": qty,
+                    "average_cost_basis": price,
+                }
+            realized_pnl = None
+            realized_pnl_pct = None
+        else:
+            cur = self.db.positions[ticker]
+            qty = min(qty, cur["quantity"])
+            cost = qty * price
+            avg_cost = cur["average_cost_basis"]
+            realized_pnl = (price - avg_cost) * qty
+            realized_pnl_pct = ((price / avg_cost) - 1) * 100 if avg_cost > 0 else 0.0
+            self.db.portfolio["cash_balance"] += cost
+            cur["quantity"] -= qty
+            if cur["quantity"] == 0:
+                self.db.positions.pop(ticker)
+
+        self.db.portfolio["sma"] = max(0.0, self.db.portfolio["cash_balance"])
+        self.db._trade_seq += 1
+        trade_id = f"trade-{self.db._trade_seq}"
+        self.db.trades.append(
+            {
+                "id": trade_id,
+                "ticker": ticker,
+                "signal": sig,
+                "quantity": qty,
+                "price": price,
+                "total_cost": cost,
+                "realized_pnl": realized_pnl,
+                "realized_pnl_pct": realized_pnl_pct,
+                "idempotency_key": idem_key,
+            }
+        )
+        pos = self.db.positions.get(ticker, {})
+        return MagicMock(
+            data={
+                "trade_id": trade_id,
+                "cash_balance": self.db.portfolio["cash_balance"],
+                "sma": self.db.portfolio["sma"],
+                "quantity": qty,
+                "total_cost": cost,
+                "realized_pnl": realized_pnl,
+                "realized_pnl_pct": realized_pnl_pct,
+                "position_quantity": pos.get("quantity", 0),
+                "position_avg_cost": pos.get("average_cost_basis", 0.0),
+                "idempotent_replay": False,
+            }
+        )
+
+
+@pytest.mark.asyncio
+async def test_execute_trade_rolls_back_positions_and_trade_when_cash_update_fails():
+    """If atomic RPC fails, neither DB nor in-memory portfolio state is partially mutated."""
+    p = Portfolio("sys-sentiment-fader")
+    p.id = "port-atomic-1"
+    p.cash_balance = 5211.91
+    p.sma = 5211.91
+    p.positions = {"SPY": Position("SPY", 6, 718.16)}
+
+    db = _AtomicTradeRpcDB(
+        cash_balance=5211.91,
+        sma=5211.91,
+        positions={"SPY": (6, 718.16)},
+        rpc_errors=[RuntimeError("PostgREST write failed")],
+    )
+
+    with (
+        patch("execution.portfolio.get_supabase_client", return_value=db),
+        patch("execution.alpaca_broker.AlpacaBroker") as mock_broker,
+    ):
+        trade_id = await p.execute_trade(
+            ticker="QQQ",
+            quantity=7,
+            price=647.34,
+            signal="BUY",
+            current_prices={"SPY": 718.16, "QQQ": 647.34},
+            skip_alpaca_mirror=False,
+        )
+
+    assert trade_id is None
+    assert p.cash_balance == pytest.approx(5211.91)
+    assert "QQQ" not in p.positions
+    assert db.portfolio["cash_balance"] == pytest.approx(5211.91)
+    assert "QQQ" not in db.positions
+    assert db.trades == []
+    mock_broker.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_trade_retries_transient_cash_update_error():
+    """Transient 502/504 errors on execute_portfolio_trade RPC retry with the same idempotency_key."""
+    p = Portfolio("sys-sentiment-fader")
+    p.id = "port-atomic-1"
+    p.cash_balance = 5211.91
+    p.sma = 5211.91
+
+    db = _AtomicTradeRpcDB(
+        cash_balance=5211.91,
+        sma=5211.91,
+        rpc_errors=[Exception("502 Bad Gateway")],
+    )
+
+    with (
+        patch("execution.portfolio.get_supabase_client", return_value=db),
+        patch("core.db.asyncio.sleep", return_value=None),
+    ):
+        trade_id = await p.execute_trade(
+            ticker="QQQ",
+            quantity=7,
+            price=647.34,
+            signal="BUY",
+            current_prices={"QQQ": 647.34},
+            skip_alpaca_mirror=True,
+        )
+
+    assert trade_id == "trade-1"
+    assert db.portfolio["cash_balance"] == pytest.approx(5211.91 - 7 * 647.34)
+    assert "QQQ" in db.positions
+    assert len(db.trades) == 1
+    assert len(db.seen_idempotency_keys) == 2
+    assert db.seen_idempotency_keys[0] == db.seen_idempotency_keys[1]
+
+
+@pytest.mark.asyncio
+async def test_execute_trade_sell_rollback_restores_deleted_position():
+    """If a SELL RPC fails, in-memory and DB positions/cash remain completely unchanged."""
+    p = Portfolio("sys-sentiment-fader")
+    p.id = "port-atomic-1"
+    p.cash_balance = 186.63
+    p.sma = 186.63
+    p.positions = {"SPY": Position("SPY", 13, 729.13)}
+
+    db = _AtomicTradeRpcDB(
+        cash_balance=186.63,
+        sma=186.63,
+        positions={"SPY": (13, 729.13)},
+        rpc_errors=[RuntimeError("PostgREST write failed")],
+    )
+
+    with patch("execution.portfolio.get_supabase_client", return_value=db):
+        trade_id = await p.execute_trade(
+            ticker="SPY",
+            quantity=13,
+            price=718.02,
+            signal="SELL",
+            current_prices={"SPY": 718.02},
+            skip_alpaca_mirror=True,
+        )
+
+    assert trade_id is None
+    assert p.cash_balance == pytest.approx(186.63)
+    assert p.positions["SPY"].quantity == 13
+    assert p.positions["SPY"].average_cost_basis == pytest.approx(729.13)
+    assert db.portfolio["cash_balance"] == pytest.approx(186.63)
+    assert db.positions["SPY"]["quantity"] == 13
+    assert db.positions["SPY"]["average_cost_basis"] == pytest.approx(729.13)
+    assert db.trades == []
+
+
+@pytest.mark.asyncio
+async def test_execute_trade_rejects_invalid_signal():
+    """Invalid trade signals (anything other than BUY/SELL) must fail closed before DB RPC."""
+    p = Portfolio("sys-sentiment-fader")
+    p.id = "port-atomic-1"
+    p.cash_balance = 10000.0
+    db = _AtomicTradeRpcDB()
+
+    with patch("execution.portfolio.get_supabase_client", return_value=db):
+        res = await p.execute_trade(
+            ticker="SPY",
+            quantity=5,
+            price=500.0,
+            signal="HOLD",
+            skip_alpaca_mirror=True,
+        )
+
+    assert res is None
+    assert p.cash_balance == pytest.approx(10000.0)
+    assert db.seen_idempotency_keys == []
+
+
+@pytest.mark.asyncio
+async def test_execute_trade_idempotent_replay_after_commit_timeout():
+    """If DB committed on attempt 1 before a 504 timeout, retry replays without double-charging."""
+    p = Portfolio("sys-sentiment-fader")
+    p.id = "port-atomic-1"
+    p.cash_balance = 5211.91
+    p.sma = 5211.91
+
+    db = _AtomicTradeRpcDB(cash_balance=5211.91, sma=5211.91)
+    real_rpc = db.rpc
+    attempts = {"n": 0}
+
+    def commit_then_timeout(name: str, params: dict):
+        call = real_rpc(name, params)
+        orig_execute = call.execute
+
+        def flaky_execute():
+            attempts["n"] += 1
+            res = orig_execute()
+            if attempts["n"] == 1:
+                raise Exception("504 Gateway Timeout after commit")
+            return res
+
+        call.execute = flaky_execute
+        return call
+
+    db.rpc = commit_then_timeout
+
+    with (
+        patch("execution.portfolio.get_supabase_client", return_value=db),
+        patch("core.db.asyncio.sleep", return_value=None),
+    ):
+        trade_id = await p.execute_trade(
+            ticker="QQQ",
+            quantity=7,
+            price=647.34,
+            signal="BUY",
+            current_prices={"QQQ": 647.34},
+            skip_alpaca_mirror=True,
+        )
+
+    assert trade_id == "trade-1"
+    assert attempts["n"] == 2
+    assert len(db.trades) == 1
+    assert db.portfolio["cash_balance"] == pytest.approx(5211.91 - 7 * 647.34)
+    assert p.cash_balance == pytest.approx(5211.91 - 7 * 647.34)
+
+
+def test_backtest_sandbox_rpc_executes_locally_in_sqlite(tmp_path):
+    """Portfolio.execute_trade via MockSimulatedSupabaseClient must run locally in SQLite and block unknown RPCs."""
+    import asyncio
+    import sqlite3
+    from datetime import UTC, datetime
+
+    from tasks import backtest_autoresearch
+
+    db_file = tmp_path / "backtest_test.db"
+    real_client = MagicMock()
+    t_sim = datetime(2026, 11, 19, 15, 0, tzinfo=UTC)
+
+    with patch.object(backtest_autoresearch, "DB_PATH", str(db_file)):
+        backtest_autoresearch.init_backtest_db()
+        conn = sqlite3.connect(str(db_file))
+        conn.execute(
+            "INSERT INTO portfolios (id, owner_id, cash_balance, sma, total_equity, buying_power, excess_liquidity, maintenance_margin, realized) "
+            "VALUES ('p-sim-1', 'sim-agent', 10000.0, 10000.0, 10000.0, 10000.0, 10000.0, 0.0, 10000.0)"
+        )
+        conn.commit()
+        conn.close()
+
+        sim_client = backtest_autoresearch.MockSimulatedSupabaseClient(real_client, t_sim)
+        p = Portfolio("sim-agent")
+        p.id = "p-sim-1"
+        p.cash_balance = 10000.0
+        p.sma = 10000.0
+
+        with patch("execution.portfolio.get_supabase_client", return_value=sim_client):
+            trade_id = asyncio.run(
+                p.execute_trade(
+                    ticker="SPY",
+                    quantity=5,
+                    price=500.0,
+                    signal="BUY",
+                    current_prices={"SPY": 500.0},
+                    skip_alpaca_mirror=True,
+                )
+            )
+
+        replay = sim_client.rpc(
+            "execute_portfolio_trade",
+            {
+                "p_portfolio_id": "p-sim-1",
+                "p_ticker": "SPY",
+                "p_signal": "BUY",
+                "p_quantity": 5,
+                "p_price": 500.0,
+                "p_idempotency_key": "idem-sim-1",
+            },
+        ).execute()
+        replay_again = sim_client.rpc(
+            "execute_portfolio_trade",
+            {
+                "p_portfolio_id": "p-sim-1",
+                "p_ticker": "SPY",
+                "p_signal": "BUY",
+                "p_quantity": 5,
+                "p_price": 500.0,
+                "p_idempotency_key": "idem-sim-1",
+            },
+        ).execute()
+
+        with pytest.raises(ValueError, match="not allowlisted"):
+            sim_client.rpc("some_mutating_rpc", {})
+
+    assert trade_id is not None
+    assert p.cash_balance == pytest.approx(7500.0)
+    assert p.positions["SPY"].quantity == 5
+    assert replay_again.data["idempotent_replay"] is True
+    assert replay_again.data["trade_id"] == replay.data["trade_id"]
+    real_client.rpc.assert_not_called()
+
+
+def test_is_transient_supabase_error_ignores_business_digits_and_p0001():
+    """Business/SQL errors containing digits like 4290 or UUID 504 must fail fast, not retry."""
+    from core.db import is_transient_supabase_error
+
+    assert is_transient_supabase_error(RuntimeError("Insufficient cash balance: need 4290, available 1502")) is False
+    assert is_transient_supabase_error(RuntimeError("Price $502.34 invalid")) is False
+    assert (
+        is_transient_supabase_error(RuntimeError("Portfolio a1b2c3d4-504a-4000-8000-000000000001 not found")) is False
+    )
+    assert is_transient_supabase_error(RuntimeError("{'code': 'P0001', 'message': '503 insufficient cash'}")) is False
+
+    assert is_transient_supabase_error(Exception("502 Bad Gateway")) is True
+    assert is_transient_supabase_error(Exception("HTTP 429 Too Many Requests")) is True
+    err_with_status = RuntimeError("upstream error")
+    err_with_status.status_code = 503
+    assert is_transient_supabase_error(err_with_status) is True
+
+
+@pytest.mark.asyncio
+async def test_execute_trade_is_single_atomic_rpc_without_post_save_metrics():
+    """execute_trade must pass p_mark_prices to the atomic RPC and not run an unlocked post-RPC save_metrics."""
+    p = Portfolio("sys-sentiment-fader")
+    p.id = "port-atomic-1"
+    p.cash_balance = 10000.0
+    db = _AtomicTradeRpcDB(cash_balance=10000.0, sma=10000.0)
+
+    with (
+        patch("execution.portfolio.get_supabase_client", return_value=db),
+        patch.object(p, "save_metrics") as mock_save_metrics,
+    ):
+        trade_id = await p.execute_trade(
+            ticker="QQQ",
+            quantity=5,
+            price=500.0,
+            signal="BUY",
+            current_prices={"QQQ": 500.0},
+            skip_alpaca_mirror=True,
+        )
+
+    assert trade_id == "trade-1"
+    mock_save_metrics.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_execute_trade_rejects_nan_and_infinite_prices():
+    """NaN and Infinity prices must fail preflight validation before touching DB."""
+    p = Portfolio("sys-sentiment-fader")
+    p.id = "port-atomic-1"
+    p.cash_balance = 10000.0
+    db = _AtomicTradeRpcDB(cash_balance=10000.0, sma=10000.0)
+
+    with patch("execution.portfolio.get_supabase_client", return_value=db):
+        assert await p.execute_trade("SPY", 5, float("nan"), "BUY", skip_alpaca_mirror=True) is None
+        assert await p.execute_trade("SPY", 5, float("inf"), "BUY", skip_alpaca_mirror=True) is None
+
+    assert db.trades == []

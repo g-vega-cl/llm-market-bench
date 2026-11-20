@@ -47,6 +47,31 @@ def mock_supabase():
 
         mock_client.table.side_effect = table_side_effect
 
+        rpc_seq = {"n": 0}
+
+        def rpc_side_effect(fn_name, params):
+            rpc_seq["n"] += 1
+            call_mock = MagicMock()
+            qty = int(params["p_quantity"])
+            price = float(params["p_price"])
+            new_cash = portfolio_data[0]["cash_balance"] + qty * price
+            portfolio_data[0]["cash_balance"] = new_cash
+            call_mock.execute.return_value = MagicMock(
+                data={
+                    "trade_id": f"dust-trade-{rpc_seq['n']}",
+                    "cash_balance": new_cash,
+                    "sma": max(0.0, new_cash),
+                    "quantity": qty,
+                    "total_cost": qty * price,
+                    "position_quantity": 0,
+                    "position_avg_cost": 0.0,
+                    "idempotent_replay": False,
+                }
+            )
+            return call_mock
+
+        mock_client.rpc.side_effect = rpc_side_effect
+
         yield mock_client
 
 
@@ -72,15 +97,11 @@ async def test_dust_position_cleanup_after_partial_sell(mock_supabase):
     # Run dust cleanup
     await portfolio._check_and_sell_dust_positions(current_prices)
 
-    # Verify both dust positions were sold
-    # With side_effect, we need to check all table() calls
-    table_calls = mock_supabase.table.call_args_list
-    delete_calls = [call for call in table_calls if len(call[0]) > 0 and call[0][0] == "portfolio_positions"]
-    # Each dust position triggers a table("portfolio_positions").delete() call
-    assert len(delete_calls) >= 2
-    # Verify trades were recorded
-    trade_calls = [call for call in table_calls if len(call[0]) > 0 and call[0][0] == "trades"]
-    assert len(trade_calls) >= 2
+    # Verify both dust positions triggered the atomic execute_portfolio_trade RPC
+    rpc_calls = [call for call in mock_supabase.rpc.call_args_list if call[0][0] == "execute_portfolio_trade"]
+    assert len(rpc_calls) == 2
+    sold_tickers = {call[0][1]["p_ticker"] for call in rpc_calls}
+    assert sold_tickers == {"AAPL", "XYZ"}
 
 
 @pytest.mark.asyncio
@@ -181,27 +202,15 @@ async def test_dust_cleanup_handles_exceptions_gracefully(mock_supabase):
 
     current_prices = {"ERROR": 100.0}
 
-    # Mock DB to raise an exception on delete
-    # We need to intercept the table("portfolio_positions") call
-    original_side_effect = mock_supabase.table.side_effect
-
-    def failing_table_side_effect(table_name):
-        mock_table = original_side_effect(table_name)
-        if table_name == "portfolio_positions":
-            mock_table.delete.return_value.match.return_value.execute.side_effect = Exception("DB Error")
-        return mock_table
-
-    mock_supabase.table.side_effect = failing_table_side_effect
+    # Mock RPC to raise an exception
+    mock_supabase.rpc.side_effect = RuntimeError("DB Error")
 
     # Run dust cleanup - should not crash
     await portfolio._check_and_sell_dust_positions(current_prices)
 
-    # Note: The implementation updates local state (cash, SMA, deletes position) BEFORE the DB call.
-    # So even when DB fails, the local state is already updated.
-    # Cash should have been updated: 5000 + (100 * 5) = 5500 (SMA update: +500*0.57 = +285)
-    assert portfolio.cash_balance == 5500.0
-    # Position is removed from local state before DB call
-    assert "ERROR" not in portfolio.positions
+    # Atomic rollback: when RPC fails, local cash and position remain unchanged
+    assert portfolio.cash_balance == 5000.0
+    assert "ERROR" in portfolio.positions
 
 
 @pytest.mark.asyncio

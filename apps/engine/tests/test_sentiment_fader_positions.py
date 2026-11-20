@@ -34,6 +34,9 @@ class _FakePortfolio:
     async def save_metrics(self):
         return None
 
+    async def record_performance_snapshot(self, current_prices):
+        return None
+
     async def execute_trade(self, **kwargs):
         self.executed.append(kwargs)
 
@@ -58,7 +61,11 @@ async def test_sentiment_fader_reads_position_mapping():
             "tasks.sentiment_fader_task.compute_sentiment_fader_rebalance_orders",
             side_effect=fake_plan,
         ),
-        patch("tasks.sentiment_fader_task._get_holding_days", new_callable=AsyncMock, return_value=1),
+        patch(
+            "tasks.sentiment_fader_task._load_recent_trade_state",
+            new_callable=AsyncMock,
+            return_value=({"SPY": 1}, set()),
+        ),
     ):
         result = await run_sentiment_fader_task(action="evaluate")
 

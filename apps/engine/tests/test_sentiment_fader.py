@@ -207,3 +207,36 @@ def test_compute_rebalance_orders_full_lifecycle():
     assert orders["buys"][0]["shares"] == 24
     assert orders["buys"][0]["execution_price"] == 200.02
     assert orders["buys"][0]["total_cost"] == round(24 * 200.02, 2)
+
+
+def test_compute_rebalance_orders_blocks_same_tick_reentry_after_exit():
+    """A ticker exited on stop-loss/max-days/euphoria must NOT be re-bought in the same tick."""
+    current_holdings = [
+        {
+            "ticker": "SPY",
+            "shares": 13,
+            "cost_basis": 729.13,
+            "current_price": 718.09,
+        }
+    ]
+    holding_evaluations = {
+        "SPY": {"should_exit": True, "reason": "Adverse stop loss triggered for SPY (-1.51%)"},
+    }
+    qualified_candidates = [
+        {"ticker": "SPY", "price": 718.09, "pv_ratio": 1.65},
+        {"ticker": "QQQ", "price": 647.28, "pv_ratio": 1.45},
+    ]
+
+    orders = compute_sentiment_fader_rebalance_orders(
+        current_holdings=current_holdings,
+        holding_evaluations=holding_evaluations,
+        qualified_candidates=qualified_candidates,
+        available_cash=186.63,
+        max_holdings=2,
+        slippage_bps=1.0,
+    )
+
+    assert [s["ticker"] for s in orders["sales"]] == ["SPY"]
+    buy_tickers = [b["ticker"] for b in orders["buys"]]
+    assert "SPY" not in buy_tickers
+    assert buy_tickers == ["QQQ"]

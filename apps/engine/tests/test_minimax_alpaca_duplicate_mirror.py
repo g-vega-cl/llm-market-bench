@@ -19,19 +19,18 @@ async def test_execute_trade_honors_skip_alpaca_mirror():
     p.positions = {}
 
     mock_db = MagicMock()
-    mock_table = MagicMock()
-    mock_db.table.return_value = mock_table
-
-    # Mock DB chain: return a trade_id on trades insert
-    mock_trades_res = MagicMock()
-    mock_trades_res.data = [{"id": "trade-uuid-123"}]
-    mock_table.insert.return_value.execute.return_value = mock_trades_res
-
-    # Mock execute/update/upsert chains
-    mock_table.upsert.return_value.execute.return_value = MagicMock()
-    mock_table.update.return_value.eq.return_value.execute.return_value = MagicMock()
-
-    mock_db.table.side_effect = lambda table_name: mock_table
+    mock_db.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "trade_id": "trade-uuid-123",
+            "cash_balance": 8500.0,
+            "sma": 8500.0,
+            "quantity": 10,
+            "total_cost": 1500.0,
+            "position_quantity": 10,
+            "position_avg_cost": 150.0,
+            "idempotent_replay": False,
+        }
+    )
 
     # We mock AlpacaBroker and submit_limit_order
     with (

@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import re
 import time
 from collections.abc import Callable
 from typing import Any, TypeVar
@@ -120,14 +121,25 @@ async def get_async_supabase_client() -> AsyncClient:
     return _supabase_async_client
 
 
+_TRANSIENT_HTTP_STATUS_RE = re.compile(r"(?<![a-f0-9.$.-])(429|502|503|504)(?![a-f0-9.])")
+
+
 def is_transient_supabase_error(exc: Exception) -> bool:
     """Check if an exception is a transient Supabase error worth retrying."""
-    error_str = str(exc).lower()
+    # Deterministic PL/pgSQL RAISE EXCEPTION (SQLSTATE P0001) must fail fast
+    if getattr(exc, "code", None) == "P0001":
+        return False
 
-    transient_codes = {"502", "503", "504", "429"}
-    for code in transient_codes:
-        if code in error_str:
-            return True
+    status_code = getattr(exc, "status_code", None)
+    if status_code in {429, 502, 503, 504}:
+        return True
+
+    error_str = str(exc).lower()
+    if "p0001" in error_str:
+        return False
+
+    if _TRANSIENT_HTTP_STATUS_RE.search(error_str):
+        return True
 
     transient_keywords = [
         "bad gateway",
@@ -182,6 +194,34 @@ def with_retry[T](operation: Callable[[], T], operation_name: str = "operation")
             else:
                 logger.exception(f"{operation_name} failed after {SUPABASE_RETRIES} attempts")
 
+    raise last_exception
+
+
+async def async_with_retry[T](operation: Callable[[], T], operation_name: str = "operation") -> T:
+    """Execute a synchronous Supabase operation in a worker thread with async retry backoff."""
+    last_exception: Exception | None = None
+
+    for attempt in range(1, SUPABASE_RETRIES + 1):
+        try:
+            return await asyncio.to_thread(operation)
+        except Exception as exc:
+            last_exception = exc
+
+            if not is_transient_supabase_error(exc):
+                logger.exception(f"{operation_name} failed with non-transient error")
+                raise
+
+            if attempt < SUPABASE_RETRIES:
+                wait_time = 2 ** (attempt - 1)
+                logger.warning(
+                    f"{operation_name} failed (attempt {attempt}/{SUPABASE_RETRIES}), "
+                    f"retrying in {wait_time}s. Error: {exc}"
+                )
+                await asyncio.sleep(wait_time)
+            else:
+                logger.exception(f"{operation_name} failed after {SUPABASE_RETRIES} attempts")
+
+    assert last_exception is not None
     raise last_exception
 
 

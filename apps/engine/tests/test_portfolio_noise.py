@@ -19,12 +19,20 @@ async def test_execute_trade_price_persistence():
     }
     portfolio.cash_balance = 10000.0
 
-    # Mock Supabase
+    # Mock Supabase atomic RPC
     mock_supabase = MagicMock()
-    # Mock the various table calls to avoid DB errors
-    mock_supabase.table.return_value.upsert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-id"}])
-    mock_supabase.table.return_value.insert.return_value.execute.return_value = MagicMock(data=[{"id": "trade-id"}])
-    mock_supabase.table.return_value.update.return_value.eq.return_value.execute.return_value = MagicMock()
+    mock_supabase.rpc.return_value.execute.return_value = MagicMock(
+        data={
+            "trade_id": "trade-id",
+            "cash_balance": 10320.0,
+            "sma": 10320.0,
+            "quantity": 2,
+            "total_cost": 320.0,
+            "position_quantity": 8,
+            "position_avg_cost": 150.0,
+            "idempotent_replay": False,
+        }
+    )
 
     with (
         patch("execution.portfolio.get_supabase_client", return_value=mock_supabase),

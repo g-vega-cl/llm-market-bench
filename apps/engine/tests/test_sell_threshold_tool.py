@@ -51,6 +51,28 @@ def mock_supabase():
             return mock_table
 
         mock_client.table.side_effect = table_side_effect
+
+        def rpc_side_effect(_fn_name, params):
+            qty = int(params["p_quantity"])
+            price = float(params["p_price"])
+            new_cash = portfolio_data[0]["cash_balance"] + qty * price
+            portfolio_data[0]["cash_balance"] = new_cash
+            call_mock = MagicMock()
+            call_mock.execute.return_value = MagicMock(
+                data={
+                    "trade_id": "dust-trade-1",
+                    "cash_balance": new_cash,
+                    "sma": max(0.0, new_cash),
+                    "quantity": qty,
+                    "total_cost": qty * price,
+                    "position_quantity": 0,
+                    "position_avg_cost": 0.0,
+                    "idempotent_replay": False,
+                }
+            )
+            return call_mock
+
+        mock_client.rpc.side_effect = rpc_side_effect
         yield mock_client
 
 

@@ -3,19 +3,25 @@ import {
     Button,
     Card,
     EmptyState,
-    Input,
     PageLayout,
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
-import { Link, useRouter } from '@tanstack/react-router';
-import { type FormEvent, useState } from 'react';
 import type { PublicBoardCard, PublicDesk } from '~/features/recipes/api/public-board-api';
 import { STARTER_RECIPES } from '~/features/recipes/starter-templates';
+import type {
+    EquityPoint,
+    LeaderboardRow,
+    PortfolioLeaderboard,
+} from '../api/portfolio-leaderboard';
+import { EquityChart } from './EquityChart';
 import { formatPct } from './format-pct';
+import { HomeHero } from './HomeHero';
 import { modelLabel } from './model-label';
+import { TopPortfolios } from './TopPortfolios';
 
 export interface RecipeDeskHomePageProps {
     desk: PublicDesk;
+    leaderboard?: PortfolioLeaderboard;
     onFork: (recipeId: string) => void;
     forkingId?: string | null;
     error?: string | null;
@@ -109,44 +115,47 @@ function RecipeCard({
     );
 }
 
-export function RecipeDeskHomePage({ desk, onFork, forkingId, error }: RecipeDeskHomePageProps) {
-    const router = useRouter();
-    const [idea, setIdea] = useState('');
+export function RecipeDeskHomePage({
+    desk,
+    leaderboard,
+    onFork,
+    forkingId,
+    error,
+}: RecipeDeskHomePageProps) {
     const cards = Array.isArray(desk?.cards) ? desk.cards : [];
     const feed = Array.isArray(desk?.feed) ? desk.feed : [];
-
-    const submitIdea = (event: FormEvent) => {
-        event.preventDefault();
-        void router.navigate({ to: '/build', search: { idea: idea.trim() || undefined } });
-    };
+    // Normalised at the route boundary; the guards here only protect a direct render
+    // (tests, stories) from a partial payload.
+    const boardRows: LeaderboardRow[] = Array.isArray(leaderboard?.rows) ? leaderboard.rows : [];
+    const spySeries: EquityPoint[] = Array.isArray(leaderboard?.spy) ? leaderboard.spy : [];
+    const windowDays = leaderboard?.windowDays ?? 30;
+    const medianReturnPct = leaderboard?.medianReturnPct ?? null;
 
     return (
         <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
-            <PageLayout maxWidth="xl" className="flex flex-col gap-8">
-                <header className="flex flex-col gap-4 pb-4 border-b-2 border-voxel-bevel-hi">
-                    <h1 className="text-sm font-bold text-voxel-ink tracking-tight text-balance">
-                        Describe a trading bot. It runs three times a day on point-in-time news.
-                    </h1>
-                    <p className="text-xs font-normal text-voxel-muted max-w-prose">
-                        Every recipe is one LLM call over the same news corpus and memories the
-                        benchmark agents trade. Paper cash only, no brokerage account, and we
-                        publish the losers next to the winners.
+            <PageLayout maxWidth="xl" paddingY="tight" className="flex flex-col gap-6">
+                <HomeHero
+                    chart={<EquityChart rows={boardRows} spy={spySeries} windowDays={windowDays} />}
+                    medianReturnPct={formatPct(medianReturnPct)}
+                    windowDays={windowDays}
+                />
+
+                <section className="flex flex-col gap-3" aria-labelledby="portfolios-heading">
+                    <SectionHeading className="text-sm">
+                        <span id="portfolios-heading">Portfolio leaderboard</span>
+                    </SectionHeading>
+                    <TopPortfolios
+                        rows={boardRows}
+                        trackedCount={leaderboard?.trackedCount ?? null}
+                        windowDays={windowDays}
+                        degraded={leaderboard?.degraded ?? false}
+                        starterNames={STARTER_RECIPES.map((template) => template.name)}
+                    />
+                    <p className="text-xs font-normal text-voxel-muted">
+                        Start from a working recipe above. Two free backtests a day, three live
+                        bots, no card, paper only.
                     </p>
-                    <form className="flex flex-wrap items-stretch gap-2" onSubmit={submitIdea}>
-                        <div className="flex-1 min-w-0">
-                            <Input
-                                aria-label="Describe your strategy"
-                                placeholder="Buy chipmakers when AI capex news turns positive, exit on guidance cuts"
-                                value={idea}
-                                onChange={(event) => setIdea(event.target.value)}
-                                maxLength={280}
-                            />
-                        </div>
-                        <Button type="submit" variant="solid" size="md">
-                            Build it
-                        </Button>
-                    </form>
-                </header>
+                </section>
 
                 {error ? (
                     <p role="alert" className="voxel-trough p-3 text-xs font-normal text-danger">
@@ -160,8 +169,7 @@ export function RecipeDeskHomePage({ desk, onFork, forkingId, error }: RecipeDes
                             <span id="desk-heading">Live desk</span>
                         </SectionHeading>
                         <p className="font-mono text-xs font-normal text-voxel-muted">
-                            {desk.liveCount ?? 0} live · {desk.beatSpyCount ?? 0} beating SPY ·
-                            median {formatPct(desk.medianReturnPct)}
+                            {desk.liveCount ?? 0} live · {desk.beatSpyCount ?? 0} beating SPY
                         </p>
                     </div>
 
@@ -182,56 +190,40 @@ export function RecipeDeskHomePage({ desk, onFork, forkingId, error }: RecipeDes
                             ))}
                         </div>
                     )}
-                </section>
 
-                {feed.length > 0 ? (
-                    <section className="flex flex-col gap-3" aria-labelledby="feed-heading">
-                        <SectionHeading className="text-sm">
-                            <span id="feed-heading">Today</span>
-                        </SectionHeading>
-                        <ul className="flex flex-col gap-1">
-                            {feed.map((item) => (
-                                <li
-                                    key={`${item.recipeId}-${item.at}-${item.ticker}-${item.action}`}
-                                    className="voxel-trough px-3 py-2 flex flex-wrap items-baseline gap-2 text-xs"
-                                >
-                                    <span className="font-mono text-voxel-muted">
-                                        {new Date(item.at).toLocaleTimeString('en-US', {
-                                            hour: '2-digit',
-                                            minute: '2-digit',
-                                            timeZone: 'America/New_York',
-                                        })}{' '}
-                                        ET
-                                    </span>
-                                    <span className="font-bold text-voxel-ink">{item.action}</span>
-                                    <span className="font-mono text-voxel-ink">{item.ticker}</span>
-                                    <span className="text-voxel-muted break-words">
-                                        {item.recipeName}
-                                    </span>
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                ) : null}
-
-                <section className="flex flex-col gap-3" aria-labelledby="templates-heading">
-                    <SectionHeading className="text-sm">
-                        <span id="templates-heading">Start from a working recipe</span>
-                    </SectionHeading>
-                    <div className="flex flex-wrap gap-2">
-                        {STARTER_RECIPES.map((template) => (
-                            <Link
-                                key={template.name}
-                                to="/recipes"
-                                className="voxel-btn inline-flex items-center px-3 py-1.5 text-xs font-normal bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated"
-                            >
-                                {template.name}
-                            </Link>
-                        ))}
-                    </div>
-                    <p className="text-xs font-normal text-voxel-muted">
-                        Two free backtests a day, three live bots. No card, paper only.
-                    </p>
+                    {feed.length > 0 ? (
+                        <div className="flex flex-col gap-2">
+                            <SectionHeading className="text-sm">
+                                <span id="feed-heading">Today</span>
+                            </SectionHeading>
+                            <ul className="flex flex-col gap-1">
+                                {feed.map((item) => (
+                                    <li
+                                        key={`${item.recipeId}-${item.at}-${item.ticker}-${item.action}`}
+                                        className="voxel-trough px-3 py-2 flex flex-wrap items-baseline gap-2 text-xs"
+                                    >
+                                        <span className="font-mono text-voxel-muted">
+                                            {new Date(item.at).toLocaleTimeString('en-US', {
+                                                hour: '2-digit',
+                                                minute: '2-digit',
+                                                timeZone: 'America/New_York',
+                                            })}{' '}
+                                            ET
+                                        </span>
+                                        <span className="font-bold text-voxel-ink">
+                                            {item.action}
+                                        </span>
+                                        <span className="font-mono text-voxel-ink">
+                                            {item.ticker}
+                                        </span>
+                                        <span className="text-voxel-muted break-words">
+                                            {item.recipeName}
+                                        </span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : null}
                 </section>
             </PageLayout>
         </div>

@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { RecipeDeskHomePage } from '~/features/home/pages/RecipeDeskHomePage';
 import type { PublicDesk } from '~/features/recipes/api/public-board-api';
-import { Route } from './index';
+import { normalizeLeaderboard, Route } from './index';
 
 const mockNavigate = vi.fn();
 
@@ -85,12 +85,53 @@ describe('Recipe desk homepage', () => {
         expect(screen.getByText('+3.20%')).toBeInTheDocument();
     });
 
-    it('shows the live count, beat-SPY count and median', () => {
+    it('shows the live and beat-SPY counts on the desk header', () => {
         render(<RecipeDeskHomePage desk={desk} onFork={vi.fn()} />);
 
         expect(screen.getByText(/2 live/)).toBeInTheDocument();
         expect(screen.getByText(/1 beating SPY/)).toBeInTheDocument();
-        expect(screen.getByText(/-0\.65%/)).toBeInTheDocument();
+    });
+
+    it('shows the portfolio median in the hero, not the desk median', () => {
+        render(
+            <RecipeDeskHomePage
+                desk={desk}
+                leaderboard={{
+                    rows: [],
+                    spy: [],
+                    medianReturnPct: -2.55,
+                    trackedCount: 30,
+                    windowDays: 30,
+                    degraded: false,
+                    spyUnavailable: false,
+                }}
+                onFork={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText(/-2\.55%/)).toBeInTheDocument();
+        expect(screen.queryByText(/-0\.65%/)).not.toBeInTheDocument();
+    });
+
+    it('says the board is unavailable when the read degraded', () => {
+        render(
+            <RecipeDeskHomePage
+                desk={desk}
+                leaderboard={{
+                    rows: [],
+                    spy: [],
+                    medianReturnPct: null,
+                    trackedCount: 0,
+                    windowDays: 30,
+                    degraded: true,
+                    spyUnavailable: false,
+                }}
+                onFork={vi.fn()}
+            />,
+        );
+
+        expect(screen.getByText(/board is unavailable right now/i)).toBeInTheDocument();
+        expect(screen.queryByText(/fills after the next close/i)).not.toBeInTheDocument();
     });
 
     it('renders the today feed for executed signals', () => {
@@ -184,5 +225,35 @@ describe('desk payload skew', () => {
         );
 
         expect(screen.getByText('No live recipes yet')).toBeInTheDocument();
+    });
+});
+
+describe('normalizeLeaderboard', () => {
+    it('treats an absent payload as an unknown board, not a young one', () => {
+        expect(normalizeLeaderboard(undefined).degraded).toBe(true);
+    });
+
+    it('drops malformed chart points instead of passing junk through', () => {
+        const board = normalizeLeaderboard({
+            rows: [
+                {
+                    portfolioId: 'p1',
+                    label: 'x',
+                    returnPct: 1,
+                    observations: 2,
+                    series: [{ date: '2026-11-10', value: 'nope' }],
+                },
+            ],
+        });
+
+        expect(board.rows[0].series).toEqual([]);
+        expect(board.degraded).toBe(false);
+    });
+
+    it('does not print NaN for a bad count or window', () => {
+        const board = normalizeLeaderboard({ trackedCount: 'NaN', windowDays: 'NaN' });
+
+        expect(board.trackedCount).toBeNull();
+        expect(board.windowDays).toBe(30);
     });
 });

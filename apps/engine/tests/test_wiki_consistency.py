@@ -150,7 +150,16 @@ def test_core_web_vitals_documented():
     cwv_page = WIKI_DIR / "concepts" / "core-web-vitals.md"
     assert cwv_page.is_file(), "wiki/concepts/core-web-vitals.md must exist"
     cwv_text = cwv_page.read_text()
-    for token in ("https://web.dev/articles/vitals", "LCP", "INP", "CLS", "75th percentile", "Tier 1", "Tier 2", "Tier 3"):
+    for token in (
+        "https://web.dev/articles/vitals",
+        "LCP",
+        "INP",
+        "CLS",
+        "75th percentile",
+        "Tier 1",
+        "Tier 2",
+        "Tier 3",
+    ):
         assert token in cwv_text, f"wiki/concepts/core-web-vitals.md missing required section/token: {token}"
 
     index_text = (WIKI_DIR / "index.md").read_text()

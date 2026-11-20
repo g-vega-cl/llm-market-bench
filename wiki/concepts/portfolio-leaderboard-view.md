@@ -77,6 +77,15 @@ scrapes every `*portfolio_leaderboard*.sql` migration for the `excluded(owner_id
 CTE and fails when `models.json` declares an owner the view still ranks, so the
 two readers of that declaration cannot drift again.
 
+Never add a current model owner to that array. `gpt-6-luna` replaced
+`gpt-5.6-luna` and the two ids share a prefix, so retiring the version must not
+retire the model: `test_board_never_excludes_a_current_model_owner` intersects the
+array with every `*_MODEL` value in `models.json` and fails if any of them appears.
+
+Luna 6 is absent from the board today for an unrelated reason — it has two sessions
+of history and the view requires five observations — not because of the exclusion
+list.
+
 ## Data Contract
 
 `TopPortfoliosProps`:

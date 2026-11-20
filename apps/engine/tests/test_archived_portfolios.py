@@ -7,6 +7,7 @@ appear under /retired-agents, and are skipped by the price-update bulk
 mark-to-market loop so their performance history stays frozen.
 """
 
+import json
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -116,3 +117,17 @@ def test_leaderboard_excludes_every_declared_archived_owner():
     excluded = _board_view_excluded_owners()
 
     assert declared - excluded == set(), f"declared archived but still ranked: {sorted(declared - excluded)}"
+
+
+def test_board_never_excludes_a_current_model_owner():
+    """Retiring a version must not retire the model that replaced it.
+
+    `gpt-5.6-luna` is outdated; `gpt-6-luna` is the OpenAI model in service and
+    must stay eligible for ranking even though the two ids share a prefix.
+    """
+    models = json.loads((REPO_ROOT / "packages" / "config" / "models.json").read_text())
+    current = {value for key, value in models.items() if key.endswith("_MODEL") and isinstance(value, str)}
+    excluded = _board_view_excluded_owners()
+
+    assert "gpt-6-luna" in current
+    assert excluded & current == set(), f"current model owners excluded from the board: {sorted(excluded & current)}"

@@ -86,7 +86,7 @@ export async function fetchLlmLogsData(filter: LlmLogsFilter = {}): Promise<LlmL
 
     const { baseUrl, apiKey } = resolveProxyConfig();
     if (!apiKey) {
-        throw new Error('FREE_PROXY_MASTER_KEY is not configured on the server');
+        throw new Error('Proxy authentication is not configured on the server');
     }
 
     const headers = {

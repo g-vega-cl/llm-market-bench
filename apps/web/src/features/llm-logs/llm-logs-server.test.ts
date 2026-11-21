@@ -170,4 +170,25 @@ describe('llm-logs server handler (fetchLlmLogsData)', () => {
         expect(result.logs[0].failover_chain).toEqual(['groq (HTTP 429)']);
         expect(result.isFallbackRecentOnly).toBe(true);
     });
+
+    it('never exposes env var or API key names when proxy credentials are missing', async () => {
+        mockGetUser.mockResolvedValue({
+            data: { user: { id: 'u1', email: 'g.vega.cl@gmail.com' } },
+            error: null,
+        });
+        delete process.env.FREE_PROXY_MASTER_KEY;
+        delete process.env.STRATA_API_KEY;
+
+        let caught: Error | null = null;
+        try {
+            await fetchLlmLogsData({});
+        } catch (err) {
+            caught = err as Error;
+        }
+
+        expect(caught).not.toBeNull();
+        expect(caught?.message).toBe('Proxy authentication is not configured on the server');
+        expect(caught?.message).not.toContain('FREE_PROXY_MASTER_KEY');
+        expect(caught?.message).not.toContain('STRATA_API_KEY');
+    });
 });

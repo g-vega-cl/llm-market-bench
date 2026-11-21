@@ -1,7 +1,7 @@
 import { Button, Input, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useRouter } from '@tanstack/react-router';
-import { useEffect } from 'react';
+import { useRef } from 'react';
 import { track } from '~/lib/analytics';
 import { BuilderConversation } from './BuilderConversation';
 import { useBuilderChat } from './use-builder-chat';
@@ -29,9 +29,14 @@ export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderCha
         },
     });
 
-    useEffect(() => {
+    // Fire on first interaction, not on mount: the panel also sits on /lab, and a
+    // directory pageview is not a builder opening.
+    const opened = useRef(false);
+    const onOpen = () => {
+        if (opened.current) return;
+        opened.current = true;
         track(posthog, 'builder_opened', { seeded: Boolean(idea) });
-    }, [posthog, idea]);
+    };
 
     return (
         <div className="flex flex-col gap-4">
@@ -77,6 +82,7 @@ export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderCha
                         placeholder="Describe or refine the bot…"
                         value={chat.draft}
                         onChange={(event) => chat.setDraft(event.target.value)}
+                        onFocus={onOpen}
                         maxLength={400}
                     />
                 </div>

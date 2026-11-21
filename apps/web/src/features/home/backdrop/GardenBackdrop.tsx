@@ -192,8 +192,11 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
         if (!canvas) return;
         const world = getWorld();
         const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
-        const W = canvas.clientWidth || window.innerWidth;
-        const H = canvas.clientHeight || window.innerHeight;
+        const W = canvas.clientWidth;
+        const H = canvas.clientHeight;
+        // A zero-size mount (collapsed split, hidden ancestor) must not bake a
+        // viewport-shaped bitmap that only a window resize could correct.
+        if (!W || !H) return;
         canvas.width = Math.round(W * dpr);
         canvas.height = Math.round(H * dpr);
 
@@ -408,9 +411,15 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
             armIdle();
         }
 
+        // A dragged window edge fires resize continuously; the rebuild scans the
+        // whole voxel grid, so coalesce trailing events instead of running per frame.
+        let resizeTimer = 0;
         const onResize = () => {
-            buildLayers();
-            armIdle();
+            window.clearTimeout(resizeTimer);
+            resizeTimer = window.setTimeout(() => {
+                buildLayers();
+                armIdle();
+            }, 140);
         };
         const onPointer = (e: PointerEvent) => {
             s.pointerX = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -442,6 +451,10 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
         };
 
         window.addEventListener('resize', onResize);
+        // container-only changes (scrollbar, dvh, font swap) never fire window resize
+        const observer = new ResizeObserver(onResize);
+        const canvasEl = canvasRef.current;
+        if (canvasEl) observer.observe(canvasEl);
         window.addEventListener('pointermove', onPointer, { passive: true });
         window.addEventListener('keydown', onKey);
         window.addEventListener('touchstart', onKey, { passive: true });
@@ -450,6 +463,8 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
 
         return () => {
             window.removeEventListener('resize', onResize);
+            window.clearTimeout(resizeTimer);
+            observer.disconnect();
             window.removeEventListener('pointermove', onPointer);
             window.removeEventListener('keydown', onKey);
             window.removeEventListener('touchstart', onKey);
@@ -480,7 +495,6 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
                 <Button
                     type="button"
                     onClick={toggle}
-                    aria-pressed={!reduced}
                     variant="outline"
                     colorScheme="neutral"
                     size="sm"

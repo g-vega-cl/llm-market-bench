@@ -191,7 +191,7 @@ function LabRouteComponent() {
     return (
         <div className="flex flex-col">
             <section data-testid="lab-builder" className="mx-auto w-full max-w-5xl px-5 pt-8">
-                <div className="voxel-surface border-2 border-voxel-bevel-hi p-5">
+                <div className="voxel-card p-5">
                     <BuilderChatPanel redirectTo="/lab" userId={user?.id ?? null} />
                 </div>
             </section>

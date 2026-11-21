@@ -25,9 +25,9 @@ export function HomeCtaPage() {
                 </h1>
 
                 <p className="mt-5 max-w-[44ch] text-sm font-normal leading-relaxed text-voxel-ink">
-                    Describe it in one sentence and run it on point-in-time news. Live bots decide
-                    every 30 minutes on weekdays, 09:30–16:00 ET. Paper cash only — no brokerage
-                    account, and no hiding the losers.
+                    Describe it in one sentence and run it on point-in-time news. Switch a bot Live
+                    and it decides every 30 minutes on market days, 09:30–16:00 ET. Paper cash only
+                    — no brokerage account, and no hiding the losers.
                 </p>
 
                 <div className="mt-8 flex flex-col items-center gap-4">

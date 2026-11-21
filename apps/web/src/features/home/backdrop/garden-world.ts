@@ -266,7 +266,10 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
     for (let t = -9; t <= 9; t++) {
         const x = POND.x - 14 + t;
         const y = Math.round(POND.y - Math.abs(t) * 0.12);
-        const z = 15 + Math.round(Math.cos((t / 9) * Math.PI * 0.5) * 2.4);
+        // follow the local water surface instead of an absolute height, or the
+        // deck sinks in the middle of the pond and re-emerges at the bank
+        const surface = heightAt(x, y) ?? 15;
+        const z = surface + 1 + Math.round(Math.cos((t / 9) * Math.PI * 0.5) * 1.2);
         for (let dx = 0; dx <= 2; dx++) put(x, y + dx, z, dx === 1 ? WOOD : WOOD2);
         if (Math.abs(t) % 3 === 0) {
             put(x, y - 1, z + 1, WOOD3);
@@ -475,8 +478,25 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         [82, 98, 70, 8, 6, 2],
     ];
     for (const [cx, cy, cz, rx, ry, rz] of cloudSpots) {
-        cloudBlob(cx, cy, cz, rx, ry, rz);
-        cloudBlob(cx + ri(-8, 8), cy + ri(-5, 5), cz + 1, rx * 0.5, ry * 0.5, rz + 1);
+        // inset so the whole blob fits the grid: a clipped cloud reads as a cut
+        const bx = Math.min(Math.max(cx, Math.ceil(rx) + 1), SX - Math.ceil(rx) - 2);
+        const by = Math.min(Math.max(cy, Math.ceil(ry) + 1), SY - Math.ceil(ry) - 2);
+        const bz = Math.min(cz, SZ - Math.ceil(rz) - 3);
+        cloudBlob(bx, by, bz, rx, ry, rz);
+        cloudBlob(
+            Math.min(
+                Math.max(bx + ri(-8, 8), Math.ceil(rx * 0.5) + 1),
+                SX - Math.ceil(rx * 0.5) - 2,
+            ),
+            Math.min(
+                Math.max(by + ri(-5, 5), Math.ceil(ry * 0.5) + 1),
+                SY - Math.ceil(ry * 0.5) - 2,
+            ),
+            Math.min(bz + 1, SZ - Math.ceil(rz) - 2),
+            rx * 0.5,
+            ry * 0.5,
+            rz + 1,
+        );
     }
 
     /* anchors ------------------------------------------------------------ */

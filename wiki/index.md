@@ -6,7 +6,7 @@
 
 ## Entities
 
-- [[entities/recipe-playground]] — the homepage five-block bot builder, its launch RPC, mood/proof helpers, and the WebGL voxel world
+- [[entities/recipe-playground]] — **reverted** 2026-11-21; kept as a tombstone pointing to the alignment lesson
 - [[entities/agent-pre-tool-gate]] — deterministic PreToolUse hook blocking blanket git staging, multiline python -c, and raw .env dumps
 - [[entities/recipe-studio]] — Auto-indexed page
 - [[entities/recipe-live-status]] — dedicated SSR live-status page at `/recipes/live/$recipeId` for paper portfolio and live run traces
@@ -108,6 +108,7 @@
 
 ## Concepts
 
+- [[concepts/visual-work-alignment]] — postmortem of the reverted playground: artistic work needs a human eye on a static artifact before any animation code exists
 - [[concepts/recipe-turbo-mode]] — 5-minute Turbo live cadence (1 hour, 1×/ET day): atomic RPC, DB invariants, runner scheduling, market-hours helpers
 - [[concepts/daily-spy-owner-allowlist]] — fail-closed allowlist gate for `sys-daily-spy-*` portfolios across creation, trade, reconciliation, audit, marks, and backfill
 - [[concepts/sentiment-fader-reentry-cooldown]] — same-day ET exit cooldown and fail-closed ticks for the options sentiment fader

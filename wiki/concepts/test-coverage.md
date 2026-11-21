@@ -22,10 +22,14 @@ These thresholds are intentionally set near baseline levels to act as a "ratchet
 
 Enforcement happens at two levels, neither of which is the pre-commit hook:
 
-1.  **Verify skill (local, full)**: `.agents/skills/verify/scripts/verify.sh` runs the hermetic pytest suite with `--cov=. --cov-config=.coveragerc --cov-fail-under=70` and the web suite with coverage, failing the run when a threshold regresses. Supports sequential 1-worker mode via `SEQUENTIAL=1` or `git config benchify.sequential true`.
+1.  **Verify skill (local, full)**: `.agents/skills/verify/scripts/verify.sh` runs the hermetic pytest suite with `--cov=. --cov-config=.coveragerc` and the web suite with coverage, failing the run when a threshold regresses. Both suites default to a 4-worker cap (`pytest -n 4`, `pnpm test --maxWorkers=4`), matching `.husky/pre-commit`; `verify.sh --sequential` drops the whole run to 1 worker for low-memory hosts.
 2.  **CI/CD**: `.github/workflows/ci.yml` runs the engine suite (`pytest -n auto`) and the `test-web` job (`biome check`, `typecheck`, `vitest --maxWorkers=2`, `pnpm build:web`) on every push and pull request.
 
 The pre-commit hook deliberately runs **scoped, worker-capped tests without coverage** (`pytest -n 4` on affected or core engine tests, `vitest related --maxWorkers=4`) so commits stay fast; the coverage ratchet is a verify/CI concern. See [[concepts/project-linting]] for the full hook scoping rules.
+
+### Worker Cap Policy
+
+Local test execution is capped at 4 workers everywhere — `.husky/pre-commit`, `.agents/skills/verify/scripts/verify.sh`, and the commands documented in `GEMINI.md` and `.agents/skills/verify/SKILL.md`. Unbounded `pytest -n auto` and an unpinned `pnpm test` are prohibited locally so a full verify cannot starve the host. `--sequential` (or `SEQUENTIAL=1 git commit`) is the deliberate low-memory escape hatch and forces 1 worker end to end. CI is the only place that still uses `-n auto`, because it runs on dedicated runners.
 
 ## Configuration
 
@@ -45,7 +49,7 @@ Configured via `apps/web/vitest.config.ts`.
 - **Test New Logic**: Every new feature or bug fix must include tests that maintain or increase the coverage percentage.
 - **High-Signal Tests Only**: Focus unit tests on pure logic, parsers, financial math, state reducers, and API/schema contracts. Never mock the module under test or child page components just to satisfy coverage; mock only external I/O boundaries. Avoid brittle CSS/layout assertions and heavy integration tests — `tsc --noEmit`, Biome, and the static design/hydration audits already cover those surfaces.
 - **Surgical Exclusions**: Do not exclude core logic to "game" the percentage. Exclusions are reserved for boilerplate and untestable entry points (like `main.py` blocks).
-- **Fast Feedback**: The full engine suite contains 725+ tests. While running them sequentially takes ~2.5 minutes, you can run them in parallel via `pytest-xdist` using `./apps/engine/.venv/bin/python3 -m pytest -n auto --cov=. --cov-config=.coveragerc`, which leverages multiple processes to merge coverage and complete the entire suite in ~1m 16s. This high-speed feedback ensures that pre-commit checks remain fast and painless for developer workflows.
+- **Fast Feedback**: The full engine suite contains 725+ tests. While running them sequentially takes ~2.5 minutes, you can run them in parallel via `pytest-xdist` using `./apps/engine/.venv/bin/python3 -m pytest -n 4 --cov=. --cov-config=.coveragerc`, which leverages multiple processes to merge coverage and completes the entire suite in roughly a minute. This high-speed feedback ensures that pre-commit checks remain fast and painless for developer workflows without saturating the host.
 
 ## Increasing Thresholds
 
@@ -76,5 +80,6 @@ See [[concepts/test-latency-guards]] for the detailed architectural breakdown.
 
 - [[concepts/test-latency-guards]]
 - [[concepts/project-linting]] — pre-commit hook scoping and CI workflow
+- [[entities/verify-skill]] — the local full-suite runner and its 4-worker cap
 - [[sources/engine-testing-source]]
 - [[sources/web-testing-source]]

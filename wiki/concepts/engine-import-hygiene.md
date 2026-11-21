@@ -16,10 +16,11 @@ Packages inside `apps/engine` carry `__init__.py` files (e.g. `local_autoresearc
 ## Enforcement
 
 - `.agents/skills/verify/scripts/verify.sh` runs `git grep -nE "(from|import) apps\.engine\."` across `core/`, `tasks/`, `execution/`, `analytics/`, `tools/`, and `local_autoresearch/`, failing on any match.
-- The verify skill's tier list mirrors this as an explicit hygiene check, and mandates a CI working-directory test parity check (`cd apps/engine && python3 -m pytest -n auto`).
+- The verify skill's tier list mirrors this as an explicit hygiene check, and mandates a CI working-directory test parity check: tests must pass when executed from `apps/engine` as the working directory, matching the `working-directory: apps/engine` of `.github/workflows/ci.yml`. CI runs `pytest -n auto` while the local runner caps at `-n 4`; a worker-count change never alters import resolution, so the parity check is about the working directory, not the worker count.
 
 ## Related
 
 - [[entities/engine]] — the codebase this applies to
 - [[entities/verify-skill]] — enforces the rule
+- [[concepts/test-coverage]] — worker caps and coverage enforcement
 - [[concepts/type-safety]] — sibling code-quality convention

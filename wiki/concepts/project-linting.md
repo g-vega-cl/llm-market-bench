@@ -123,6 +123,8 @@ When a staged `apps/web` file is a `.ts`/`.tsx` source file, the hook additional
 
 The 4-worker caps are pinned by `apps/engine/tests/test_pre_commit_sequential.py`, which asserts the hook contains `-n 4` (and not unbounded `-n auto`), sets `WEB_WORKERS=1` in sequential mode, and never emits an extra `--` before `--maxWorkers` under pnpm.
 
+The verify runner mirrors the same cap: `.agents/skills/verify/scripts/verify.sh` runs `pytest -n 4` and `pnpm test --maxWorkers=4`, keeps `--sequential` as a 1-worker escape hatch, and is pinned by `apps/engine/tests/test_verify_skill.py` (no `-n auto`, caps present). CI is the only place that still uses `-n auto`, because it runs on dedicated runners.
+
 ### What moved out of pre-commit
 
 - **Coverage gates** — the hook no longer passes `--cov` / `--cov-fail-under`. Coverage is enforced by `.agents/skills/verify/scripts/verify.sh` and CI (see [[concepts/test-coverage]]).

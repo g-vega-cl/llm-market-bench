@@ -189,8 +189,8 @@ if [ "$FAST" = false ]; then
       echo "--> Running Hermetic Engine tests sequentially (1 worker, minimal CPU/RAM)..."
       (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest --cov=. --cov-config=.coveragerc)
     else
-      echo "--> Running Hermetic Engine tests with coverage (matching CI working-directory: apps/engine)..."
-      (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest -n auto --cov=. --cov-config=.coveragerc)
+      echo "--> Running Hermetic Engine tests with coverage (4 workers, matching CI working-directory: apps/engine)..."
+      (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest -n 4 --cov=. --cov-config=.coveragerc)
     fi
   fi
 
@@ -199,8 +199,8 @@ if [ "$FAST" = false ]; then
       echo "--> Running Web tests sequentially (1 worker, minimal CPU/RAM)..."
       (cd apps/web && pnpm test --maxWorkers=1 --coverage)
     else
-      echo "--> Running Web tests with coverage..."
-      (cd apps/web && pnpm test --coverage)
+      echo "--> Running Web tests with coverage (4 workers)..."
+      (cd apps/web && pnpm test --maxWorkers=4 --coverage)
     fi
   fi
 fi

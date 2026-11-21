@@ -35,7 +35,7 @@ The protocol audits every changed file through eight tiers; none may be skipped.
 The runner script supports flags to scope the suite:
 
 ```sh
-./.agents/skills/verify/scripts/verify.sh              # full suite (parallel, -n auto)
+./.agents/skills/verify/scripts/verify.sh              # full suite (4 workers by default)
 ./.agents/skills/verify/scripts/verify.sh --sequential # full suite (strictly 1 worker, low CPU/RAM)
 ./.agents/skills/verify/scripts/verify.sh --fast       # lint, format, types, wiki (no builds/tests)
 ./.agents/skills/verify/scripts/verify.sh --engine     # engine-only
@@ -44,7 +44,9 @@ The runner script supports flags to scope the suite:
 ```
 
 
-It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), verifies database migration grants and RLS integrity (`apps/engine/tests/test_migration_grants.py`), runs Ruff (`check`, `format --check`, and diff-scoped `C901` complexity), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage.
+It synchronizes the wiki (`hotspots.py --write-wiki`, `wiki_lint.py --fix`, `qmd update && qmd embed`), verifies database migration grants and RLS integrity (`apps/engine/tests/test_migration_grants.py`), runs Ruff (`check`, `format --check`, and diff-scoped `C901` complexity), Biome, `hotspots.py`, TypeScript typecheck, the web production build, hermetic pytest with coverage (`--cov-config=.coveragerc`), and web tests with coverage. Test execution is capped at 4 workers (`pytest -n 4`, `pnpm test --maxWorkers=4`) for parity with `.husky/pre-commit`; `--sequential` drops the whole suite to 1 worker on low-memory hosts.
+
+Unbounded `pytest -n auto` and an unpinned `pnpm test` are prohibited in both the runner and the skill protocol, so a full verify can never starve the host. CI is the only place that still uses `-n auto`, because it runs on dedicated runners; the local 4-worker cap never changes import resolution, so the `apps/engine` working-directory parity check is unaffected by the worker count.
 
 ### Subagent Delegation Across Agent Runtimes
 

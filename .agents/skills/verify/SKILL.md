@@ -24,12 +24,14 @@ qmd update && qmd embed
 cd apps/web && pnpm run typecheck
 cd apps/web && pnpm run build
 
-# Hermetic test suites with coverage (Parallel vs Sequential)
-./apps/engine/.venv/bin/python3 -m pytest -n auto --cov=. --cov-config=.coveragerc # Parallel (fast)
-./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc         # Sequential (1 worker, minimal CPU/RAM)
-cd apps/web && pnpm test -- --coverage                                            # Web tests (parallel)
-cd apps/web && pnpm test -- --maxWorkers=1 --coverage                             # Web tests (sequential)
+# Hermetic test suites with coverage (default: 4 workers, matching .husky/pre-commit)
+./apps/engine/.venv/bin/python3 -m pytest -n 4 --cov=. --cov-config=.coveragerc # 4 workers (default, fast)
+./apps/engine/.venv/bin/python3 -m pytest --cov=. --cov-config=.coveragerc      # Sequential (1 worker, low CPU/RAM)
+cd apps/web && pnpm test --maxWorkers=4 --coverage                              # Web tests (4 workers, default)
+cd apps/web && pnpm test --maxWorkers=1 --coverage                              # Web tests (sequential)
 ```
+
+Never use unbounded `-n auto` or an unpinned `pnpm test`: the runner and `.husky/pre-commit` both cap at 4 workers so a full verify cannot starve the host. `--sequential` is the deliberate low-memory escape hatch and forces 1 worker end to end.
 
 Or run the bundled verification runner:
 
@@ -98,7 +100,7 @@ Audit all changed files through these eight tiers. Do not skip any tier.
 4. **TDD reproduction check**:
    - Bug fixes and new features must include a test that would fail without the change and passes with it.
 5. **CI working directory test parity**:
-   - Tests must pass when executed from `apps/engine` as the working directory (`cd apps/engine && python3 -m pytest -n auto`), matching `.github/workflows/ci.yml`. Never rely solely on running pytest from the repository root, as ambient editable `.pth` files can mask import path mismatches.
+   - Tests must pass when executed from `apps/engine` as the working directory, matching the `working-directory: apps/engine` of `.github/workflows/ci.yml` (CI runs `pytest -n auto`; the local runner caps at `-n 4`, a worker count change never alters import resolution). Never rely solely on running pytest from the repository root, as ambient editable `.pth` files can mask import path mismatches.
 
 ### Tier 4. Domain, API, and financial invariants
 

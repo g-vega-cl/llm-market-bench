@@ -9,7 +9,13 @@ export type AnalyticsEvent =
     | 'builder_compiled'
     | 'builder_question_answered'
     | 'builder_declined'
-    | 'gallery_signin_clicked';
+    | 'gallery_signin_clicked'
+    | 'playground_run'
+    | 'playground_run_blocked'
+    | 'playground_preset_applied'
+    | 'playground_describe_used'
+    | 'playground_describe_failed'
+    | 'describe_it_failed';
 
 type CaptureClient =
     | {

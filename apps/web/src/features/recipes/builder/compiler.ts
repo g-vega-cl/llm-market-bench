@@ -30,7 +30,7 @@ export function capabilityManifest(): string {
         '- prompt: {"type":"prompt","text":"<instructions>"}',
         '- news: {"type":"news","contains":["keyword"],"recency_hours":24}',
         '- memories: {"type":"memories","contains":["keyword"],"recency_hours":168,"category":"MACRO|POST_MORTEM|TECHNICAL|SENTIMENT","min_importance":1}',
-        '- technicals: {"type":"technicals","rules":[{"metric":"RSI","operator":"<","value":30}]}',
+        '- technicals: {"type":"technicals","rules":[{"metric":"RSI","operator":"<","target":30}]}',
         '  suggested metrics: RSI, MACD, VWAP_pct, P/E, FCF_yield, price_52w_pct, market_cap',
         '- output_format: {"type":"output_format"}  (REQUIRED, and always rendered last)',
         '',
@@ -71,18 +71,55 @@ function stripFences(raw: string): string {
     return (fence ? fence[1] : trimmed).trim();
 }
 
+const RULE_OPERATORS = new Set(['>', '<', '>=', '<=', '==']);
+
+function isKeywordList(value: unknown): boolean {
+    return Array.isArray(value) && value.every((keyword) => typeof keyword === 'string');
+}
+
+function isPositiveInt(value: unknown): boolean {
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= 1;
+}
+
+function isImportance(value: unknown): boolean {
+    if (value === undefined) return true;
+    const importance = Number(value);
+    return Number.isInteger(importance) && importance >= 1 && importance <= 10;
+}
+
+/**
+ * A technicals rule the engine can actually render. `target` is the field name
+ * `push_schema.py` reads; a rule carrying `value` validates there as an empty
+ * filter, so it is rejected here rather than silently reading nothing every turn.
+ */
+function asTechnicalsRule(value: unknown): boolean {
+    if (!value || typeof value !== 'object') return false;
+    const rule = value as Record<string, unknown>;
+    if (typeof rule.metric !== 'string' || !rule.metric.trim()) return false;
+    if (!RULE_OPERATORS.has(String(rule.operator))) return false;
+    return typeof rule.target === 'string' || typeof rule.target === 'number';
+}
+
+const BLOCK_VALIDATORS: Record<string, (block: Record<string, unknown>) => boolean> = {
+    prompt: (block) => typeof block.text === 'string',
+    news: (block) => isKeywordList(block.contains) && isPositiveInt(block.recency_hours),
+    memories: (block) =>
+        isKeywordList(block.contains) &&
+        isPositiveInt(block.recency_hours) &&
+        (block.category === undefined || typeof block.category === 'string') &&
+        isImportance(block.min_importance),
+    technicals: (block) => Array.isArray(block.rules) && block.rules.every(asTechnicalsRule),
+    output_format: () => true,
+};
+
 function asBlock(value: unknown): StrategyBlock | null {
     if (!value || typeof value !== 'object') return null;
     const block = value as Record<string, unknown>;
-    if (!BLOCK_TYPES.has(String(block.type))) return null;
+    const type = String(block.type);
+    if (!BLOCK_TYPES.has(type)) return null;
     if (typeof block.id !== 'string' || !block.id) return null;
-    if (block.type === 'prompt' && typeof block.text !== 'string') return null;
-    if (block.type === 'news') {
-        if (!Array.isArray(block.contains) || !Number.isFinite(Number(block.recency_hours))) {
-            return null;
-        }
-    }
-    if (block.type === 'technicals' && !Array.isArray(block.rules)) return null;
+    if (!BLOCK_VALIDATORS[type](block)) return null;
     return block as unknown as StrategyBlock;
 }
 
@@ -97,14 +134,25 @@ function assertEnvelope(raw: Record<string, unknown>): void {
     }
 }
 
-function assertBlockContract(blocks: StrategyBlock[]): void {
+/**
+ * `output_format` is rendered last by the hydrator whatever the stored order
+ * (`push_hydrator.py`), so order is presentation, not an invariant: the graph is
+ * normalised instead of rejected. Duplicate ids and a missing terminal block are
+ * still hard errors — a graph without `output_format` produces prose the signal
+ * parser cannot read, once per slot, silently.
+ */
+export function normalizeBlockOrder(blocks: StrategyBlock[]): StrategyBlock[] {
+    const terminal = blocks.filter((block) => block.type === 'output_format');
+    const others = blocks.filter((block) => block.type !== 'output_format');
+    return [...others, ...terminal];
+}
+
+/** Structural + contract validation shared by the server fn and its tests. */
+export function assertBlockContract(blocks: StrategyBlock[]): void {
     const ids = blocks.map((block) => block.id);
     if (new Set(ids).size !== ids.length) throw new Error('block ids must be unique');
     if (!blocks.some((block) => block.type === 'output_format')) {
         throw new Error('output_format block is required');
-    }
-    if (blocks[blocks.length - 1]?.type !== 'output_format') {
-        throw new Error('output_format must be the last block');
     }
     for (const block of blocks) {
         if (block.type === 'prompt' && block.text.length > 4000) {
@@ -136,7 +184,7 @@ export function validateStrategy(candidate: unknown): PushStrategy {
 
     const maybeBlocks = stage.blocks.map(asBlock);
     if (maybeBlocks.some((block) => block === null)) throw new Error('unknown or malformed block');
-    const blocks = maybeBlocks as StrategyBlock[];
+    const blocks = normalizeBlockOrder(maybeBlocks as StrategyBlock[]);
     assertBlockContract(blocks);
 
     const strategy = {

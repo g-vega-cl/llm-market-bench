@@ -47,6 +47,7 @@ def _sample_strategy() -> PushStrategy:
                         {"metric": "RSI", "operator": "<", "target": "70"},
                     ],
                 },
+                {"id": "b5", "type": "output_format"},
             ],
         }
     ]

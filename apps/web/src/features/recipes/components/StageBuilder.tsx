@@ -64,6 +64,12 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
     const moveBlock = (index: number, delta: -1 | 1) => {
         const nextIdx = index + delta;
         if (nextIdx < 0 || nextIdx >= stage.blocks.length) return;
+        const moving = stage.blocks[index];
+        const target = stage.blocks[nextIdx];
+        // The engine renders output_format last whatever the stored order, so
+        // moving it (or anything past it) changes nothing at run time and only
+        // makes the editor lie about the graph. Refuse instead of reordering.
+        if (moving?.type === 'output_format' || target?.type === 'output_format') return;
         const copy = [...stage.blocks];
         const [item] = copy.splice(index, 1);
         copy.splice(nextIdx, 0, item);
@@ -166,7 +172,10 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                                         variant="outline"
                                         colorScheme="neutral"
                                         onClick={() => moveBlock(bIdx, 1)}
-                                        disabled={bIdx === stage.blocks.length - 1}
+                                        disabled={
+                                            bIdx >= stage.blocks.length - 1 ||
+                                            stage.blocks[bIdx + 1]?.type === 'output_format'
+                                        }
                                     >
                                         ↓
                                     </Button>

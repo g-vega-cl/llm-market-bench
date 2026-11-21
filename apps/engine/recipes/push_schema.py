@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 
 class PromptBlock(BaseModel):
@@ -158,6 +158,33 @@ class PushStrategy(BaseModel):
         if len(stages) > 1:
             raise ValueError("Push strategies are limited to one LLM stage for the MVP")
         return stages
+
+    @model_validator(mode="after")
+    def enforce_block_contract(self) -> PushStrategy:  # noqa: F821 - postponed annotation
+        """One block contract, enforced where every writer meets it.
+
+        Block order is presentation, not an invariant: ``push_hydrator`` renders
+        ``output_format`` last whatever the stored order, so the graph is
+        normalised instead of rejected. Duplicate ids and a missing terminal block
+        are hard errors — a graph without ``output_format`` makes the model reply
+        in prose the signal parser drops, once per slot, silently.
+        """
+        stage = self.stages[0]
+        ids = [block.id for block in stage.blocks]
+        if len(set(ids)) != len(ids):
+            raise ValueError("block ids must be unique")
+        if not stage.blocks:
+            # A placeholder graph with no blocks is pre-existing legacy data: it
+            # renders nothing, but rejecting it would deactivate live recipes at
+            # deploy time. Presence is enforced at the writer (compiler/studio).
+            return self
+        terminals = [block for block in stage.blocks if isinstance(block, OutputFormatBlock)]
+        if len(terminals) != 1:
+            raise ValueError("exactly one output_format block is required")
+        stage.blocks = [
+            block for block in stage.blocks if not isinstance(block, OutputFormatBlock)
+        ] + terminals
+        return self
 
 
 _TRADE_LINE_RE = re.compile(r"(?<!not\s)\b(BUY|SELL|EXIT)\s+([A-Z]{1,5})\b")

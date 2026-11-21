@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/recipe-playground]] — the homepage five-block bot builder, its launch RPC, mood/proof helpers, and the WebGL voxel world
 - [[entities/agent-pre-tool-gate]] — deterministic PreToolUse hook blocking blanket git staging, multiline python -c, and raw .env dumps
 - [[entities/recipe-studio]] — Auto-indexed page
 - [[entities/recipe-live-status]] — dedicated SSR live-status page at `/recipes/live/$recipeId` for paper portfolio and live run traces

@@ -62,7 +62,6 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
             .select('id, user_id, mode, status, created_at, started_at')
             .eq('user_id', userId)
             .gte('created_at', since24hIso)
-            .neq('status', 'cancelled')
             .limit(200),
         db
             .from('recipe_execution_queue')
@@ -96,8 +95,14 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
     // count, and so does a run the user cancelled after it spent LLM calls.
     // Never-started rows and provider failures do not, so a bad free-tier model
     // cannot lock someone out for a day.
+    // A provider failure is refunded: the row was dequeued, but nothing was
+    // delivered, so it must not consume one of the daily runs. A run the user
+    // cancelled after it started still counts — it already spent the calls.
     const backtestsLast24h = recent.filter(
-        (row) => row.mode === 'backtest' && (row.status === 'completed' || Boolean(row.started_at)),
+        (row) =>
+            row.mode === 'backtest' &&
+            row.status !== 'failed' &&
+            (row.status === 'completed' || Boolean(row.started_at)),
     ).length;
     const liveTurnsLast24h = recent.filter((row) => row.mode === 'live_turn').length;
 

@@ -5,7 +5,9 @@ category: concept
 
 # Portfolio Leaderboard View
 
-The recipe desk homepage renders the public portfolio leaderboard as **one lane per portfolio** — every ranked row carries its own sparkline — instead of overlaying all series in a single shared chart frame. `TopPortfolios` (`apps/web/src/features/home/pages/TopPortfolios.tsx`) owns the rendering; the geometry helpers live in `apps/web/src/features/home/lib/chart-geometry.ts` (`ChartBox`, `chartDomain`, `polylinePoints`, `valueToY`).
+The public portfolio leaderboard renders as **one lane per portfolio** — every ranked row carries its own sparkline — instead of overlaying all series in a single shared chart frame. `TopPortfolios` (`apps/web/src/features/home/pages/TopPortfolios.tsx`) owns the rendering; the geometry helpers live in `apps/web/src/features/home/lib/chart-geometry.ts` (`ChartBox`, `chartDomain`, `polylinePoints`, `valueToY`).
+
+It is rendered on `/live-desk` (`apps/web/src/routes/live-desk.tsx`), below the running-bot list. The homepage no longer renders the lanes: `/` is the [[entities/recipe-playground]] builder, and its `ProofStrip` publishes only the top row and the board's own `worst` row via `pickProof` (`apps/web/src/features/playground/lib/proof.ts`), with a `Full desk →` link to `/live-desk`.
 
 ## Why One Lane Per Portfolio
 
@@ -141,7 +143,7 @@ The summary panel ends with an equal-width CTA grid (`minmax(min(100%,14rem),1fr
 
 ## Loader-Boundary Normalization
 
-`normalizeLeaderboard` in `apps/web/src/routes/index.tsx` coerces the new `worst` row through `normalizeRows([raw.worst])[0] ?? null` so its nested `series` array survives the server-fn boundary — the same deploy-skew crash class as `4be16417`.
+`normalizeLeaderboard` in `apps/web/src/features/home/api/home-payload.ts` coerces the `worst` row through `normalizeRows([raw.worst])[0] ?? null` so its nested `series` array survives the server-fn boundary — the same deploy-skew crash class as `4be16417`. Both `/` and `/live-desk` normalize through that module.
 
 ## Tests
 
@@ -151,8 +153,9 @@ The summary panel ends with an equal-width CTA grid (`minmax(min(100%,14rem),1fr
 
 ## Related
 
-- [[entities/web-app]] — TanStack Start dashboard that hosts the desk
-- [[concepts/recipe-public-stats]] — the public desk payload feeding this view
+- [[entities/web-app]] — TanStack Start dashboard that hosts `/live-desk`
+- [[entities/recipe-playground]] — the homepage builder whose proof strip summarises this board
+- [[concepts/recipe-public-stats]] — the public desk payload feeding the running-bot list
 - [[concepts/zero-frontend-compute]] — leaderboard data is materialised server-side
 - [[concepts/deploy-skew-payload-tolerance]] — payload normalization across the loader boundary
 - [[entities/database]] — hosts the `portfolio_leaderboard` view and its migrations

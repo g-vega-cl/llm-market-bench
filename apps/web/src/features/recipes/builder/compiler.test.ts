@@ -3,6 +3,7 @@ import {
     buildConversation,
     capabilityManifest,
     fallbackReply,
+    normalizeBlockOrder,
     parseCompilerReply,
     validateStrategy,
 } from './compiler';
@@ -144,6 +145,78 @@ describe('fallbackReply', () => {
                 true,
             );
         }
+    });
+});
+
+describe('block contract', () => {
+    const withBlocks = (blocks: unknown[]) => ({
+        ...validStrategy,
+        stages: [{ ...validStrategy.stages[0], blocks }],
+    });
+
+    it('normalises a terminal block stored before the content blocks', () => {
+        const strategy = validateStrategy(
+            withBlocks([
+                { id: 'b1', type: 'output_format' },
+                { id: 'b2', type: 'prompt', text: 'Buy chips.' },
+            ]),
+        );
+
+        expect(strategy.stages[0].blocks.map((block) => block.type)).toEqual([
+            'prompt',
+            'output_format',
+        ]);
+    });
+
+    it('rejects duplicate block ids', () => {
+        expect(() =>
+            validateStrategy(
+                withBlocks([
+                    { id: 'b1', type: 'prompt', text: 'x' },
+                    { id: 'b1', type: 'output_format' },
+                ]),
+            ),
+        ).toThrow(/unique/);
+    });
+
+    it('rejects a technicals rule carrying value instead of target', () => {
+        expect(() =>
+            validateStrategy(
+                withBlocks([
+                    {
+                        id: 'b1',
+                        type: 'technicals',
+                        rules: [{ metric: 'RSI', operator: '<', value: 30 }],
+                    },
+                    { id: 'b2', type: 'output_format' },
+                ]),
+            ),
+        ).toThrow(/malformed block/);
+    });
+
+    it('rejects a memories block whose contains is not a list of keywords', () => {
+        expect(() =>
+            validateStrategy(
+                withBlocks([
+                    { id: 'b1', type: 'memories', contains: 'capex', recency_hours: 168 },
+                    { id: 'b2', type: 'output_format' },
+                ]),
+            ),
+        ).toThrow(/malformed block/);
+    });
+
+    it('teaches the engine field name in the capability manifest', () => {
+        const manifest = capabilityManifest();
+        expect(manifest).toContain('"target"');
+        expect(manifest).not.toContain('"value"');
+    });
+
+    it('leaves an already-correct order untouched', () => {
+        const blocks = [
+            { id: 'b1', type: 'prompt', text: 'x' },
+            { id: 'b2', type: 'output_format' },
+        ] as const;
+        expect(normalizeBlockOrder([...blocks]).map((b) => b.id)).toEqual(['b1', 'b2']);
     });
 });
 

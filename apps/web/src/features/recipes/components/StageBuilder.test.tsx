@@ -32,4 +32,18 @@ describe('StageBuilder', () => {
 
         expect(screen.getByRole('button', { name: '+ Output Format' })).toBeDisabled();
     });
+
+    it('cannot move the last content block down past the terminal block', () => {
+        const twoBlockStage = {
+            ...stage,
+            blocks: [
+                { id: 'only', type: 'prompt', text: 'Buy chips.' },
+                { id: 'term', type: 'output_format' },
+            ],
+        } as unknown as typeof stage;
+        const onChange = vi.fn();
+        render(<StageBuilder stage={twoBlockStage} onChange={onChange} />);
+
+        expect(screen.getByRole('button', { name: '↓' })).toBeDisabled();
+    });
 });

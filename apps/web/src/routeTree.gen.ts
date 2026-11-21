@@ -22,6 +22,7 @@ import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
 import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LabRouteImport } from './routes/lab'
+import { Route as LiveDeskRouteImport } from './routes/live-desk'
 import { Route as LiveTraderRouteImport } from './routes/live-trader'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
@@ -113,6 +114,11 @@ const HowItWorksRoute = HowItWorksRouteImport.update({
 const LabRoute = LabRouteImport.update({
   id: '/lab',
   path: '/lab',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveDeskRoute = LiveDeskRouteImport.update({
+  id: '/live-desk',
+  path: '/live-desk',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LiveTraderRoute = LiveTraderRouteImport.update({
@@ -266,6 +272,7 @@ export interface FileRoutesByFullPath {
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
+  '/live-desk': typeof LiveDeskRoute
   '/live-trader': typeof LiveTraderRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -307,6 +314,7 @@ export interface FileRoutesByTo {
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
+  '/live-desk': typeof LiveDeskRoute
   '/live-trader': typeof LiveTraderRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -350,6 +358,7 @@ export interface FileRoutesById {
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
+  '/live-desk': typeof LiveDeskRoute
   '/live-trader': typeof LiveTraderRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
@@ -393,6 +402,7 @@ export interface FileRouteTypes {
     | '/generated-newsletters'
     | '/how-it-works'
     | '/lab'
+    | '/live-desk'
     | '/live-trader'
     | '/login'
     | '/logout'
@@ -434,6 +444,7 @@ export interface FileRouteTypes {
     | '/generated-newsletters'
     | '/how-it-works'
     | '/lab'
+    | '/live-desk'
     | '/live-trader'
     | '/login'
     | '/logout'
@@ -476,6 +487,7 @@ export interface FileRouteTypes {
     | '/generated-newsletters'
     | '/how-it-works'
     | '/lab'
+    | '/live-desk'
     | '/live-trader'
     | '/login'
     | '/logout'
@@ -519,6 +531,7 @@ export interface RootRouteChildren {
   GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
   HowItWorksRoute: typeof HowItWorksRoute
   LabRoute: typeof LabRoute
+  LiveDeskRoute: typeof LiveDeskRoute
   LiveTraderRoute: typeof LiveTraderRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
@@ -634,6 +647,13 @@ declare module '@tanstack/react-router' {
       path: '/lab'
       fullPath: '/lab'
       preLoaderRoute: typeof LabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live-desk': {
+      id: '/live-desk'
+      path: '/live-desk'
+      fullPath: '/live-desk'
+      preLoaderRoute: typeof LiveDeskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/live-trader': {
@@ -879,6 +899,7 @@ const rootRouteChildren: RootRouteChildren = {
   GeneratedNewslettersRoute: GeneratedNewslettersRoute,
   HowItWorksRoute: HowItWorksRoute,
   LabRoute: LabRoute,
+  LiveDeskRoute: LiveDeskRoute,
   LiveTraderRoute: LiveTraderRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,

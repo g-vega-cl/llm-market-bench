@@ -5,7 +5,7 @@ import { GardenBackdrop } from '../backdrop/GardenBackdrop';
  * The homepage: crisp open-sky hero CTA above the twilight voxel garden.
  *
  * Composition separates the hero copy (upper twilight zenith) from the
- * floating voxel island and flat Minecraft slab clouds (lower half) so text
+ * floating voxel island and 3D voxel slab clouds (lower half) so text
  * reads cleanly without heavy muddy scrims. Spacing is parent-owned (`gap-*`)
  * and typography stays strictly within the 2-combo component budget.
  */

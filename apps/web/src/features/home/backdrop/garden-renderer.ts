@@ -1,4 +1,3 @@
-import type { HorizonCloudBand } from './cloud-layers';
 import { CX, CY, type GardenWorld, SX, SY, type WorldFaces } from './garden-world';
 
 const LIGHT: [number, number, number] = (() => {
@@ -18,11 +17,6 @@ export interface Petal {
     tint: string;
 }
 
-export interface BakedBand {
-    band: HorizonCloudBand;
-    tile: HTMLCanvasElement;
-}
-
 export interface Scene {
     width: number;
     height: number;
@@ -30,7 +24,6 @@ export interface Scene {
     scale: number;
     sky: HTMLCanvasElement | null;
     foot: HTMLCanvasElement | null;
-    bands: BakedBand[];
     lanternSprite: HTMLCanvasElement | null;
     lanternRadius: number;
     island: HTMLCanvasElement | null;

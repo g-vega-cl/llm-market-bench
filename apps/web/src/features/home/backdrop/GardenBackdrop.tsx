@@ -1,8 +1,6 @@
 import { Button } from '@llm-market-bench/ui-design-system';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { bakeCloudBandTile, computeTileOffset, HORIZON_CLOUD_BANDS } from './cloud-layers';
 import {
-    type BakedBand,
     bakeFootFade,
     bakeLanternSprite,
     bakeSky,
@@ -22,8 +20,7 @@ import {
 
 /**
  * The homepage backdrop: a voxel garden island floating in golden-hour Matcha
- * dusk with flat-bottomed Minecraft slab clouds and two pre-baked distant
- * horizon cloud bands.
+ * dusk with 3D Minecraft-style voxel cloud slabs.
  */
 
 const IDLE_MS = 20_000;
@@ -72,16 +69,6 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
 
         if (scene.sky) ctx.drawImage(scene.sky, 0, 0, W, H);
 
-        for (const { band, tile } of scene.bands) {
-            const offset = computeTileOffset(time, band.speed, par * band.parallax, band.tileWidth);
-            const y = Math.round(H * band.yRel - band.tileHeight + parY * band.parallax * 0.18);
-            ctx.globalAlpha = band.alpha;
-            for (let x = offset; x < W; x += band.tileWidth) {
-                ctx.drawImage(tile, x, y, band.tileWidth, band.tileHeight);
-            }
-        }
-        ctx.globalAlpha = 1;
-
         const cloudParX = par * 8;
         const cloudParY = Math.sin(time * 0.14) * 1.5 + parY * 2;
         const islandParX = par * 3;
@@ -108,18 +95,13 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
 
         const scale = Math.min(W / 96, H / 56);
         const originX = W * 0.5;
-        const originY = H * 0.88;
+        const originY = H * 0.8;
         const project = (x: number, y: number, z: number): [number, number] => [
             originX + (x - CX - (y - CY)) * scale * 0.5,
             originY + (x - CX + (y - CY)) * scale * 0.28 - (z - 18) * scale * 0.4,
         ];
 
         const cloudSet = new Set(world.cloudMaterials);
-        const bands: BakedBand[] = [];
-        for (const band of HORIZON_CLOUD_BANDS) {
-            const tile = bakeCloudBandTile(band, dpr);
-            if (tile) bands.push({ band, tile });
-        }
 
         const lanternRadius = Math.max(8, scale * 2.4);
         const petals: Petal[] = world.petals.map(([wx, wy, wz]) => {
@@ -159,7 +141,6 @@ export function GardenBackdrop({ className }: GardenBackdropProps) {
             scale,
             sky: bakeSky(W, H, dpr),
             foot: bakeFootFade(W, H, dpr),
-            bands,
             lanternSprite: bakeLanternSprite(lanternRadius, dpr),
             lanternRadius,
             island: paintVoxelLayer(faces.island, world, cloudSet, W, H, dpr, scale, project),

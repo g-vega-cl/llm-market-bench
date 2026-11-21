@@ -3,7 +3,7 @@
 Shared UI design system for the LLM Market Bench monorepo. Homegrown component library powered by Tailwind CSS v4 and the **Matcha & Cedar / Cheddar Voxel** aesthetic.
 
 > [!IMPORTANT]
-> The full design system rules, typography scale, responsive invariants, and layout guidelines are codified in [`.agents/rules/design-spec.md`](../../.agents/rules/design-spec.md) and [`wiki/entities/design-system.md`](../../wiki/entities/design-system.md).
+> The full design system rules, typography scale, responsive invariants, layout guidelines, and living-scene backdrop standards are codified in [`.agents/rules/design-spec.md`](../../.agents/rules/design-spec.md), [`wiki/entities/design-system.md`](../../wiki/entities/design-system.md), and [`wiki/concepts/living-scene-backdrops.md`](../../wiki/concepts/living-scene-backdrops.md).
 
 ## Philosophy
 
@@ -12,10 +12,11 @@ Shared UI design system for the LLM Market Bench monorepo. Homegrown component l
 - **Strict 3-Combination Typography Budget**: Tier 1 (`18px Bold`), Tier 2 (`14px Bold`), and Tier 3 (`12px Normal`).
 - **Parent-Owns-Spacing**: Zero manual child margins (`m-*`, `mb-*`, `mt-*`, `mr-*`, `ml-*`). Parents supply rhythm with `flex gap-*` and `grid gap-*` (`gap-2`, `gap-4`, `gap-6`).
 - **WCAG AAA Contrast**: Solid Cheddar Gold tags use dark trough text (`text-voxel-trough`, never white).
+- **Expressive Living-Scene Stages**: Multi-layered animated dioramas and bounded pointer/scroll parallax belong inside clipped hero and footer stages (`SceneStage`, `HeroBackground`) with opaque/semi-opaque Matcha CTA scrims (zero `backdrop-blur`), dynamic US market-session atmosphere phases (`dawn`, `daylight`, `dusk`, `after-hours`), and `prefers-reduced-motion` discipline.
 
 ## Adoption
 
-All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memories, Reasoning, Audits, Cause & Effect, Concepts, Daily Predictions) use the design system as their primary UI vocabulary.
+All web app pages (Home, Today, Portfolios, Portfolio Detail, Market Overview, Memories, Reasoning, Audits, Cause & Effect, Concepts, Daily Predictions, Recipes, Lab) use the design system as their primary UI vocabulary.
 
 ## Exports
 
@@ -23,15 +24,13 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 
 | Component | Props & Behavior |
 |---|---|
-| `Button` | Tactile `.voxel-btn` with 2px raised bevels and physical `translate(2px, 2px)` click depression. Tier 2 typography. |
-| `Card` | Raised `.voxel-card` block with `rounded-none` geometry, stepped moss surface, and hard offset drop shadow. |
-| `CardHeader` / `CardBody` / `CardFooter` | Composable sub-components |
-| `Badge` | Sharp `.voxel-badge` tag with optional square pixel dot indicator. Built-in `gap-1.5` container spacing. |
-| `Table` | Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container. |
-| `Input` / `Label` / `ErrorMessage` | Recessed `.voxel-trough rounded-none` wrapper (`bg-voxel-trough`, `border-voxel-bevel-hi`). Tier 2 control typography. |
+| `Button` | Tactile `.voxel-btn` (`solid` \| `outline`) with 2px raised bevels, physical `translate(2px, 2px)` click depression, and `isLoading` Voxel pixel indicator. Tier 2 typography. |
+| `Card` | Raised `.voxel-card` (`default` \| `outlined`) block with `rounded-none` geometry, stepped moss surface, and hard offset drop shadow. |
+| `Badge` | Sharp `.voxel-badge` (`solid` \| `soft`) tag with optional square pixel dot indicator and built-in `gap-1.5` container spacing. |
+| `Table` | Composable suite (`Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`) inside a recessed `.voxel-trough` container with `numeric` alignment, `tone`, and `isInactive` states. |
+| `Input` / `Label` | Recessed `.voxel-trough rounded-none` wrapper (`bg-voxel-trough`, `border-voxel-bevel-hi`). Tier 2 control typography. |
 | `Select` | Recessed `.voxel-trough rounded-none` wrapper with design system styling and Tier 2 typography. |
-| `Skeleton` | Sharp `rounded-none` Voxel trough placeholder (`text` / `block` / `card` variants) with reduced-motion pulse. |
-| `ErrorBoundary` | React error boundary with retry |
+| `Skeleton` | Sharp `rounded-none` Voxel trough placeholder (`text` \| `block` \| `card` variants) with reduced-motion pulse. |
 
 ### Patterns
 
@@ -43,7 +42,7 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 | `StatPill` | Clickable filter pill with colored dot, label, and count. |
 | `MetricTile` | Recessed `.voxel-trough rounded-none p-3` tile (`flex flex-col justify-between gap-1`). |
 | `EmptyState` | Centered zero-data state with Tier 1 title, Tier 3 subtitle, and square icon box. |
-| `LoadingBoundary` | Layout-preserving Voxel skeleton loading wrapper (`fallback` slot). |
+| `LoadingBoundary` | Layout-preserving Voxel skeleton loading wrapper (`fallback` slot, zero spinners). |
 | `ErrorCard` | Tactile error display card with Tier 2 title, Tier 3 message, and retry button. |
 
 ### Layouts
@@ -52,54 +51,42 @@ All web app pages (Today, Portfolios, Portfolio Detail, Market Overview, Memorie
 |---|---|
 | `PageLayout` | Full-page container with max-width and declarative `flex flex-col gap-6` / `gap-8` spacing. |
 | `GlobalBackground` | Deep Forest Moss canvas with subtle warm dot grid matrix. |
+| `SceneStage` | Spatially contained Voxel stage for living-scene heroes (`hero`) and parallax footers (`footer`) with 4 Matcha atmosphere phases, `aria-hidden` backdrop layer, motion-role metadata, and optional `.scene-scrim` CTA panel. |
+| `HeroBackground` | Sharp Voxel hero banner with CSS `.voxel-dot-matrix` texture, semantic Matcha overlays, fluid padding, and optional `atmosphere` / `backdrop` slots. |
 
 ### Utilities
 
 | Export | Purpose |
 |---|---|
-| `cn` | `clsx`-based className utility |
-
-## Usage Patterns
-
-### Pages
-
-- **Today**: HeroBackground, Card, Badge, ConfidenceBar, SectionHeading, MetricTile, StatPill, EmptyState
-- **Portfolios**: Card, Badge, SectionHeading, MetricTile
-- **Portfolio Detail**: Card, MetricTile, SectionHeading, Badge
-- **Market Overview**: HeroBackground, Card, Badge, ConfidenceBar, SectionHeading, EmptyState
-- **Memories**: SectionHeading, Button, ErrorCard, LoadingBoundary
-- **Audits**: SectionHeading, Button, ErrorCard, LoadingBoundary, Skeleton
-- **Reasoning**: zinc palette alignment (SectionHeading/Button for controls)
-- **Cause & Effect**: SectionHeading
-- **Root Layout**: Button, Badge, cn
-
-### Cross-cutting
-
-- All "Load More" buttons use `Button` with `isLoading` for pending state
-- All error states use `ErrorCard` with title + message
-- All loading states use `LoadingBoundary` wrapper
-- All section titles use `SectionHeading` with semantic gradients
-- Color palette is consistently zinc-based across all pages
+| `cn` | `clsx`-based className utility (no `tailwind-merge`; always use explicit component props rather than overriding colors via `className`). |
+| `resolveAtmospherePhase` / `ATMOSPHERE_PHASES` | Resolves `'dawn' \| 'daylight' \| 'dusk' \| 'after-hours'` using the US Eastern market session clock (`America/New_York`) by default or optional `'local'` visitor timezone mode. |
 
 ## Principles
 
-- **Prefer Default System Styles**: Always favor using standard props (like `colorScheme`, `variant`, `size`, `radius`) to achieve the desired styling rather than passing custom `className` override utility classes. Centralized styles prevent visual fragmentation, guarantee correct contrast/accessibility natively, and simplify future styling adjustments.
-- **Single Unified Theme**: The system is fully standardized under a single premium high-contrast dark theme ("Bloomberg Terminal meets Wired"). Primitives do not include any light/dark state conditional logic (`dark:`, media queries, or root class overrides).
-- **Simplicity over abstraction**: A small inline hex map in a component beats a shared token system that fights the build tool.
-- **Use what works**: If `bg-neon-green-500` is provably in the built CSS, use it — no generators, safelists, or duplicate token systems needed.
+- **Prefer Default System Props**: Always use closed component props (`colorScheme`, `variant`, `size`, `atmosphere`, `scrim`) rather than passing custom `className` color/typography overrides. Centralized props prevent visual fragmentation and enforce WCAG AAA contrast natively.
+- **Single Unified Dark Theme**: Standardized under the single high-contrast **Matcha & Cedar / Cheddar Voxel** theme. Primitives contain zero `dark:` variants, zero `text-white`, and zero `backdrop-blur`.
+- **Two-Variant Budget**: Interactive and surface primitives expose at most two style variants (`solid`/`outline`, `solid`/`soft`, `default`/`outlined`, `hero`/`footer`), enforced by `apps/web/src/test/design-variant-budget.test.tsx`.
 
 ## Usage
 
 ```tsx
-import { Button, Card, Badge, SectionHeading, cn } from "@llm-market-bench/ui-design-system"
+import {
+    Button,
+    Card,
+    Badge,
+    SceneStage,
+    SectionHeading,
+    resolveAtmospherePhase,
+    cn,
+} from "@llm-market-bench/ui-design-system"
 ```
 
-While components accept a `className` prop for occasional layout/positional adjustments (e.g. margin, spacing), it should not be used to override base styling tokens like text colors, background colors, borders, or hover styles.
+While components accept a `className` prop for occasional layout/positional adjustments, it should not be used to override base styling tokens like text colors, background colors, borders, or hover styles.
 
 ## Key Files
 
 - `src/index.ts` — Public API barrel file
 - `src/primitives/` — Low-level UI atoms
 - `src/patterns/` — Composed UI patterns
-- `src/layouts/` — Layout components
-- `src/lib/cn.ts` — className utility
+- `src/layouts/` — Page shells, global canvas, and living-scene hero/footer stages
+- `src/lib/` — `cn` and `atmosphere` utilities

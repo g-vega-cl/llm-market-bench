@@ -7,17 +7,26 @@
  * import { Button, Card, Badge, PageLayout } from "@llm-market-bench/ui-design-system"
  */
 
+// ---------------------------------------------------------------------------
+// Layouts
+// ---------------------------------------------------------------------------
 export { GlobalBackground } from './layouts/GlobalBackground';
 export type { HeroBackgroundProps } from './layouts/HeroBackground';
 export { HeroBackground } from './layouts/HeroBackground';
 export type { PageLayoutProps } from './layouts/PageLayout';
-// ---------------------------------------------------------------------------
-// Layouts
-// ---------------------------------------------------------------------------
 export { PageLayout } from './layouts/PageLayout';
+export type {
+    SceneMotionRole,
+    SceneScrim,
+    SceneStageProps,
+    SceneStageVariant,
+} from './layouts/SceneStage';
+export { SceneStage } from './layouts/SceneStage';
 // ---------------------------------------------------------------------------
 // Utilities
 // ---------------------------------------------------------------------------
+export type { AtmosphereClockMode, AtmospherePhase } from './lib/atmosphere';
+export { ATMOSPHERE_PHASES, resolveAtmospherePhase } from './lib/atmosphere';
 export { cn } from './lib/cn';
 export type { ConfidenceBarProps } from './patterns/ConfidenceBar';
 export { ConfidenceBar } from './patterns/ConfidenceBar';

@@ -1,76 +1,89 @@
 import type * as React from 'react';
+import type { AtmospherePhase } from '../lib/atmosphere';
 import { cn } from '../lib/cn';
 
 /**
  * HeroBackground layout.
  *
- * A gradient hero banner with dot-pattern overlay and animated blur orbs.
- * Used as the hero section on the Market Overview page.
- * (Removed from the Today page in favour of the slim TodayStatusBar.)
+ * A spatially contained Voxel hero stage built strictly from Matcha & Cedar
+ * semantic tokens with sharp 0px geometry, fluid padding (zero viewport
+ * breakpoints), a CSS dot-matrix horizon texture, and an optional living-scene
+ * backdrop slot.
  */
 
 export interface HeroBackgroundProps {
     gradient?: 'electric' | 'success' | 'catalyst' | 'ai';
+    atmosphere?: AtmospherePhase;
+    backdrop?: React.ReactNode;
     children: React.ReactNode;
     className?: string;
 }
 
-const gradientMap: Record<string, string> = {
-    electric: 'gradient-electric',
-    success: 'gradient-success',
-    catalyst: 'gradient-catalyst',
-    ai: 'gradient-ai',
-};
-
-const overlayMap: Record<string, string> = {
+const overlayMap: Record<NonNullable<HeroBackgroundProps['gradient']>, string> = {
     electric: 'from-voxel-elevated/95 via-voxel-surface/95 to-voxel-canvas/95',
     success: 'from-success-dark/95 via-voxel-surface/95 to-voxel-canvas/95',
     catalyst: 'from-warning-dark/95 via-voxel-surface/95 to-voxel-canvas/95',
     ai: 'from-info-dark/95 via-voxel-surface/95 to-voxel-canvas/95',
 };
 
-const orbColorMap: Record<string, { orb1: string; orb2: string }> = {
-    electric: { orb1: 'bg-electric-blue-400/20', orb2: 'bg-deep-purple-400/20' },
-    success: { orb1: 'bg-neon-green-400/20', orb2: 'bg-emerald-400/20' },
-    catalyst: { orb1: 'bg-cyber-yellow-400/20', orb2: 'bg-amber-400/20' },
-    ai: { orb1: 'bg-deep-purple-400/20', orb2: 'bg-electric-blue-400/20' },
+const atmosphereMap: Record<AtmospherePhase, string> = {
+    dawn: 'scene-atmosphere-dawn',
+    daylight: 'scene-atmosphere-daylight',
+    dusk: 'scene-atmosphere-dusk',
+    'after-hours': 'scene-atmosphere-after-hours',
+};
+
+const accentEdgeMap: Record<NonNullable<HeroBackgroundProps['gradient']>, string> = {
+    electric: 'border-voxel-bevel-hi',
+    success: 'border-success/40',
+    catalyst: 'border-accent/40',
+    ai: 'border-info/40',
 };
 
 export function HeroBackground({
     gradient = 'electric',
+    atmosphere,
+    backdrop,
     children,
     className,
 }: HeroBackgroundProps) {
-    const orbs = orbColorMap[gradient];
-
     return (
-        <div className={cn('relative overflow-hidden', gradientMap[gradient], className)}>
-            <div className="absolute inset-0 opacity-10">
+        <div
+            data-slot="hero-background"
+            data-atmosphere={atmosphere}
+            className={cn(
+                'relative isolate overflow-hidden rounded-none border-b-2',
+                accentEdgeMap[gradient],
+                atmosphere ? atmosphereMap[atmosphere] : 'bg-voxel-canvas',
+                className,
+            )}
+        >
+            <div
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-0 voxel-dot-matrix opacity-25"
+            />
+
+            {!atmosphere ? (
                 <div
-                    className="absolute inset-0"
-                    style={{
-                        backgroundImage: `radial-gradient(circle at 2px 2px, white 1px, transparent 0)`,
-                        backgroundSize: '40px 40px',
-                    }}
+                    aria-hidden="true"
+                    className={cn(
+                        'pointer-events-none absolute inset-0 bg-gradient-to-br',
+                        overlayMap[gradient],
+                    )}
                 />
-            </div>
+            ) : null}
 
-            <div className={cn('absolute inset-0 bg-gradient-to-br', overlayMap[gradient])} />
+            {backdrop ? (
+                <div
+                    data-slot="hero-backdrop"
+                    aria-hidden="true"
+                    className="scene-backdrop pointer-events-none absolute inset-0 z-0 overflow-hidden"
+                >
+                    {backdrop}
+                </div>
+            ) : null}
 
-            <div
-                className={cn(
-                    'absolute top-1/4 left-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse',
-                    orbs.orb1,
-                )}
-            />
-            <div
-                className={cn(
-                    'absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full blur-3xl animate-pulse animate-stagger-2',
-                    orbs.orb2,
-                )}
-            />
-
-            <div className="relative max-w-7xl mx-auto px-6 md:px-12 py-16 md:py-24">
+            <div className="relative z-10 mx-auto w-full max-w-7xl min-w-0 px-6 py-12">
                 {children}
             </div>
         </div>

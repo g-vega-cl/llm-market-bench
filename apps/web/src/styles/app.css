@@ -255,6 +255,81 @@
         text-shadow: 0 1px 10px rgba(8, 16, 14, 0.78);
     }
 
+    /* Living Scene Stage: Matcha & Cedar atmospheric sky phases + opaque scrim */
+    .voxel-dot-matrix {
+        background-image: radial-gradient(
+            rgba(242, 234, 211, 0.25) 1px,
+            transparent 1px
+        );
+        background-size: 20px 20px;
+    }
+
+    .scene-atmosphere-dawn {
+        background: linear-gradient(
+            180deg,
+            #101c1a 0%,
+            #1c322c 34%,
+            #3b5a4f 68%,
+            #8d7c60 90%,
+            #26362e 100%
+        );
+    }
+
+    .scene-atmosphere-daylight {
+        background: linear-gradient(
+            180deg,
+            #132622 0%,
+            #21413a 36%,
+            #3d665b 72%,
+            #68897c 92%,
+            #1d2822 100%
+        );
+    }
+
+    .scene-atmosphere-dusk {
+        background: linear-gradient(
+            180deg,
+            #0c1715 0%,
+            #142622 24%,
+            #23413b 45%,
+            #45675f 64%,
+            #819587 78%,
+            #b59a78 88%,
+            #22332e 100%
+        );
+    }
+
+    .scene-atmosphere-after-hours {
+        background: linear-gradient(
+            180deg,
+            #09100e 0%,
+            #0e1916 38%,
+            #162621 74%,
+            #1d2822 100%
+        );
+    }
+
+    /* Semi-opaque Matcha scrim protecting CTAs over animated scenes (zero backdrop-blur) */
+    .scene-scrim {
+        background-color: rgba(20, 28, 24, 0.88);
+    }
+
+    .scene-stage-hero {
+        min-height: 20rem;
+    }
+
+    .scene-stage-footer {
+        min-height: 11rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .scene-backdrop,
+        .scene-backdrop * {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+
     .voxel-badge {
         border-top: 1px solid var(--color-voxel-bevel-hi);
         border-left: 1px solid var(--color-voxel-bevel-hi);

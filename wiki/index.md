@@ -121,6 +121,7 @@
 - [[concepts/recipe-ops-telemetry]] — durable scheduler/ops events for the recipe runner
 - [[concepts/recipe-public-stats]] — runner-materialised leaderboard/desk tables read directly by the homepage
 - [[concepts/design-variant-budget]] — max two style variants per primitive, zero legacy theme residue, zero raw buttons, per-file typography/border budgets
+- [[concepts/living-scene-backdrops]] — multi-layered living-scene hero/footer architecture, Matcha atmosphere cycles, CTA scrims, and motion role guardrails
 - [[concepts/auto-go-utility-llm]] — routing engine utility LLM flows through the free-llm-proxy `auto-go` alias
 - [[concepts/auth-redirect-sanitization]] — open-redirect-safe return-path preservation for login, signup, and Google OAuth
 - [[concepts/workflow-command-dispatch-guard]] — allow-list gating the generic `main.py` step in daily-predictor.yml so each dispatched action runs exactly once
@@ -306,6 +307,7 @@
 - [[sources/web-query-patterns-source]] — Query options factory & SSR safety
 - [[sources/web-testing-source]] — Vitest & RTL component colocation
 - [[sources/web-deployment-source]] — Netlify serverless deployment
+- [[sources/animated-scene-backgrounds-source]] — Competitive analysis of Minecraft.net, Firewatch, Hilos, Pigeon's Mission, and multi-layer parallax scene patterns
 
 ## Interactions
 

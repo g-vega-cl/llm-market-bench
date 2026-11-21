@@ -186,4 +186,17 @@ All surfaces reflect the **Matcha & Cedar / Cheddar Voxel** aesthetic inspired b
 5. **In-flow cell clarification (Zero tooltips)**:
    - When a table cell contains truncated text, shorthand tickers, or compound formulas, clarification is provided via click-to-inspect in an in-flow recessed `.voxel-trough` bar or drawer below the table—never via floating hover tooltips or HTML `title` attributes.
 
+---
+
+## 12. Living Scene Backdrops & Expressive Motion ("Wow" Architecture)
+
+Expressive animated backdrops are permitted across **major page heroes and parallax footers** while preserving legibility, Voxel geometry, and performance. See `[[concepts/living-scene-backdrops]]`.
+
+1. **Modular layered dioramas + ambient life**: Separate sky, midground scenery, and independent procedural micro-entities (clouds, fauna, footer sprites) into discrete layers—never flat looping videos or static baked clips.
+2. **Containment & CTA scrims (Zero glassmorphism)**: Clip animated stages inside `SceneStage` / `HeroBackground` (`overflow-hidden isolate`) with hard scroll ceilings so motion never bleeds into data tables. Protect CTAs with opaque/semi-opaque Matcha backing panels (`.scene-scrim` / `.voxel-card`, never `backdrop-blur`).
+3. **Dynamic atmosphere cycles**: Use `.scene-atmosphere-{dawn|daylight|dusk|after-hours}` and `resolveAtmospherePhase(date, mode)` from `@llm-market-bench/ui-design-system` (defaults to US Eastern market session `America/New_York`, optional `'local'` mode; pass a shared SSR timestamp or default `'dusk'`).
+4. **Motion roles & bans**: Declare `data-motion-role`: `background` (calm ambient depth), `reactive` (bounded pointer/hover), or `story` (bounded scroll hero/footer). Full-page *"Is the site"* WebGL takeovers and scroll-jacking are prohibited on data routes.
+5. **Resize resilience, perf & reduced motion**: Anchor parallax travel to container/`window.innerHeight` with resize invalidation (never document `maxScroll`). Use GPU-composited transforms or offscreen-baked canvas capped at `<= 30fps`, mark backdrops `aria-hidden="true"` + `pointer-events-none`, and honor `prefers-reduced-motion`.
+
+
 

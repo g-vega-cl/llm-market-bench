@@ -3,10 +3,13 @@ import {
     Button,
     EmptyState,
     ErrorCard,
+    HeroBackground,
     Input,
     Label,
     LoadingBoundary,
     MetricTile,
+    resolveAtmospherePhase,
+    SceneStage,
     SectionHeading,
     Select,
     Skeleton,
@@ -531,6 +534,60 @@ describe('Design Standardization: Typography & Box Sizing', () => {
             const indicator = container.querySelector('[data-slot="button-pending-dot"]');
             expect(indicator).not.toBeNull();
             expect((indicator as HTMLElement).className).toContain('animate-pulse');
+        });
+    });
+
+    describe('Living Scene Backdrops & Atmosphere Foundations', () => {
+        it('SceneStage enforces clipped Voxel containment, aria-hidden backdrop, and opaque scrim without blur', () => {
+            const { container } = render(
+                <SceneStage
+                    variant="hero"
+                    atmosphere="dusk"
+                    motionRole="reactive"
+                    scrim="panel"
+                    backdrop={<div data-testid="living-backdrop" />}
+                >
+                    <span>Primary CTA</span>
+                </SceneStage>,
+            );
+            const stage = container.querySelector('[data-slot="scene-stage"]') as HTMLElement;
+            expect(stage.className).toContain('overflow-hidden');
+            expect(stage.className).toContain('rounded-none');
+            expect(stage.className).toContain('scene-atmosphere-dusk');
+            expect(stage.getAttribute('data-motion-role')).toBe('reactive');
+
+            const backdrop = container.querySelector('[data-slot="scene-backdrop"]') as HTMLElement;
+            expect(backdrop.getAttribute('aria-hidden')).toBe('true');
+            expect(backdrop.className).toContain('pointer-events-none');
+
+            const scrim = container.querySelector('[data-slot="scene-scrim"]') as HTMLElement;
+            expect(scrim.className).toContain('scene-scrim');
+            expect(scrim.className).toContain('voxel-card');
+            expect(scrim.className).not.toContain('backdrop-blur');
+        });
+
+        it('HeroBackground uses sharp Voxel geometry with zero rounded blur orbs, viewport breakpoints, or inline styles', () => {
+            const { container } = render(
+                <HeroBackground gradient="electric">
+                    <div>Hero Content</div>
+                </HeroBackground>,
+            );
+            const html = container.innerHTML;
+            expect(html).not.toContain('rounded-full');
+            expect(html).not.toContain('blur-3xl');
+            expect(html).not.toContain('md:px-12');
+            expect(html).not.toContain('md:py-24');
+            expect(html).not.toContain('style="');
+            expect(html).not.toContain('electric-blue');
+            expect(html).not.toContain('neon-green');
+            expect(html).not.toContain('cyber-yellow');
+            expect(html).not.toContain('deep-purple');
+            expect(container.querySelector('.voxel-dot-matrix')).not.toBeNull();
+        });
+
+        it('resolveAtmospherePhase maps US market session timestamps deterministically', () => {
+            expect(resolveAtmospherePhase(new Date('2026-01-15T14:30:00Z'))).toBe('daylight');
+            expect(resolveAtmospherePhase(new Date('2026-01-15T21:00:00Z'))).toBe('dusk');
         });
     });
 });

@@ -1,14 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { buildGarden, extractWorldFaces, SX, SY, SZ } from './garden-world';
 
-describe('garden-world (Minecraft flat-slab clouds & cached face extraction)', () => {
-    it('builds deterministically for the same seed', () => {
+describe('garden-world (Minecraft flat-slab clouds, 2-tier cloud planes & cached face extraction)', () => {
+    it('builds deterministically for the same seed including fireflies and koi anchors', () => {
         const a = buildGarden(20261121);
         const b = buildGarden(20261121);
 
         expect(a.voxelCount).toBe(b.voxelCount);
         expect(a.petals).toEqual(b.petals);
+        expect(a.fireflies).toEqual(b.fireflies);
+        expect(a.koi).toEqual(b.koi);
         expect(a.cloudMaterials).toEqual(b.cloudMaterials);
+        expect(a.fireflies.length).toBe(16);
+        expect(a.koi.length).toBe(2);
     });
 
     it('keeps petal count sparse (<= 24) so motion stays calm and non-distracting', () => {
@@ -67,19 +71,19 @@ describe('garden-world (Minecraft flat-slab clouds & cached face extraction)', (
         expect(sameBasePairs / totalNeighborPairs).toBeGreaterThanOrEqual(0.95);
     });
 
-    it('extracts and sorts visible island and cloud faces once for reuse across resizes', () => {
+    it('extracts and sorts visible island, far-cloud, and near-cloud faces once for reuse across resizes', () => {
         const world = buildGarden();
         const faces = extractWorldFaces(world);
 
         expect(faces.island.length).toBeGreaterThan(1000);
-        expect(faces.clouds.length).toBeGreaterThan(100);
+        expect(faces.cloudsFar.length).toBeGreaterThan(50);
+        expect(faces.cloudsNear.length).toBeGreaterThan(50);
 
         // Verify painter's depth order (monotonically non-decreasing sort key x + y + z).
-        for (let i = 1; i < faces.clouds.length; i++) {
-            expect(faces.clouds[i][0]).toBeGreaterThanOrEqual(faces.clouds[i - 1][0]);
-        }
-        for (let i = 1; i < faces.island.length; i++) {
-            expect(faces.island[i][0]).toBeGreaterThanOrEqual(faces.island[i - 1][0]);
+        for (const layer of [faces.cloudsFar, faces.cloudsNear, faces.island]) {
+            for (let i = 1; i < layer.length; i++) {
+                expect(layer[i][0]).toBeGreaterThanOrEqual(layer[i - 1][0]);
+            }
         }
     });
 });

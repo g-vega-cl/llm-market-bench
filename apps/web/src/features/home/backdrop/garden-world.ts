@@ -29,8 +29,10 @@ export interface Material {
 export interface WorldFaces {
     /** Visible island faces sorted back-to-front: [sortKey, x, y, z, face, idx, ao]. */
     island: Array<[number, number, number, number, number, number, number]>;
-    /** Visible 3D cloud slab faces sorted back-to-front: [sortKey, x, y, z, face, idx, ao]. */
-    clouds: Array<[number, number, number, number, number, number, number]>;
+    /** High-altitude 3D cloud slab faces (far parallax plane). */
+    cloudsFar: Array<[number, number, number, number, number, number, number]>;
+    /** Mid/lower-altitude perimeter 3D cloud slab faces (near parallax plane). */
+    cloudsNear: Array<[number, number, number, number, number, number, number]>;
 }
 
 export interface GardenWorld {
@@ -40,12 +42,16 @@ export interface GardenWorld {
     material: Uint8Array;
     emissive: Uint8Array;
     palette: Material[];
-    /** Material ids the renderer must draw in the cloud layer. */
+    /** Material ids the renderer must draw in the cloud layers. */
     cloudMaterials: number[];
+    /** Material ids assigned to the far-plane cloud slabs. */
+    farCloudMaterials: number[];
     /** World-space anchors the renderer animates against. */
     petals: Array<[number, number, number]>;
     glints: Array<[number, number, number]>;
     lamps: Array<[number, number, number]>;
+    fireflies: Array<[number, number, number]>;
+    koi: Array<[number, number, number]>;
     voxelCount: number;
 }
 
@@ -114,14 +120,19 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
     const Koi = mat('#e8734a');
     const Koi2 = mat('#f7f2e4');
     const cloudIds: number[] = [];
-    const cloudMat = (hex: string) => {
+    const farCloudIds: number[] = [];
+    const cloudMat = (hex: string, far = false) => {
         const id = mat(hex);
         cloudIds.push(id);
+        if (far) farCloudIds.push(id);
         return id;
     };
     const CLOUD_MID = cloudMat('#cad6cf');
     const CLOUD_UNDERSIDE = cloudMat('#7d9490');
     const CLOUD_TOP = cloudMat('#f4ebd8');
+    const CLOUD_FAR_MID = cloudMat('#cad6cf', true);
+    const CLOUD_FAR_UNDERSIDE = cloudMat('#7d9490', true);
+    const CLOUD_FAR_TOP = cloudMat('#f4ebd8', true);
     const SPROUT = mat('#5c9b57');
 
     /* grid --------------------------------------------------------------- */
@@ -469,13 +480,17 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         d: number,
         h: number,
         crown?: { dx: number; dy: number; w: number; d: number },
+        plane: 'far' | 'near' = 'near',
     ) {
         const bx = Math.min(Math.max(x0, 2), SX - w - 3);
         const by = Math.min(Math.max(y0, 2), SY - d - 3);
         const bz = Math.min(Math.max(z0, 2), SZ - h - (crown ? 4 : 3));
+        const undersideMat = plane === 'far' ? CLOUD_FAR_UNDERSIDE : CLOUD_UNDERSIDE;
+        const midMat = plane === 'far' ? CLOUD_FAR_MID : CLOUD_MID;
+        const topMat = plane === 'far' ? CLOUD_FAR_TOP : CLOUD_TOP;
 
         for (let k = 0; k < h; k++) {
-            const matId = k === 0 ? CLOUD_UNDERSIDE : k === h - 1 ? CLOUD_TOP : CLOUD_MID;
+            const matId = k === 0 ? undersideMat : k === h - 1 ? topMat : midMat;
             for (let j = 0; j < d; j++) {
                 for (let i = 0; i < w; i++) {
                     if (!filled(bx + i, by + j, bz + k)) {
@@ -492,21 +507,21 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
             for (let j = 0; j < crown.d; j++) {
                 for (let i = 0; i < crown.w; i++) {
                     if (!filled(cx + i, cy + j, cz)) {
-                        put(cx + i, cy + j, cz, CLOUD_TOP);
+                        put(cx + i, cy + j, cz, topMat);
                     }
                 }
             }
         }
     }
 
-    // Sparse, balanced flat-bottomed cloud slabs flanking the mid/lower perimeter
-    // so the upper twilight sky stays clear and calm behind the hero headline.
-    cloudSlab(4, 34, 34, 15, 9, 2, { dx: 3, dy: 2, w: 9, d: 5 });
-    cloudSlab(7, 72, 20, 16, 10, 2, { dx: 4, dy: 2, w: 8, d: 5 });
-    cloudSlab(74, 6, 36, 16, 10, 2, { dx: 3, dy: 2, w: 9, d: 6 });
-    cloudSlab(82, 32, 24, 14, 9, 2, { dx: 3, dy: 2, w: 7, d: 5 });
-    cloudSlab(68, 82, 14, 16, 9, 2, { dx: 3, dy: 2, w: 9, d: 5 });
-    cloudSlab(22, 6, 40, 17, 8, 2, { dx: 4, dy: 2, w: 9, d: 4 });
+    // Sparse, balanced flat-bottomed cloud slabs split explicitly into Far and Near
+    // parallax planes so the upper twilight sky stays clear behind the hero headline.
+    cloudSlab(4, 34, 34, 15, 9, 2, { dx: 3, dy: 2, w: 9, d: 5 }, 'far');
+    cloudSlab(7, 72, 20, 16, 10, 2, { dx: 4, dy: 2, w: 8, d: 5 }, 'near');
+    cloudSlab(74, 6, 36, 16, 10, 2, { dx: 3, dy: 2, w: 9, d: 6 }, 'far');
+    cloudSlab(82, 32, 24, 14, 9, 2, { dx: 3, dy: 2, w: 7, d: 5 }, 'near');
+    cloudSlab(68, 82, 14, 16, 9, 2, { dx: 3, dy: 2, w: 9, d: 5 }, 'near');
+    cloudSlab(22, 6, 40, 17, 8, 2, { dx: 4, dy: 2, w: 9, d: 4 }, 'far');
 
     /* anchors ------------------------------------------------------------ */
     const petals: Array<[number, number, number]> = [];
@@ -531,6 +546,26 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         glints.push([gx, gy, h - 1]);
     }
 
+    const fireflyHubs: Array<[number, number]> = [
+        [CX - 30, CY + 2], // bamboo grove
+        [POND.x - 10, POND.y], // arched wooden bridge
+        [TX, TY - 2], // torii clearing
+        [CX + 14, CY + 18], // stone lantern path
+    ];
+    const fireflies: Array<[number, number, number]> = [];
+    for (let i = 0; i < 16; i++) {
+        const hub = fireflyHubs[i % fireflyHubs.length];
+        const fx = hub[0] + ri(-7, 7);
+        const fy = hub[1] + ri(-6, 6);
+        const fh = heightAt(fx, fy) ?? 15;
+        fireflies.push([fx, fy, fh + ri(3, 9)]);
+    }
+
+    const koi: Array<[number, number, number]> = [
+        [POND.x - 4, POND.y - 2, (heightAt(POND.x - 4, POND.y - 2) ?? 14) - 1],
+        [POND.x + 3, POND.y + 3, (heightAt(POND.x + 3, POND.y + 3) ?? 14) - 1],
+    ];
+
     let voxelCount = 0;
     for (let i = 0; i < solid.length; i++) if (solid[i]) voxelCount++;
 
@@ -540,9 +575,12 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         emissive,
         palette,
         cloudMaterials: cloudIds,
+        farCloudMaterials: farCloudIds,
         petals,
         glints,
         lamps,
+        fireflies,
+        koi,
         voxelCount,
     };
 }
@@ -554,10 +592,11 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
  */
 export function extractWorldFaces(world: GardenWorld): WorldFaces {
     const cloudSet = new Set(world.cloudMaterials);
-    const isCloud = (id: number) => cloudSet.has(id);
+    const farCloudSet = new Set(world.farCloudMaterials);
 
     const island: WorldFaces['island'] = [];
-    const clouds: WorldFaces['clouds'] = [];
+    const cloudsFar: WorldFaces['cloudsFar'] = [];
+    const cloudsNear: WorldFaces['cloudsNear'] = [];
 
     const solidAt = (x: number, y: number, z: number) =>
         x >= 0 &&
@@ -594,7 +633,12 @@ export function extractWorldFaces(world: GardenWorld): WorldFaces {
             for (let x = 0; x < SX; x++) {
                 const i = (z * SY + y) * SX + x;
                 if (!world.solid[i]) continue;
-                const bucket = isCloud(world.material[i]) ? clouds : island;
+                const matId = world.material[i];
+                const bucket = !cloudSet.has(matId)
+                    ? island
+                    : farCloudSet.has(matId)
+                      ? cloudsFar
+                      : cloudsNear;
                 const key = x + y + z;
                 if (!solidAt(x, y, z + 1)) bucket.push([key, x, y, z, 0, i, occlusion(x, y, z, 0)]);
                 if (!solidAt(x, y + 1, z)) bucket.push([key, x, y, z, 1, i, occlusion(x, y, z, 1)]);
@@ -604,7 +648,8 @@ export function extractWorldFaces(world: GardenWorld): WorldFaces {
     }
 
     island.sort((a, b) => a[0] - b[0]);
-    clouds.sort((a, b) => a[0] - b[0]);
+    cloudsFar.sort((a, b) => a[0] - b[0]);
+    cloudsNear.sort((a, b) => a[0] - b[0]);
 
-    return { island, clouds };
+    return { island, cloudsFar, cloudsNear };
 }

@@ -1,6 +1,8 @@
+import { ATMOSPHERE_PHASES } from '@llm-market-bench/ui-design-system';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GardenBackdrop } from './GardenBackdrop';
+import { ATMOSPHERE_PALETTES } from './garden-renderer';
 
 function mockMatchMedia(matches: boolean) {
     Object.defineProperty(window, 'matchMedia', {
@@ -18,7 +20,7 @@ function mockMatchMedia(matches: boolean) {
     });
 }
 
-describe('GardenBackdrop (lifecycle, reduced-motion, and null-context resilience)', () => {
+describe('GardenBackdrop (lifecycle, atmosphere phases, reduced-motion, and null-context resilience)', () => {
     beforeEach(() => {
         if (typeof globalThis.ResizeObserver === 'undefined') {
             globalThis.ResizeObserver = class ResizeObserver {
@@ -43,10 +45,36 @@ describe('GardenBackdrop (lifecycle, reduced-motion, and null-context resilience
         const canvas = screen.getByTestId('garden-backdrop') as HTMLCanvasElement;
 
         expect(canvas).toBeInTheDocument();
+        expect(canvas).toHaveAttribute('data-atmosphere', 'dusk');
         expect(canvas.width).toBe(300); // default jsdom canvas width untouched on 0x0 bail
         expect(getContextSpy).not.toHaveBeenCalled();
 
         unmount();
+    });
+
+    it('defines distinct Matcha & Cedar sky and lighting palettes for all 4 atmosphere phases', () => {
+        const zenithTops = new Set<string>();
+        for (const phase of ATMOSPHERE_PHASES) {
+            const palette = ATMOSPHERE_PALETTES[phase];
+            expect(palette).toBeDefined();
+            expect(palette.skyStops.length).toBeGreaterThanOrEqual(7);
+            zenithTops.add(palette.skyStops[0][1]);
+        }
+        expect(zenithTops.size).toBe(4);
+    });
+
+    it('supports controlled atmosphere and showControls={false} when hosted inside SceneStage', () => {
+        mockMatchMedia(true);
+        const { rerender } = render(
+            <GardenBackdrop atmosphere="dawn" showControls={false} paused={true} />,
+        );
+
+        const canvas = screen.getByTestId('garden-backdrop');
+        expect(canvas).toHaveAttribute('data-atmosphere', 'dawn');
+        expect(screen.queryByRole('button')).toBeNull();
+
+        rerender(<GardenBackdrop atmosphere="after-hours" showControls={false} paused={true} />);
+        expect(canvas).toHaveAttribute('data-atmosphere', 'after-hours');
     });
 
     it('respects prefers-reduced-motion and toggles between Play motion and Pause motion', () => {

@@ -318,6 +318,10 @@
         min-height: 20rem;
     }
 
+    .scene-stage-hero.home-hero-viewport {
+        min-height: calc(100dvh - 3.875rem);
+    }
+
     .scene-stage-footer {
         min-height: 11rem;
     }

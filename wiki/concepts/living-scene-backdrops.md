@@ -28,6 +28,7 @@ Expressive animated backdrops are permitted across **major page heroes and paral
 | `motionRole` | `'background' \| 'reactive' \| 'story'` | `'background'` | Emitted as `data-motion-role` for the motion taxonomy. |
 | `scrim` | `'none' \| 'panel'` | `'none'` | When `'panel'`, wraps children in a `.scene-scrim .voxel-card` CTA protection panel. |
 | `backdrop` | `React.ReactNode` | — | Rendered in a dedicated `aria-hidden` `pointer-events-none` layer behind children. |
+| `controls` | `React.ReactNode` | — | Accessible foreground HUD controls (`data-slot="scene-controls"`) anchored to the bottom-right stage corner outside `aria-hidden`. |
 | `children` | `React.ReactNode` | — | Foreground content. |
 
 ### Structural Guarantees
@@ -36,6 +37,7 @@ Expressive animated backdrops are permitted across **major page heroes and paral
 - Backdrop layer (`data-slot="scene-backdrop"`) is `aria-hidden="true"`, `pointer-events-none`, `absolute inset-0 z-0 overflow-hidden`, and only rendered when `backdrop` is supplied.
 - Foreground content sits in a `relative z-10 mx-auto w-full max-w-7xl min-w-0` wrapper.
 - The scrim panel (`data-slot="scene-scrim"`) uses `scene-scrim voxel-card rounded-none p-6 min-w-0` and never `backdrop-blur`.
+- The controls slot (`data-slot="scene-controls"`) is `pointer-events-auto absolute right-3 bottom-3 z-20 flex items-center gap-2`, rendered **outside** the `aria-hidden` backdrop layer so HUD buttons stay keyboard- and screen-reader-accessible.
 
 ## HeroBackground Layout
 
@@ -92,19 +94,84 @@ The prior implementation used `gradient-*` utility classes, inline `style` dot p
 
 Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The ET formatter respects EST/EDT transitions.
 
+### Atmosphere Palettes (`ATMOSPHERE_PALETTES`)
+
+`apps/web/src/features/home/backdrop/garden-renderer.ts` exports `ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette>`, giving each phase a distinct Matcha & Cedar sky and lighting treatment. Each palette defines:
+
+- `skyStops` — 7+ vertical gradient stops (the zenith top color is unique per phase).
+- `horizonGlow` — three-stop radial glow behind the island silhouette.
+- `topVignette` — two-stop top atmospheric vignette tuned for AAA cream-text contrast.
+- `footFade` — bottom fade band color.
+- `lightScale` — global voxel face brightness multiplier.
+- `topTint` / `sideTint` — per-face RGB tint multipliers.
+- `islandFog` / `cloudFog` — depth-fog RGB targets for island and cloud faces.
+- `lanternAlphaScale` — lantern glow halo intensity.
+- `showStars` / `showFireflies` / `showSunMotes` — which zenith and micro-life layers render.
+
+`bakeSky(W, H, dpr, atmosphere = 'dusk')`, `bakeFootFade(W, H, dpr, atmosphere = 'dusk')`, and `paintVoxelLayer(..., atmosphere = 'dusk')` all accept the active phase.
+
+## Garden Backdrop (Homepage Living Diorama)
+
+`apps/web/src/features/home/backdrop/GardenBackdrop.tsx` is the homepage's multi-layered voxel garden island, rendered as a `SceneStage` backdrop. It floats across the dynamic Matcha & Cedar market-session atmospheres with 4-plane depth parallax and phase-reactive micro-life.
+
+### Props
+
+| Prop | Type | Default | Behavior |
+|---|---|---|---|
+| `className` | `string` | — | Canvas class. |
+| `atmosphere` | `AtmospherePhase` | `'dusk'` | Active phase; drives sky, voxel lighting, and micro-life. Emitted as `data-atmosphere` on the canvas. |
+| `paused` | `boolean` | — | Optional externally controlled paused state (used when the parent hosts HUD controls). |
+| `onPausedChange` | `(paused: boolean) => void` | — | Notifies the parent when the reduced/paused state changes. |
+| `showControls` | `boolean` | `true` | Whether to render the floating Pause/Play button inside `GardenBackdrop`. Set `false` when `SceneStage` renders HUD controls in its foreground `controls` slot. |
+
+### 4-Plane Depth Parallax
+
+`paintFrame` composites four depth planes back-to-front:
+
+1. **Atmospheric sky** — phase-baked gradient plus `drawZenithParticles` (twinkling stars for dusk/after-hours, drifting sun-motes for dawn/daylight).
+2. **Far high-altitude cloud slabs** — slow breeze drift (`sin(time * 0.08)`) plus subtle parallax.
+3. **Floating voxel island** — gentle vertical levitation (`sin(time * 0.45)`) plus island micro-life (glints, koi ripples, lantern halos, fireflies, petals).
+4. **Near perimeter cloud slabs** — faster breeze drift (`sin(time * 0.11 + 1.4)`) plus deeper parallax.
+
+### Deterministic Micro-Life
+
+All particle anchors are generated deterministically from index-based formulas (no `Math.random`), so SSR and hydration match and tests stay stable:
+
+- `petals` — drifting cherry blossom petals.
+- `glints` — pond water glints.
+- `lamps` — stone & torii lantern glow halos (scaled by `lanternAlphaScale`).
+- `fireflies` — 16 phase-reactive rising fireflies at 4 hubs (bamboo grove, arched wooden bridge, torii clearing, stone lantern path), shown in dusk & after-hours.
+- `koi` — 2 koi swimming water ripple diamonds in the pond.
+- `skyMotes` — 26 zenith stars (dusk/after-hours) or sun motes (dawn/daylight).
+
+`garden-world.ts` splits the 6 cloud slabs into `cloudsFar` / `cloudsNear` face buckets via `extractWorldFaces`, and `garden-renderer.ts` bakes each plane with the active atmosphere palette.
+
+### Homepage Integration (`HomeCtaPage`)
+
+`apps/web/src/features/home/pages/HomeCtaPage.tsx` renders on `SceneStage` (`variant="hero"`, `motionRole="reactive"`):
+
+- Auto-resolves the US Eastern market session atmosphere (`resolveAtmospherePhase(new Date(), 'market-et')`) on mount after a deterministic `'dusk'` SSR render.
+- Passes `GardenBackdrop` into the `backdrop` slot with `showControls={false}`.
+- Renders foreground HUD `controls`: an atmosphere switcher (`Sky: <Phase>`, `data-testid="atmosphere-switcher"`) that cycles all four phases, plus a Pause/Play motion toggle.
+- Houses the CTA cluster and trust strip inside a compact `.scene-scrim .voxel-card rounded-none` plaque (`data-testid="home-cta-plaque"`, zero `backdrop-blur`).
+
 ## CSS Foundations (`apps/web/src/styles/app.css`)
 
 - `.voxel-dot-matrix` — radial-gradient dot texture at 20px spacing.
 - `.scene-atmosphere-dawn` / `-daylight` / `-dusk` / `-after-hours` — Matcha & Cedar vertical sky gradients.
 - `.scene-scrim` — semi-opaque Matcha backing (`rgba(20, 28, 24, 0.88)`), zero `backdrop-blur`.
 - `.scene-stage-hero` (`min-height: 20rem`) / `.scene-stage-footer` (`min-height: 11rem`).
+- `.scene-stage-hero.home-hero-viewport` — `min-height: calc(100dvh - 3.875rem)` so the homepage hero fills the viewport below the sticky navbar.
 - `@media (prefers-reduced-motion: reduce)` disables animation/transition on `.scene-backdrop` and descendants.
 
 ## Testing & Verification
 
 - `packages/ui-design-system/src/lib/atmosphere.test.ts` — verifies all four phases, EST/EDT boundaries, local-mode thresholds, and `NaN` fallback to `dusk`.
-- `apps/web/src/test/scene-stage.test.tsx` — verifies hero/footer landmarks, default `dusk` atmosphere, `data-motion-role`, `aria-hidden` backdrop, scrim panel without `backdrop-blur`, and `HeroBackground` atmosphere/backdrop slots.
+- `apps/web/src/test/scene-stage.test.tsx` — verifies hero/footer landmarks, default `dusk` atmosphere, `data-motion-role`, `aria-hidden` backdrop, scrim panel without `backdrop-blur`, `HeroBackground` atmosphere/backdrop slots, and that the `controls` slot renders outside `aria-hidden`.
 - `apps/web/src/test/design-standardization.test.tsx` — verifies `SceneStage` containment/scrim invariants and that `HeroBackground` emits no `rounded-full`, `blur-3xl`, viewport breakpoints, inline styles, or legacy color tokens, while rendering `.voxel-dot-matrix`.
+- `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` — verifies the `data-atmosphere` attribute, all 4 distinct `ATMOSPHERE_PALETTES` (7+ sky stops, 4 distinct zenith tops), controlled `atmosphere` + `showControls={false}`, and the reduced-motion Play/Pause toggle.
+- `apps/web/src/features/home/backdrop/garden-world.test.ts` — verifies deterministic fireflies (16) and koi (2) anchors, and far/near cloud face extraction with painter's depth order.
+- `apps/web/src/features/home/pages/HomeCtaPage.test.tsx` — verifies the `SceneStage` hero shell (`data-slot="scene-stage"`, `data-stage-variant="hero"`, `data-motion-role="reactive"`, `.scene-atmosphere-*`), the `.scene-scrim .voxel-card` CTA plaque without `backdrop-blur`, and the accessible HUD controls (atmosphere switcher cycling all 4 phases + motion toggle) outside `aria-hidden`.
 
 ## Related
 

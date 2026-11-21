@@ -75,4 +75,20 @@ describe('SceneStage', () => {
         expect(root.className).toContain('rounded-none');
         expect(screen.getByTestId('hero-diorama-layer')).toBeInTheDocument();
     });
+
+    it('renders accessible foreground HUD controls outside aria-hidden when controls slot is supplied', () => {
+        const { container } = render(
+            <SceneStage
+                backdrop={<div data-testid="bg-canvas" />}
+                controls={<button type="button">Sky: Dusk</button>}
+            >
+                <span>Hero Copy</span>
+            </SceneStage>,
+        );
+
+        const controls = container.querySelector('[data-slot="scene-controls"]') as HTMLElement;
+        expect(controls).not.toBeNull();
+        expect(controls.getAttribute('aria-hidden')).toBeNull();
+        expect(screen.getByRole('button', { name: 'Sky: Dusk' })).toBeInTheDocument();
+    });
 });

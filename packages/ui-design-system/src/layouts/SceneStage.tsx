@@ -32,6 +32,8 @@ export interface SceneStageProps extends React.HTMLAttributes<HTMLElement> {
     scrim?: SceneScrim;
     /** Multi-layer diorama, canvas, or sprite backdrop rendered behind children. */
     backdrop?: React.ReactNode;
+    /** Accessible foreground HUD controls anchored to the bottom-right stage corner. */
+    controls?: React.ReactNode;
     children: React.ReactNode;
 }
 
@@ -53,6 +55,7 @@ export function SceneStage({
     motionRole = 'background',
     scrim = 'none',
     backdrop,
+    controls,
     children,
     className,
     ...rest
@@ -95,6 +98,15 @@ export function SceneStage({
                     children
                 )}
             </div>
+
+            {controls ? (
+                <div
+                    data-slot="scene-controls"
+                    className="pointer-events-auto absolute right-3 bottom-3 z-20 flex items-center gap-2"
+                >
+                    {controls}
+                </div>
+            ) : null}
         </Tag>
     );
 }

@@ -5,7 +5,7 @@ category: concept
 
 # Recipe Public Stats & Desk
 
-`fetchPublicDesk` (`apps/web/src/features/recipes/api/public-board-api.ts`) assembles the public recipe desk payload served to the homepage. It reads only materialised rows — never the execution queue — so the request path performs zero compute.
+`fetchPublicDesk` used to assemble the public recipe desk payload for the homepage. That surface — and the module that served it — was deleted with the homepage in `684d1b5e`; the materialised tables (`recipe_public_stats`, `recipe_desk_summary`, `recipe_desk_feed`) are still rebuilt every runner cycle and are the only place the numbers exist, so any future public board reads them rather than the execution queue.
 
 ## PublicDesk Contract
 
@@ -44,11 +44,7 @@ The spotlight is the most recently active card that has a written description: i
 
 ## Desk Rendering
 
-`RecipeDeskHomePage` renders three regions:
-
-1. **Hero proof** — `BuildProof` receives the spotlight and the fork handler, replacing the old equity-chart hero.
-2. **Leaderboard** — `TopPortfolios` receives `rows`, `medianReturnPct`, `worst`, `spy`, `trackedCount`, `windowDays`, and `degraded` (see [[concepts/portfolio-leaderboard-view]]).
-3. **Live bots tape** — `BotRow` renders one `<li>` per bot: LIVE badge, name, the owner's description (or the last action), return, `vs SPY`, open-position count, the model label, and a Fork button.
+`RecipeDeskHomePage` used to render three regions — a hero proof card, a `TopPortfolios` leaderboard lane, and a live-bots tape. **All three were deleted with the homepage in `684d1b5e`.** The payload contract they consumed is still the right shape for any replacement surface: a spotlight with its compiled blocks, leaderboard rows with `medianReturnPct` / `worst` / `spy` / `trackedCount` / `windowDays` / `degraded`, and one tape row per bot carrying its return, `vs SPY`, open positions and resolved model.
 
 ## Pagination Discipline
 
@@ -63,12 +59,11 @@ The activation funnel's client-side terminus is the `run_queued` event, added to
 
 ## Tests
 
-`public-board-api.test.ts` pins: the owner's sentence carried beside each card, the newest bot with a prompt spotlighted with its compiled blocks, unknown block types humanised, a failed prompt read surviving without losing cards, and zero reads of the execution queue.
+That test was deleted with the module in `684d1b5e`. Its contract is worth restoring alongside any replacement surface: the owner's sentence beside each card, the newest bot spotlighted with its compiled blocks, unknown block types humanised, a failed prompt read surviving without losing cards, and zero reads of the execution queue.
 
 ## Related
 
 - [[entities/web-app]] — dashboard hosting the desk
 - [[entities/recipe-studio]] — recipe builder that writes descriptions and enqueues runs
-- [[concepts/portfolio-leaderboard-view]] — leaderboard lanes rendered beside the desk
 - [[concepts/zero-frontend-compute]] — materialised rows only in the request path
 - [[concepts/recipe-public-stats]] — public stats surface

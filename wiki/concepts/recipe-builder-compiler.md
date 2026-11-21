@@ -3,9 +3,13 @@ tags: [recipes, builder, llm, compiler, validation, fallback, local-draft]
 category: concept
 ---
 
-The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compiler-api.ts` (server function), with `BuilderConversation.tsx` and `use-builder-chat.ts` providing the UI and conversation state.
+The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compiler-api.ts` (server function), with `BuilderChatPanel.tsx` (the extracted panel mounted on both `/lab` and `/build`), `BuilderConversation.tsx`, and `use-builder-chat.ts` providing the UI and conversation state.
 
 The guiding rule is that the model **never edits the graph freehand**. Whatever it returns is re-validated against the same contracts the studio, the save API, the scheduler, and the database enforce, and an unbuildable or twice-invalid reply degrades to a runnable starter template rather than a dead end.
+
+## Two Entry Points, One Panel
+
+`BuilderChatPanel.tsx` is the single implementation of the chat builder. It is mounted at the top of `/lab` (`data-testid="lab-builder"`) and remains reachable at `/build`. Both routes pass the same `idea` seed and `userId`, and differ only in the `redirectTo` target (`'/lab'` or `'/build'`) used when an anonymous visitor is sent to sign in. Extracting the panel means the builder is discoverable from the lab directory without duplicating the conversation, metering, or draft-handoff logic.
 
 ## Capability Manifest
 
@@ -61,9 +65,9 @@ Client-supplied roles are filtered to `user`/`assistant` only and each turn is t
 ## Client State & Anonymous Drafts (`useBuilderChat`)
 
 - **State** — `messages`, parallel `messageIds` (stable React keys), `draft`, `reply`, `isCompiling`, `error`, and `pendingIdea`.
-- **Signed-out users** — `send()` stores the message via `savePendingIdea()` and calls `onNeedSignIn`, which navigates to `/login?redirect=/build`. The idea survives the redirect and is replayed from `localStorage`, so signing in never costs the visitor their idea.
+- **Signed-out users** — `send()` stores the message via `savePendingIdea()` and calls `onNeedSignIn`, which navigates to `/login?redirect=<redirectTo>` (the panel's `redirectTo` prop, `'/lab'` or `'/build'`). The idea survives the redirect and is replayed from `localStorage`, so signing in never costs the visitor their idea.
 - **Signed-in users** — sends the conversation to `compileStrategyFn`, appends the assistant's question to the transcript on a `question` reply, and writes the compiled strategy into the browser draft (`saveLocalDraft(strategy, 'builder')`) plus `clearPendingIdea()` on an `ok` reply.
-- **Analytics** — `track(posthog, ...)` emits `builder_question_answered`, `builder_declined`, and `builder_compiled` (with the cadence), and `routes/build.tsx` emits `builder_opened` with `seeded`. See `apps/web/src/lib/analytics.ts`.
+- **Analytics** — `track(posthog, ...)` emits `builder_question_answered`, `builder_declined`, and `builder_compiled` (with the cadence), and `BuilderChatPanel` emits `builder_opened` with `seeded`. See `apps/web/src/lib/analytics.ts`.
 
 ## Browser Draft Handoff (`utils/local-draft.ts`)
 

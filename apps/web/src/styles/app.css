@@ -206,6 +206,26 @@
         box-shadow: 0px 0px 0px var(--color-voxel-bevel-lo);
     }
 
+    /* The hero CTA: same bevel, heavier offset, so it reads as a physical block
+       on a photographic background rather than a flat rectangle. */
+    .voxel-btn--hero {
+        box-shadow: 5px 5px 0px var(--color-voxel-bevel-lo),
+            0 0 0 2px var(--color-accent-dark);
+        transition: transform 90ms ease, box-shadow 90ms ease, background-color 120ms ease;
+    }
+
+    .voxel-btn--hero:hover:not(:disabled) {
+        transform: translate(-1px, -1px);
+        box-shadow: 6px 6px 0px var(--color-voxel-bevel-lo),
+            0 0 0 2px var(--color-accent-dark);
+    }
+
+    .voxel-btn--hero:active:not(:disabled) {
+        transform: translate(3px, 3px);
+        box-shadow: 1px 1px 0px var(--color-voxel-bevel-lo),
+            0 0 0 2px var(--color-accent-dark);
+    }
+
     .voxel-badge {
         border-top: 1px solid var(--color-voxel-bevel-hi);
         border-left: 1px solid var(--color-voxel-bevel-hi);

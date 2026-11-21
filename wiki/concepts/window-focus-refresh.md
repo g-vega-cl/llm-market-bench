@@ -66,7 +66,7 @@ useWindowFocusRefresh({
 ## Testing
 
 - `apps/web/src/features/home/hooks/useWindowFocusRefresh.test.ts` covers focus-triggered refresh, visibility-triggered refresh, the hidden-document guard, throttle suppression and re-arm, PostHog flag reload plus telemetry capture, listener cleanup on unmount, and the `enabled: false` opt-out. Timers are faked so the 5-second throttle is exercised deterministically.
-- `apps/web/src/routes/-index.test.tsx` renders `RouteComponent` with mocked router and PostHog hooks and asserts that a focus event (after the cooldown) calls `router.invalidate()` exactly once alongside `reloadFeatureFlags()` and the `window_focus_refreshed` capture.
+- The original test for this behaviour was `routes/-index.test.tsx`, deleted with the homepage in `684d1b5e`; the refresh itself now lives at the root route, exercised by `apps/web/src/routes/-__root.test.tsx`.
 
 ## Related
 

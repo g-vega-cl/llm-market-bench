@@ -1,5 +1,6 @@
 import { Badge, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import { BuilderChatPanel } from '~/features/recipes/builder/BuilderChatPanel';
 import { seo } from '~/lib/seo';
 
 export interface LabLinkItem {
@@ -186,7 +187,17 @@ export const Route = createFileRoute('/lab')({
 });
 
 function LabRouteComponent() {
-    return <LabDirectoryView />;
+    const { user } = Route.useRouteContext();
+    return (
+        <div className="flex flex-col">
+            <section data-testid="lab-builder" className="mx-auto w-full max-w-5xl px-5 pt-8">
+                <div className="voxel-surface border-2 border-voxel-bevel-hi p-5">
+                    <BuilderChatPanel redirectTo="/lab" userId={user?.id ?? null} />
+                </div>
+            </section>
+            <LabDirectoryView />
+        </div>
+    );
 }
 
 export function LabDirectoryView() {

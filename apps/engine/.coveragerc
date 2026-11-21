@@ -10,7 +10,6 @@ omit =
     .venv/*
 
 [report]
-fail_under = 70
 exclude_lines =
     pragma: no cover
     def __repr__

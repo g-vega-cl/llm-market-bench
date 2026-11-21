@@ -23,7 +23,7 @@ These thresholds are intentionally set near baseline levels to act as a "ratchet
 Enforcement happens at two levels, neither of which is the pre-commit hook:
 
 1.  **Verify skill (local, full)**: `.agents/skills/verify/scripts/verify.sh` runs the hermetic pytest suite with `--cov=. --cov-config=.coveragerc --cov-fail-under=70` and the web suite with coverage, failing the run when a threshold regresses. Supports sequential 1-worker mode via `SEQUENTIAL=1` or `git config benchify.sequential true`.
-2.  **CI/CD**: `.github/workflows/ci.yml` runs the engine suite as `python3 -m pytest -n auto --cov=. --cov-config=.coveragerc --cov-fail-under=70` and the `test-web` job as `biome check`, `typecheck`, `pnpm --filter web test --maxWorkers=2 --coverage`, then `pnpm build:web`. The engine gate is therefore enforced twice over: the explicit `--cov-fail-under=70` flag and the `fail_under = 70` setting in `apps/engine/.coveragerc` `[report]`.
+2.  **CI/CD**: `.github/workflows/ci.yml` runs the engine suite (`pytest -n auto`) and the `test-web` job (`biome check`, `typecheck`, `vitest --maxWorkers=2`, `pnpm build:web`) on every push and pull request.
 
 The pre-commit hook deliberately runs **scoped, worker-capped tests without coverage** (`pytest -n 4` on affected or core engine tests, `vitest related --maxWorkers=4`) so commits stay fast; the coverage ratchet is a verify/CI concern. See [[concepts/project-linting]] for the full hook scoping rules.
 
@@ -33,7 +33,6 @@ The pre-commit hook deliberately runs **scoped, worker-capped tests without cove
 Configured via `apps/engine/.coveragerc`. 
 - **Omitted**: CLI scripts, migrations, and test files themselves.
 - **Exclusions**: `pragma: no cover`, `if TYPE_CHECKING:`, and boilerplate.
-- **Report gate**: `[report] fail_under = 70`, so a bare `pytest --cov` run also fails below the threshold.
 - **Collection scope**: both `pytest.ini` files (repo root and `apps/engine/`) declare `norecursedirs = .venv market __pycache__ .git node_modules`, so a bare `pytest` run never collects from the virtualenv, the local `market` data directory, or `node_modules`.
 
 ### Web
@@ -51,7 +50,7 @@ Configured via `apps/web/vitest.config.ts`.
 ## Increasing Thresholds
 
 Thresholds are periodically reviewed and ratcheted upward as the codebase matures.
-- **Ratchet Mechanism**: When a component's actual test coverage consistently exceeds the baseline threshold by a significant margin (e.g., 5%+), a task is scheduled to increase the minimum threshold inside `.agents/skills/verify/scripts/verify.sh`, `apps/engine/.coveragerc`, and `.github/workflows/ci.yml`, and update this document accordingly. This prevents coverage regression and drives gradual code quality improvements.
+- **Ratchet Mechanism**: When a component's actual test coverage consistently exceeds the baseline threshold by a significant margin (e.g., 5%+), a task is scheduled to increase the minimum threshold inside `.agents/skills/verify/scripts/verify.sh` and `.github/workflows/ci.yml`, and update this document accordingly. This prevents coverage regression and drives gradual code quality improvements.
 - **Ultimate Goal**: The long-term target is to reach a uniform 80% coverage across all core business-logic components.
 
 ## Hermetic Testing & Zero-Network Policy (MANDATORY)

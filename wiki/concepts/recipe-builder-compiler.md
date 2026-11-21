@@ -3,7 +3,7 @@ tags: [recipes, builder, llm, compiler, validation, fallback, local-draft]
 category: concept
 ---
 
-The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compiler-api.ts` (server function), with `BuilderConversation.tsx` and `use-builder-chat.ts` providing the UI and conversation state. The homepage `DescribeLine` (`apps/web/src/features/playground/components/DescribeLine.tsx`) calls the same server function for its one-line path.
+The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compiler-api.ts` (server function), with `BuilderConversation.tsx` and `use-builder-chat.ts` providing the UI and conversation state.
 
 The guiding rule is that the model **never edits the graph freehand**. Whatever it returns is re-validated against the same contracts the studio, the save API, the scheduler, and the database enforce, and an unbuildable or twice-invalid reply degrades to a runnable starter template rather than a dead end.
 
@@ -11,7 +11,7 @@ The guiding rule is that the model **never edits the graph freehand**. Whatever 
 
 `capabilityManifest()` is generated from the real block and tool types (`CURATED_TOOLS`, `types.ts`), not from prose, so the model can never choose a block, tool, or field the engine would reject at run time:
 
-- **Blocks** — `prompt`, `news`, `memories`, `technicals`, and the required `output_format` (always rendered last), each with its literal JSON shape. The technicals example uses the engine's field name: `{"type":"technicals","rules":[{"metric":"RSI","operator":"<","target":30}]}` — a rule carrying `value` instead of `target` validates in `push_schema.py` as an empty filter, so the manifest teaches `target` and the validator rejects `value`.
+- **Blocks** — `prompt`, `news`, `memories`, `technicals`, and the required `output_format` (always rendered last), each with its literal JSON shape.
 - **Tools** — one line per curated tool. `web_search` is filtered out of the manifest, and the hard constraints state *Never use web_search* — every run is point-in-time and offline.
 - **Hard constraints** — long only (`BUY`/`EXIT` or `[]`), exactly one stage (one LLM call per run), `cadence` must be `"3h"` (the scheduler ignores `5m`/`1d`), and every block/stage needs a unique short id.
 
@@ -32,13 +32,12 @@ The guiding rule is that the model **never edits the graph freehand**. Whatever 
 Validation runs the same checks in the same order the rest of the system would:
 
 1. **Envelope** — `version` must be `2.0-push`, `name` must be non-empty, `cadence` must be exactly `3h`, and `stages` must be an array of length exactly one.
-2. **Blocks** — every block needs a known `type` (`prompt`/`news`/`memories`/`technicals`/`output_format`) and a non-empty string `id`, then passes its type-specific validator (`BLOCK_VALIDATORS`): `prompt` needs a string `text`; `news` needs a keyword array `contains` plus a positive-integer `recency_hours`; `memories` needs the same plus an optional string `category` and an optional integer `min_importance` in 1–10; `technicals` needs an array `rules` where every rule has a non-empty `metric`, an operator from `>`, `<`, `>=`, `<=`, `==`, and a string-or-number `target`. Anything else is `unknown or malformed block`.
-3. **Block order normalization** — `normalizeBlockOrder()` moves every `output_format` block to the end. Order is presentation, not an invariant: `push_hydrator.py` renders the terminal block last whatever the stored order, so a graph stored with the answer block first is normalized rather than rejected.
-4. **Block contract** — `assertBlockContract()` requires unique block ids and at least one `output_format` block, and caps a prompt block at 4000 characters. A graph without `output_format` produces prose the signal parser silently drops, once per slot.
-5. **Tools** — every `selected_tools` entry must exist in `CURATED_TOOLS` and must not be `web_search`.
-6. **Shared invariants** — `assertSingleLlmStage()` and `assertNoPrevOutputPlaceholder()` from `recipes-validators.ts`, the same guards the save and fork APIs use.
+2. **Blocks** — every block needs a known `type` (`prompt`/`news`/`memories`/`technicals`/`output_format`) and a non-empty string `id`; `prompt` needs string `text`, `news` needs an array `contains` plus a finite `recency_hours`, and `technicals` needs an array `rules`. Anything else is `unknown or malformed block`.
+3. **Block contract** — block ids must be unique, an `output_format` block must exist, it must be **last**, and a prompt block is capped at 4000 characters.
+4. **Tools** — every `selected_tools` entry must exist in `CURATED_TOOLS` and must not be `web_search`.
+5. **Shared invariants** — `assertSingleLlmStage()` and `assertNoPrevOutputPlaceholder()` from `recipes-validators.ts`, the same guards the save and fork APIs use.
 
-The result is normalized (name trimmed and capped at 40 chars, description at 200) and typed as `PushStrategy`. The engine enforces the same contract independently through the `PushStrategy.enforce_block_contract` model validator in `apps/engine/recipes/push_schema.py` (unique ids, exactly one `output_format`, normalized last, zero-block legacy graphs deliberately still valid).
+The result is normalized (name trimmed and capped at 40 chars, description at 200) and typed as `PushStrategy`.
 
 ## Parsing (`parseCompilerReply`)
 
@@ -46,7 +45,7 @@ The result is normalized (name trimmed and capped at 40 chars, description at 20
 
 ## Degrade, Never Dead-End (`fallbackReply`)
 
-`compileStrategy()` (`compiler-api.ts`) attempts the proxy call twice. On the second attempt it echoes the previous error plus a "return the strict JSON shape only" turn. If both attempts fail it returns `fallbackReply(...)`, which validates `STARTER_RECIPES[0]` through the same `validateStrategy` and returns it as an `ok` reply with `fallback: true`. The UI renders that as a `CLOSEST WORKING TEMPLATE` badge instead of `RECIPE COMPILED`; the homepage `interpretReply` says a starter was loaded rather than passing it off as the visitor's idea.
+`compileStrategy()` (`compiler-api.ts`) attempts the proxy call twice. On the second attempt it echoes the previous error plus a "return the strict JSON shape only" turn. If both attempts fail it returns `fallbackReply(...)`, which validates `STARTER_RECIPES[0]` through the same `validateStrategy` and returns it as an `ok` reply with `fallback: true`. The UI renders that as a `CLOSEST WORKING TEMPLATE` badge instead of `RECIPE COMPILED`.
 
 ## Server Function & Metering (`compileStrategyFn`)
 
@@ -74,12 +73,11 @@ Client-supplied roles are filtered to `user`/`assistant` only and each turn is t
 
 ## Tests
 
-`apps/web/src/features/recipes/builder/compiler.test.ts` covers the manifest (no `web_search`, all five blocks listed, hard constraints present, `target` taught and `value` absent), `validateStrategy` (accepts a valid recipe; rejects a two-stage graph, a missing `output_format`, a disallowed tool, an invented block type, a non-`3h` cadence, duplicate block ids, a technicals rule carrying `value`, and a memories block whose `contains` is not a keyword list), `normalizeBlockOrder` (a terminal block stored first is moved last; an already-correct order is untouched), `parseCompilerReply` (fenced JSON, question with options, declined with closest, prose throws, an `ok` reply with an invalid graph throws), `fallbackReply` (produces a runnable single-stage template), and `buildConversation` (system prompt first, turn order preserved). `apps/web/src/features/recipes/utils/local-draft.test.ts` covers draft round-trip, malformed storage, a non-single-stage draft, clearing, and pending-idea save/load/clear.
+`apps/web/src/features/recipes/builder/compiler.test.ts` covers the manifest (no `web_search`, all five blocks listed, hard constraints present), `validateStrategy` (accepts a valid recipe; rejects a two-stage graph, a missing `output_format`, a disallowed tool, an invented block type, and a non-`3h` cadence), `parseCompilerReply` (fenced JSON, question with options, declined with closest, prose throws, an `ok` reply with an invalid graph throws), `fallbackReply` (produces a runnable single-stage template), and `buildConversation` (system prompt first, turn order preserved). `apps/web/src/features/recipes/utils/local-draft.test.ts` covers draft round-trip, malformed storage, a non-single-stage draft, clearing, and pending-idea save/load/clear.
 
 ## Related
 
 - [[entities/recipe-studio]] — the studio the compiled recipe opens in, and the `/build` route
-- [[entities/recipe-playground]] — the homepage one-line path into this compiler
 - [[concepts/recipe-builder-usage]] — the 25/day compile meter this flow spends
 - [[concepts/state-machines]] — where `RecipeSaveState` and `BacktestError` lifecycles are registered
 - [[entities/free-llm-proxy]] — the `auto-go` endpoint the compiler calls

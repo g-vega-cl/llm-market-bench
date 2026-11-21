@@ -36,7 +36,6 @@ def _sample_push_strategy() -> PushStrategy:
                 "blocks": [
                     {"id": "b1", "type": "prompt", "text": "Analyze NVDA."},
                     {"id": "b2", "type": "news", "contains": ["NVDA"], "recency_hours": 48},
-                    {"id": "b3", "type": "output_format"},
                 ],
             }
         ],

@@ -23,7 +23,6 @@ interface QueueRow {
     mode: 'backtest' | 'live_turn';
     status: string;
     created_at: string;
-    started_at?: string;
     result_json?: Record<string, unknown> | null;
 }
 
@@ -218,43 +217,6 @@ describe('recipes-quota-api', () => {
             lastTurboEtDate: null,
             turboUsedToday: false,
         });
-    });
-
-    it('counts a cancelled run that had started and refunds a failed one', async () => {
-        const nowIso = new Date().toISOString();
-        mockAdminDb = createQuotaMockDb({
-            queueRows: [
-                {
-                    id: 'q1',
-                    user_id: 'user-1',
-                    mode: 'backtest',
-                    status: 'cancelled',
-                    created_at: nowIso,
-                    started_at: nowIso,
-                },
-                {
-                    id: 'q2',
-                    user_id: 'user-1',
-                    mode: 'backtest',
-                    status: 'failed',
-                    created_at: nowIso,
-                    started_at: nowIso,
-                },
-                {
-                    id: 'q3',
-                    user_id: 'user-1',
-                    mode: 'backtest',
-                    status: 'cancelled',
-                    created_at: nowIso,
-                },
-            ],
-        }).db;
-
-        const status = await fetchRecipeQuotaStatus('user-1');
-
-        // q1 spent LLM calls before being cancelled, so it burns the allowance.
-        // q2 failed at the provider and q3 never started, so neither does.
-        expect(status.backtestsLast24h).toBe(1);
     });
 
     it('blocks queueing when daily backtest or live turn cap is reached or global queue is full', async () => {

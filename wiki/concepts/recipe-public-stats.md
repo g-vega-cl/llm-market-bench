@@ -5,7 +5,7 @@ category: concept
 
 # Recipe Public Stats & Desk
 
-`fetchPublicDesk` (`apps/web/src/features/recipes/api/public-board-api.ts`) assembles the public recipe desk payload. It reads only materialised rows — never the execution queue — so the request path performs zero compute.
+`fetchPublicDesk` (`apps/web/src/features/recipes/api/public-board-api.ts`) assembles the public recipe desk payload served to the homepage. It reads only materialised rows — never the execution queue — so the request path performs zero compute.
 
 ## PublicDesk Contract
 
@@ -44,12 +44,11 @@ The spotlight is the most recently active card that has a written description: i
 
 ## Desk Rendering
 
-The desk is no longer the homepage. `/` is the [[entities/recipe-playground]] bot builder; the public board lives at `/live-desk` (`apps/web/src/routes/live-desk.tsx`), which loads through the same `getHomePayload()` server function and renders two regions:
+`RecipeDeskHomePage` renders three regions:
 
-1. **Every running bot** — a `BotRow` `<li>` per card: name, return, `vs SPY`, open-position count, and the last action (or `no fills yet`). The header line reads `{liveCount} live · {beatSpyCount} beating SPY · losers are published beside winners.`
-2. **Agent portfolios, same window** — `TopPortfolios` receives `rows`, `medianReturnPct`, `worst`, `spy`, `trackedCount`, `windowDays`, and `degraded` (see [[concepts/portfolio-leaderboard-view]]).
-
-The homepage keeps a compact `ProofStrip` instead: `pickProof(leaderboard)` publishes the top row and the board's own `worst` row side by side with the as-of date, plus a `Full desk →` link to `/live-desk`.
+1. **Hero proof** — `BuildProof` receives the spotlight and the fork handler, replacing the old equity-chart hero.
+2. **Leaderboard** — `TopPortfolios` receives `rows`, `medianReturnPct`, `worst`, `spy`, `trackedCount`, `windowDays`, and `degraded` (see [[concepts/portfolio-leaderboard-view]]).
+3. **Live bots tape** — `BotRow` renders one `<li>` per bot: LIVE badge, name, the owner's description (or the last action), return, `vs SPY`, open-position count, the model label, and a Fork button.
 
 ## Pagination Discipline
 
@@ -60,7 +59,7 @@ The public-stats reads follow the same pagination discipline as the runner's enq
 
 ## Analytics
 
-The activation funnel's client-side terminus is the `run_queued` event, added to `AnalyticsEvent` in `apps/web/src/lib/analytics.ts` and fired from `RecipeStudioPage` immediately after a backtest job is enqueued (`track(posthog, 'run_queued', { recipeId, jobId })`). The runner settles the job server-side, where no PostHog client exists. The playground adds its own funnel events (`playground_run`, `playground_run_blocked`, `playground_preset_applied`, `playground_describe_used`, `playground_describe_failed`, `describe_it_failed`).
+The activation funnel's client-side terminus is the `run_queued` event, added to `AnalyticsEvent` in `apps/web/src/lib/analytics.ts` and fired from `RecipeStudioPage` immediately after a backtest job is enqueued (`track(posthog, 'run_queued', { recipeId, jobId })`). The runner settles the job server-side, where no PostHog client exists.
 
 ## Tests
 
@@ -68,8 +67,7 @@ The activation funnel's client-side terminus is the `run_queued` event, added to
 
 ## Related
 
-- [[entities/web-app]] — dashboard hosting `/live-desk`
-- [[entities/recipe-playground]] — the homepage builder that replaced the desk
+- [[entities/web-app]] — dashboard hosting the desk
 - [[entities/recipe-studio]] — recipe builder that writes descriptions and enqueues runs
 - [[concepts/portfolio-leaderboard-view]] — leaderboard lanes rendered beside the desk
 - [[concepts/zero-frontend-compute]] — materialised rows only in the request path

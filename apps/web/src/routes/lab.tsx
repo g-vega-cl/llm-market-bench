@@ -34,18 +34,6 @@ export const LAB_CATEGORIES: LabCategory[] = [
                     'Public read-only walkthrough of a 30-slot point-in-time strategy backtest before signing in.',
             },
             {
-                to: '/build',
-                label: 'Build by Conversation',
-                description:
-                    'Describe a strategy in plain English and the compiler assembles the five blocks for you.',
-            },
-            {
-                to: '/live-desk',
-                label: 'Live Desk',
-                description:
-                    'Every public bot ranked over the same window, with the worst performer published beside the best.',
-            },
-            {
                 to: '/autoresearch',
                 label: 'Auto-Research',
                 description:

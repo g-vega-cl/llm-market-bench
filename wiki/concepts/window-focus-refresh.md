@@ -7,7 +7,7 @@ category: concept
 
 Window focus refresh keeps dashboard data fresh without background polling. When the user returns to the tab — either by focusing the browser window or by making a hidden tab visible again — the app re-runs the current route's loaders so stale portfolio values, market feeling, barometer, and tape snapshots are replaced with current data.
 
-The mechanism lives in the reusable hook `apps/web/src/features/home/hooks/useWindowFocusRefresh.ts`. The homepage route (`apps/web/src/routes/index.tsx`) no longer attaches it: `/` now renders the [[entities/recipe-playground]] builder, whose data is a server-rendered snapshot refreshed by navigation. The hook remains available for any route that wants event-driven loader invalidation.
+The mechanism lives in the reusable hook `apps/web/src/features/home/hooks/useWindowFocusRefresh.ts` and is wired into the homepage route component (`apps/web/src/routes/index.tsx`).
 
 ## The Problem It Solves
 
@@ -36,7 +36,7 @@ The `onRefresh` callback is stored in a ref and updated on every render, so the 
 
 When a `posthog` client is supplied, each successful refresh also:
 
-- calls `posthog.reloadFeatureFlags()` so feature-flag evaluation reflects flag changes made while the tab was backgrounded, and
+- calls `posthog.reloadFeatureFlags()` so feature-flag evaluation (e.g. the homepage background experiment, see [[entities/shader-background]]) reflects flag changes made while the tab was backgrounded, and
 - captures the analytics event `window_focus_refreshed` with `{ path: '/' }`.
 
 Either method is optional and invoked defensively, so a partial or missing client never breaks the refresh path. Identity and session lifecycle behavior are documented in [[concepts/posthog-stealth-proxy]].
@@ -47,7 +47,7 @@ Passing `enabled: false` skips listener registration entirely (both listeners ar
 
 ## Route Wiring
 
-A route attaches the hook by passing its own invalidation callback:
+`RouteComponent` in `apps/web/src/routes/index.tsx` attaches the hook:
 
 ```tsx
 const router = useRouter();
@@ -61,16 +61,16 @@ useWindowFocusRefresh({
 });
 ```
 
-`router.invalidate()` re-runs the active route's loaders, so every datum the loader assembles is refetched through the existing server functions. No bespoke refetch logic is added, and the refresh inherits the same caching and fallback semantics described in [[entities/web-app]] and [[concepts/rendering-strategies]].
+`router.invalidate()` re-runs the active route's loaders, so every datum the homepage loader assembles — market feeling, active portfolios, benchmark barometer, and intraday tape bars — is refetched through the existing server functions. No bespoke refetch logic is added, and the refresh inherits the same caching and fallback semantics described in [[entities/web-app]] and [[concepts/rendering-strategies]].
 
 ## Testing
 
 - `apps/web/src/features/home/hooks/useWindowFocusRefresh.test.ts` covers focus-triggered refresh, visibility-triggered refresh, the hidden-document guard, throttle suppression and re-arm, PostHog flag reload plus telemetry capture, listener cleanup on unmount, and the `enabled: false` opt-out. Timers are faked so the 5-second throttle is exercised deterministically.
+- `apps/web/src/routes/-index.test.tsx` renders `RouteComponent` with mocked router and PostHog hooks and asserts that a focus event (after the cooldown) calls `router.invalidate()` exactly once alongside `reloadFeatureFlags()` and the `window_focus_refreshed` capture.
 
 ## Related
 
-- [[entities/web-app]] — the dashboard that hosts the routes this hook can serve
-- [[entities/recipe-playground]] — the current homepage, which renders a server snapshot instead
+- [[entities/web-app]] — the homepage route that consumes the hook
 - [[concepts/posthog-stealth-proxy]] — feature flag reload and telemetry conventions
 - [[concepts/rendering-strategies]] — loader and hybrid-SSR data flow the refresh re-invokes
 - [[concepts/performance-auditing-strategy]] — why event-driven refresh beats interval polling

@@ -256,10 +256,7 @@ async def test_run_hourly_cycle_drains_real_worker_without_nested_event_loop_cra
                     "id": "s1",
                     "title": "Stage 1",
                     "selected_tools": [],
-                    "blocks": [
-                        {"id": "b1", "type": "prompt", "text": "Analyze NVDA"},
-                        {"id": "b2", "type": "output_format"},
-                    ],
+                    "blocks": [{"id": "b1", "type": "prompt", "text": "Analyze NVDA"}],
                 }
             ],
         },

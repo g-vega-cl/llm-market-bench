@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 let mockSupabaseClient: Record<string, unknown> | null = null;
 vi.mock('~/lib/db', () => ({
+    DEFAULT_ARCHIVE_DB_URL: 'https://archive.example.test',
     getDbBrowserClient: vi.fn(() => mockSupabaseClient),
 }));
 

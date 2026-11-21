@@ -226,6 +226,35 @@
             0 0 0 2px var(--color-accent-dark);
     }
 
+    /* Homepage single-screen twilight hero: fills viewport below sticky nav (62px)
+       with zero phantom scroll and paints the exact dusk sky gradient on SSR. */
+    .home-hero-viewport {
+        min-height: calc(100dvh - 3.875rem);
+    }
+
+    .home-twilight-sky {
+        background: linear-gradient(
+            180deg,
+            #0c1715 0%,
+            #142622 24%,
+            #23413b 45%,
+            #45675f 64%,
+            #819587 78%,
+            #b59a78 88%,
+            #22332e 100%
+        );
+    }
+
+    .home-hero-heading {
+        text-shadow:
+            0 2px 14px rgba(8, 16, 14, 0.72),
+            0 1px 0 rgba(8, 16, 14, 0.9);
+    }
+
+    .home-hero-copy {
+        text-shadow: 0 1px 10px rgba(8, 16, 14, 0.78);
+    }
+
     .voxel-badge {
         border-top: 1px solid var(--color-voxel-bevel-hi);
         border-left: 1px solid var(--color-voxel-bevel-hi);

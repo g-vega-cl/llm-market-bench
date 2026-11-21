@@ -26,6 +26,13 @@ export interface Material {
     glow: boolean;
 }
 
+export interface WorldFaces {
+    /** Visible island faces sorted back-to-front: [sortKey, x, y, z, face, idx, ao]. */
+    island: Array<[number, number, number, number, number, number, number]>;
+    /** Visible 3D cloud slab faces sorted back-to-front: [sortKey, x, y, z, face, idx, ao]. */
+    clouds: Array<[number, number, number, number, number, number, number]>;
+}
+
 export interface GardenWorld {
     /** 1 where a voxel exists. */
     solid: Uint8Array;
@@ -112,9 +119,9 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         cloudIds.push(id);
         return id;
     };
-    const CLOUD = cloudMat('#cfdcd6');
-    const CLOUD2 = cloudMat('#b6c9c2');
-    const CLOUD3 = cloudMat('#edf3ef');
+    const CLOUD_MID = cloudMat('#cad6cf');
+    const CLOUD_UNDERSIDE = cloudMat('#7d9490');
+    const CLOUD_TOP = cloudMat('#f4ebd8');
     const SPROUT = mat('#5c9b57');
 
     /* grid --------------------------------------------------------------- */
@@ -453,51 +460,53 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         put(x, y, h + 1, t < 0.5 ? FLOWER1 : t < 0.8 ? FLOWER2 : FLOWER3);
     }
 
-    /* 6. clouds ---------------------------------------------------------- */
-    function cloudBlob(cx: number, cy: number, cz: number, rx: number, ry: number, rz: number) {
-        for (let z = -Math.ceil(rz); z <= Math.ceil(rz); z++)
-            for (let y = -Math.ceil(ry); y <= Math.ceil(ry); y++)
-                for (let x = -Math.ceil(rx); x <= Math.ceil(rx); x++) {
-                    const d = (x * x) / (rx * rx) + (y * y) / (ry * ry) + (z * z) / (rz * rz);
-                    if (d > 1) continue;
-                    put(cx + x, cy + y, cz + z, z > 0 ? (d < 0.45 ? CLOUD3 : CLOUD) : CLOUD2);
+    /* 6. flat-bottomed Minecraft voxel cloud slabs ----------------------- */
+    function cloudSlab(
+        x0: number,
+        y0: number,
+        z0: number,
+        w: number,
+        d: number,
+        h: number,
+        crown?: { dx: number; dy: number; w: number; d: number },
+    ) {
+        const bx = Math.min(Math.max(x0, 2), SX - w - 3);
+        const by = Math.min(Math.max(y0, 2), SY - d - 3);
+        const bz = Math.min(Math.max(z0, 2), SZ - h - (crown ? 4 : 3));
+
+        for (let k = 0; k < h; k++) {
+            const matId = k === 0 ? CLOUD_UNDERSIDE : k === h - 1 ? CLOUD_TOP : CLOUD_MID;
+            for (let j = 0; j < d; j++) {
+                for (let i = 0; i < w; i++) {
+                    if (!filled(bx + i, by + j, bz + k)) {
+                        put(bx + i, by + j, bz + k, matId);
+                    }
                 }
+            }
+        }
+
+        if (crown) {
+            const cx = bx + crown.dx;
+            const cy = by + crown.dy;
+            const cz = bz + h;
+            for (let j = 0; j < crown.d; j++) {
+                for (let i = 0; i < crown.w; i++) {
+                    if (!filled(cx + i, cy + j, cz)) {
+                        put(cx + i, cy + j, cz, CLOUD_TOP);
+                    }
+                }
+            }
+        }
     }
-    const cloudSpots: Array<[number, number, number, number, number, number]> = [
-        [4, 6, 66, 9, 7, 2],
-        [26, 2, 68, 8, 6, 2],
-        [52, 4, 70, 9, 7, 2],
-        [78, 8, 66, 8, 6, 2],
-        [100, 18, 68, 9, 7, 2],
-        [2, 34, 70, 8, 6, 2],
-        [98, 44, 66, 9, 7, 2],
-        [6, 62, 68, 8, 6, 2],
-        [96, 70, 70, 9, 7, 2],
-        [20, 96, 66, 8, 6, 2],
-        [52, 100, 68, 9, 7, 2],
-        [82, 98, 70, 8, 6, 2],
-    ];
-    for (const [cx, cy, cz, rx, ry, rz] of cloudSpots) {
-        // inset so the whole blob fits the grid: a clipped cloud reads as a cut
-        const bx = Math.min(Math.max(cx, Math.ceil(rx) + 1), SX - Math.ceil(rx) - 2);
-        const by = Math.min(Math.max(cy, Math.ceil(ry) + 1), SY - Math.ceil(ry) - 2);
-        const bz = Math.min(cz, SZ - Math.ceil(rz) - 3);
-        cloudBlob(bx, by, bz, rx, ry, rz);
-        cloudBlob(
-            Math.min(
-                Math.max(bx + ri(-8, 8), Math.ceil(rx * 0.5) + 1),
-                SX - Math.ceil(rx * 0.5) - 2,
-            ),
-            Math.min(
-                Math.max(by + ri(-5, 5), Math.ceil(ry * 0.5) + 1),
-                SY - Math.ceil(ry * 0.5) - 2,
-            ),
-            Math.min(bz + 1, SZ - Math.ceil(rz) - 2),
-            rx * 0.5,
-            ry * 0.5,
-            rz + 1,
-        );
-    }
+
+    // Sparse, balanced flat-bottomed cloud slabs flanking the mid/lower perimeter
+    // so the upper twilight sky stays clear and calm behind the hero headline.
+    cloudSlab(4, 34, 34, 15, 9, 2, { dx: 3, dy: 2, w: 9, d: 5 });
+    cloudSlab(7, 72, 20, 16, 10, 2, { dx: 4, dy: 2, w: 8, d: 5 });
+    cloudSlab(74, 6, 36, 16, 10, 2, { dx: 3, dy: 2, w: 9, d: 6 });
+    cloudSlab(82, 32, 24, 14, 9, 2, { dx: 3, dy: 2, w: 7, d: 5 });
+    cloudSlab(68, 82, 14, 16, 9, 2, { dx: 3, dy: 2, w: 9, d: 5 });
+    cloudSlab(22, 6, 40, 17, 8, 2, { dx: 4, dy: 2, w: 9, d: 4 });
 
     /* anchors ------------------------------------------------------------ */
     const petals: Array<[number, number, number]> = [];
@@ -508,13 +517,13 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         [CX - 10, CY - 26],
         [PX, PY],
     ];
-    for (let i = 0; i < 70; i++) {
+    for (let i = 0; i < 18; i++) {
         const s = petalSrc[i % petalSrc.length];
-        petals.push([s[0] + ri(-7, 7), s[1] + ri(-6, 6), ri(22, 40)]);
+        petals.push([s[0] + ri(-7, 7), s[1] + ri(-6, 6), ri(22, 38)]);
     }
 
     const glints: Array<[number, number, number]> = [];
-    for (let i = 0; i < 46; i++) {
+    for (let i = 0; i < 40; i++) {
         const gx = Math.round(POND.x + (rnd() * 2 - 1) * POND.rx * 0.8);
         const gy = Math.round(POND.y + (rnd() * 2 - 1) * POND.ry * 0.8);
         const h = heightAt(gx, gy);
@@ -536,4 +545,66 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         lamps,
         voxelCount,
     };
+}
+
+/**
+ * Extracts visible voxel faces with precomputed ambient occlusion and sorts
+ * them into painter's order once per world build, avoiding a 778k-voxel scan
+ * on every viewport resize.
+ */
+export function extractWorldFaces(world: GardenWorld): WorldFaces {
+    const cloudSet = new Set(world.cloudMaterials);
+    const isCloud = (id: number) => cloudSet.has(id);
+
+    const island: WorldFaces['island'] = [];
+    const clouds: WorldFaces['clouds'] = [];
+
+    const solidAt = (x: number, y: number, z: number) =>
+        x >= 0 &&
+        x < SX &&
+        y >= 0 &&
+        y < SY &&
+        z >= 0 &&
+        z < SZ &&
+        world.solid[(z * SY + y) * SX + x] === 1;
+
+    const occlusion = (x: number, y: number, z: number, face: number) => {
+        let n = 0;
+        if (face === 0) {
+            if (solidAt(x + 1, y, z + 1)) n++;
+            if (solidAt(x - 1, y, z + 1)) n++;
+            if (solidAt(x, y + 1, z + 1)) n++;
+            if (solidAt(x, y - 1, z + 1)) n++;
+            return 1 - n * 0.055;
+        }
+        if (face === 1) {
+            if (solidAt(x, y + 1, z + 1)) n++;
+            if (solidAt(x, y + 1, z - 1)) n++;
+            if (solidAt(x - 1, y + 1, z)) n++;
+            return 1 - n * 0.075;
+        }
+        if (solidAt(x + 1, y, z + 1)) n++;
+        if (solidAt(x + 1, y, z - 1)) n++;
+        if (solidAt(x + 1, y + 1, z)) n++;
+        return 1 - n * 0.075;
+    };
+
+    for (let z = 0; z < SZ; z++) {
+        for (let y = 0; y < SY; y++) {
+            for (let x = 0; x < SX; x++) {
+                const i = (z * SY + y) * SX + x;
+                if (!world.solid[i]) continue;
+                const bucket = isCloud(world.material[i]) ? clouds : island;
+                const key = x + y + z;
+                if (!solidAt(x, y, z + 1)) bucket.push([key, x, y, z, 0, i, occlusion(x, y, z, 0)]);
+                if (!solidAt(x, y + 1, z)) bucket.push([key, x, y, z, 1, i, occlusion(x, y, z, 1)]);
+                if (!solidAt(x + 1, y, z)) bucket.push([key, x, y, z, 2, i, occlusion(x, y, z, 2)]);
+            }
+        }
+    }
+
+    island.sort((a, b) => a[0] - b[0]);
+    clouds.sort((a, b) => a[0] - b[0]);
+
+    return { island, clouds };
 }

@@ -304,3 +304,71 @@ class AuditDB:
             "providers": providers_stats,
             "recent_calls": recent_logs,
         }
+
+    def get_logs(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        status_code: int | None = None,
+        provider: str | None = None,
+        billing: str | None = None,
+    ) -> dict[str, Any]:
+        """Return paginated call_logs with optional status/provider/billing filters."""
+        safe_limit = max(1, min(int(limit), 200))
+        safe_offset = max(0, int(offset))
+
+        clauses: list[str] = []
+        params: list[Any] = []
+        if status_code is not None:
+            clauses.append("status_code = ?")
+            params.append(status_code)
+        if provider:
+            clauses.append("routed_provider = ?")
+            params.append(provider)
+        if billing:
+            clauses.append("billing = ?")
+            params.append(billing)
+
+        where_sql = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        conn = self._get_connection()
+        total = conn.execute(
+            f"SELECT COUNT(*) FROM call_logs {where_sql}",  # noqa: S608 - static clauses
+            params,
+        ).fetchone()[0]
+        rows = conn.execute(
+            f"""
+            SELECT id, timestamp, requested_model, routed_provider, routed_model,
+                   prompt_tokens, completion_tokens, total_tokens, latency_ms,
+                   status_code, failover_chain, error_message, client_ip,
+                   user_agent, purpose, prompt_preview, is_stream,
+                   usage_available, ttft_ms, duration_ms, stream_completed, billing
+            FROM call_logs
+            {where_sql}
+            ORDER BY timestamp DESC, rowid DESC
+            LIMIT ? OFFSET ?
+            """,  # noqa: S608 - static clauses
+            [*params, safe_limit, safe_offset],
+        ).fetchall()
+        if self._persistent_conn is None:
+            conn.close()
+
+        logs: list[dict[str, Any]] = []
+        for row in rows:
+            item = dict(row)
+            raw_chain = item.get("failover_chain")
+            if isinstance(raw_chain, str):
+                try:
+                    parsed = json.loads(raw_chain)
+                    item["failover_chain"] = parsed if isinstance(parsed, list) else []
+                except json.JSONDecodeError:
+                    item["failover_chain"] = []
+            elif not isinstance(raw_chain, list):
+                item["failover_chain"] = []
+            logs.append(item)
+
+        return {
+            "total": int(total),
+            "limit": safe_limit,
+            "offset": safe_offset,
+            "logs": logs,
+        }

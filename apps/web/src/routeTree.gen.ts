@@ -23,6 +23,7 @@ import { Route as GeneratedNewslettersRouteImport } from './routes/generated-new
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
 import { Route as LabRouteImport } from './routes/lab'
 import { Route as LiveTraderRouteImport } from './routes/live-trader'
+import { Route as LlmLogsRouteImport } from './routes/llm-logs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as RecipesDemoRouteImport } from './routes/recipes-demo'
@@ -118,6 +119,11 @@ const LabRoute = LabRouteImport.update({
 const LiveTraderRoute = LiveTraderRouteImport.update({
   id: '/live-trader',
   path: '/live-trader',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LlmLogsRoute = LlmLogsRouteImport.update({
+  id: '/llm-logs',
+  path: '/llm-logs',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -267,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
   '/live-trader': typeof LiveTraderRoute
+  '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/recipes-demo': typeof RecipesDemoRoute
@@ -308,6 +315,7 @@ export interface FileRoutesByTo {
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
   '/live-trader': typeof LiveTraderRoute
+  '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/recipes-demo': typeof RecipesDemoRoute
@@ -351,6 +359,7 @@ export interface FileRoutesById {
   '/how-it-works': typeof HowItWorksRoute
   '/lab': typeof LabRoute
   '/live-trader': typeof LiveTraderRoute
+  '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/recipes-demo': typeof RecipesDemoRoute
@@ -394,6 +403,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/lab'
     | '/live-trader'
+    | '/llm-logs'
     | '/login'
     | '/logout'
     | '/recipes-demo'
@@ -435,6 +445,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/lab'
     | '/live-trader'
+    | '/llm-logs'
     | '/login'
     | '/logout'
     | '/recipes-demo'
@@ -477,6 +488,7 @@ export interface FileRouteTypes {
     | '/how-it-works'
     | '/lab'
     | '/live-trader'
+    | '/llm-logs'
     | '/login'
     | '/logout'
     | '/recipes-demo'
@@ -520,6 +532,7 @@ export interface RootRouteChildren {
   HowItWorksRoute: typeof HowItWorksRoute
   LabRoute: typeof LabRoute
   LiveTraderRoute: typeof LiveTraderRoute
+  LlmLogsRoute: typeof LlmLogsRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   RecipesDemoRoute: typeof RecipesDemoRoute
@@ -641,6 +654,13 @@ declare module '@tanstack/react-router' {
       path: '/live-trader'
       fullPath: '/live-trader'
       preLoaderRoute: typeof LiveTraderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/llm-logs': {
+      id: '/llm-logs'
+      path: '/llm-logs'
+      fullPath: '/llm-logs'
+      preLoaderRoute: typeof LlmLogsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -880,6 +900,7 @@ const rootRouteChildren: RootRouteChildren = {
   HowItWorksRoute: HowItWorksRoute,
   LabRoute: LabRoute,
   LiveTraderRoute: LiveTraderRoute,
+  LlmLogsRoute: LlmLogsRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   RecipesDemoRoute: RecipesDemoRoute,

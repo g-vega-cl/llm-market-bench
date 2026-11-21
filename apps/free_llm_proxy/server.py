@@ -531,6 +531,26 @@ async def get_metrics(
     return db_metrics
 
 
+@app.get("/v1/logs")
+async def get_logs(
+    request: Request,
+    authorization: str | None = Header(None),
+    limit: int = 50,
+    offset: int = 0,
+    status_code: int | None = None,
+    provider: str | None = None,
+    billing: str | None = None,
+) -> dict[str, Any]:
+    verify_master_key(authorization, request=request)
+    return audit_db.get_logs(
+        limit=limit,
+        offset=offset,
+        status_code=status_code,
+        provider=provider,
+        billing=billing,
+    )
+
+
 @app.post("/v1/chat/completions")
 async def chat_completions(
     request: Request,

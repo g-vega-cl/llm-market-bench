@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **313**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **317**).
 
 ## Top Hotspots
 
@@ -17,17 +17,17 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 22 | 8 | 36.4% | 358 | 176 | **CRITICAL** |
 | `apps/web/src/routes/-__root.test.tsx` | 14 | 8 | 57.1% | 530 | 112 | **CRITICAL** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 21 | 5 | 23.8% | 328 | 105 | **CRITICAL** |
-| `apps/free_llm_proxy/server.py` | 18 | 5 | 27.8% | 777 | 90 | **HIGH** |
+| `apps/free_llm_proxy/server.py` | 19 | 5 | 26.3% | 795 | 95 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
-| `apps/engine/trading/test_live_intraday_agent.py` | 15 | 5 | 33.3% | 452 | 75 | **HIGH** |
+| `apps/engine/trading/test_live_intraday_agent.py` | 15 | 5 | 33.3% | 562 | 75 | **HIGH** |
+| `apps/web/src/routes/index.tsx` | 18 | 4 | 22.2% | 15 | 72 | **HIGH** |
 | `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 18 | 4 | 22.2% | 436 | 72 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 12 | 6 | 50.0% | 186 | 72 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 12 | 6 | 50.0% | 226 | 72 | **HIGH** |
-| `apps/engine/trading/live_intraday_agent.py` | 16 | 4 | 25.0% | 501 | 64 | **HIGH** |
+| `apps/engine/trading/live_intraday_agent.py` | 16 | 4 | 25.0% | 625 | 64 | **HIGH** |
 | `apps/web/src/components/ui/DefaultCatchBoundary.tsx` | 9 | 7 | 77.8% | 201 | 63 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | 14 | 4 | 28.6% | 383 | 56 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 13 | 4 | 30.8% | 973 | 52 | **HIGH** |
-| `apps/web/src/routes/index.tsx` | 17 | 3 | 17.6% | 15 | 51 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **313**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **317**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **313**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 313 | 100.0% |
+| `g-vega-cl` | 317 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **313**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 165 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 169 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

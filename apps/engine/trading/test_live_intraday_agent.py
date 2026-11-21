@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
 from trading.live_intraday_agent import (
     _extract_json_decision,
+    _format_tape_age,
+    build_session_context,
     calculate_technical_snapshot,
     execute_intraday_agent_step,
     fetch_active_candle,
@@ -18,6 +22,8 @@ from trading.live_intraday_agent import (
     query_multi_tier_llm_raw,
     truncate_reasoning_trace,
 )
+
+ET = ZoneInfo("America/New_York")
 
 
 def test_calculate_technical_snapshot():
@@ -520,3 +526,140 @@ async def test_execute_intraday_agent_step_isolated_from_audience_queue():
         user_content = posted_payload["messages"][1]["content"]
         assert "<audience_question" not in user_content
         assert "audience" not in user_content.lower()
+
+
+def _bar(time_iso: str, close: float = 580.5) -> dict[str, object]:
+    return {"time": time_iso, "open": close, "high": close + 1, "low": close - 1, "close": close, "volume": 1000}
+
+
+def test_build_session_context_weekend_flags_stale_tape():
+    # Saturday 2026-11-21 14:25 ET; newest print is Friday's 15:59 ET close.
+    now_et = datetime(2026, 11, 21, 14, 25, tzinfo=ET)
+    ctx = build_session_context([_bar("2026-11-20T20:59:00Z")], is_market_open=False, now_et=now_et)
+
+    assert ctx["state"] == "CLOSED"
+    assert ctx["phase"] == "weekend"
+    assert ctx["tape_age_minutes"] == pytest.approx(1346.0)
+    assert ctx["last_print"] == "Friday, Nov 20 2026, 15:59 ET"
+    assert "### SESSION STATE" in ctx["block"]
+    assert "Today is Saturday, Nov 21 2026, 14:25 ET, a weekend day" in ctx["block"]
+    assert "Latest tape print: Friday, Nov 20 2026, 15:59 ET — 22h 26m old" in ctx["block"]
+    assert "next regular session opens Monday, Nov 23 2026, 09:30 ET" in ctx["block"]
+    assert "static closing prints, not live quotes" in ctx["block"]
+
+
+def test_build_session_context_recomputes_for_a_later_weekend():
+    # The same code path must produce next weekend's dates with no code change.
+    now_et = datetime(2026, 11, 28, 10, 5, tzinfo=ET)
+    ctx = build_session_context([_bar("2026-11-27T20:59:00Z")], is_market_open=False, now_et=now_et)
+
+    assert "Today is Saturday, Nov 28 2026, 10:05 ET" in ctx["block"]
+    assert "next regular session opens Monday, Nov 30 2026, 09:30 ET" in ctx["block"]
+    assert "Latest tape print: Friday, Nov 27 2026, 15:59 ET" in ctx["block"]
+    assert "18h 6m old" in ctx["block"]
+    assert "Nov 21" not in ctx["block"]
+
+
+def test_build_session_context_open_session_has_no_block():
+    now_et = datetime(2026, 11, 18, 11, 0, tzinfo=ET)
+    ctx = build_session_context([_bar("2026-11-18T15:59:00Z")], is_market_open=True, now_et=now_et)
+
+    assert ctx["state"] == "OPEN"
+    assert ctx["phase"] == "regular_session"
+    assert ctx["block"] is None
+
+
+def test_build_session_context_weekday_after_hours_points_at_next_weekday_open():
+    now_et = datetime(2026, 11, 20, 18, 40, tzinfo=ET)
+    ctx = build_session_context([_bar("2026-11-20T20:59:00Z")], is_market_open=False, now_et=now_et)
+
+    assert ctx["phase"] == "after_hours"
+    assert "after the close" in ctx["block"]
+    assert "next regular session opens Monday, Nov 23 2026, 09:30 ET" in ctx["block"]
+
+
+def test_build_session_context_pre_market_points_at_same_day_open():
+    now_et = datetime(2026, 11, 23, 8, 15, tzinfo=ET)
+    ctx = build_session_context([_bar("2026-11-20T20:59:00Z")], is_market_open=False, now_et=now_et)
+
+    assert ctx["phase"] == "pre_market"
+    assert "before today's open" in ctx["block"]
+    assert "next regular session opens Monday, Nov 23 2026, 09:30 ET" in ctx["block"]
+
+
+def test_build_session_context_without_bars_says_no_tape():
+    now_et = datetime(2026, 11, 21, 9, 0, tzinfo=ET)
+    ctx = build_session_context([], is_market_open=False, now_et=now_et)
+
+    assert ctx["tape_age_minutes"] is None
+    assert "No tape data is available for this turn" in ctx["block"]
+
+
+def test_format_tape_age_units():
+    assert _format_tape_age(47) == "47m"
+    assert _format_tape_age(1106) == "18h 26m"
+    assert _format_tape_age(3000) == "2d 2h"
+    assert _format_tape_age(-12) == "0m"
+
+
+async def _run_step_capturing_prompt(is_market_open: bool) -> dict[str, str]:
+    """Run one hermetic turn and return the system/user prompts actually posted."""
+    mock_alpaca_data = MagicMock()
+    mock_sb = MagicMock()
+    mock_http = AsyncMock()
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps({"action": "HOLD", "conviction": 40, "thought": "t", "allocation_pct": 0})
+                }
+            }
+        ]
+    }
+    mock_http.post.return_value = mock_resp
+
+    with (
+        patch(
+            "trading.live_intraday_agent.fetch_intraday_bars",
+            new=AsyncMock(return_value=[_bar("2026-11-20T20:59:00Z")]),
+        ),
+        patch("trading.live_intraday_agent.aggregate_intraday_news", new=AsyncMock(return_value=[])),
+    ):
+        await execute_intraday_agent_step(
+            alpaca_data_client=mock_alpaca_data,
+            alpaca_trading_client=None,
+            sb_client=mock_sb,
+            http_client=mock_http,
+            ticker="SPY",
+            is_market_open=is_market_open,
+        )
+
+    payload = mock_http.post.call_args[1]["json"]
+    return {
+        "system": payload["messages"][0]["content"],
+        "user": payload["messages"][1]["content"],
+    }
+
+
+@pytest.mark.asyncio
+async def test_closed_session_prompt_injects_staleness_notice():
+    prompts = await _run_step_capturing_prompt(is_market_open=False)
+
+    assert prompts["user"].startswith("### SESSION STATE")
+    assert "Regular market session is CLOSED" in prompts["user"]
+    assert "Latest tape print:" in prompts["user"]
+    assert "static closing prints, not live quotes" in prompts["user"]
+    assert "stale closing print, not a live quote" in prompts["system"]
+    # The JSON contract must survive the extra system rule.
+    assert '"action": "BUY" | "SELL" | "HOLD"' in prompts["system"]
+
+
+@pytest.mark.asyncio
+async def test_open_session_prompt_has_no_staleness_notice():
+    prompts = await _run_step_capturing_prompt(is_market_open=True)
+
+    assert "SESSION STATE" not in prompts["user"]
+    assert "stale" not in prompts["system"].lower()
+    assert prompts["user"].startswith("### SPY 120-MINUTE TAPE SNAPSHOT")

@@ -13,6 +13,7 @@ import os
 import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import httpx
 
@@ -168,6 +169,16 @@ def _extract_json_decision(raw_text: str | None) -> dict[str, Any]:
 
 
 MAX_REASONING_TRACE_CHARS = 16000
+
+ET_TZ = ZoneInfo("America/New_York")
+REGULAR_SESSION_OPEN_MINUTES = 9 * 60 + 30
+
+STALE_TAPE_SYSTEM_RULE = (
+    "The regular market session is closed, so the tape below is a stale closing print, not a live quote.\n"
+    "Treat every price level as static reference only; never read live momentum, breakout, or reversal intent into it.\n"
+    "Real order routing is gated to regular session hours, so a BUY or SELL here is a paper-only annotation.\n"
+    "Default to HOLD unless genuinely new news or memory changes the thesis.\n"
+)
 
 
 def _extract_reasoning_tokens(data: dict[str, Any]) -> int | None:
@@ -388,6 +399,125 @@ async def fetch_active_candle(alpaca_data_client: Any, ticker: str = "SPY") -> d
         return None
 
 
+def _parse_tape_time(raw: Any) -> datetime | None:
+    """Parse an Alpaca bar timestamp string into an aware UTC datetime."""
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
+
+
+def _format_session_moment(moment: datetime) -> str:
+    """Render an ET datetime as 'Saturday, Nov 21 2026, 14:25 ET' (no zero padding)."""
+    return f"{moment:%A, %b} {moment.day} {moment:%Y, %H:%M} ET"
+
+
+def _format_tape_age(minutes: float) -> str:
+    """Render a tape age in the coarsest useful unit: 47m, 18h 26m, 2d 4h."""
+    total = max(0, int(round(minutes)))
+    if total < 60:
+        return f"{total}m"
+    hours, mins = divmod(total, 60)
+    if hours < 48:
+        return f"{hours}h {mins}m"
+    days, hours = divmod(hours, 24)
+    return f"{days}d {hours}h"
+
+
+def _next_regular_open(now_et: datetime) -> datetime:
+    """Return the next 09:30 ET weekday open strictly after now_et."""
+    for offset in range(8):
+        candidate = (now_et + timedelta(days=offset)).replace(hour=9, minute=30, second=0, microsecond=0)
+        if candidate.weekday() < 5 and candidate > now_et:
+            return candidate
+    return now_et + timedelta(days=1)
+
+
+def build_session_context(
+    bars: list[dict[str, Any]] | None,
+    is_market_open: bool,
+    now_et: datetime | None = None,
+) -> dict[str, Any]:
+    """Describe whether this turn sees a live tape or a stale closing print.
+
+    Every value is derived from the wall clock and the newest bar's own timestamp, so the
+    wording re-computes itself on each turn and stays correct for any future weekend.
+    """
+    moment = (now_et or datetime.now(ET_TZ)).astimezone(ET_TZ)
+    last_print = _parse_tape_time(bars[-1].get("time")) if bars else None
+    age_minutes = (
+        round((moment - last_print.astimezone(ET_TZ)).total_seconds() / 60.0, 1) if last_print is not None else None
+    )
+    minutes_now = moment.hour * 60 + moment.minute
+
+    if is_market_open:
+        phase = "regular_session"
+    elif moment.weekday() >= 5:
+        phase = "weekend"
+    elif minutes_now < REGULAR_SESSION_OPEN_MINUTES:
+        phase = "pre_market"
+    else:
+        phase = "after_hours"
+
+    next_open = _next_regular_open(moment)
+    context: dict[str, Any] = {
+        "state": "OPEN" if is_market_open else "CLOSED",
+        "phase": phase,
+        "label": _format_session_moment(moment),
+        "tape_age_minutes": age_minutes,
+        "last_print": _format_session_moment(last_print.astimezone(ET_TZ)) if last_print is not None else None,
+        "next_open": _format_session_moment(next_open),
+        "block": None,
+    }
+    if is_market_open:
+        return context
+
+    if phase == "weekend":
+        headline = (
+            f"- Regular market session is CLOSED. Today is {context['label']}, a weekend day; "
+            f"the next regular session opens {context['next_open']}."
+        )
+    elif phase == "pre_market":
+        headline = (
+            f"- Regular market session is CLOSED. It is {context['label']}, before today's open; "
+            f"the next regular session opens {context['next_open']}."
+        )
+    else:
+        headline = (
+            f"- Regular market session is CLOSED. It is {context['label']}, after the close; "
+            f"the next regular session opens {context['next_open']}."
+        )
+
+    if last_print is not None and age_minutes is not None:
+        tape_line = (
+            f"- Latest tape print: {context['last_print']} — {_format_tape_age(age_minutes)} old "
+            f"({age_minutes:.0f} minutes)."
+        )
+    else:
+        tape_line = (
+            "- No tape data is available for this turn; the technical snapshot below is a neutral "
+            "placeholder with no real price levels."
+        )
+
+    context["block"] = (
+        "### SESSION STATE\n"
+        f"{headline}\n"
+        f"{tape_line}\n"
+        "- These prices are static closing prints, not live quotes. No price discovery is happening, "
+        "and the tape will not move again until the next session opens.\n"
+        "- Do not extrapolate intraday momentum, breakouts, or reversals from a stale tape; read the "
+        "levels as static reference only.\n"
+        "- A BUY or SELL decided here cannot execute — order routing is gated to regular session hours "
+        "— so HOLD is preferred unless genuinely new news or memory changes the thesis."
+    )
+    return context
+
+
 async def execute_intraday_agent_step(
     alpaca_data_client: Any = None,
     alpaca_trading_client: Any = None,
@@ -405,6 +535,7 @@ async def execute_intraday_agent_step(
     # 1. Pull rolling 120m bars and calculate technical snapshot
     bars = await fetch_intraday_bars(alpaca_data_client, ticker=ticker, window_minutes=120)
     technicals = calculate_technical_snapshot(bars)
+    session_context = build_session_context(bars=bars, is_market_open=is_market_open)
 
     # 2. Gather deduplicated news and persist to database
     news_items = await aggregate_intraday_news(
@@ -454,6 +585,7 @@ async def execute_intraday_agent_step(
     system_prompt = (
         "You are an autonomous intraday quantitative trader managing a paper portfolio in SPY.\n"
         "Analyze the technical tape, news catalysts, past memories, and read-only market data to form your stance.\n"
+        f"{STALE_TAPE_SYSTEM_RULE if session_context['block'] else ''}"
         "Respond ONLY with valid JSON strictly matching this schema:\n"
         "{\n"
         '  "action": "BUY" | "SELL" | "HOLD",\n'
@@ -464,7 +596,9 @@ async def execute_intraday_agent_step(
         "}"
     )
 
+    session_preamble = f"{session_context['block']}\n\n" if session_context["block"] else ""
     user_prompt = (
+        f"{session_preamble}"
         f"### {ticker} 120-MINUTE TAPE SNAPSHOT:\n"
         f"- Last Price: ${technicals['last_close']:.2f} | VWAP: ${technicals['vwap']:.2f}\n"
         f"- RSI(14): {technicals['rsi_14']} | Trend: {technicals['trend']}\n\n"
@@ -522,6 +656,11 @@ async def execute_intraday_agent_step(
         "news_count": len(news_items),
         "bars_count": len(bars),
         "bars": bars,
+        "session_state": session_context["state"],
+        "session_phase": session_context["phase"],
+        "session_label": session_context["label"],
+        "tape_age_minutes": session_context["tape_age_minutes"],
+        "last_tape_print": session_context["last_print"],
         "queue_item_id": None,
         "audience_question": None,
         "portfolio": portfolio_summary,
@@ -555,6 +694,9 @@ async def execute_intraday_agent_step(
         "reasoning_tokens": reasoning_tokens,
         "order_id": str(order_id) if order_id else None,
         "technicals": technicals,
+        "session_state": session_context["state"],
+        "session_phase": session_context["phase"],
+        "tape_age_minutes": session_context["tape_age_minutes"],
         "queue_item_id": None,
         "portfolio": portfolio_summary,
     }

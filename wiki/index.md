@@ -98,6 +98,7 @@
 - [[entities/auto-wiki]] — Auto-wiki documentation generator (pre-commit LLM integration)
 - [[entities/engine]] — Python data engine (pipeline, analysis, execution)
 - [[entities/web-app]] — TanStack Start dashboard (React + TypeScript)
+- [[entities/llm-logs]] — private owner-only viewer for the free LLM proxy audit trail at `/llm-logs`
 - [[entities/database]] — Supabase PostgreSQL schema (pgvector, RLS)
 - [[entities/pipeline]] — Full daily pipeline from ingestion to feedback
 - [[entities/autoresearch]] — Karpathy-style autonomous prompt improvement loop

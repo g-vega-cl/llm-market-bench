@@ -1,4 +1,4 @@
-import { type AtmospherePhase, Button } from '@llm-market-bench/ui-design-system';
+import { type AtmospherePhase, Button, cn } from '@llm-market-bench/ui-design-system';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
     bakeFootFade,
@@ -11,17 +11,18 @@ import {
     type Firefly,
     type Petal,
     paintVoxelLayer,
+    pickCedarDriftColor,
+    pickCedarFloaterColor,
     type Scene,
     type SkyMote,
 } from './garden-renderer';
-import { PARTICLE_PRESETS } from './particle-presets';
-import { CX, CY, type ParticleMode, WORLD_METADATA, type WorldId } from './voxel-world';
-import { getWorldAndFaces } from './worlds';
+import { CEDAR_WORLD_ID, CEDAR_WORLD_META, CX, CY } from './voxel-world';
+import { getCedarWorldAndFaces } from './worlds';
 
 /**
- * Modular living diorama canvas: renders any of the 5 curated voxel worlds
- * across Matcha & Cedar market-session atmospheres (dawn, daylight, dusk,
- * after-hours) with 4-plane depth parallax and configurable particle physics.
+ * Panoramic Cedar Sanctuary diorama canvas: renders the wide floating highland
+ * cedar ridge across Matcha & Cedar market-session atmospheres (dawn, daylight,
+ * dusk, after-hours) with 4-plane depth parallax, drifting mist, and calm autumn leaves.
  */
 
 const IDLE_MS = 20_000;
@@ -29,8 +30,6 @@ const FRAME_INTERVAL_MS = 1000 / 30 - 1.5;
 
 export interface GardenBackdropProps {
     className?: string;
-    world?: WorldId;
-    particleMode?: ParticleMode;
     atmosphere?: AtmospherePhase;
     paused?: boolean;
     onPausedChange?: (paused: boolean) => void;
@@ -39,23 +38,17 @@ export interface GardenBackdropProps {
 
 export function GardenBackdrop({
     className,
-    world: worldProp = 'sakura-garden',
-    particleMode: particleModeProp,
     atmosphere = 'dusk',
     paused,
     onPausedChange,
     showControls = true,
 }: GardenBackdropProps) {
-    const activeParticleMode = particleModeProp ?? WORLD_METADATA[worldProp].particleMode;
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const [reduced, setReduced] = useState(false);
+    const [canvasReady, setCanvasReady] = useState(false);
     const sceneRef = useRef<Scene | null>(null);
     const atmosphereRef = useRef<AtmospherePhase>(atmosphere);
     atmosphereRef.current = atmosphere;
-    const worldRef = useRef<WorldId>(worldProp);
-    worldRef.current = worldProp;
-    const particleModeRef = useRef<ParticleMode>(activeParticleMode);
-    particleModeRef.current = activeParticleMode;
     const pausedPropRef = useRef<boolean | undefined>(paused);
     const onPausedChangeRef = useRef(onPausedChange);
     onPausedChangeRef.current = onPausedChange;
@@ -107,8 +100,6 @@ export function GardenBackdrop({
     const buildLayers = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const activeWorldId = worldRef.current;
-        const activeParticles = particleModeRef.current;
         const activeAtmosphere = atmosphereRef.current;
         const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
         const W = canvas.clientWidth;
@@ -120,18 +111,16 @@ export function GardenBackdrop({
         const prev = sceneRef.current;
         const sizeSame = prev !== null && prev.width === W && prev.height === H && prev.dpr === dpr;
         const atmoSame = sizeSame && prev.atmosphere === activeAtmosphere;
-        const voxelSame = atmoSame && prev.worldId === activeWorldId;
 
-        const { world, faces } = getWorldAndFaces(activeWorldId);
-        const worldMeta = WORLD_METADATA[activeWorldId];
-        const preset = PARTICLE_PRESETS[activeParticles];
+        const { world, faces } = getCedarWorldAndFaces();
 
-        const scale = Math.min(W / 96, H / 56);
+        // Panoramic framing: wide cedar ridge fills ~90% desktop width with un-smushed isometric pitch
+        const scale = Math.min(W / 92, H / 46);
         const originX = W * 0.5;
-        const originY = H * 0.8;
+        const originY = H * 0.68;
         const project = (x: number, y: number, z: number): [number, number] => [
             originX + (x - CX - (y - CY)) * scale * 0.5,
-            originY + (x - CX + (y - CY)) * scale * 0.28 - (z - 18) * scale * 0.4,
+            originY + (x - CX + (y - CY)) * scale * 0.34 - (z - 16) * scale * 0.46,
         ];
         const cloudSet = new Set(world.cloudMaterials);
         const lanternRadius = Math.max(8, scale * 2.4);
@@ -141,12 +130,12 @@ export function GardenBackdrop({
             return {
                 x,
                 y,
-                vy: scale * (0.4 + ((idx * 37) % 100) * 0.0065),
+                vy: scale * (0.36 + ((idx * 37) % 100) * 0.0055),
                 sway: 4 + ((idx * 53) % 10),
                 phase: (idx * 1.17) % 6.28,
                 depth: 0.1 + ((idx * 29) % 15) * 0.01,
-                size: Math.max(1, Math.round(scale * (0.09 + ((idx * 17) % 6) * 0.01))),
-                tint: idx % 2 === 0 ? preset.driftColors[0] : preset.driftColors[1],
+                size: Math.max(1.5, Math.round(scale * (0.09 + ((idx * 17) % 6) * 0.01))),
+                tint: pickCedarDriftColor(idx),
             };
         });
         const glints = world.glints.map(([wx, wy, wz], idx) => {
@@ -173,7 +162,7 @@ export function GardenBackdrop({
                 speed: 0.7 + (idx % 6) * 0.18,
                 phase: (idx * 0.97) % 6.28,
                 size: Math.max(1.5, Math.round(scale * 0.13)),
-                tint: idx % 3 === 0 ? preset.floaterColors[0] : preset.floaterColors[1],
+                tint: pickCedarFloaterColor(idx),
             };
         });
         const koi = world.koi.map(([wx, wy, wz], idx) => {
@@ -200,15 +189,15 @@ export function GardenBackdrop({
         }
 
         let lanternSprite = prev?.lanternSprite ?? null;
-        if (!(sizeSame && prev?.worldId === activeWorldId)) {
+        if (!sizeSame) {
             disposeCanvas(lanternSprite);
-            lanternSprite = bakeLanternSprite(lanternRadius, dpr, worldMeta.glowRgb);
+            lanternSprite = bakeLanternSprite(lanternRadius, dpr, CEDAR_WORLD_META.glowRgb);
         }
 
         let island = prev?.island ?? null;
         let cloudsFar = prev?.cloudsFar ?? null;
         let cloudsNear = prev?.cloudsNear ?? null;
-        if (!voxelSame) {
+        if (!atmoSame) {
             disposeCanvas(island);
             disposeCanvas(cloudsFar);
             disposeCanvas(cloudsNear);
@@ -252,8 +241,7 @@ export function GardenBackdrop({
             height: H,
             dpr,
             scale,
-            worldId: activeWorldId,
-            particleMode: activeParticles,
+            worldId: CEDAR_WORLD_ID,
             atmosphere: activeAtmosphere,
             sky,
             foot,
@@ -270,6 +258,7 @@ export function GardenBackdrop({
             skyMotes,
         };
         paintFrame(stateRef.current.elapsed, stateRef.current.parX, stateRef.current.parY);
+        setCanvasReady(true);
     }, [paintFrame]);
 
     const stop = useCallback(() => {
@@ -310,10 +299,13 @@ export function GardenBackdrop({
     }, [paintFrame, stop]);
 
     useEffect(() => {
-        const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const query =
+            typeof window.matchMedia === 'function'
+                ? window.matchMedia('(prefers-reduced-motion: reduce)')
+                : null;
         const s = stateRef.current;
         // System reduced-motion always wins over an un-toggled initial parent `paused={false}`
-        const initialPaused = query.matches || pausedPropRef.current === true;
+        const initialPaused = (query?.matches ?? false) || pausedPropRef.current === true;
         s.reduced = initialPaused;
         setReduced(initialPaused);
         if (initialPaused && pausedPropRef.current === false) {
@@ -372,7 +364,7 @@ export function GardenBackdrop({
         window.addEventListener('keydown', onKey);
         window.addEventListener('touchstart', onKey, { passive: true });
         document.addEventListener('visibilitychange', onVisibility);
-        query.addEventListener('change', onPreference);
+        query?.addEventListener('change', onPreference);
 
         return () => {
             window.removeEventListener('resize', onResize);
@@ -382,7 +374,7 @@ export function GardenBackdrop({
             window.removeEventListener('keydown', onKey);
             window.removeEventListener('touchstart', onKey);
             document.removeEventListener('visibilitychange', onVisibility);
-            query.removeEventListener('change', onPreference);
+            query?.removeEventListener('change', onPreference);
             window.clearTimeout(s.idle);
             stop();
             disposeSceneCanvases(sceneRef.current);
@@ -391,15 +383,10 @@ export function GardenBackdrop({
     }, [armIdle, buildLayers, paintFrame, start, stop]);
 
     useEffect(() => {
-        if (
-            sceneRef.current &&
-            (sceneRef.current.atmosphere !== atmosphere ||
-                sceneRef.current.worldId !== worldProp ||
-                sceneRef.current.particleMode !== activeParticleMode)
-        ) {
+        if (sceneRef.current && sceneRef.current.atmosphere !== atmosphere) {
             buildLayers();
         }
-    }, [activeParticleMode, atmosphere, buildLayers, worldProp]);
+    }, [atmosphere, buildLayers]);
 
     // Sync only explicit parent `paused` transitions after mount so initial reduced-motion state never races
     useEffect(() => {
@@ -445,10 +432,13 @@ export function GardenBackdrop({
         <>
             <canvas
                 ref={canvasRef}
-                className={className}
+                className={cn(
+                    'transition-opacity duration-200',
+                    canvasReady ? 'opacity-100' : 'opacity-0',
+                    className,
+                )}
                 data-testid="garden-backdrop"
-                data-world={worldProp}
-                data-particle-mode={activeParticleMode}
+                data-world={CEDAR_WORLD_ID}
                 data-atmosphere={atmosphere}
             />
             {showControls ? (

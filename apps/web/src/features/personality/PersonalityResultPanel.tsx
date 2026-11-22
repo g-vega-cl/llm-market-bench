@@ -1,6 +1,5 @@
 import { Badge, Button, Card } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import { WORLD_METADATA, type WorldId } from '../home/backdrop/voxel-world';
 import type { PushStrategy } from '../recipes/types';
 import {
     ARCHETYPE_IDS,
@@ -102,9 +101,7 @@ function BotRecommendationCard({
 
 export interface PersonalityResultPanelProps {
     result: QuizScoreResult;
-    savedHomepageWorld: WorldId | null;
     copiedLink: boolean;
-    onApplyHomepageWorld: (worldId: WorldId) => void;
     onCopyShareUrl: (archetypeId: ArchetypeId) => void;
     onRetake: () => void;
     onInspectArchetype: (archetypeId: ArchetypeId) => void;
@@ -117,9 +114,7 @@ export interface PersonalityResultPanelProps {
  */
 export function PersonalityResultPanel({
     result,
-    savedHomepageWorld,
     copiedLink,
-    onApplyHomepageWorld,
     onCopyShareUrl,
     onRetake,
     onInspectArchetype,
@@ -138,7 +133,7 @@ export function PersonalityResultPanel({
                             {`${result.primary.fitPercent}% style fit`}
                         </Badge>
                         <Badge colorScheme="neutral" variant="soft" size="sm">
-                            {`World: ${WORLD_METADATA[primaryArch.worldId].label}`}
+                            {`Best Bot: ${primaryArch.recipeName}`}
                         </Badge>
                     </div>
                     <h2 data-testid="archetype-title" className="text-sm font-bold text-voxel-ink">
@@ -150,25 +145,6 @@ export function PersonalityResultPanel({
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                    <Button
-                        type="button"
-                        variant="solid"
-                        colorScheme="accent"
-                        size="sm"
-                        data-testid="apply-homepage-world"
-                        onClick={() => onApplyHomepageWorld(primaryArch.worldId)}
-                    >
-                        {savedHomepageWorld === primaryArch.worldId
-                            ? `Homepage set: ${WORLD_METADATA[primaryArch.worldId].shortLabel}`
-                            : `Use ${WORLD_METADATA[primaryArch.worldId].shortLabel} on Homepage`}
-                    </Button>
-                    <Link
-                        to="/"
-                        search={{ world: primaryArch.worldId }}
-                        className="voxel-btn inline-flex items-center justify-center bg-voxel-surface px-3 py-1.5 text-xs font-normal text-voxel-ink hover:bg-voxel-elevated"
-                    >
-                        Preview Homepage
-                    </Link>
                     <Button
                         type="button"
                         variant="outline"
@@ -257,7 +233,7 @@ export function PersonalityResultPanel({
 
             <div className="flex flex-col gap-2 border-t-2 border-voxel-bevel-hi pt-4">
                 <p className="text-xs font-normal text-voxel-muted">
-                    Explore all 5 investing archetypes &amp; matching voxel dioramas:
+                    Explore all 5 investing archetypes:
                 </p>
                 <div className="flex flex-wrap gap-2">
                     {ARCHETYPE_IDS.map((id) => {
@@ -272,7 +248,7 @@ export function PersonalityResultPanel({
                                 colorScheme={active ? 'accent' : 'neutral'}
                                 onClick={() => onInspectArchetype(id)}
                             >
-                                {`${arch.title} · ${WORLD_METADATA[arch.worldId].shortLabel}`}
+                                {arch.title}
                             </Button>
                         );
                     })}

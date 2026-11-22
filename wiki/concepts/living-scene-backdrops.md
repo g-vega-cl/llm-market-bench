@@ -11,9 +11,9 @@ Expressive animated backdrops are permitted across **major page heroes and paral
 
 1. **Modular layered dioramas + ambient life** — Separate sky, midground scenery, and independent procedural micro-entities (clouds, fauna, footer sprites) into discrete layers. Never flat looping videos or static baked clips.
 2. **Containment & CTA scrims (zero glassmorphism)** — Clip animated stages inside `SceneStage` / `HeroBackground` (`overflow-hidden isolate`) with hard scroll ceilings so motion never bleeds into data tables. Protect CTAs with opaque/semi-opaque Matcha backing panels (`.scene-scrim` / `.voxel-card`, never `backdrop-blur`).
-3. **Dynamic atmosphere cycles** — Use `.scene-atmosphere-{dawn|daylight|dusk|after-hours}` and `resolveAtmospherePhase(date, mode)` from `@llm-market-bench/ui-design-system` (defaults to US Eastern market session `America/New_York`, optional `'local'` mode; pass a shared SSR timestamp or default `'dusk'`).
-4. **Motion roles & bans** — Declare `data-motion-role`: `background` (calm ambient depth), `reactive` (bounded pointer/hover), or `story` (bounded scroll hero/footer). Full-page *"Is the site"* WebGL takeovers and scroll-jacking are prohibited on data routes.
-5. **Resize resilience, perf & reduced motion** — Anchor parallax travel to container/`window.innerHeight` with resize invalidation (never document `maxScroll`). Use GPU-composited transforms or offscreen-baked canvas capped at `<= 30fps`, mark backdrops `aria-hidden="true"` + `pointer-events-none`, and honor `prefers-reduced-motion`.
+3. **Zero SSR/CSR flash & CLS invariance** — Route loaders (`apps/web/src/routes/index.tsx`, `apps/web/src/routes/personality.tsx`) resolve the US Eastern market atmosphere (`resolveAtmospherePhase(new Date(), 'market-et')`) server-side and pass `initialAtmosphere` into `useDioramaStage(initialAtmosphere)`. CSS `.scene-atmosphere-*` gradients match `ATMOSPHERE_PALETTES` stops pixel-for-pixel, and `<canvas>` cross-fades in cleanly once the first frame paints so SSR and CSR never produce layout shifts or sky flashes. See [[concepts/cumulative-layout-shift]].
+4. **Motion roles & bans** — Declare `data-motion-role`: `background` (calm ambient depth), `reactive` (bounded pointer/hover), or `story` (bounded scroll hero/footer). Full-page WebGL takeovers and scroll-jacking are prohibited on data routes.
+5. **Resize resilience, perf & reduced motion** — Anchor parallax travel to container/`window.innerHeight` with resize invalidation (never document `maxScroll`). Use offscreen-baked canvas capped at `<= 30fps`, mark backdrops `aria-hidden="true"` + `pointer-events-none`, and honor `prefers-reduced-motion`.
 
 ## SceneStage Layout Primitive
 
@@ -37,7 +37,7 @@ Expressive animated backdrops are permitted across **major page heroes and paral
 - Backdrop layer (`data-slot="scene-backdrop"`) is `aria-hidden="true"`, `pointer-events-none`, `absolute inset-0 z-0 overflow-hidden`, and only rendered when `backdrop` is supplied.
 - Foreground content sits in a `relative z-10 mx-auto w-full max-w-7xl min-w-0` wrapper.
 - The scrim panel (`data-slot="scene-scrim"`) uses `scene-scrim voxel-card rounded-none p-6 min-w-0` and never `backdrop-blur`.
-- The controls slot (`data-slot="scene-controls"`) is `pointer-events-auto absolute right-3 bottom-3 left-3 z-20 flex flex-wrap items-center justify-end gap-2`, rendered **outside** the `aria-hidden` backdrop layer so HUD buttons stay keyboard- and screen-reader-accessible. It spans the full stage width and wraps, so a multi-button HUD cluster (world switcher, atmosphere switcher, motion toggle) never overflows a narrow viewport.
+- The controls slot (`data-slot="scene-controls"`) is `pointer-events-auto absolute right-3 bottom-3 left-3 z-20 flex flex-wrap items-center justify-end gap-2`, rendered **outside** the `aria-hidden` backdrop layer so HUD buttons stay keyboard- and screen-reader-accessible.
 
 ## HeroBackground Layout
 
@@ -51,15 +51,6 @@ Expressive animated backdrops are permitted across **major page heroes and paral
 | `atmosphere` | `AtmospherePhase` | — | When set, applies the matching `.scene-atmosphere-*` gradient and suppresses the gradient overlay. |
 | `backdrop` | `React.ReactNode` | — | Rendered in a `data-slot="hero-backdrop"` `aria-hidden` layer. |
 | `children` | `React.ReactNode` | — | Hero content. |
-
-### Modernization Notes
-
-The prior implementation used `gradient-*` utility classes, inline `style` dot patterns, and animated `rounded-full blur-3xl` orbs. The current implementation:
-
-- Uses the CSS `.voxel-dot-matrix` texture instead of inline styles.
-- Removes all `rounded-full` / `blur-3xl` orbs and viewport breakpoints (`md:px-12`, `md:py-24`).
-- Uses fluid padding (`px-6 py-12`) and `rounded-none` geometry.
-- Emits `data-slot="hero-background"` and `data-atmosphere`.
 
 ## Atmosphere Phases
 
@@ -96,10 +87,10 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 
 ### Atmosphere Palettes (`ATMOSPHERE_PALETTES`)
 
-`apps/web/src/features/home/backdrop/garden-renderer.ts` exports `ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette>`, giving each phase a distinct Matcha & Cedar sky and lighting treatment. Each palette defines:
+`apps/web/src/features/home/backdrop/garden-renderer.ts` exports `ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette>`, synchronized with `.scene-atmosphere-*` in `apps/web/src/styles/app.css`. Each palette defines:
 
 - `skyStops` — 7+ vertical gradient stops (the zenith top color is unique per phase).
-- `horizonGlow` — three-stop radial glow behind the island silhouette.
+- `horizonGlow` — three-stop radial glow centered behind the ridge silhouette.
 - `topVignette` — two-stop top atmospheric vignette tuned for AAA cream-text contrast.
 - `footFade` — bottom fade band color.
 - `lightScale` — global voxel face brightness multiplier.
@@ -108,41 +99,37 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 - `lanternAlphaScale` — lantern glow halo intensity.
 - `showStars` / `showFireflies` / `showSunMotes` — which zenith and micro-life layers render.
 
-`bakeSky(W, H, dpr, atmosphere = 'dusk')`, `bakeFootFade(W, H, dpr, atmosphere = 'dusk')`, and `paintVoxelLayer(..., atmosphere = 'dusk')` all accept the active phase. `bakeLanternSprite(radius, dpr, glowRgb = [248, 192, 98])` takes the active world's `WORLD_METADATA[worldId].glowRgb` so each diorama's beacon halo is tinted by its own palette (ember orange, bioluminescent teal, brass gold, cedar amber) instead of a single fixed amber.
+## Panoramic Cedar Sanctuary Diorama (`GardenBackdrop`)
 
-## Garden Backdrop & Multi-World Dioramas (`GardenBackdrop`)
+`apps/web/src/features/home/backdrop/GardenBackdrop.tsx` renders the panoramic **Cedar Sanctuary** diorama (`cedar-sanctuary`) inside `SceneStage` across Matcha & Cedar market-session atmospheres (`dawn`, `daylight`, `dusk`, `after-hours`).
 
-`apps/web/src/features/home/backdrop/GardenBackdrop.tsx` is a modular multi-world voxel diorama renderer mounted inside `SceneStage`. It renders 5 distinct curated worlds (`sakura-garden`, `magma-forge`, `bioluminescent-reef`, `sky-observatory`, `cedar-sanctuary`) with 5 corresponding particle physics presets (`sakura`, `embers`, `spores`, `star-runes`, `cedar-mist`) across Matcha & Cedar market-session atmospheres (`dawn`, `daylight`, `dusk`, `after-hours`).
+### Single-World Architecture
+
+The backdrop is a single curated world. `voxel-world.ts` exports `CEDAR_WORLD_ID = 'cedar-sanctuary'` and `CEDAR_WORLD_META` (`label`, `shortLabel`, `glowRgb`, `description`); `worlds.ts` exposes `getCedarWorldAndFaces()` as the only world entry point. There is no world registry, no `world` prop, no `particleMode` prop, and no visitor world preference — the canvas always carries `data-world={CEDAR_WORLD_ID}`. The HUD exposes only the atmosphere switcher and the motion toggle.
 
 ### Props
 
 | Prop | Type | Default | Behavior |
 |---|---|---|---|
 | `className` | `string` | — | Canvas class. |
-| `world` | `WorldId` | `'sakura-garden'` | Selects which 3D voxel island generator (`voxel-world.ts`, `garden-world.ts`, `worlds.ts`) renders (`data-world`). |
-| `particleMode` | `ParticleMode` | matched to `world` | Overrides particle physics (`sakura`, `embers`, `spores`, `star-runes`, `cedar-mist`) (`data-particle-mode`). |
-| `atmosphere` | `AtmospherePhase` | `'dusk'` | Active phase; drives sky, voxel lighting, and micro-life. Emitted as `data-atmosphere` on the canvas. |
+| `atmosphere` | `AtmospherePhase` | `'dusk'` | Active phase; drives sky, voxel lighting, and micro-life (`data-atmosphere`). |
 | `paused` | `boolean` | — | Optional externally controlled paused state (used when the parent hosts HUD controls). |
 | `onPausedChange` | `(paused: boolean) => void` | — | Notifies the parent when the reduced/paused state changes. |
 | `showControls` | `boolean` | `true` | Whether to render the floating Pause/Play button inside `GardenBackdrop`. Set `false` when `SceneStage` renders HUD controls in its foreground `controls` slot. |
 
-### Curated Worlds & Investing Personality Mapping
+### Geometry & Camera Framing
 
-Each diorama pairs 1:1 with a starter recipe in `packages/config/starter-recipes.json` and an investing archetype evaluated by `apps/web/src/features/personality/personality-data.ts` on `/personality`:
-
-| World ID | Particle Mode | Archetype (`PersonalityQuizPage`) | Starter Recipe Match |
-|---|---|---|---|
-| `sakura-garden` | `sakura` | The Patient Compounder | Quality Value Screener |
-| `magma-forge` | `embers` | The Headline Surfer | Trump & Chips News Momentum |
-| `bioluminescent-reef` | `spores` | The Contrarian Diver | Contrarian Sentiment Fader |
-| `sky-observatory` | `star-runes` | The Catalyst Quant | Earnings Catalyst Hunter |
-| `cedar-sanctuary` | `cedar-mist` | The Systems Architect | Claude Agent Portfolio Mirror |
+- **Panoramic Voxel Grid (`voxel-world.ts`)**: `144×144×64` (`RU = 84`, `RV = 42`) with `uvToGrid` / `gridToUv` camera-space projection helpers so the floating cedar ridge stretches horizontally across wide viewports (~90% desktop width at `scale = Math.min(W / 92, H / 46)`, `originY = H * 0.68`) with crisp isometric tile proportions (`HW = scale * 0.5`, `HH = scale * 0.34`, `ZH = scale * 0.46`). The `createVoxelCanvas` builder exposes `putUV(u, v, z, m, glow?)` alongside `put`/`box`/`cyl`/`sphere` so world geometry can be authored in camera-aligned `(u, v)` space.
+- **Twin-Bluff Cedar Sanctuary (`worlds/cedar-sanctuary.ts`)**:
+  - *Left Highland Bluff*: two-story timber lodge on dressed granite foundation with warm paper windows (`windowGlow`), stone chimney, gable eaves, porch sconces, and tall Douglas pines.
+  - *Central Brook Valley*: gently recessed terrain keeping foreground CTA copy readable while exposing a winding brook, arched cedar footbridge with lanterns, and an elevated timber aqueduct trestle.
+  - *Right Maple & Cascade Bluff*: crimson/amber autumn maple grove, east cedar torii gate, granite path lanterns, and a cliffside waterfall plunge (`carveCliffWaterfall`).
+- **Flanking Under-crust & Clouds (`worlds/shared-terrain.ts`)**: `buildPanoramicUndercrust` tapers the underside granite cone and hanging roots across `RU`/`RV`, and `buildStandardClouds` places 6 flat-bottomed 3D cloud slabs split into `cloudsFar` and `cloudsNear` parallax buckets.
 
 ### Homepage & Diagnostic Integration
 
-- `apps/web/src/features/home/pages/HomeCtaPage.tsx` and `apps/web/src/features/personality/PersonalityQuizPage.tsx` share `useDioramaStage.ts` (`apps/web/src/features/home/backdrop/useDioramaStage.ts`) for market-ET atmosphere resolution and reduced-motion pause sync, plus `SceneHudControls.tsx` (`World: <Name>`, `Sky: <Phase>`, `Pause motion`/`Play motion`). `useDioramaStage` also exports `syncUrlSearchParam(key, value)`, a `history.replaceState` helper that rewrites one query param without a router transition.
-- `apps/web/src/features/home/pages/HomeCtaPage.tsx` renders on `SceneStage` (`variant="hero"`, `motionRole="reactive"`), restores preferred worlds from `/?world=` or `localStorage` (`benchify.world` via `world-storage.ts`), syncs URL search params when cycling worlds, and links to `/lab`, `/personality`, and `/leaderboard`.
-- `apps/web/src/features/personality/PersonalityQuizPage.tsx` (`/personality`, also `?archetype=<id>`) uses a discriminated union (`answering` | `result:quiz` | `result:inspect`), `PersonalityQuizStep.tsx`, and `PersonalityResultPanel.tsx` (`Card variant="outlined"` / `.voxel-trough`, zero nested `.voxel-card`) to run the 10-question 4-axis diagnostic (`Horizon`, `Signal`, `Contrarian`, `Cadence`), live-preview the leading world diorama, reveal top-2 matched starter recipes linking into `/build?idea=...`, and persist matched worlds to the homepage.
+- `apps/web/src/features/home/pages/HomeCtaPage.tsx` and `apps/web/src/features/personality/PersonalityQuizPage.tsx` share `useDioramaStage(initialAtmosphere)` (`apps/web/src/features/home/backdrop/useDioramaStage.ts`) initialized synchronously from route loaders (avoiding SSR/CSR flicker) plus `SceneHudControls.tsx` (`Sky: <Phase>`, `Pause motion`/`Play motion`).
+- `GardenBackdrop` starts with `opacity-0` and flips `canvasReady` (`opacity-100 transition-opacity duration-200`, disabled under `prefers-reduced-motion`) after painting frame 0 onto a `clientWidth × clientHeight` viewport.
 
 ### 4-Plane Depth Parallax & Micro-Life
 
@@ -150,17 +137,30 @@ Each diorama pairs 1:1 with a starter recipe in `packages/config/starter-recipes
 
 1. **Atmospheric sky** — phase-baked gradient plus `drawZenithParticles` (twinkling stars for dusk/after-hours, drifting sun-motes for dawn/daylight).
 2. **Far high-altitude cloud slabs** — slow breeze drift (`sin(time * 0.08)`) plus subtle parallax.
-3. **Floating voxel island** — gentle vertical levitation (`sin(time * 0.45)`) plus world-reactive micro-life (water/lava glints, isometric diamond ripples, lantern/forge/crystal glow halos scaled by world glow color, phase-reactive secondary sprites, and world-specific drifters such as falling petals, rising embers, helical spores, orbital star-runes, and valley mist + autumn leaves).
+3. **Panoramic cedar island** — gentle vertical levitation (`sin(time * 0.45)`) plus surface water glints (`drawSurfaceGlints`), brook/pool ripples (`drawSurfaceRipples`), warm amber lantern glow halos (`drawBeaconHalos`), dusk/night fireflies (`drawFireflies`), drifting valley mist bands, and falling autumn maple leaves (`drawCedarMistAndLeaves`).
 4. **Near perimeter cloud slabs** — faster breeze drift (`sin(time * 0.11 + 1.4)`) plus deeper parallax.
 
-`drawAtmosphericParticles` is decomposed into per-concern passes — `drawSurfaceGlints`, `drawSurfaceRipples`, `drawBeaconHalos`, `drawSecondaryFloaters`, and `drawDriftingParticles` (which dispatches to `drawEmberDrifters`, `drawSporeDrifters`, `drawRuneStreaks`, or `drawLeafOrPetalDrifters`) — all reading colors and kinematics from `PARTICLE_PRESETS` (`particle-presets.ts`) rather than hardcoded hex values. `cedar-mist` additionally paints three drifting valley-mist bands.
+`getCedarWorldAndFaces()` (`worlds.ts`) caches face extraction and calls `stripWorldBuffers` to free raw occupancy buffers once extracted. `disposeCanvas` / `disposeSceneCanvases` (`garden-renderer.ts`) zero offscreen canvas storage on rebuild and unmount.
 
-`voxel-world.ts`, `particle-presets.ts`, `garden-world.ts`, `worlds.ts`, and `worlds/*.ts` share `createVoxelCanvas`, `extractWorldFaces`, and `stripWorldBuffers` (freeing heavy voxel occupancy arrays after face extraction), preserving deterministic seed geometry across all 5 islands. `worlds/shared-terrain.ts` supplies the shared `fillTerrainVolume`, `buildIslandUndercrust`, and `buildStandardClouds` primitives every non-sakura generator composes. `garden-renderer.ts` exports `disposeCanvas` / `disposeSceneCanvases`, which zero an offscreen canvas's backing store; `GardenBackdrop` calls `disposeSceneCanvases` on unmount and disposes only the layers a change actually invalidates (sky/foot on atmosphere change, lantern sprite and island/cloud slabs on world change), reusing unchanged layers across world/particle switches.
+### Cedar Particle Palette
+
+`garden-renderer.ts` owns the single authoritative particle color set for the Cedar Sanctuary world:
+
+```ts
+const CEDAR_PARTICLE_COLORS = {
+    driftColors: ['#e89648', '#f2c86b', '#d96b34'],
+    floaterColors: ['#c6f2bd', '#ffd880'],
+    glintHex: '#d6ecea',
+    rippleHex: '#cceae4',
+};
+```
+
+`pickCedarDriftColor(index)` cycles the three autumn leaf tints and `pickCedarFloaterColor(index)` cycles the two firefly tints, so `GardenBackdrop` layer baking and the canvas particle renderer draw from one palette instead of a per-world preset registry. Ripple kinematics are fixed (`time * 0.58`), and lantern halos scale directly from the palette's `lanternAlphaScale`.
 
 ## CSS Foundations (`apps/web/src/styles/app.css`)
 
 - `.voxel-dot-matrix` — radial-gradient dot texture at 20px spacing.
-- `.scene-atmosphere-dawn` / `-daylight` / `-dusk` / `-after-hours` — Matcha & Cedar vertical sky gradients.
+- `.scene-atmosphere-dawn` / `-daylight` / `-dusk` / `-after-hours` — layered Matcha & Cedar CSS backgrounds combining the top contrast vignette, bottom radial horizon glow, and linear sky stops matching `ATMOSPHERE_PALETTES`.
 - `.scene-scrim` — semi-opaque Matcha backing (`rgba(20, 28, 24, 0.88)`), zero `backdrop-blur`.
 - `.scene-stage-hero` (`min-height: 20rem`) / `.scene-stage-footer` (`min-height: 11rem`).
 - `.scene-stage-hero.home-hero-viewport` — `min-height: calc(100dvh - 3.875rem)` so the homepage hero fills the viewport below the sticky navbar.
@@ -169,18 +169,18 @@ Each diorama pairs 1:1 with a starter recipe in `packages/config/starter-recipes
 ## Testing & Verification
 
 - `packages/ui-design-system/src/lib/atmosphere.test.ts` — verifies all four phases, EST/EDT boundaries, local-mode thresholds, and `NaN` fallback to `dusk`.
-- `apps/web/src/test/scene-stage.test.tsx` — verifies hero/footer landmarks, default `dusk` atmosphere, `data-motion-role`, `aria-hidden` backdrop, scrim panel without `backdrop-blur`, `HeroBackground` atmosphere/backdrop slots, and that the `controls` slot renders outside `aria-hidden` with `flex-wrap` and `justify-end` so the HUD cluster wraps instead of overflowing.
-- `apps/web/src/test/design-standardization.test.tsx` — verifies `SceneStage` containment/scrim invariants and that `HeroBackground` emits no `rounded-full`, `blur-3xl`, viewport breakpoints, inline styles, or legacy color tokens, while rendering `.voxel-dot-matrix`.
-- `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` — verifies `data-world`, `data-particle-mode`, `data-atmosphere`, all 4 distinct `ATMOSPHERE_PALETTES`, controlled props + `showControls={false}`, reduced-motion toggle, explicit `particleMode` overrides, and that no `requestAnimationFrame` starts when `paused` is true or when reduced motion wins over an initial `paused={false}`.
-- `apps/web/src/features/home/backdrop/garden-world.test.ts` — verifies deterministic fireflies (16) and koi (2) anchors, and far/near cloud face extraction with painter's depth order.
-- `apps/web/src/features/home/backdrop/worlds.test.ts` — verifies all 5 world generators, unique silhouettes, painter depth order, distinct particle modes, and `localStorage` persistence.
-- `apps/web/src/features/home/pages/HomeCtaPage.test.tsx` — verifies the `SceneStage` hero shell, `.scene-scrim .voxel-card` CTA plaque, accessible HUD controls (5-world switcher, 4-phase atmosphere switcher, motion toggle), `localStorage` persistence, `initialWorld` seeding, and `/personality` link.
-- `apps/web/src/features/personality/personality-data.test.ts` & `PersonalityQuizPage.test.tsx` — verify the 10-question 4-axis diagnostic scoring engine, full 5-archetype reachability, starter recipe integrity, live world preview, top-2 bot matches linking to `/build?idea=`, and `?archetype=` hydration.
+- `apps/web/src/test/scene-stage.test.tsx` — verifies hero/footer landmarks, default `dusk` atmosphere, `data-motion-role`, `aria-hidden` backdrop, scrim panel without `backdrop-blur`, `HeroBackground` atmosphere/backdrop slots, and wrapped `controls` slot.
+- `apps/web/src/test/design-standardization.test.tsx` — verifies `SceneStage` containment/scrim invariants and `HeroBackground` token discipline.
+- `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` — verifies `data-world={CEDAR_WORLD_ID}`, `data-atmosphere`, all 4 distinct `ATMOSPHERE_PALETTES`, controlled props + `showControls={false}`, reduced-motion toggle, and listener cleanup.
+- `apps/web/src/features/home/backdrop/worlds.test.ts` — verifies panoramic `cedar-sanctuary` seed determinism, horizontal `gridToUv` span (`>= RU * 1.8`), flat-bottomed cloud slabs (same-base neighbor ratio `>= 0.99`), and monotonic painter depth sort order.
+- `apps/web/src/features/home/pages/HomeCtaPage.test.tsx` — verifies the `SceneStage` hero shell, `initialAtmosphere` SSR/CSR parity, `.scene-scrim .voxel-card` CTA plaque, HUD atmosphere/motion controls with no `world-switcher`, and `/personality` link.
+- `apps/web/src/features/personality/personality-data.test.ts` & `apps/web/src/features/personality/PersonalityQuizPage.test.tsx` — verify the 10-question 4-axis diagnostic scoring engine, full 5-archetype reachability, starter recipe integrity, top-2 bot matches linking to `/build?idea=`, `?archetype=` hydration, and `cedar-sanctuary` stage parity.
 
 ## Related
 
 - [[entities/design-system]] — the shared UI design system and its component inventory
+- [[concepts/cumulative-layout-shift]] — zero SSR/CSR divergence and visual stability rules
 - [[concepts/rendering-strategies]] — SSR, Hybrid SSR, and CSR architecture
 - [[concepts/fluent-responsive-design]] — fluid, breakpoint-free layout conventions
-- [[entities/personality-quiz]] — the `/personality` diagnostic that drives these worlds
+- [[entities/personality-quiz]] — the `/personality` diagnostic rendered over Cedar Sanctuary
 - [[entities/web-app]] — the TanStack Start client dashboard

@@ -265,48 +265,107 @@
     }
 
     .scene-atmosphere-dawn {
-        background: linear-gradient(
-            180deg,
-            #101c1a 0%,
-            #1c322c 34%,
-            #3b5a4f 68%,
-            #8d7c60 90%,
-            #26362e 100%
-        );
+        background:
+            linear-gradient(
+                180deg,
+                rgba(9, 18, 16, 0.48) 0%,
+                rgba(9, 18, 16, 0.2) 26%,
+                rgba(8, 16, 14, 0) 44%
+            ),
+            radial-gradient(
+                ellipse 65% 55% at 50% 84%,
+                rgba(236, 164, 124, 0.25) 0%,
+                rgba(214, 148, 112, 0.09) 48%,
+                rgba(214, 148, 112, 0) 100%
+            ),
+            linear-gradient(
+                180deg,
+                #101c1a 0%,
+                #1b2f2b 24%,
+                #2d4d45 46%,
+                #5c7a6e 66%,
+                #9e8d7b 80%,
+                #cfa07a 90%,
+                #263832 100%
+            );
     }
 
     .scene-atmosphere-daylight {
-        background: linear-gradient(
-            180deg,
-            #132622 0%,
-            #21413a 36%,
-            #3d665b 72%,
-            #68897c 92%,
-            #1d2822 100%
-        );
+        background:
+            linear-gradient(
+                180deg,
+                rgba(10, 22, 19, 0.54) 0%,
+                rgba(10, 22, 19, 0.24) 26%,
+                rgba(8, 16, 14, 0) 44%
+            ),
+            radial-gradient(
+                ellipse 65% 55% at 50% 84%,
+                rgba(182, 224, 198, 0.22) 0%,
+                rgba(138, 192, 162, 0.08) 48%,
+                rgba(138, 192, 162, 0) 100%
+            ),
+            linear-gradient(
+                180deg,
+                #11221e 0%,
+                #1a352f 24%,
+                #285248 48%,
+                #3f7264 68%,
+                #6b9a87 82%,
+                #9abca8 92%,
+                #233d35 100%
+            );
     }
 
     .scene-atmosphere-dusk {
-        background: linear-gradient(
-            180deg,
-            #0c1715 0%,
-            #142622 24%,
-            #23413b 45%,
-            #45675f 64%,
-            #819587 78%,
-            #b59a78 88%,
-            #22332e 100%
-        );
+        background:
+            linear-gradient(
+                180deg,
+                rgba(8, 16, 14, 0.44) 0%,
+                rgba(8, 16, 14, 0.18) 26%,
+                rgba(8, 16, 14, 0) 44%
+            ),
+            radial-gradient(
+                ellipse 65% 55% at 50% 84%,
+                rgba(240, 184, 108, 0.22) 0%,
+                rgba(214, 162, 102, 0.08) 48%,
+                rgba(214, 162, 102, 0) 100%
+            ),
+            linear-gradient(
+                180deg,
+                #0c1715 0%,
+                #142622 24%,
+                #23413b 45%,
+                #45675f 64%,
+                #819587 78%,
+                #b59a78 88%,
+                #22332e 100%
+            );
     }
 
     .scene-atmosphere-after-hours {
-        background: linear-gradient(
-            180deg,
-            #09100e 0%,
-            #0e1916 38%,
-            #162621 74%,
-            #1d2822 100%
-        );
+        background:
+            linear-gradient(
+                180deg,
+                rgba(4, 9, 8, 0.52) 0%,
+                rgba(4, 9, 8, 0.2) 26%,
+                rgba(8, 16, 14, 0) 44%
+            ),
+            radial-gradient(
+                ellipse 65% 55% at 50% 84%,
+                rgba(116, 184, 162, 0.16) 0%,
+                rgba(72, 132, 116, 0.06) 48%,
+                rgba(72, 132, 116, 0) 100%
+            ),
+            linear-gradient(
+                180deg,
+                #060c0b 0%,
+                #0b1614 26%,
+                #122420 50%,
+                #1c3530 72%,
+                #294840 86%,
+                #35574d 94%,
+                #101d1a 100%
+            );
     }
 
     /* Semi-opaque Matcha scrim protecting CTAs over animated scenes (zero backdrop-blur) */

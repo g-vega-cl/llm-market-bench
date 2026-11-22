@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WORLD_STORAGE_KEY } from '../home/backdrop/world-storage';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { CEDAR_WORLD_ID } from '../home/backdrop/voxel-world';
 import { PersonalityQuizPage } from './PersonalityQuizPage';
 import { PERSONALITY_QUESTIONS } from './personality-data';
 
@@ -50,18 +50,19 @@ beforeAll(() => {
     }
 });
 
-beforeEach(() => {
-    window.localStorage.clear();
-});
+describe('PersonalityQuizPage (10-question diagnostic & Cedar Sanctuary SceneStage)', () => {
+    it('steps through all 10 questions with back navigation, live style updates, and reveals top-2 bots', () => {
+        render(<PersonalityQuizPage initialAtmosphere="daylight" />);
 
-describe('PersonalityQuizPage (10-question diagnostic & voxel world matcher)', () => {
-    it('steps through all 10 questions with back navigation, live world updates, and reveals top-2 bots', () => {
-        render(<PersonalityQuizPage />);
-
+        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', CEDAR_WORLD_ID);
+        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute(
+            'data-atmosphere',
+            'daylight',
+        );
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
         expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
 
-        // Answer Question 1 -> advances to Question 2 and updates live leaning world hint
+        // Answer Question 1 -> advances to Question 2 and updates live leaning archetype hint
         fireEvent.click(
             screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[0].options[0].id}`),
         );
@@ -91,16 +92,13 @@ describe('PersonalityQuizPage (10-question diagnostic & voxel world matcher)', (
         expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
     });
 
-    it('hydrates shared ?archetype= links directly with matching world and saves homepage world preference', () => {
+    it('hydrates shared ?archetype= links directly with Cedar backdrop and zero nested cards', () => {
         render(<PersonalityQuizPage initialArchetype="contrarian-diver" />);
 
         const canvas = screen.getByTestId('garden-backdrop');
-        expect(canvas).toHaveAttribute('data-world', 'bioluminescent-reef');
-        expect(canvas).toHaveAttribute('data-particle-mode', 'spores');
+        expect(canvas).toHaveAttribute('data-world', CEDAR_WORLD_ID);
         expect(screen.getByTestId('archetype-title')).toHaveTextContent('The Contrarian Diver');
-
-        fireEvent.click(screen.getByTestId('apply-homepage-world'));
-        expect(window.localStorage.getItem(WORLD_STORAGE_KEY)).toBe('bioluminescent-reef');
+        expect(screen.queryByTestId('apply-homepage-world')).toBeNull();
 
         // Design spec: zero nested .voxel-card elements inside personality-result
         const resultPlaque = screen.getByTestId('personality-result');
@@ -116,6 +114,6 @@ describe('PersonalityQuizPage (10-question diagnostic & voxel world matcher)', (
 
         rerender(<PersonalityQuizPage initialArchetype="news-surfer" />);
         expect(screen.getByTestId('archetype-title')).toHaveTextContent('The Headline Surfer');
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', 'magma-forge');
+        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', CEDAR_WORLD_ID);
     });
 });

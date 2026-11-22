@@ -1,14 +1,11 @@
-import { SceneStage } from '@llm-market-bench/ui-design-system';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { type AtmospherePhase, SceneStage } from '@llm-market-bench/ui-design-system';
+import { useEffect, useMemo, useState } from 'react';
 import { GardenBackdrop } from '../home/backdrop/GardenBackdrop';
-import { nextWorldId, SceneHudControls } from '../home/backdrop/SceneHudControls';
+import { SceneHudControls } from '../home/backdrop/SceneHudControls';
 import { syncUrlSearchParam, useDioramaStage } from '../home/backdrop/useDioramaStage';
-import { WORLD_METADATA, type WorldId } from '../home/backdrop/voxel-world';
-import { writePreferredWorld } from '../home/backdrop/world-storage';
 import { PersonalityQuizStep } from './PersonalityQuizStep';
 import { PersonalityResultPanel } from './PersonalityResultPanel';
 import {
-    ARCHETYPES,
     type ArchetypeId,
     buildSharedArchetypeResult,
     PERSONALITY_QUESTIONS,
@@ -18,6 +15,8 @@ import {
 export interface PersonalityQuizPageProps {
     /** Optional archetype pre-selected via `?archetype=` shareable URL search param. */
     initialArchetype?: ArchetypeId;
+    /** SSR-resolved market-ET atmosphere phase passed from route loader to eliminate initial flash. */
+    initialAtmosphere?: AtmospherePhase;
 }
 
 /**
@@ -28,19 +27,16 @@ type QuizSession =
           phase: 'answering';
           stepIndex: number;
           answers: Record<string, string>;
-          worldOverride: WorldId | null;
       }
     | {
           phase: 'result';
           source: 'quiz';
           answers: Record<string, string>;
-          worldOverride: WorldId | null;
       }
     | {
           phase: 'result';
           source: 'inspect';
           archetypeId: ArchetypeId;
-          worldOverride: WorldId | null;
       };
 
 function createInitialSession(initialArchetype?: ArchetypeId): QuizSession {
@@ -49,22 +45,25 @@ function createInitialSession(initialArchetype?: ArchetypeId): QuizSession {
             phase: 'result',
             source: 'inspect',
             archetypeId: initialArchetype,
-            worldOverride: null,
         };
     }
-    return { phase: 'answering', stepIndex: 0, answers: {}, worldOverride: null };
+    return { phase: 'answering', stepIndex: 0, answers: {} };
 }
 
 /**
- * Interactive 10-question Investing Personality Test & Voxel World matcher on
- * SceneStage. Uses at most two typography combos (`text-xs font-normal`, `text-sm font-bold`).
+ * Interactive 10-question Investing Personality Test & starter bot matcher on
+ * SceneStage with panoramic Cedar Sanctuary backdrop. Uses at most two
+ * typography combos (`text-xs font-normal`, `text-sm font-bold`).
  */
-export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPageProps) {
-    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } = useDioramaStage();
+export function PersonalityQuizPage({
+    initialArchetype,
+    initialAtmosphere,
+}: PersonalityQuizPageProps) {
+    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } =
+        useDioramaStage(initialAtmosphere);
     const [session, setSession] = useState<QuizSession>(() =>
         createInitialSession(initialArchetype),
     );
-    const [savedHomepageWorld, setSavedHomepageWorld] = useState<WorldId | null>(null);
     const [copiedLink, setCopiedLink] = useState(false);
 
     useEffect(() => {
@@ -73,9 +72,7 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
                 phase: 'result',
                 source: 'inspect',
                 archetypeId: initialArchetype,
-                worldOverride: null,
             });
-            setSavedHomepageWorld(null);
             setCopiedLink(false);
         }
     }, [initialArchetype]);
@@ -88,22 +85,9 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
         [session],
     );
 
-    const activeWorld: WorldId =
-        session.worldOverride ??
-        (session.phase === 'result' && session.source === 'inspect'
-            ? ARCHETYPES[session.archetypeId].worldId
-            : liveQuizResult.answeredCount > 0
-              ? liveQuizResult.primary.archetype.worldId
-              : 'sakura-garden');
-
-    const cycleWorld = useCallback(() => {
-        setSession((prev) => ({ ...prev, worldOverride: nextWorldId(activeWorld) }));
-    }, [activeWorld]);
-
     const handleSelectOption = (questionId: string, optionId: string) => {
         if (session.phase !== 'answering') return;
         const nextAnswers = { ...session.answers, [questionId]: optionId };
-        setSavedHomepageWorld(null);
         setCopiedLink(false);
 
         if (session.stepIndex + 1 < PERSONALITY_QUESTIONS.length) {
@@ -111,7 +95,6 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
                 phase: 'answering',
                 stepIndex: session.stepIndex + 1,
                 answers: nextAnswers,
-                worldOverride: null,
             });
             return;
         }
@@ -121,7 +104,6 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
             phase: 'result',
             source: 'quiz',
             answers: nextAnswers,
-            worldOverride: null,
         });
     };
 
@@ -132,21 +114,14 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
 
     const handleRetake = () => {
         syncUrlSearchParam('archetype', null);
-        setSavedHomepageWorld(null);
         setCopiedLink(false);
-        setSession({ phase: 'answering', stepIndex: 0, answers: {}, worldOverride: null });
+        setSession({ phase: 'answering', stepIndex: 0, answers: {} });
     };
 
     const handleInspectArchetype = (archetypeId: ArchetypeId) => {
         syncUrlSearchParam('archetype', archetypeId);
-        setSavedHomepageWorld(null);
         setCopiedLink(false);
-        setSession({ phase: 'result', source: 'inspect', archetypeId, worldOverride: null });
-    };
-
-    const handleApplyHomepageWorld = (worldId: WorldId) => {
-        writePreferredWorld(worldId);
-        setSavedHomepageWorld(worldId);
+        setSession({ phase: 'result', source: 'inspect', archetypeId });
     };
 
     const handleCopyShareUrl = async (archetypeId: ArchetypeId) => {
@@ -160,10 +135,9 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
         }
     };
 
-    const activeWorldMeta = WORLD_METADATA[activeWorld];
     const liveHint =
         liveQuizResult.answeredCount > 0
-            ? `Leaning: ${liveQuizResult.primary.archetype.title} (${activeWorldMeta.shortLabel})`
+            ? `Leaning: ${liveQuizResult.primary.archetype.title}`
             : '';
 
     return (
@@ -174,7 +148,6 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
             className="min-h-[calc(100dvh-3.875rem)] flex w-full flex-col text-voxel-ink"
             backdrop={
                 <GardenBackdrop
-                    world={activeWorld}
                     atmosphere={atmosphere}
                     paused={paused}
                     onPausedChange={setPaused}
@@ -184,10 +157,8 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
             }
             controls={
                 <SceneHudControls
-                    world={activeWorld}
                     atmosphere={atmosphere}
                     paused={paused}
-                    onCycleWorld={cycleWorld}
                     onCycleAtmosphere={cycleAtmosphere}
                     onTogglePaused={toggleMotion}
                 />
@@ -203,8 +174,7 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
                     </h1>
                     <p className="home-hero-copy max-w-[54ch] text-xs font-normal leading-relaxed text-voxel-ink">
                         Ten market scenarios score your Horizon, Signal Anchor, Crowd Stance, and
-                        Execution Tempo — pairing you with your matched Voxel World and starter
-                        trading recipe.
+                        Execution Tempo — pairing you with your matched starter trading recipe.
                     </p>
                 </header>
 
@@ -217,7 +187,6 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
                             session.answers[PERSONALITY_QUESTIONS[session.stepIndex].id]
                         }
                         liveHint={liveHint}
-                        activeWorldMeta={activeWorldMeta}
                         onSelectOption={handleSelectOption}
                         onPrevious={handlePrevious}
                         onBrowseAll={() => handleInspectArchetype('value-compounder')}
@@ -225,9 +194,7 @@ export function PersonalityQuizPage({ initialArchetype }: PersonalityQuizPagePro
                 ) : (
                     <PersonalityResultPanel
                         result={liveQuizResult}
-                        savedHomepageWorld={savedHomepageWorld}
                         copiedLink={copiedLink}
-                        onApplyHomepageWorld={handleApplyHomepageWorld}
                         onCopyShareUrl={(id) => void handleCopyShareUrl(id)}
                         onRetake={handleRetake}
                         onInspectArchetype={handleInspectArchetype}

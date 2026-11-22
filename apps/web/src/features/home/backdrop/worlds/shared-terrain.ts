@@ -1,4 +1,4 @@
-import { CX, CY, R, SX, SY, type VoxelCanvasBuilder } from '../voxel-world';
+import { gridToUv, RU, RV, SX, SY, uvToGrid, type VoxelCanvasBuilder } from '../voxel-world';
 
 export type HeightFn = (x: number, y: number) => number | null;
 
@@ -19,38 +19,40 @@ export function fillTerrainVolume(
     }
 }
 
-/** Sculpts the tapered underside stone cone and hanging roots/stalactites beneath the island. */
-export function buildIslandUndercrust(
+/** Sculpts the wide elliptical stone undercrust and hanging roots beneath the panoramic ridge. */
+export function buildPanoramicUndercrust(
     c: VoxelCanvasBuilder,
     darkStone: number,
     midStone: number,
-    stalactiteA: number,
-    stalactiteB: number,
+    rootDark: number,
+    mossRoot: number,
 ) {
     for (let z = 0; z < 7; z++) {
-        const r = Math.round(R * (0.9 - z * 0.11));
-        for (let y = CY - r; y <= CY + r; y++) {
-            for (let x = CX - r; x <= CX + r; x++) {
-                const d = Math.hypot((x - CX) / r, (y - CY) / r);
-                if (d <= 1 - c.rnd() * 0.17) {
-                    c.put(x, y, z, c.rnd() < 0.5 ? darkStone : midStone);
+        const taper = 0.92 - (6 - z) * 0.11;
+        const ruZ = RU * taper;
+        const rvZ = RV * taper;
+        for (let y = 0; y < SY; y++) {
+            for (let x = 0; x < SX; x++) {
+                const [u, v] = gridToUv(x, y);
+                const d = Math.hypot(u / ruZ, v / rvZ);
+                if (d <= 1 - c.rnd() * 0.14) {
+                    c.put(x, y, z, c.rnd() < 0.52 ? darkStone : midStone);
                 }
             }
         }
     }
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 36; i++) {
         const a = c.rnd() * Math.PI * 2;
-        const r = R * (0.52 + c.rnd() * 0.42);
-        const x = Math.round(CX + Math.cos(a) * r);
-        const y = Math.round(CY + Math.sin(a) * r * 0.92);
-        const len = c.ri(2, 4);
+        const radial = 0.45 + c.rnd() * 0.46;
+        const [rx, ry] = uvToGrid(Math.cos(a) * RU * radial, Math.sin(a) * RV * radial);
+        const len = c.ri(2, 5);
         for (let k = 0; k < len; k++) {
-            c.put(x, y, 5 - k, k < 2 ? stalactiteA : stalactiteB);
+            c.put(rx, ry, 5 - k, k < 2 ? rootDark : mossRoot);
         }
     }
 }
 
-/** Places the 6 standard 3D Minecraft cloud slabs split cleanly into far/near parallax buckets. */
+/** Places 6 wide 3D Minecraft-style cloud slabs around the panoramic cedar ridge flanks. */
 export function buildStandardClouds(
     c: VoxelCanvasBuilder,
     nearHex: [string, string, string],
@@ -69,10 +71,21 @@ export function buildStandardClouds(
         ] as [number, number, number],
     };
 
-    c.cloudSlab(4, 34, 34, 15, 9, 2, mats, { dx: 3, dy: 2, w: 9, d: 5 }, 'far');
-    c.cloudSlab(7, 72, 20, 16, 10, 2, mats, { dx: 4, dy: 2, w: 8, d: 5 }, 'near');
-    c.cloudSlab(74, 6, 36, 16, 10, 2, mats, { dx: 3, dy: 2, w: 9, d: 6 }, 'far');
-    c.cloudSlab(82, 32, 24, 14, 9, 2, mats, { dx: 3, dy: 2, w: 7, d: 5 }, 'near');
-    c.cloudSlab(68, 82, 14, 16, 9, 2, mats, { dx: 3, dy: 2, w: 9, d: 5 }, 'near');
-    c.cloudSlab(22, 6, 40, 17, 8, 2, mats, { dx: 4, dy: 2, w: 9, d: 4 }, 'far');
+    const [flx, fly] = uvToGrid(-82, -32);
+    c.cloudSlab(flx, fly, 34, 18, 10, 2, mats, { dx: 4, dy: 2, w: 10, d: 5 }, 'far');
+
+    const [frx, fry] = uvToGrid(66, -34);
+    c.cloudSlab(frx - 10, fry, 32, 18, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'far');
+
+    const [fcx, fcy] = uvToGrid(-6, -42);
+    c.cloudSlab(fcx - 6, fcy, 38, 18, 9, 2, mats, { dx: 4, dy: 2, w: 10, d: 4 }, 'far');
+
+    const [nlx, nly] = uvToGrid(-90, 14);
+    c.cloudSlab(nlx, nly, 18, 17, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'near');
+
+    const [nrx, nry] = uvToGrid(88, 14);
+    c.cloudSlab(nrx - 4, nry, 18, 17, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'near');
+
+    const [nfx, nfy] = uvToGrid(14, 54);
+    c.cloudSlab(nfx - 6, nfy, 13, 16, 8, 2, mats, { dx: 3, dy: 2, w: 9, d: 4 }, 'near');
 }

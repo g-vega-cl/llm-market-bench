@@ -1,43 +1,21 @@
-import { SceneStage } from '@llm-market-bench/ui-design-system';
+import { type AtmospherePhase, SceneStage } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import { useCallback, useEffect, useState } from 'react';
 import { GardenBackdrop } from '../backdrop/GardenBackdrop';
-import { nextWorldId, SceneHudControls } from '../backdrop/SceneHudControls';
-import { syncUrlSearchParam, useDioramaStage } from '../backdrop/useDioramaStage';
-import type { WorldId } from '../backdrop/voxel-world';
-import { readPreferredWorld, writePreferredWorld } from '../backdrop/world-storage';
+import { SceneHudControls } from '../backdrop/SceneHudControls';
+import { useDioramaStage } from '../backdrop/useDioramaStage';
 
 export interface HomeCtaPageProps {
-    /** Optional initial diorama world passed via URL search param (`?world=`). */
-    initialWorld?: WorldId;
+    /** SSR-resolved market-ET atmosphere phase passed from route loader to eliminate initial flash. */
+    initialAtmosphere?: AtmospherePhase;
 }
 
 /**
- * The homepage: crisp open-sky hero above a configurable multi-layered voxel
- * diorama. Built on `SceneStage` (`variant="hero"`, `motionRole="reactive"`).
+ * The homepage: crisp open-sky hero above the panoramic Cedar Sanctuary
+ * voxel diorama. Built on `SceneStage` (`variant="hero"`, `motionRole="reactive"`).
  */
-export function HomeCtaPage({ initialWorld }: HomeCtaPageProps) {
-    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } = useDioramaStage();
-    const [world, setWorld] = useState<WorldId>(initialWorld ?? 'sakura-garden');
-
-    useEffect(() => {
-        if (initialWorld) {
-            setWorld(initialWorld);
-            writePreferredWorld(initialWorld);
-            return;
-        }
-        const saved = readPreferredWorld();
-        if (saved) setWorld(saved);
-    }, [initialWorld]);
-
-    const cycleWorld = useCallback(() => {
-        setWorld((current) => {
-            const next = nextWorldId(current);
-            writePreferredWorld(next);
-            syncUrlSearchParam('world', next);
-            return next;
-        });
-    }, []);
+export function HomeCtaPage({ initialAtmosphere }: HomeCtaPageProps) {
+    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } =
+        useDioramaStage(initialAtmosphere);
 
     return (
         <SceneStage
@@ -47,7 +25,6 @@ export function HomeCtaPage({ initialWorld }: HomeCtaPageProps) {
             className="home-hero-viewport flex w-full flex-col text-voxel-ink"
             backdrop={
                 <GardenBackdrop
-                    world={world}
                     atmosphere={atmosphere}
                     paused={paused}
                     onPausedChange={setPaused}
@@ -57,10 +34,8 @@ export function HomeCtaPage({ initialWorld }: HomeCtaPageProps) {
             }
             controls={
                 <SceneHudControls
-                    world={world}
                     atmosphere={atmosphere}
                     paused={paused}
-                    onCycleWorld={cycleWorld}
                     onCycleAtmosphere={cycleAtmosphere}
                     onTogglePaused={toggleMotion}
                 />

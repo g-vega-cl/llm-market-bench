@@ -1,19 +1,18 @@
 import { type AtmospherePhase, resolveAtmospherePhase } from '@llm-market-bench/ui-design-system';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { nextAtmospherePhase } from './SceneHudControls';
 
 /**
- * Shared HUD timing state for SceneStage views: starts at deterministic `'dusk'`
- * for SSR, resolves the US Eastern market-session atmosphere on mount, and exposes
+ * Shared HUD timing state for SceneStage views: accepts an SSR-resolved
+ * `initialAtmosphere` from the route loader so server HTML and client hydration
+ * match on first byte without an unmount/mount sky flash, and exposes
  * cycle/pause callbacks with prefers-reduced-motion synchronization.
  */
-export function useDioramaStage() {
-    const [atmosphere, setAtmosphere] = useState<AtmospherePhase>('dusk');
+export function useDioramaStage(initialAtmosphere?: AtmospherePhase) {
+    const [atmosphere, setAtmosphere] = useState<AtmospherePhase>(
+        () => initialAtmosphere ?? resolveAtmospherePhase(new Date(), 'market-et'),
+    );
     const [paused, setPaused] = useState(false);
-
-    useEffect(() => {
-        setAtmosphere(resolveAtmospherePhase(new Date(), 'market-et'));
-    }, []);
 
     const cycleAtmosphere = useCallback(() => {
         setAtmosphere(nextAtmospherePhase);

@@ -1,9 +1,13 @@
+import { resolveAtmospherePhase } from '@llm-market-bench/ui-design-system';
 import { createFileRoute } from '@tanstack/react-router';
 import { PersonalityQuizPage } from '~/features/personality/PersonalityQuizPage';
 import { type ArchetypeId, isValidArchetypeId } from '~/features/personality/personality-data';
 import { seo } from '~/lib/seo';
 
 export const Route = createFileRoute('/personality')({
+    loader: () => ({
+        initialAtmosphere: resolveAtmospherePhase(new Date(), 'market-et'),
+    }),
     validateSearch: (search: Record<string, unknown>): { archetype?: ArchetypeId } => ({
         archetype: isValidArchetypeId(search.archetype) ? search.archetype : undefined,
     }),
@@ -21,5 +25,8 @@ export const Route = createFileRoute('/personality')({
 
 function RouteComponent() {
     const { archetype } = Route.useSearch();
-    return <PersonalityQuizPage initialArchetype={archetype} />;
+    const { initialAtmosphere } = Route.useLoaderData();
+    return (
+        <PersonalityQuizPage initialArchetype={archetype} initialAtmosphere={initialAtmosphere} />
+    );
 }

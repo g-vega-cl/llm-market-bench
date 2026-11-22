@@ -1,9 +1,8 @@
 import type { AtmospherePhase } from '@llm-market-bench/ui-design-system';
-import { PARTICLE_PRESETS, type ParticlePresetConfig } from './particle-presets';
 import {
+    CEDAR_WORLD_META,
     CX,
     CY,
-    type ParticleMode,
     type RenderableWorld,
     SX,
     SY,
@@ -16,6 +15,13 @@ const LIGHT: [number, number, number] = (() => {
     const m = Math.hypot(v[0], v[1], v[2]);
     return [v[0] / m, v[1] / m, v[2] / m];
 })();
+
+const CEDAR_PARTICLE_COLORS = {
+    driftColors: ['#e89648', '#f2c86b', '#d96b34'] as const,
+    floaterColors: ['#c6f2bd', '#ffd880'] as const,
+    glintHex: '#d6ecea',
+    rippleHex: '#cceae4',
+};
 
 export interface Petal {
     x: number;
@@ -53,7 +59,6 @@ export interface Scene {
     dpr: number;
     scale: number;
     worldId: WorldId;
-    particleMode: ParticleMode;
     atmosphere: AtmospherePhase;
     sky: HTMLCanvasElement | null;
     foot: HTMLCanvasElement | null;
@@ -197,6 +202,14 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
     },
 };
 
+export function pickCedarDriftColor(index: number): string {
+    return CEDAR_PARTICLE_COLORS.driftColors[index % CEDAR_PARTICLE_COLORS.driftColors.length];
+}
+
+export function pickCedarFloaterColor(index: number): string {
+    return CEDAR_PARTICLE_COLORS.floaterColors[index % CEDAR_PARTICLE_COLORS.floaterColors.length];
+}
+
 export function bakeSky(
     W: number,
     H: number,
@@ -219,7 +232,7 @@ export function bakeSky(
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, W, H);
 
-    // Phase-reactive horizon glow centered behind the floating island silhouette
+    // Phase-reactive horizon glow centered behind the floating cedar ridge silhouette
     const glow = ctx.createRadialGradient(
         W * 0.5,
         H * 0.84,
@@ -271,7 +284,7 @@ export function bakeFootFade(
 export function bakeLanternSprite(
     radius: number,
     dpr: number,
-    glowRgb: [number, number, number] = [248, 192, 98],
+    glowRgb: [number, number, number] = CEDAR_WORLD_META.glowRgb,
 ): HTMLCanvasElement | null {
     const r = Math.max(4, Math.ceil(radius));
     const size = r * 2;
@@ -309,7 +322,7 @@ function shadeFaceRgb(
     let fog = Math.min(0.16, Math.max(0, (x + y) / depthMax - 0.72) * 0.7);
     if (cloud) {
         const dist = Math.hypot(x - CX, y - CY);
-        fog = Math.min(0.45, Math.max(0, (dist - 28) / 48) * 0.45);
+        fog = Math.min(0.45, Math.max(0, (dist - 38) / 58) * 0.45);
     }
 
     let k: number;
@@ -358,8 +371,8 @@ export function paintVoxelLayer(
     o.setTransform(dpr, 0, 0, dpr, 0, 0);
     const depthMax = (SX + SY) * 0.9;
     const HW = scale * 0.5;
-    const HH = scale * 0.28;
-    const ZH = scale * 0.4;
+    const HH = scale * 0.34;
+    const ZH = scale * 0.46;
 
     for (const [, x, y, z, face, i, ao] of list) {
         const m = world.palette[world.material[i] - 1];
@@ -449,14 +462,13 @@ export function disposeSceneCanvases(scene: Scene | null) {
 function drawSurfaceGlints(
     ctx: CanvasRenderingContext2D,
     scene: Scene,
-    preset: ParticlePresetConfig,
     time: number,
     islandParX: number,
     islandParY: number,
 ) {
-    ctx.fillStyle = preset.glintHex;
+    ctx.fillStyle = CEDAR_PARTICLE_COLORS.glintHex;
     for (const g of scene.glints) {
-        ctx.globalAlpha = 0.08 + 0.24 * (0.5 + 0.5 * Math.sin(time * g.speed + g.phase));
+        ctx.globalAlpha = 0.09 + 0.26 * (0.5 + 0.5 * Math.sin(time * g.speed + g.phase));
         ctx.fillRect(g.x + islandParX, g.y + islandParY, g.size, Math.max(1, g.size * 0.45));
     }
     ctx.globalAlpha = 1;
@@ -465,16 +477,15 @@ function drawSurfaceGlints(
 function drawSurfaceRipples(
     ctx: CanvasRenderingContext2D,
     scene: Scene,
-    preset: ParticlePresetConfig,
     time: number,
     islandParX: number,
     islandParY: number,
 ) {
     if (scene.koi.length === 0) return;
-    ctx.strokeStyle = preset.rippleHex;
+    ctx.strokeStyle = CEDAR_PARTICLE_COLORS.rippleHex;
     ctx.lineWidth = 1;
     for (const k of scene.koi) {
-        const cycle = (time * preset.rippleSpeed + k.phase) % 1;
+        const cycle = (time * 0.58 + k.phase) % 1;
         const rx = (2 + cycle * 6.5) * (scene.scale * 0.12);
         const ry = rx * 0.56;
         const cx = k.x + islandParX + Math.sin(time * 0.6 + k.phase) * 2.5;
@@ -494,7 +505,6 @@ function drawSurfaceRipples(
 function drawBeaconHalos(
     ctx: CanvasRenderingContext2D,
     scene: Scene,
-    preset: ParticlePresetConfig,
     lanternAlphaScale: number,
     time: number,
     islandParX: number,
@@ -502,12 +512,11 @@ function drawBeaconHalos(
 ) {
     if (!scene.lanternSprite) return;
     const r = scene.lanternRadius;
-    const alphaBase = preset.haloAlwaysOn ? Math.max(0.75, lanternAlphaScale) : lanternAlphaScale;
     ctx.globalCompositeOperation = 'lighter';
     for (const l of scene.lamps) {
         const flicker =
             0.78 + 0.22 * Math.sin(time * 2.4 + l.phase) * Math.sin(time * 1.3 + l.phase * 2);
-        ctx.globalAlpha = Math.min(1, flicker * alphaBase);
+        ctx.globalAlpha = Math.min(1, flicker * lanternAlphaScale);
         ctx.drawImage(
             scene.lanternSprite,
             l.x + islandParX - r,
@@ -520,7 +529,7 @@ function drawBeaconHalos(
     ctx.globalCompositeOperation = 'source-over';
 }
 
-function drawSecondaryFloaters(
+function drawFireflies(
     ctx: CanvasRenderingContext2D,
     scene: Scene,
     showFireflies: boolean,
@@ -528,21 +537,11 @@ function drawSecondaryFloaters(
     islandParX: number,
     islandParY: number,
 ) {
-    const mode = scene.particleMode;
-    const alwaysVisible = mode === 'embers' || mode === 'spores' || mode === 'star-runes';
-    if ((!alwaysVisible && !showFireflies) || scene.fireflies.length === 0) return;
-
-    const boost =
-        mode === 'spores' || mode === 'embers'
-            ? 0.92
-            : scene.atmosphere === 'after-hours'
-              ? 1
-              : 0.72;
-    const orbitMul = mode === 'star-runes' ? 2.1 : 1;
+    if (!showFireflies || scene.fireflies.length === 0) return;
+    const boost = scene.atmosphere === 'after-hours' ? 1 : 0.72;
     for (const f of scene.fireflies) {
-        const fx = f.x + islandParX + Math.sin(time * f.speed + f.phase) * (f.ampX * orbitMul);
-        const fy =
-            f.y + islandParY + Math.cos(time * (f.speed * 0.85) + f.phase) * (f.ampY * orbitMul);
+        const fx = f.x + islandParX + Math.sin(time * f.speed + f.phase) * f.ampX;
+        const fy = f.y + islandParY + Math.cos(time * (f.speed * 0.85) + f.phase) * f.ampY;
         const pulse = 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(time * 2.1 + f.phase));
         ctx.fillStyle = f.tint;
         ctx.globalAlpha = pulse * boost;
@@ -551,105 +550,28 @@ function drawSecondaryFloaters(
     ctx.globalAlpha = 1;
 }
 
-function drawEmberDrifters(
-    ctx: CanvasRenderingContext2D,
-    scene: Scene,
-    time: number,
-    par: number,
-    islandParX: number,
-    islandParY: number,
-) {
-    const span = scene.height * 0.55;
-    for (let i = 0; i < scene.petals.length; i++) {
-        const p = scene.petals[i];
-        const travel = (time * p.vy * 11 + p.phase * 45) % span;
-        const x =
-            p.x + islandParX + Math.sin(time * 2.2 + p.phase) * (p.sway * 0.7) + par * 14 * p.depth;
-        const y = p.y + islandParY - travel;
-        ctx.fillStyle = i % 3 === 0 ? '#ffe07d' : p.tint;
-        ctx.globalAlpha =
-            Math.max(0, 1 - travel / span) * (0.55 + 0.4 * Math.sin(time * 5 + p.phase));
-        ctx.fillRect(x, y, p.size, p.size);
-    }
-    ctx.globalAlpha = 1;
-}
-
-function drawSporeDrifters(
-    ctx: CanvasRenderingContext2D,
-    scene: Scene,
-    time: number,
-    par: number,
-    islandParX: number,
-    islandParY: number,
-) {
-    const span = scene.height * 0.42;
-    for (const p of scene.petals) {
-        const travel = (time * p.vy * 4.2 + p.phase * 30) % span;
-        const x =
-            p.x + islandParX + Math.sin(time * 0.9 + p.phase) * (p.sway * 1.2) + par * 10 * p.depth;
-        const y = p.y + islandParY - travel;
-        const breathe = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(time * 1.4 + p.phase));
-        ctx.fillStyle = p.tint;
-        ctx.globalAlpha = Math.min(0.85, breathe * (1 - travel / span + 0.15));
-        ctx.fillRect(x, y, p.size, p.size);
-    }
-    ctx.globalAlpha = 1;
-}
-
-function drawRuneStreaks(ctx: CanvasRenderingContext2D, scene: Scene, time: number, par: number) {
-    for (const p of scene.petals) {
-        const t = (time * 0.22 + p.phase) % 1;
-        const x = p.x + t * 28 - 14 + par * 10 * p.depth;
-        const y = p.y + Math.sin(t * Math.PI * 2 + p.phase) * 8;
-        ctx.fillStyle = p.tint;
-        ctx.globalAlpha = 0.25 + 0.65 * Math.sin(t * Math.PI);
-        ctx.fillRect(x, y, p.size * 1.5, Math.max(1, p.size * 0.7));
-    }
-    ctx.globalAlpha = 1;
-}
-
-function drawLeafOrPetalDrifters(
+function drawCedarMistAndLeaves(
     ctx: CanvasRenderingContext2D,
     scene: Scene,
     time: number,
     par: number,
 ) {
-    const windBoost = scene.particleMode === 'cedar-mist' ? 1.45 : 1;
+    ctx.fillStyle = 'rgba(218, 232, 224, 0.09)';
+    for (let i = 0; i < 3; i++) {
+        const bandY = scene.height * (0.58 + i * 0.08);
+        const bandX = ((time * (6 + i * 2.5) + i * 220) % (scene.width + 260)) - 130 + par * 8;
+        ctx.fillRect(bandX, bandY, scene.scale * 18, Math.max(2, scene.scale * 0.45));
+    }
+
     const H = scene.height;
     for (const p of scene.petals) {
         const y = p.y + ((time * p.vy * 6.5) % (H + 80)) - 40;
-        const x =
-            p.x +
-            Math.sin(time * 0.65 * windBoost + p.phase) * (p.sway * windBoost) +
-            par * 12 * p.depth;
+        const x = p.x + Math.sin(time * 0.92 + p.phase) * (p.sway * 1.4) + par * 12 * p.depth;
         ctx.fillStyle = p.tint;
         ctx.globalAlpha = 0.45 + 0.28 * Math.sin(time * 0.9 + p.phase);
         ctx.fillRect(x, y, p.size, p.size);
     }
     ctx.globalAlpha = 1;
-}
-
-function drawDriftingParticles(
-    ctx: CanvasRenderingContext2D,
-    scene: Scene,
-    time: number,
-    par: number,
-    islandParX: number,
-    islandParY: number,
-) {
-    if (scene.particleMode === 'embers') {
-        drawEmberDrifters(ctx, scene, time, par, islandParX, islandParY);
-        return;
-    }
-    if (scene.particleMode === 'spores') {
-        drawSporeDrifters(ctx, scene, time, par, islandParX, islandParY);
-        return;
-    }
-    if (scene.particleMode === 'star-runes') {
-        drawRuneStreaks(ctx, scene, time, par);
-        return;
-    }
-    drawLeafOrPetalDrifters(ctx, scene, time, par);
 }
 
 export function drawAtmosphericParticles(
@@ -661,21 +583,10 @@ export function drawAtmosphericParticles(
     islandParY: number,
 ) {
     const palette = ATMOSPHERE_PALETTES[scene.atmosphere];
-    const preset = PARTICLE_PRESETS[scene.particleMode];
 
-    drawSurfaceGlints(ctx, scene, preset, time, islandParX, islandParY);
-    drawSurfaceRipples(ctx, scene, preset, time, islandParX, islandParY);
-    drawBeaconHalos(ctx, scene, preset, palette.lanternAlphaScale, time, islandParX, islandParY);
-    drawSecondaryFloaters(ctx, scene, palette.showFireflies, time, islandParX, islandParY);
-
-    if (scene.particleMode === 'cedar-mist') {
-        ctx.fillStyle = 'rgba(218, 232, 224, 0.10)';
-        for (let i = 0; i < 3; i++) {
-            const bandY = scene.height * (0.62 + i * 0.08);
-            const bandX = ((time * (6 + i * 2.5) + i * 190) % (scene.width + 240)) - 120 + par * 8;
-            ctx.fillRect(bandX, bandY, scene.scale * 16, Math.max(2, scene.scale * 0.45));
-        }
-    }
-
-    drawDriftingParticles(ctx, scene, time, par, islandParX, islandParY);
+    drawSurfaceGlints(ctx, scene, time, islandParX, islandParY);
+    drawSurfaceRipples(ctx, scene, time, islandParX, islandParY);
+    drawBeaconHalos(ctx, scene, palette.lanternAlphaScale, time, islandParX, islandParY);
+    drawFireflies(ctx, scene, palette.showFireflies, time, islandParX, islandParY);
+    drawCedarMistAndLeaves(ctx, scene, time, par);
 }

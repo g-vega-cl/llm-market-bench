@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { WORLD_STORAGE_KEY } from '../backdrop/world-storage';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { CEDAR_WORLD_ID } from '../backdrop/voxel-world';
 import { HomeCtaPage } from './HomeCtaPage';
 
 vi.mock('@tanstack/react-router', () => ({
@@ -19,10 +19,6 @@ vi.mock('@tanstack/react-router', () => ({
         </a>
     ),
 }));
-
-beforeEach(() => {
-    window.localStorage.clear();
-});
 
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -48,19 +44,24 @@ beforeAll(() => {
     }
 });
 
-describe('HomeCtaPage (SceneStage living diorama, dynamic atmosphere & tactile CTA plaque)', () => {
+describe('HomeCtaPage (Cedar Sanctuary SceneStage, zero-flash initialAtmosphere & tactile CTA plaque)', () => {
     it('renders on SceneStage with reactive motion role and zero-scroll hero viewport shell', () => {
-        const { container } = render(<HomeCtaPage />);
+        const { container } = render(<HomeCtaPage initialAtmosphere="after-hours" />);
         const section = container.querySelector('section');
 
         expect(section).not.toBeNull();
         expect(section).toHaveAttribute('data-slot', 'scene-stage');
         expect(section).toHaveAttribute('data-stage-variant', 'hero');
         expect(section).toHaveAttribute('data-motion-role', 'reactive');
-        expect(section?.className).toMatch(/scene-atmosphere-(dawn|daylight|dusk|after-hours)/);
+        expect(section).toHaveAttribute('data-atmosphere', 'after-hours');
+        expect(section?.className).toContain('scene-atmosphere-after-hours');
         expect(section?.className).not.toContain('home-twilight-sky');
         expect(section?.className).toContain('home-hero-viewport');
         expect(section?.className).not.toContain('min-h-dvh');
+
+        const canvas = screen.getByTestId('garden-backdrop');
+        expect(canvas).toHaveAttribute('data-world', CEDAR_WORLD_ID);
+        expect(canvas).toHaveAttribute('data-atmosphere', 'after-hours');
     });
 
     it('uses parent-owned spacing with zero manual child margins on hero elements', () => {
@@ -107,8 +108,8 @@ describe('HomeCtaPage (SceneStage living diorama, dynamic atmosphere & tactile C
         }
     });
 
-    it('exposes accessible foreground HUD controls outside aria-hidden to cycle all 4 atmosphere phases and toggle motion', () => {
-        const { container } = render(<HomeCtaPage />);
+    it('exposes Sky and Pause HUD controls outside aria-hidden without a multi-world switcher', () => {
+        const { container } = render(<HomeCtaPage initialAtmosphere="dusk" />);
         const section = container.querySelector('section');
         const backdropSlot = container.querySelector('[data-slot="scene-backdrop"]');
         const controlsSlot = container.querySelector('[data-slot="scene-controls"]');
@@ -118,13 +119,13 @@ describe('HomeCtaPage (SceneStage living diorama, dynamic atmosphere & tactile C
         expect(backdropSlot?.querySelectorAll('button').length).toBe(0);
         expect(controlsSlot).not.toBeNull();
         expect(controlsSlot).not.toHaveAttribute('aria-hidden');
+        expect(screen.queryByTestId('world-switcher')).toBeNull();
 
         const switcher = screen.getByTestId('atmosphere-switcher');
-        const initialPhase = section?.getAttribute('data-atmosphere');
-        expect(initialPhase).toBeTruthy();
-        expect(canvas).toHaveAttribute('data-atmosphere', initialPhase);
+        expect(section).toHaveAttribute('data-atmosphere', 'dusk');
+        expect(canvas).toHaveAttribute('data-atmosphere', 'dusk');
 
-        const seenPhases = new Set<string | null>([initialPhase ?? null]);
+        const seenPhases = new Set<string | null>(['dusk']);
         for (let i = 0; i < 4; i++) {
             fireEvent.click(switcher);
             const nextPhase = section?.getAttribute('data-atmosphere') ?? null;
@@ -137,44 +138,5 @@ describe('HomeCtaPage (SceneStage living diorama, dynamic atmosphere & tactile C
         const initialMotionText = motionBtn.textContent;
         fireEvent.click(motionBtn);
         expect(motionBtn.textContent).not.toBe(initialMotionText);
-    });
-
-    it('cycles all 5 voxel worlds via the HUD switcher, persists preference, and honors initialWorld', () => {
-        const { unmount } = render(<HomeCtaPage />);
-
-        const worldSwitcher = screen.getByTestId('world-switcher');
-        const canvas = screen.getByTestId('garden-backdrop');
-        expect(canvas).toHaveAttribute('data-world', 'sakura-garden');
-
-        const seenWorlds = new Set<string | null>([canvas.getAttribute('data-world')]);
-        for (let i = 0; i < 5; i++) {
-            fireEvent.click(worldSwitcher);
-            seenWorlds.add(canvas.getAttribute('data-world'));
-        }
-        expect(seenWorlds).toEqual(
-            new Set([
-                'sakura-garden',
-                'magma-forge',
-                'bioluminescent-reef',
-                'sky-observatory',
-                'cedar-sanctuary',
-            ]),
-        );
-
-        // Selecting magma-forge updates localStorage and survives remount
-        fireEvent.click(worldSwitcher);
-        expect(window.localStorage.getItem(WORLD_STORAGE_KEY)).toBe('magma-forge');
-        unmount();
-
-        const secondMount = render(<HomeCtaPage />);
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', 'magma-forge');
-        secondMount.unmount();
-
-        render(<HomeCtaPage initialWorld="sky-observatory" />);
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute(
-            'data-world',
-            'sky-observatory',
-        );
-        expect(window.localStorage.getItem(WORLD_STORAGE_KEY)).toBe('sky-observatory');
     });
 });

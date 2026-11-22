@@ -1,4 +1,3 @@
-import type { WorldId } from '../home/backdrop/voxel-world';
 import { STARTER_RECIPES } from '../recipes/starter-templates';
 import type { PushStrategy } from '../recipes/types';
 import { PERSONALITY_QUESTIONS, type QuizOption, type QuizQuestion } from './personality-questions';
@@ -62,7 +61,6 @@ export interface InvestingArchetype {
     summary: string;
     strengths: [string, string, string];
     watchout: string;
-    worldId: WorldId;
     recipeName: string;
     builderIdeaPrompt: string;
     idealProfile: AxisProfile;
@@ -82,7 +80,6 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
             'Stays calm holding winners across multi-week drawdowns',
         ],
         watchout: 'May hesitate to cut or rotate quickly when a macro regime genuinely flips.',
-        worldId: 'sakura-garden',
         recipeName: 'Quality Value Screener',
         builderIdeaPrompt:
             'Build a quality value bot that ignores news headlines, screens for P/E under 28, positive free cash flow, positive MACD, and price below 90% of its 52-week high, holding cash when nothing clears every rule.',
@@ -102,7 +99,6 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         ],
         watchout:
             'Avoid chasing extended RSI extremes once everybody already agrees on the headline.',
-        worldId: 'magma-forge',
         recipeName: 'Trump & Chips News Momentum',
         builderIdeaPrompt:
             'Build a news momentum bot scanning 48h chip and policy headlines paired with tariff memories, verifying P/E under 45 and RSI under 70 before entering.',
@@ -122,7 +118,6 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         ],
         watchout:
             'Requires hard discipline against catching falling knives when fundamentals actually break.',
-        worldId: 'bioluminescent-reef',
         recipeName: 'Contrarian Sentiment Fader',
         builderIdeaPrompt:
             'Build a contrarian mean-reversion bot that checks the market-feeling barometer, looks for oversold RSI below 35 and price below VWAP on orderly volume with no broken fundamentals, and exits profitable positions into euphoria.',
@@ -141,7 +136,6 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
             'Follows pre-committed exit rules when drift stalls',
         ],
         watchout: 'Stay mindful of correlated sector exposure during peak earnings weeks.',
-        worldId: 'sky-observatory',
         recipeName: 'Earnings Catalyst Hunter',
         builderIdeaPrompt:
             'Build an earnings catalyst drift bot checking 4 quarters of EPS surprise history and management guidance over 72h earnings news, filtering for RVOL above 1.5 and positive MACD while skipping names already up over 8%.',
@@ -161,7 +155,6 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         ],
         watchout:
             'Over-researching ambiguous setups can reduce turnover if thresholds get too tight.',
-        worldId: 'cedar-sanctuary',
         recipeName: 'Claude Agent Portfolio Mirror',
         builderIdeaPrompt:
             'Build a balanced portfolio mirror bot with 4x25% long sizing that traces catalyst-to-earnings chains, audits open positions every slot to exit broken theses, and requires RSI below 75, positive VWAP spread, and RVOL above 1.2.',

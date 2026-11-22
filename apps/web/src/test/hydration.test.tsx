@@ -3,10 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { type ComponentProps, Suspense } from 'react';
 import ReactDOMServer from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import { HomeCtaPage } from '~/features/home/pages/HomeCtaPage';
 import { HomePage, type HomePageData } from '~/features/home/pages/HomePage';
 import { MarketOverviewPage } from '~/features/market-overview/pages/MarketOverviewPage';
 import { EventChainPage } from '~/features/memories/pages/EventChainPage';
 import { MemoriesPage } from '~/features/memories/pages/MemoriesPage';
+import { PersonalityQuizPage } from '~/features/personality/PersonalityQuizPage';
 import { PortfoliosPage } from '~/features/portfolios/pages/PortfoliosPage';
 import { ReasoningPage } from '~/features/reasoning/pages/ReasoningPage';
 import { FutureCatalysts } from '~/features/today/components/FutureCatalysts';
@@ -724,6 +726,21 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
 
         it('10. Home Page: hydrates flawlessly', () => {
             const errors = assertHydrationSymmetry(<HomePage data={mockHomeData} />);
+            expect(errors).toEqual([]);
+        });
+
+        it('11. HomeCtaPage: hydrates symmetrically with server-resolved initialAtmosphere (zero flash)', () => {
+            const errors = assertHydrationSymmetry(<HomeCtaPage initialAtmosphere="after-hours" />);
+            expect(errors).toEqual([]);
+        });
+
+        it('12. PersonalityQuizPage: hydrates symmetrically with server-resolved initialAtmosphere', () => {
+            const errors = assertHydrationSymmetry(
+                <PersonalityQuizPage
+                    initialAtmosphere="daylight"
+                    initialArchetype="catalyst-quant"
+                />,
+            );
             expect(errors).toEqual([]);
         });
     });

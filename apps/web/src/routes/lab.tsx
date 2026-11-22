@@ -32,7 +32,7 @@ export const LAB_CATEGORIES: LabCategory[] = [
                 to: '/personality',
                 label: 'Investing Style Diagnostic',
                 description:
-                    '10-question personality test matching your trading temperament to one of five voxel worlds and starter bot recipes.',
+                    '10-question personality test matching your trading temperament to five investing archetypes and starter bot recipes.',
             },
             {
                 to: '/recipes-demo',

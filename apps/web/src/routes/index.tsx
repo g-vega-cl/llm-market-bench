@@ -1,11 +1,11 @@
+import { resolveAtmospherePhase } from '@llm-market-bench/ui-design-system';
 import { createFileRoute } from '@tanstack/react-router';
-import { isValidWorldId, type WorldId } from '~/features/home/backdrop/voxel-world';
 import { HomeCtaPage } from '~/features/home/pages/HomeCtaPage';
 import { seo } from '~/lib/seo';
 
 export const Route = createFileRoute('/')({
-    validateSearch: (search: Record<string, unknown>): { world?: WorldId } => ({
-        world: isValidWorldId(search.world) ? search.world : undefined,
+    loader: () => ({
+        initialAtmosphere: resolveAtmospherePhase(new Date(), 'market-et'),
     }),
     head: () => ({
         meta: [
@@ -20,6 +20,6 @@ export const Route = createFileRoute('/')({
 });
 
 function RouteComponent() {
-    const { world } = Route.useSearch();
-    return <HomeCtaPage initialWorld={world} />;
+    const { initialAtmosphere } = Route.useLoaderData();
+    return <HomeCtaPage initialAtmosphere={initialAtmosphere} />;
 }

@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { WORLD_IDS } from '../home/backdrop/voxel-world';
 import { STARTER_RECIPES } from '../recipes/starter-templates';
 import {
     ARCHETYPE_IDS,
@@ -13,18 +12,16 @@ import {
 } from './personality-data';
 
 describe('personality-data (10-question 4-axis diagnostic & starter bot matcher)', () => {
-    it('defines 10 questions with 4 distinct options and 1:1 archetype-world-recipe integrity', () => {
+    it('defines 10 questions with 4 distinct options and 1:1 archetype-recipe integrity', () => {
         expect(PERSONALITY_QUESTIONS).toHaveLength(10);
         for (const q of PERSONALITY_QUESTIONS) {
             expect(q.options).toHaveLength(4);
         }
 
         const recipeNames = new Set(STARTER_RECIPES.map((r) => r.name));
-        const mappedWorlds = new Set(ARCHETYPE_IDS.map((id) => ARCHETYPES[id].worldId));
         const mappedRecipes = new Set(ARCHETYPE_IDS.map((id) => ARCHETYPES[id].recipeName));
 
         expect(AXIS_DEFINITIONS).toHaveLength(4);
-        expect(mappedWorlds).toEqual(new Set(WORLD_IDS));
         expect(mappedRecipes.size).toBe(5);
         for (const name of mappedRecipes) {
             expect(recipeNames.has(name)).toBe(true);
@@ -34,7 +31,6 @@ describe('personality-data (10-question 4-axis diagnostic & starter bot matcher)
     });
 
     it('reaches every single one of the 5 archetypes with top-2 distinct matches and bounded 0..100 axes', () => {
-        // Pick per-question options that track each archetype's realistic step toward its centroid
         const reached = new Set<ArchetypeId>();
 
         for (const targetId of ARCHETYPE_IDS) {

@@ -146,9 +146,19 @@ The helper returns `true` only when every supplied query has valid data and is n
 
 Mutations must wait for confirmed server responses with in-flow pending feedback (`Button[isLoading]`, which renders a pulsing Voxel pixel square plus `aria-busy="true"`) and explicit `ErrorCard` feedback on failure. Speculative `onMutate` cache rewrites and optimistic rollback machinery are prohibited: a value that renders, reverts, and re-renders is a layout shift by another name, and showing unconfirmed state on financial views is worse than a brief pending indicator.
 
+### 9. Zero SSR/CSR Render Divergence or Post-Mount Visual Flash (Mandatory)
+
+Routes must **never** render one visual state during SSR and then switch to another on client hydration inside `useEffect` (whether layout geometry, time-of-day palettes, `localStorage` preferences, or asynchronously sized canvases). Post-hydration state jumps count as avoidable SSR/CSR visual instability (CLS when DOM dimensions, controls, or copy shift; visible sky/theme flash even on fixed stages):
+
+- **Resolve initial visual state in the route loader**: Compute time-sensitive or deterministic state on the server inside the route `loader` and seed client state via lazy `useState` initialization rather than mutating inside a mount `useEffect` (e.g., `initialAtmosphere = resolveAtmospherePhase(new Date(), 'market-et')` in `apps/web/src/routes/index.tsx` and `apps/web/src/routes/personality.tsx`, consumed by `useDioramaStage(initialAtmosphere)` in `apps/web/src/features/home/backdrop/useDioramaStage.ts`).
+- **Match SSR CSS pixel-for-pixel to canvas/JS layers**: Background gradients rendered by SSR CSS classes (`.scene-atmosphere-*` in `apps/web/src/styles/app.css`) must match the exact linear stops, horizon glow, and vignette stops painted by `bakeSky` in `apps/web/src/features/home/backdrop/garden-renderer.ts` so canvas reveal never flashes a different sky color.
+- **Contain canvases inside SSR-sized boxes**: Mount interactive canvas layers as `position: absolute; inset: 0` inside SSR-constrained containers (`.home-hero-viewport`, `SceneStage`) and transition `opacity` (`opacity-0` -> `opacity-100`, disabled under `prefers-reduced-motion`) after the first frame paints so canvas readiness never alters document flow.
+
 ## Related
 
 - [[concepts/core-web-vitals]] — p75 LCP, INP, and CLS targets and 3-tier JS loading model
+- [[concepts/rendering-strategies]] — Full SSR, Hybrid SSR, and SSR/CSR symmetry rules
+- [[concepts/living-scene-backdrops]] — Cedar Sanctuary `SceneStage` and zero-flash loader hydration
 - [[entities/design-system]] — UI primitive library, theme conventions, and layout governance
 - [[concepts/fluent-responsive-design]] — Breakpoint-free intrinsic responsive layouts
 - [[concepts/zero-frontend-compute]] — Keeping the presentation layer clean of heavy client math

@@ -1,5 +1,4 @@
 import { Badge, Button } from '@llm-market-bench/ui-design-system';
-import type { WorldMetadata } from '../home/backdrop/voxel-world';
 import type { QuizQuestion } from './personality-questions';
 
 export interface PersonalityQuizStepProps {
@@ -8,7 +7,6 @@ export interface PersonalityQuizStepProps {
     totalQuestions: number;
     chosenOptionId?: string;
     liveHint: string;
-    activeWorldMeta: WorldMetadata;
     onSelectOption: (questionId: string, optionId: string) => void;
     onPrevious: () => void;
     onBrowseAll: () => void;
@@ -25,7 +23,6 @@ export function PersonalityQuizStep({
     totalQuestions,
     chosenOptionId,
     liveHint,
-    activeWorldMeta,
     onSelectOption,
     onPrevious,
     onBrowseAll,
@@ -48,7 +45,7 @@ export function PersonalityQuizStep({
                     data-testid="quiz-live-world-hint"
                     className="text-xs font-normal text-voxel-muted"
                 >
-                    {liveHint || `Stage: ${activeWorldMeta.label}`}
+                    {liveHint || 'Scoring 4 trading axes'}
                 </span>
             </div>
 

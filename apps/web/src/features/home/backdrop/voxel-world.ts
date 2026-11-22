@@ -1,88 +1,46 @@
 /**
- * Shared 3D Voxel grid, procedural shape primitives, world metadata, and
- * cached face extraction used by all living-scene diorama worlds.
+ * Shared 3D Voxel grid, procedural shape primitives, Cedar Sanctuary metadata,
+ * and cached face extraction used by the panoramic living-scene backdrop.
  */
 
-export const SX = 104;
-export const SY = 104;
-export const SZ = 72;
+export const SX = 144;
+export const SY = 144;
+export const SZ = 64;
 export const CX = SX >> 1;
 export const CY = SY >> 1;
-export const R = 36;
+export const RU = 84;
+export const RV = 42;
 
-export const WORLD_IDS = [
-    'sakura-garden',
-    'magma-forge',
-    'bioluminescent-reef',
-    'sky-observatory',
-    'cedar-sanctuary',
-] as const;
+export const CEDAR_WORLD_ID = 'cedar-sanctuary' as const;
+export type WorldId = typeof CEDAR_WORLD_ID;
 
-export type WorldId = (typeof WORLD_IDS)[number];
-
-export const PARTICLE_MODES = ['sakura', 'embers', 'spores', 'star-runes', 'cedar-mist'] as const;
-
-export type ParticleMode = (typeof PARTICLE_MODES)[number];
-
-export interface WorldMetadata {
+export interface CedarWorldMetadata {
     id: WorldId;
     label: string;
     shortLabel: string;
-    particleMode: ParticleMode;
     glowRgb: [number, number, number];
     description: string;
 }
 
-export const WORLD_METADATA: Record<WorldId, WorldMetadata> = {
-    'sakura-garden': {
-        id: 'sakura-garden',
-        label: 'Zen Sakura Garden',
-        shortLabel: 'Sakura Garden',
-        particleMode: 'sakura',
-        glowRgb: [248, 192, 98],
-        description:
-            'Levitating matcha garden with sakura blossoms, koi pond ripples, and dusk fireflies.',
-    },
-    'magma-forge': {
-        id: 'magma-forge',
-        label: 'Magma Forge',
-        shortLabel: 'Magma Forge',
-        particleMode: 'embers',
-        glowRgb: [255, 118, 42],
-        description:
-            'Volcanic basalt anvil island with molten lava cascades, rising embers, and furnace sparks.',
-    },
-    'bioluminescent-reef': {
-        id: 'bioluminescent-reef',
-        label: 'Bioluminescent Reef',
-        shortLabel: 'Bio Reef',
-        particleMode: 'spores',
-        glowRgb: [96, 244, 210],
-        description:
-            'Midnight coral & amethyst spire basin with rising bioluminescent spores and tide rings.',
-    },
-    'sky-observatory': {
-        id: 'sky-observatory',
-        label: 'Sky Observatory',
-        shortLabel: 'Observatory',
-        particleMode: 'star-runes',
-        glowRgb: [248, 224, 152],
-        description:
-            'Terraced marble citadel with brass armillary dome, mirror pool, and orbiting star-runes.',
-    },
-    'cedar-sanctuary': {
-        id: 'cedar-sanctuary',
-        label: 'Cedar Sanctuary',
-        shortLabel: 'Cedar Ridge',
-        particleMode: 'cedar-mist',
-        glowRgb: [248, 198, 112],
-        description:
-            'Highland cypress ridge with timber aqueduct, autumn maples, drifting valley mist, and falling leaves.',
-    },
+export const CEDAR_WORLD_META: CedarWorldMetadata = {
+    id: CEDAR_WORLD_ID,
+    label: 'Cedar Sanctuary',
+    shortLabel: 'Cedar Ridge',
+    glowRgb: [248, 198, 112],
+    description:
+        'Panoramic highland cedar ridge with timber sanctuary lodge, aqueduct trestle, brook bridge, autumn maples, drifting mist, and falling leaves.',
 };
 
-export function isValidWorldId(value: unknown): value is WorldId {
-    return typeof value === 'string' && (WORLD_IDS as readonly string[]).includes(value);
+/** Converts camera-aligned `(u, v)` offsets into integer grid `[x, y]` coordinates. */
+export function uvToGrid(u: number, v: number): [number, number] {
+    return [Math.round(CX + (u + v) * 0.5), Math.round(CY + (v - u) * 0.5)];
+}
+
+/** Converts integer grid `(x, y)` coordinates into camera-aligned `(u, v)` offsets. */
+export function gridToUv(x: number, y: number): [number, number] {
+    const dx = x - CX;
+    const dy = y - CY;
+    return [dx - dy, dx + dy];
 }
 
 export interface Rgb {
@@ -112,15 +70,15 @@ export interface RenderableWorld {
     palette: Material[];
     cloudMaterials: number[];
     farCloudMaterials: number[];
-    /** Falling petals / sparks / drifting spores / falling autumn leaves. */
+    /** Falling autumn cedar & maple leaves. */
     petals: Array<[number, number, number]>;
-    /** Reflective water, magma, or mirror-pool surface glints. */
+    /** Reflective brook & waterfall glints. */
     glints: Array<[number, number, number]>;
-    /** Glowing beacons, lanterns, furnace hearts, or crystal tips. */
+    /** Glowing sanctuary windows & path lanterns. */
     lamps: Array<[number, number, number]>;
-    /** Hovering/orbiting secondary particles (fireflies, spores, runes, wisps). */
+    /** Dusk & night fireflies hovering over the valley. */
     fireflies: Array<[number, number, number]>;
-    /** Expanding isometric surface ripple anchors (koi, caldera, tide, prism, brook). */
+    /** Expanding isometric surface ripple anchors in the brook & cascade pool. */
     koi: Array<[number, number, number]>;
     voxelCount: number;
 }
@@ -165,6 +123,7 @@ export interface VoxelCanvasBuilder {
     inside: (x: number, y: number, z: number) => boolean;
     filled: (x: number, y: number, z: number) => boolean;
     put: (x: number, y: number, z: number, m: number, glow?: boolean) => void;
+    putUV: (u: number, v: number, z: number, m: number, glow?: boolean) => void;
     box: (
         x: number,
         y: number,
@@ -258,6 +217,11 @@ export function createVoxelCanvas(seedValue: number): VoxelCanvasBuilder {
         solid[i] = m === 0 ? 0 : 1;
         material[i] = m;
         emissive[i] = m !== 0 && glow ? 1 : 0;
+    }
+
+    function putUV(u: number, v: number, z: number, m: number, glow = false) {
+        const [gx, gy] = uvToGrid(u, v);
+        put(gx, gy, z, m, glow);
     }
 
     function box(
@@ -361,6 +325,7 @@ export function createVoxelCanvas(seedValue: number): VoxelCanvasBuilder {
         inside,
         filled,
         put,
+        putUV,
         box,
         cyl,
         sphere,

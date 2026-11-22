@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { GardenBackdrop } from './GardenBackdrop';
 import { ATMOSPHERE_PALETTES } from './garden-renderer';
+import { CEDAR_WORLD_ID } from './voxel-world';
 
 function mockMatchMedia(matches: boolean) {
     Object.defineProperty(window, 'matchMedia', {
@@ -20,7 +21,7 @@ function mockMatchMedia(matches: boolean) {
     });
 }
 
-describe('GardenBackdrop (lifecycle, atmosphere phases, reduced-motion, and null-context resilience)', () => {
+describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-motion, and null-context resilience)', () => {
     beforeEach(() => {
         if (typeof globalThis.ResizeObserver === 'undefined') {
             globalThis.ResizeObserver = class ResizeObserver {
@@ -45,6 +46,7 @@ describe('GardenBackdrop (lifecycle, atmosphere phases, reduced-motion, and null
         const canvas = screen.getByTestId('garden-backdrop') as HTMLCanvasElement;
 
         expect(canvas).toBeInTheDocument();
+        expect(canvas).toHaveAttribute('data-world', CEDAR_WORLD_ID);
         expect(canvas).toHaveAttribute('data-atmosphere', 'dusk');
         expect(canvas.width).toBe(300); // default jsdom canvas width untouched on 0x0 bail
         expect(getContextSpy).not.toHaveBeenCalled();
@@ -70,34 +72,12 @@ describe('GardenBackdrop (lifecycle, atmosphere phases, reduced-motion, and null
         );
 
         const canvas = screen.getByTestId('garden-backdrop');
+        expect(canvas).toHaveAttribute('data-world', CEDAR_WORLD_ID);
         expect(canvas).toHaveAttribute('data-atmosphere', 'dawn');
         expect(screen.queryByRole('button')).toBeNull();
 
         rerender(<GardenBackdrop atmosphere="after-hours" showControls={false} paused={true} />);
         expect(canvas).toHaveAttribute('data-atmosphere', 'after-hours');
-    });
-
-    it('supports configurable world presets and explicit particleMode overrides', () => {
-        mockMatchMedia(true);
-        const { rerender } = render(
-            <GardenBackdrop world="magma-forge" atmosphere="dusk" showControls={false} paused />,
-        );
-
-        const canvas = screen.getByTestId('garden-backdrop');
-        expect(canvas).toHaveAttribute('data-world', 'magma-forge');
-        expect(canvas).toHaveAttribute('data-particle-mode', 'embers');
-
-        rerender(
-            <GardenBackdrop
-                world="sky-observatory"
-                particleMode="spores"
-                atmosphere="after-hours"
-                showControls={false}
-                paused
-            />,
-        );
-        expect(canvas).toHaveAttribute('data-world', 'sky-observatory');
-        expect(canvas).toHaveAttribute('data-particle-mode', 'spores');
     });
 
     it('respects prefers-reduced-motion and toggles between Play motion and Pause motion', () => {

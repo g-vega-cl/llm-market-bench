@@ -63,3 +63,8 @@ research/business-fit/
 .pi/sessions/
 .pi/cache/
 .pi/*.log
+
+# Hermes agent local state (per-session plans, notes). Same split as .pi/: this is
+# machine-local scratch, so it stays out of Git. Project-shared agent tooling stays
+# trackable under .agents/, and durable design records live in wiki/.
+.hermes/

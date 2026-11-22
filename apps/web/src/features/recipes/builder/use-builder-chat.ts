@@ -1,12 +1,7 @@
 import { usePostHog } from '@posthog/react';
 import { useState } from 'react';
 import { track } from '~/lib/analytics';
-import {
-    clearPendingIdea,
-    loadPendingIdea,
-    saveLocalDraft,
-    savePendingIdea,
-} from '../utils/local-draft';
+import { clearPendingIdea, loadPendingIdea, savePendingIdea } from '../utils/local-draft';
 import type { BuilderMessage, CompilerReply } from './compiler';
 import { compileStrategyFn } from './compiler-api';
 
@@ -26,6 +21,7 @@ export interface BuilderChat {
     error: string | null;
     pendingIdea: string | null;
     send: (text: string) => Promise<void>;
+    reset: () => void;
 }
 
 /**
@@ -74,7 +70,6 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
                 track(posthog, 'builder_declined');
             } else {
                 track(posthog, 'builder_compiled', { cadence: result.strategy.cadence });
-                saveLocalDraft(result.strategy, 'builder');
                 clearPendingIdea();
             }
         } catch (err) {
@@ -82,6 +77,14 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         } finally {
             setIsCompiling(false);
         }
+    };
+
+    const reset = () => {
+        setMessages([]);
+        setMessageIds([]);
+        setDraft('');
+        setReply(null);
+        setError(null);
     };
 
     return {
@@ -94,5 +97,6 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         error,
         pendingIdea,
         send,
+        reset,
     };
 }

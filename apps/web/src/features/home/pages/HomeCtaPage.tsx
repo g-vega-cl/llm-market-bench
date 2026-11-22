@@ -65,7 +65,7 @@ export function HomeCtaPage({ initialAtmosphere }: HomeCtaPageProps) {
                     className="flex w-full max-w-md flex-col items-center gap-4"
                 >
                     <Link
-                        to="/lab"
+                        to="/build"
                         data-testid="start-building"
                         className="voxel-btn voxel-btn--hero inline-flex w-full max-w-xs min-h-14 items-center justify-center bg-accent px-10 py-4 text-sm font-bold uppercase tracking-[0.16em] text-accent-ink hover:bg-accent-hover"
                     >

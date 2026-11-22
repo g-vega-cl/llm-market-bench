@@ -3,13 +3,15 @@ tags: [recipes, builder, llm, compiler, validation, fallback, local-draft]
 category: concept
 ---
 
-The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compiler-api.ts` (server function), with `BuilderChatPanel.tsx` (the extracted panel mounted on both `/lab` and `/build`), `BuilderConversation.tsx`, and `use-builder-chat.ts` providing the UI and conversation state.
+# Recipe Builder Compiler
+
+The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compiler-api.ts` (server function), with `BuilderChatPanel.tsx` (the chat panel mounted at `/build` and linked from `/lab`), `BuilderConversation.tsx`, and `use-builder-chat.ts` providing the UI and conversation state.
 
 The guiding rule is that the model **never edits the graph freehand**. Whatever it returns is re-validated against the same contracts the studio, the save API, the scheduler, and the database enforce, and an unbuildable or twice-invalid reply degrades to a runnable starter template rather than a dead end.
 
 ## Two Entry Points, One Panel
 
-`BuilderChatPanel.tsx` is the single implementation of the chat builder. It is mounted at the top of `/lab` (`data-testid="lab-builder"`) and remains reachable at `/build`. Both routes pass the same `idea` seed and `userId`, and differ only in the `redirectTo` target (`'/lab'` or `'/build'`) used when an anonymous visitor is sent to sign in. Extracting the panel means the builder is discoverable from the lab directory without duplicating the conversation, metering, or draft-handoff logic.
+`BuilderChatPanel.tsx` is the single implementation of the chat builder. It is mounted at `/build` (primary) and linked from the homepage (`/`) and the public recipe gallery (`/recipes`). The panel accepts an optional `idea` seed and `userId`, and an optional `redirectTo` (default `/build`) used when an anonymous visitor is sent to sign in. Extracting the panel means the builder is discoverable from the lab directory without duplicating the conversation, metering, or draft-handoff logic.
 
 ## Capability Manifest
 
@@ -27,7 +29,7 @@ The guiding rule is that the model **never edits the graph freehand**. Whatever 
 
 | Shape | Meaning |
 | :--- | :--- |
-| `{ status: 'ok', strategy, summary, fallback? }` | A validated single-stage recipe, ready to hand to the studio |
+| `{ status: 'ok', strategy, summary, fallback? }` | A validated single-stage recipe, ready for the Compiled Bot Workspace |
 | `{ status: 'question', question, options }` | One clarifying question with up to `MAX_OPTIONS` (4) choice buttons |
 | `{ status: 'declined', reason, closest? }` | The engine cannot express this idea; `closest` describes the nearest buildable version |
 
@@ -65,24 +67,41 @@ Client-supplied roles are filtered to `user`/`assistant` only and each turn is t
 ## Client State & Anonymous Drafts (`useBuilderChat`)
 
 - **State** — `messages`, parallel `messageIds` (stable React keys), `draft`, `reply`, `isCompiling`, `error`, and `pendingIdea`.
-- **Signed-out users** — `send()` stores the message via `savePendingIdea()` and calls `onNeedSignIn`, which navigates to `/login?redirect=<redirectTo>` (the panel's `redirectTo` prop, `'/lab'` or `'/build'`). The idea survives the redirect and is replayed from `localStorage`, so signing in never costs the visitor their idea.
-- **Signed-in users** — sends the conversation to `compileStrategyFn`, appends the assistant's question to the transcript on a `question` reply, and writes the compiled strategy into the browser draft (`saveLocalDraft(strategy, 'builder')`) plus `clearPendingIdea()` on an `ok` reply.
+- **Signed-out users** — `send()` stores the message via `savePendingIdea()` and calls `onNeedSignIn`, which navigates to `/auth?redirect=<redirectTo>` (the panel's `redirectTo` prop, default `/build`). The idea survives the redirect and is replayed from `localStorage`, so signing in never costs the visitor their idea.
+- **Signed-in users** — sends the conversation to `compileStrategyFn`, appends the assistant's question to the transcript on a `question` reply, and on an `ok` reply:
+  - Does **not** save a local draft (the compiled strategy flows directly into the Compiled Bot Workspace)
+  - Calls `clearPendingIdea()`
 - **Analytics** — `track(posthog, ...)` emits `builder_question_answered`, `builder_declined`, and `builder_compiled` (with the cadence), and `BuilderChatPanel` emits `builder_opened` with `seeded`. See `apps/web/src/lib/analytics.ts`.
+
+## Compiled Bot Workspace (`CompiledBotWorkspace` + `CompiledBotSummaryCard`)
+
+When compilation succeeds (`reply.status === 'ok'`), `BuilderChatPanel` renders `CompiledBotWorkspace` instead of the chat interface:
+
+- **Summary card** (`CompiledBotSummaryCard`) — status badge, bot name, description, active block badges, tool count
+- **Primary CTA** — "▶ Backtest (Random 2W)" (auto-saves → enqueues backtest → navigates to `/recipes/backtest/$jobId`)
+- **Live toggle** — "Enable Live (30m)" / "Pause Live" with max-3-bots conflict confirmation (`LiveSwitchConfirmation`)
+- **Turbo button** — 5m × 1h boost, 1/day per user, countdown label
+- **Collapsible editor** — "Edit blocks & tools ▼" reveals `StageBuilder` (5 blocks, delete-only) + `ToolPicker` (no Select All/Clear)
+- **Collapsible raw prompt** — "View raw prompt ▼" reveals `PromptVisualizer` with live data preview
+- **"← My Bots" link** — returns to `/recipes` dashboard
+- **Guidance links** — "Take our 10-question personality test" (`/personality`) and "talk to our AI advisor" (`/chat`)
 
 ## Browser Draft Handoff (`utils/local-draft.ts`)
 
 `recipe_draft:v1` holds `{ strategy, savedAt, source: 'builder' | 'studio' }`; `recipe_builder_pending:v1` holds the anonymous idea. Both reads/writes are SSR-guarded and `try/catch`-wrapped, so private-mode or full storage simply leaves the draft in memory. `loadLocalDraft()` rejects a stored draft whose `stages` is not exactly one element, so a malformed or legacy value is ignored rather than loaded.
 
-`RecipeStudioPage` adopts the draft in a `useEffect` (never a state initializer — reading `localStorage` during render would make the first client paint differ from SSR), guarded by an `importedRef` and by the presence of `initialStrategy`, then calls `clearLocalDraft()`. A compiled recipe therefore opens in the studio exactly once.
+`RecipeDashboardPage` (the `/recipes` dashboard) adopts the draft in a `useEffect` (never a state initializer — reading `localStorage` during render would make the first client paint differ from SSR), guarded by an `importedRef` and by the presence of `initialStrategy`, then calls `clearLocalDraft()`. A compiled recipe therefore opens in the dashboard exactly once.
 
 ## Tests
 
-`apps/web/src/features/recipes/builder/compiler.test.ts` covers the manifest (no `web_search`, all five blocks listed, hard constraints present), `validateStrategy` (accepts a valid recipe; rejects a two-stage graph, a missing `output_format`, a disallowed tool, an invented block type, and a non-`3h` cadence), `parseCompilerReply` (fenced JSON, question with options, declined with closest, prose throws, an `ok` reply with an invalid graph throws), `fallbackReply` (produces a runnable single-stage template), and `buildConversation` (system prompt first, turn order preserved). `apps/web/src/features/recipes/utils/local-draft.test.ts` covers draft round-trip, malformed storage, a non-single-stage draft, clearing, and pending-idea save/load/clear.
+- `apps/web/src/features/recipes/builder/compiler.test.ts` — manifest, `validateStrategy`, `parseCompilerReply`, `fallbackReply`, `buildConversation`
+- `apps/web/src/features/recipes/builder/CompiledBotWorkspace.test.tsx` — default collapsed state, dirty unsaved bot enables Save, backtest flow auto-saves and navigates
+- `apps/web/src/features/recipes/utils/local-draft.test.ts` — draft round-trip, malformed storage, non-single-stage draft, clearing, pending-idea save/load/clear
 
 ## Related
 
-- [[entities/recipe-studio]] — the studio the compiled recipe opens in, and the `/build` route
+- [[entities/recipe-studio]] — the studio dashboard, live status page, and `/build` route
 - [[concepts/recipe-builder-usage]] — the 25/day compile meter this flow spends
-- [[concepts/state-machines]] — where `RecipeSaveState` and `BacktestError` lifecycles are registered
+- [[concepts/state-machines]] — where `RecipeSaveState`, `BacktestError`, `LiveScheduleState` lifecycles are registered
 - [[entities/free-llm-proxy]] — the `auto-go` endpoint the compiler calls
 - [[concepts/zero-lookahead-materialization]] — why `web_search` is banned in recipes

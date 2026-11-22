@@ -61,15 +61,6 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
         });
     };
 
-    const moveBlock = (index: number, delta: -1 | 1) => {
-        const nextIdx = index + delta;
-        if (nextIdx < 0 || nextIdx >= stage.blocks.length) return;
-        const copy = [...stage.blocks];
-        const [item] = copy.splice(index, 1);
-        copy.splice(nextIdx, 0, item);
-        onChange({ ...stage, blocks: copy });
-    };
-
     return (
         <div className="flex flex-col gap-4 border border-voxel-bevel-hi bg-voxel-surface p-4 rounded-none">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-voxel-bevel-hi pb-3">
@@ -141,7 +132,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
             </div>
 
             <div className="flex flex-col gap-3">
-                {stage.blocks.map((block, bIdx) => (
+                {stage.blocks.map((block) => (
                     <div
                         key={block.id}
                         className="flex flex-col gap-2 border border-voxel-bevel-hi bg-voxel-canvas p-3 rounded-none"
@@ -151,34 +142,14 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                                 {block.type.toUpperCase()} BLOCK
                             </Badge>
                             {block.type === 'output_format' ? null : (
-                                <div className="flex items-center gap-2">
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        colorScheme="neutral"
-                                        onClick={() => moveBlock(bIdx, -1)}
-                                        disabled={bIdx === 0}
-                                    >
-                                        ↑
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        colorScheme="neutral"
-                                        onClick={() => moveBlock(bIdx, 1)}
-                                        disabled={bIdx === stage.blocks.length - 1}
-                                    >
-                                        ↓
-                                    </Button>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        colorScheme="neutral"
-                                        onClick={() => removeBlock(block.id)}
-                                    >
-                                        Delete
-                                    </Button>
-                                </div>
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    colorScheme="neutral"
+                                    onClick={() => removeBlock(block.id)}
+                                >
+                                    Delete
+                                </Button>
                             )}
                         </div>
 

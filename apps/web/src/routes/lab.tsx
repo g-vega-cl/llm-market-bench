@@ -1,6 +1,5 @@
 import { Badge, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { createFileRoute, Link } from '@tanstack/react-router';
-import { BuilderChatPanel } from '~/features/recipes/builder/BuilderChatPanel';
 import { seo } from '~/lib/seo';
 
 export interface LabLinkItem {
@@ -24,9 +23,9 @@ export const LAB_CATEGORIES: LabCategory[] = [
         items: [
             {
                 to: '/recipes',
-                label: 'Recipe Studio',
+                label: 'My Bots',
                 description:
-                    'Visual Voxel DAG builder for news catalyst streams, technical indicator gates, and LLM trading recipes.',
+                    'Manage your saved trading bots, live schedules, and 2-week point-in-time backtests.',
             },
             {
                 to: '/personality',
@@ -193,17 +192,7 @@ export const Route = createFileRoute('/lab')({
 });
 
 function LabRouteComponent() {
-    const { user } = Route.useRouteContext();
-    return (
-        <div className="flex flex-col">
-            <section data-testid="lab-builder" className="mx-auto w-full max-w-5xl px-5 pt-8">
-                <div className="voxel-card p-5">
-                    <BuilderChatPanel redirectTo="/lab" userId={user?.id ?? null} />
-                </div>
-            </section>
-            <LabDirectoryView />
-        </div>
-    );
+    return <LabDirectoryView />;
 }
 
 export function LabDirectoryView() {

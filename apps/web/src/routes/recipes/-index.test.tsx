@@ -10,12 +10,11 @@ vi.mock('@tanstack/react-start', () => ({
     }),
 }));
 
-vi.mock('~/features/recipes/pages/RecipeStudioPage', () => ({
-    RecipeStudioPage: () => <div data-testid="mock-studio" />,
+vi.mock('~/features/recipes/pages/RecipeDashboardPage', () => ({
+    RecipeDashboardPage: () => <div data-testid="mock-dashboard" />,
 }));
 
 vi.mock('~/features/recipes/api/recipes-api', () => ({
-    fetchRecipeByIdFn: vi.fn(),
     fetchRecentBacktestJobsFn: vi.fn(),
 }));
 
@@ -39,19 +38,19 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 type HeadTag = { name?: string; content?: string; title?: string };
 
 describe('Recipe gallery (public /recipes)', () => {
-    it('shows the template catalogue to a logged-out visitor', () => {
+    it('shows read-only example templates without per-card Sign in to fork buttons', () => {
         render(<RecipeGalleryPage />);
         expect(screen.getByText('Trump & Chips News Momentum')).toBeInTheDocument();
-        expect(screen.getAllByText('Sign in to fork').length).toBeGreaterThan(0);
+        expect(screen.queryByText('Sign in to fork')).not.toBeInTheDocument();
     });
 
-    it('links the gallery to the builder and the showcase backtest', () => {
+    it('shows a single primary CTA to /build and a subtle link to /recipes-demo', () => {
         render(<RecipeGalleryPage />);
-        expect(screen.getByText('Describe your own').closest('a')).toHaveAttribute(
+        expect(screen.getByText('Start Building Your Bot →').closest('a')).toHaveAttribute(
             'href',
             '/build',
         );
-        expect(screen.getByText('See a finished backtest').closest('a')).toHaveAttribute(
+        expect(screen.getByText('or see a sample backtest').closest('a')).toHaveAttribute(
             'href',
             '/recipes-demo',
         );
@@ -65,9 +64,8 @@ describe('Recipes route', () => {
         expect(description).toMatch(/one LLM call/i);
     });
 
-    it('renders the gallery instead of the studio when nobody is signed in', () => {
+    it('renders the gallery instead of the dashboard when nobody is signed in', () => {
         vi.spyOn(Route, 'useLoaderData').mockReturnValue({
-            initialStrategy: null,
             recentBacktests: [],
             initialQuota: null,
             initialUserRecipes: [],
@@ -76,13 +74,12 @@ describe('Recipes route', () => {
 
         render(<RouteComponent />);
 
-        expect(screen.queryByTestId('mock-studio')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('mock-dashboard')).not.toBeInTheDocument();
         expect(screen.getByText('Trump & Chips News Momentum')).toBeInTheDocument();
     });
 
-    it('renders the studio for a signed-in user', () => {
+    it('renders the dashboard for a signed-in user', () => {
         vi.spyOn(Route, 'useLoaderData').mockReturnValue({
-            initialStrategy: null,
             recentBacktests: [],
             initialQuota: null,
             initialUserRecipes: [],
@@ -91,6 +88,6 @@ describe('Recipes route', () => {
 
         render(<RouteComponent />);
 
-        expect(screen.getByTestId('mock-studio')).toBeInTheDocument();
+        expect(screen.getByTestId('mock-dashboard')).toBeInTheDocument();
     });
 });

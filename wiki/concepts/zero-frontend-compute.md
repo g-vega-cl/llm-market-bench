@@ -31,26 +31,28 @@ All derived cross-domain intelligence follows a deterministic 3-stage lifecycle:
 ```mermaid
 flowchart LR
     A["Background Pipeline<br/>(Cron / Workflows)"] -->|"Compute Heavy Math<br/>(Vectors, Joins, Stats)"| B[("Materialized Table<br/>(Lean Relational Schema)")]
-    B -->|"Lean Scalar Query<br/>(&lt;100KB Payload)"| C["Web API / Loader<br/>(apps/web)"]
+    B -->|"Lean Scalar Query<br/>(<100KB Payload)"| C["Web API / Loader<br/>(apps/web)"]
     C -->|"5-Min Tiered Cache"| D["UI Presentation<br/>(React Components)"]
 ```
 
 1. **Pipeline Execution**: Background scheduled jobs ([.github/workflows/*.yml](file:///home/cv/Documents/Code/llm-market-bench/.github/workflows), [apps/engine/main.py](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/main.py)) compute heavy mathematical models, embeddings, or cross-domain collisions offline.
-2. **Relational Materialization**: Results are written to dedicated Supabase tables (`catalyst_radar`, `market_barometer_history`, `earnings_alpha`) with targeted indexes, scalar columns, and tight row counts.
+2. **Relational Materialization**: Results are written to dedicated Supabase tables (`catalyst_radar`, `market_barometer_history`, `earnings_alpha`, `recipe_public_stats`, `recipe_desk_summary`, `recipe_desk_feed`) with targeted indexes, scalar columns, and tight row counts.
 3. **Fast Presentation Read**: Web loaders query only scalar columns with strict pagination, returning clean payloads under 100 KB with synchronized tiered caching (Node RAM cache + TanStack Query `staleTime`).
 
 ---
 
 ## Reference Implementations
 
-The project maintains three canonical implementations of this pattern:
+The project maintains canonical implementations of this pattern:
 
 | Feature | Upstream Compute Pipeline | Materialized Table | Web Read Path |
 | :--- | :--- | :--- | :--- |
-| **Catalyst Radar** (`"Keep an Eye"`) | Matches concept vectors against calendar event embeddings in `apps/engine/analysis/catalyst_radar.py` during `calendar.yml` and `main.py`. | `public.catalyst_radar` | `fetchConcepts` loads scalar catalyst records (`stage`, `similarity`, `target_date`) in parallel with concepts. |
+| **Catalyst Radar** ("Keep an Eye") | Matches concept vectors against calendar event embeddings in `apps/engine/analysis/catalyst_radar.py` during `calendar.yml` and `main.py`. | `public.catalyst_radar` | `fetchConcepts` loads scalar catalyst records (`stage`, `similarity`, `target_date`) in parallel with concepts. |
 | **Market Barometer** | Ingests 23 macro assets across 6 categories and computes historical z-scores and sentiment in `apps/engine/core/macro_tracker.py`. | `public.market_barometer_history` | `fetchMarketBarometer` loads pre-aggregated status and trend records. |
 | **Earnings Alpha** | Calculates historical post-earnings drift and probability distributions in engine ingestion. | `public.earnings_alpha` | `fetchEarningsCalendar` reads pre-calculated alpha metrics directly. |
 | **AI Memories Search** | Full-Text Search on `public.memories.content` via PostgreSQL GIN index (`to_tsvector`). | `public.memories` | `searchMemories` queries scalar projection with `textSearch(..., { type: 'websearch' })` and explicit limit (0ms JS compute, zero vector egress). |
+| **Recipe Public Stats** | `apps/engine/recipes/public_stats.py` rebuilds board tables each runner cycle (`return_pct`, `spy_return_pct`, `trade_count`, `open_positions`, `runs_today`, `last_action`, `resolved_model`). | `public.recipe_public_stats`, `public.recipe_desk_summary`, `public.recipe_desk_feed` | `/recipes` dashboard reads materialised summary + feed; `/recipes/backtest/$jobId` reads `result_json` from queue. |
+| **Portfolio Comparison** | `apps/web/src/features/portfolios/api/fetch-portfolios.ts` — `fetchCachedComparisonData` with 4-hour server TTL, `precomputeAllTimeframes` for 7d/30d/90d/all slices. | `public.portfolio_performance` (source) | `PortfoliosPage` loads precomputed timeframes via `initialComparisonData`; chart switches are O(1) map lookups. |
 
 ---
 
@@ -72,3 +74,4 @@ All API fetchers in `apps/web/src/features/**/api/fetch-*.ts` must adhere to the
 - [[entities/database]]
 - [[entities/pipeline]]
 - [[entities/web-app]]
+- [[entities/recipe-studio]]

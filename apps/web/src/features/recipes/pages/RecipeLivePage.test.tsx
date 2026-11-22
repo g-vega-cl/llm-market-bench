@@ -128,12 +128,12 @@ describe('RecipeLivePage', () => {
         expect(screen.queryByText(/Analyze NVDA at slot 1/i)).not.toBeInTheDocument();
     });
 
-    it('links back to the studio with the active recipeId', () => {
+    it('links back to the builder with the active recipeId', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        expect(screen.getByRole('link', { name: /Back to Studio/i })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: /Edit Bot/i })).toHaveAttribute(
             'href',
-            '/recipes?recipeId=rec-1',
+            '/build?recipeId=rec-1',
         );
     });
 

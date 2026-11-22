@@ -33,21 +33,21 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                     <SectionHeading className="text-sm">Strategy recipes</SectionHeading>
                     <p className="text-xs font-normal text-voxel-muted max-w-prose">
                         Each recipe is a single LLM call over point-in-time news, memories and
-                        technical filters. Fork one, change one thing, and run it live on paper cash
-                        every 30 minutes during market hours.
+                        technical filters. Describe your own bot in plain English and run it live on
+                        paper cash every 30 minutes during market hours.
                     </p>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap items-center gap-4">
                         <Link
                             to="/build"
-                            className="voxel-btn inline-flex items-center px-3 py-1.5 text-xs font-normal bg-accent text-voxel-trough"
+                            className="voxel-btn inline-flex items-center px-4 py-2 text-sm font-bold bg-accent text-voxel-trough hover:bg-accent-hover"
                         >
-                            Describe your own
+                            Start Building Your Bot →
                         </Link>
                         <Link
                             to="/recipes-demo"
-                            className="voxel-btn inline-flex items-center px-3 py-1.5 text-xs font-normal bg-voxel-surface text-voxel-ink"
+                            className="text-xs font-normal text-voxel-muted underline underline-offset-4 hover:text-accent"
                         >
-                            See a finished backtest
+                            or see a sample backtest
                         </Link>
                     </div>
                 </header>
@@ -77,15 +77,6 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                             <p className="voxel-trough p-2 text-xs font-normal text-voxel-muted whitespace-pre-wrap break-words line-clamp-3">
                                 {promptExcerpt(template)}
                             </p>
-                            <div className="mt-auto pt-2">
-                                <Link
-                                    to="/login"
-                                    search={{ redirect: '/recipes' }}
-                                    className="voxel-btn inline-flex items-center px-3 py-1.5 text-xs font-normal bg-voxel-surface text-voxel-ink"
-                                >
-                                    Sign in to fork
-                                </Link>
-                            </div>
                         </Card>
                     ))}
                 </div>

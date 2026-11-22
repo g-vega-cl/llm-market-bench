@@ -8,7 +8,6 @@ export interface BuilderConversationProps {
     pendingIdea: string | null;
     isSignedIn: boolean;
     onSend: (text: string) => void;
-    onOpenStudio: () => void;
 }
 
 function MessageRow({ message }: { message: BuilderMessage }) {
@@ -84,26 +83,6 @@ function DeclinedCard({ reply }: { reply: CompilerReply }) {
     );
 }
 
-function CompiledCard({ reply, onOpenStudio }: { reply: CompilerReply; onOpenStudio: () => void }) {
-    if (reply.status !== 'ok') return null;
-    return (
-        <Card padding="sm" className="flex flex-col gap-2">
-            <Badge colorScheme={reply.fallback ? 'warning' : 'success'} variant="soft" size="sm">
-                {reply.fallback ? 'CLOSEST WORKING TEMPLATE' : 'RECIPE COMPILED'}
-            </Badge>
-            <p className="text-sm font-bold text-voxel-ink break-words">{reply.strategy.name}</p>
-            <p className="text-xs font-normal text-voxel-muted break-words">
-                {reply.summary || reply.strategy.description}
-            </p>
-            <div>
-                <Button variant="solid" size="md" onClick={onOpenStudio}>
-                    Open in studio
-                </Button>
-            </div>
-        </Card>
-    );
-}
-
 export function BuilderConversation({
     messages,
     messageIds,
@@ -111,18 +90,9 @@ export function BuilderConversation({
     pendingIdea,
     isSignedIn,
     onSend,
-    onOpenStudio,
 }: BuilderConversationProps) {
-    const showExample = messages.length === 0 && !pendingIdea;
-
     return (
         <section className="flex flex-col gap-3" aria-live="polite">
-            {showExample ? (
-                <p className="voxel-trough p-3 text-xs font-normal text-voxel-muted">
-                    Example: “buy chipmakers when AI capex news is positive, exit on guidance cuts”.
-                </p>
-            ) : null}
-
             {messages.map((message, index) => (
                 <MessageRow key={messageIds[index] ?? `m-${index}`} message={message} />
             ))}
@@ -133,7 +103,6 @@ export function BuilderConversation({
 
             {reply ? <QuestionOptions reply={reply} onSend={onSend} /> : null}
             {reply ? <DeclinedCard reply={reply} /> : null}
-            {reply ? <CompiledCard reply={reply} onOpenStudio={onOpenStudio} /> : null}
         </section>
     );
 }

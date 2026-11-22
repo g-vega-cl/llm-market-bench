@@ -60,12 +60,6 @@ function BotRecommendationCard({ match, rankLabel }: { match: ArchetypeMatch; ra
                 >
                     Build this bot
                 </Link>
-                <Link
-                    to="/recipes"
-                    className="voxel-btn inline-flex items-center justify-center bg-voxel-surface px-4 py-2 text-sm font-bold text-voxel-ink hover:bg-voxel-elevated"
-                >
-                    Open Recipe Studio
-                </Link>
             </div>
         </Card>
     );

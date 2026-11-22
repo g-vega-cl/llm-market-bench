@@ -1,4 +1,4 @@
-import { Badge, Button } from '@llm-market-bench/ui-design-system';
+import { Badge } from '@llm-market-bench/ui-design-system';
 import { CURATED_TOOLS } from '../types';
 
 interface ToolPickerProps {
@@ -28,24 +28,6 @@ export function ToolPicker({ selectedTools, onChange }: ToolPickerProps) {
                     <Badge variant="soft" size="sm">
                         {cleanSelected.length} / {CURATED_TOOLS.length}
                     </Badge>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="neutral"
-                        onClick={() => onChange(CURATED_TOOLS.map((t) => t.name))}
-                    >
-                        Select All
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="neutral"
-                        onClick={() => onChange([])}
-                    >
-                        Clear
-                    </Button>
                 </div>
             </div>
 

@@ -92,45 +92,64 @@ export function StudioAlertSlot({
     return null;
 }
 
-interface RecipeGuideAndQuotaBlockProps {
+interface RecipeQuotaStripProps {
     quotaStatus?: RecipeUserQuotaStatus | null;
+    onRequestCapacity?: () => void;
 }
 
-export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlockProps) {
+/** Compact 1-line quota summary strip for the dashboard and studio. */
+export function RecipeQuotaStrip({ quotaStatus, onRequestCapacity }: RecipeQuotaStripProps) {
     const btLeft = quotaStatus
         ? Math.max(0, quotaStatus.dailyBacktestLimit - quotaStatus.backtestsLast24h)
         : 2;
 
     return (
-        <div className="flex flex-col gap-3 min-w-0">
-            <div
-                data-testid="recipe-quota-strip"
-                className="voxel-trough bg-voxel-trough p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-normal text-voxel-muted min-w-0"
-            >
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
-                    <Badge variant="soft" colorScheme="accent" size="xs">
-                        {quotaStatus?.tier === 'beta_starter' || !quotaStatus
-                            ? 'FREE BETA STARTER'
-                            : quotaStatus.tier.toUpperCase()}
-                    </Badge>
-                    <span className="flex flex-wrap items-baseline gap-1 min-w-0">
-                        <span className="whitespace-nowrap">
-                            Backtests: {btLeft}/{quotaStatus?.dailyBacktestLimit ?? 2} left today
-                        </span>
-                        <span className="whitespace-nowrap">
-                            (max {quotaStatus?.maxConcurrentBacktests ?? 1} active)
-                        </span>
+        <div
+            data-testid="recipe-quota-strip"
+            className="voxel-trough bg-voxel-trough p-3 flex flex-wrap items-center justify-between gap-2 text-xs font-normal text-voxel-muted min-w-0"
+        >
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 min-w-0">
+                <Badge variant="soft" colorScheme="accent" size="xs">
+                    {quotaStatus?.tier === 'beta_starter' || !quotaStatus
+                        ? 'FREE BETA STARTER'
+                        : quotaStatus.tier.toUpperCase()}
+                </Badge>
+                <span className="flex flex-wrap items-baseline gap-1 min-w-0">
+                    <span className="whitespace-nowrap">
+                        Backtests: {btLeft}/{quotaStatus?.dailyBacktestLimit ?? 2} left today
                     </span>
-                    <span className="whitespace-nowrap font-mono tabular-nums text-voxel-ink">
-                        • Live bots: {quotaStatus?.activeLiveRecipes ?? 0}/
-                        {quotaStatus?.maxLiveRecipes ?? 3}
+                    <span className="whitespace-nowrap">
+                        (max {quotaStatus?.maxConcurrentBacktests ?? 1} active)
                     </span>
-                </div>
+                </span>
+                <span className="whitespace-nowrap font-mono tabular-nums text-voxel-ink">
+                    • Live bots: {quotaStatus?.activeLiveRecipes ?? 0}/
+                    {quotaStatus?.maxLiveRecipes ?? 3}
+                </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 min-w-0">
                 <span className="whitespace-nowrap font-mono tabular-nums text-voxel-muted">
                     Global Backtest Queue: {quotaStatus?.globalPendingBacktests ?? 0}/
                     {quotaStatus?.globalQueueCap ?? 20} (all users)
                 </span>
+                {onRequestCapacity && (
+                    <Button size="sm" variant="outline" onClick={onRequestCapacity}>
+                        Request more capacity
+                    </Button>
+                )}
             </div>
+        </div>
+    );
+}
+
+interface RecipeGuideAndQuotaBlockProps {
+    quotaStatus?: RecipeUserQuotaStatus | null;
+}
+
+export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlockProps) {
+    return (
+        <div className="flex flex-col gap-3 min-w-0">
+            <RecipeQuotaStrip quotaStatus={quotaStatus} />
 
             <div className="voxel-trough bg-voxel-trough p-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 min-w-0">
                 <div className="flex flex-col gap-1 min-w-0">

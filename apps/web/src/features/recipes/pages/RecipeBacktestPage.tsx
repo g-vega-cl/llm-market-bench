@@ -76,14 +76,14 @@ function BacktestHeaderLink({
         'voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border-2 border-accent text-accent hover:bg-accent/10 rounded-none whitespace-nowrap';
     if (readOnlyShowcase) {
         return (
-            <Link to="/recipes" className={className}>
+            <Link to="/build" className={className}>
                 Sign In Free to Build &amp; Run →
             </Link>
         );
     }
     return (
-        <Link to="/recipes" search={recipeId ? { recipeId } : undefined} className={className}>
-            Edit in Studio
+        <Link to="/build" search={recipeId ? { recipeId } : undefined} className={className}>
+            Edit Bot
         </Link>
     );
 }
@@ -243,7 +243,7 @@ function renderUnavailableBacktestState(
                     />
                     <div>
                         <Link
-                            to="/recipes"
+                            to="/build"
                             search={
                                 detail.job.recipe_id
                                     ? { recipeId: detail.job.recipe_id }
@@ -251,7 +251,7 @@ function renderUnavailableBacktestState(
                             }
                             className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border-2 border-accent text-accent"
                         >
-                            Back to Strategy Studio
+                            Edit Bot
                         </Link>
                     </div>
                 </PageLayout>

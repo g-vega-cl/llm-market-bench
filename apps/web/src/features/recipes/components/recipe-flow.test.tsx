@@ -88,11 +88,15 @@ describe('StageBuilder & PromptVisualizer', () => {
         fireEvent.click(screen.getByRole('button', { name: '+ Prompt' }));
         expect(screen.getAllByText('PROMPT BLOCK').length).toBe(2);
 
-        fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
-        expect(screen.getByText('0 / 11')).toBeInTheDocument();
+        const initialCount = STARTER_RECIPES[0].stages[0].selected_tools.length;
+        expect(screen.getByText(`${initialCount} / 11`)).toBeInTheDocument();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Select All' }));
-        expect(screen.getByText('11 / 11')).toBeInTheDocument();
+        const techCheckbox = screen.getByRole('checkbox', { name: 'Technical Indicators' });
+        fireEvent.click(techCheckbox);
+        expect(screen.getByText(`${initialCount - 1} / 11`)).toBeInTheDocument();
+
+        fireEvent.click(techCheckbox);
+        expect(screen.getByText(`${initialCount} / 11`)).toBeInTheDocument();
     });
 });
 

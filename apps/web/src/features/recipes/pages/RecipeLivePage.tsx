@@ -115,11 +115,11 @@ function LiveStatusHeader({
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-4">
             <div className="flex items-center gap-3">
                 <Link
-                    to="/recipes"
+                    to="/build"
                     search={{ recipeId }}
                     className="voxel-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-bold border border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated rounded-none"
                 >
-                    ← Back to Studio
+                    ← Edit Bot
                 </Link>
                 <div>
                     <h1 className="type-heading text-voxel-ink">Live Status</h1>

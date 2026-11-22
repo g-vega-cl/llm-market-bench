@@ -91,7 +91,7 @@ describe('HomeCtaPage (Cedar Sanctuary SceneStage, zero-flash initialAtmosphere 
         expect(actions.className).toContain('gap-4');
 
         const startLink = within(actions).getByTestId('start-building');
-        expect(startLink).toHaveAttribute('href', '/lab');
+        expect(startLink).toHaveAttribute('href', '/build');
         expect(startLink.className).toContain('font-bold');
 
         const quizLink = within(actions).getByTestId('take-personality-test');

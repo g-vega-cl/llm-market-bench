@@ -1,23 +1,32 @@
 import { Button, Input, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
-import { useRouter } from '@tanstack/react-router';
+import { Link, useRouter } from '@tanstack/react-router';
 import { useRef } from 'react';
 import { track } from '~/lib/analytics';
+import type { RecipeSummaryItem, RecipeUserQuotaStatus } from '../types';
 import { BuilderConversation } from './BuilderConversation';
+import { CompiledBotWorkspace } from './CompiledBotWorkspace';
 import { useBuilderChat } from './use-builder-chat';
 
 /**
- * The chat builder, extracted so it can live on /lab and still be reachable at
- * /build. One implementation, two entry points.
+ * The chat builder, extracted so it can be embedded or routed at /build.
  */
 export interface BuilderChatPanelProps {
     idea?: string;
-    redirectTo: '/build' | '/lab';
+    redirectTo?: '/build';
     /** Supplied by the route: getRouter() is created without a context object. */
     userId?: string | null;
+    initialQuota?: RecipeUserQuotaStatus | null;
+    initialUserRecipes?: RecipeSummaryItem[];
 }
 
-export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderChatPanelProps) {
+export function BuilderChatPanel({
+    idea,
+    redirectTo = '/build',
+    userId = null,
+    initialQuota = null,
+    initialUserRecipes = [],
+}: BuilderChatPanelProps) {
     const router = useRouter();
     const posthog = usePostHog();
 
@@ -29,8 +38,7 @@ export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderCha
         },
     });
 
-    // Fire on first interaction, not on mount: the panel also sits on /lab, and a
-    // directory pageview is not a builder opening.
+    // Fire on first interaction, not on mount.
     const opened = useRef(false);
     const onOpen = () => {
         if (opened.current) return;
@@ -38,13 +46,30 @@ export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderCha
         track(posthog, 'builder_opened', { seeded: Boolean(idea) });
     };
 
+    if (chat.reply?.status === 'ok') {
+        return (
+            <CompiledBotWorkspace
+                key={chat.reply.strategy.name}
+                initialStrategy={chat.reply.strategy}
+                initialQuota={initialQuota}
+                initialUserRecipes={initialUserRecipes}
+                summary={chat.reply.summary}
+                fallback={chat.reply.fallback}
+                onStartOver={() => chat.reset()}
+            />
+        );
+    }
+
+    const isInitialStep = chat.messages.length === 0;
+
     return (
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-5">
             <header className="flex flex-col gap-2 border-b-2 border-voxel-bevel-hi pb-4">
-                <SectionHeading className="text-sm">Build with chat</SectionHeading>
+                <SectionHeading className="text-sm">Build your trading bot</SectionHeading>
                 <p className="max-w-prose text-xs font-normal text-voxel-muted">
-                    Describe the bot in plain English. It gets compiled into a real recipe — one LLM
-                    call, point-in-time news, paper cash — which you can edit and run.
+                    Describe what your bot should trade and when to enter or exit. We&apos;ll
+                    compile it into a point-in-time strategy you can backtest on paper cash right
+                    away.
                 </p>
             </header>
 
@@ -55,7 +80,6 @@ export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderCha
                 pendingIdea={chat.pendingIdea}
                 isSignedIn={Boolean(userId)}
                 onSend={(text) => void chat.send(text)}
-                onOpenStudio={() => void router.navigate({ to: '/recipes' })}
             />
 
             {chat.error ? (
@@ -78,8 +102,8 @@ export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderCha
             >
                 <div className="min-w-0 flex-1">
                     <Input
-                        aria-label="Message the strategy builder"
-                        placeholder="Describe or refine the bot…"
+                        aria-label="Describe your trading bot"
+                        placeholder="e.g., Buy chipmakers when AI capex news is positive, exit on guidance cuts..."
                         value={chat.draft}
                         onChange={(event) => chat.setDraft(event.target.value)}
                         onFocus={onOpen}
@@ -93,9 +117,27 @@ export function BuilderChatPanel({ idea, redirectTo, userId = null }: BuilderCha
                     isLoading={chat.isCompiling}
                     disabled={!chat.draft.trim()}
                 >
-                    Send
+                    {isInitialStep ? 'Build My Bot →' : 'Send'}
                 </Button>
             </form>
+
+            <p className="text-xs font-normal text-voxel-muted">
+                Not sure where to start?{' '}
+                <Link
+                    to="/personality"
+                    className="text-accent underline underline-offset-4 hover:text-accent-hover"
+                >
+                    Take our 10-question personality test
+                </Link>{' '}
+                or{' '}
+                <Link
+                    to="/chat"
+                    className="text-accent underline underline-offset-4 hover:text-accent-hover"
+                >
+                    talk to our AI advisor
+                </Link>
+                .
+            </p>
         </div>
     );
 }

@@ -163,9 +163,9 @@ describe('RecipeBacktestPage', () => {
         expect(screen.getByText('Executed Trades (1)')).toBeInTheDocument();
         expect(screen.getAllByText('BUY NVDA').length).toBeGreaterThanOrEqual(1);
 
-        // Edit in Studio link preserves recipeId
-        const editLink = screen.getByRole('link', { name: /Edit in Studio/i });
-        expect(editLink).toHaveAttribute('href', '/recipes?recipeId=rec-456');
+        // Edit Bot link preserves recipeId and points to /build
+        const editLink = screen.getByRole('link', { name: /Edit Bot/i });
+        expect(editLink).toHaveAttribute('href', '/build?recipeId=rec-456');
     });
 
     it('renders Current Portfolio & Open Positions panel with cash, mark price, and unrealized P&L', () => {

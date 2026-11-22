@@ -204,6 +204,17 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
   - `claimChunkReloadAttempt()` atomically validates `sessionStorage` retry state (`Number.isFinite` and non-negative) and fails closed (`circuit_open`) whenever storage is unavailable, throws `SecurityError`/`QuotaExceededError`, or holds corrupted `NaN` values, preventing infinite reload loops.
   - `DefaultCatchBoundary` claims the slot once per error identity, defers telemetry + dispatch by one macrotask so parent `PostHogProvider` `init()` completes on cold root-level errors, reports `auto_reloaded` truthfully to PostHog (`captureException`), transitions to `dispatched` inside the timer callback before calling `reloadAtTarget()`, and enforces same-origin `#hash`-safe reloading.
 
+### 2.9 Investing Style Diagnostic Session (`QuizSession`)
+
+- **Source Files**: [`apps/web/src/features/personality/PersonalityQuizPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/personality/PersonalityQuizPage.tsx), [`apps/web/src/routes/personality.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/personality.tsx)
+- **Entity Page**: [[entities/personality-quiz]]
+- **States**: `answering` (`stepIndex`, `answers`) | `result` (`mode: 'quiz_match'`, `quizAnswers`) | `result` (`mode: 'inspect'`, `archetypeId`, `quizAnswers`)
+- **Invariants**:
+  - Illegal `{ phase: 'result', quizAnswers: null, inspectedArchetypeId: null }` states are unrepresentable; `mode: 'quiz_match'` always holds non-null `quizAnswers` and `mode: 'inspect'` always holds a concrete `archetypeId`.
+  - Selecting your own matched archetype in `archetype-switcher` transitions back to `mode: 'quiz_match'` rather than showing `buildSharedArchetypeResult`'s reference `98%` fit.
+  - `/personality` route passes `onArchetypeSearchChange` using TanStack Router `navigate({ replace: true })`; self-emitted search updates tracked via FIFO `pendingSelfSearchesRef` keep `quizAnswers` intact even across pipelined transitions, while external `?archetype=` transitions or bare `/personality` navigations cleanly re-seed `session`.
+  - Async clipboard copy updates `copiedArchetype` inside a `useEffect`-maintained `activeResultArchetypeRef` guard without render-phase ref mutation.
+
 ---
 
 ## 3. Implicit State Debt & Refactoring Backlog

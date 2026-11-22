@@ -62,49 +62,53 @@ The scenarios walk a coherent arc: opening-bell tariff shock, idle-cash patience
 | `catalyst-quant` | The Catalyst Quant | `Earnings Catalyst Hunter` |
 | `systems-architect` | The Systems Architect | `Claude Agent Portfolio Mirror` |
 
-Each archetype also carries a `tagline`, a `summary`, three `strengths`, a `watchout`, an `idealProfile` (its 4-axis centroid), and a `builderIdeaPrompt` — a plain-English bot description passed to `/build` as the `idea` search param so the visitor lands in the builder with a pre-filled prompt.
+Each archetype also carries a `tagline`, a balanced `summary`, three `strengths`, a `watchout`, an `idealProfile` (its 4-axis centroid), and a `builderIdeaPrompt` — a plain-English bot description passed to `/build` as the `idea` search param so the visitor lands in the builder with a pre-filled prompt.
+
+Two pure helpers derive all starter bot technical details directly from `packages/config/starter-recipes.json` with zero duplicated metadata:
+
+- `formatRecipeExecutionSpec(recipe)` formats `News <N>h`, `Memory <N>h`, and every `Rules:` predicate (`metric + operator + target`, plus `News Off` when omitted).
+- `summarizeRecipeCoreGate(recipe)` emits a `<= 14`-char badge token so mobile (`360px`) cards never wrap inside a badge.
 
 `buildSharedArchetypeResult(archetypeId)` produces a result directly from an archetype's `idealProfile` with `fitPercent: 98` on the primary match, which is what an `?archetype=` deep link renders.
 
 ## Session State Machine
 
-`QuizSession` is a discriminated union that makes incoherent partial-quiz + inspect states unrepresentable:
+`QuizSession` (registered in [[concepts/state-machines]]) is a strict discriminated union preserving finished quiz answers across inspections while eliminating unrepresentable `null`/`null` states:
 
 ```ts
 type QuizSession =
     | { phase: 'answering'; stepIndex: number; answers: Record<string, string> }
-    | { phase: 'result'; source: 'quiz'; answers: Record<string, string> }
-    | { phase: 'result'; source: 'inspect'; archetypeId: ArchetypeId };
+    | { phase: 'result'; mode: 'quiz_match'; quizAnswers: Record<string, string> }
+    | { phase: 'result'; mode: 'inspect'; archetypeId: ArchetypeId; quizAnswers: Record<string, string> | null };
 ```
 
-`createInitialSession(initialArchetype)` returns an `inspect` result when a valid archetype is supplied, otherwise `answering` at step 0. A `useEffect` keyed on `initialArchetype` re-seeds the session when the search param changes, so navigating between share links never leaves a half-answered quiz on screen.
+`createInitialSession(initialArchetype)` returns `{ phase: 'result', mode: 'inspect', archetypeId: initialArchetype, quizAnswers: null }` when a valid archetype is supplied, otherwise `answering` at step 0. `/personality` wires `Route.useNavigate()` via `onArchetypeSearchChange` (replacing `window.history.replaceState` split-brain), and FIFO `pendingSelfSearchesRef` ensures pipelined router propagation of self-emitted `?archetype=` updates never wipes `quizAnswers`, while external navigation into or back to bare `/personality` re-seeds `session`.
 
-Selecting the last option calls `scorePersonalityQuiz`, writes the winning archetype into the URL via `syncUrlSearchParam('archetype', id)`, and transitions to `result:quiz`. `handleRetake` clears the param and resets to `answering` at step 0. `handleInspectArchetype` writes the param and switches to `result:inspect`. Atmosphere cycling (`Sky:`) and motion controls come from `useDioramaStage(initialAtmosphere)` rendered over the panoramic `Cedar Sanctuary` backdrop.
+Selecting the last option calls `scorePersonalityQuiz`, updates the `?archetype=` search param, and transitions to `mode: 'quiz_match'`. `handleInspectArchetype` writes the param and sets `mode: 'inspect'` (or returns directly to `mode: 'quiz_match'` when clicking your own matched archetype), preserving `quizAnswers` for `Back to my quiz match`. Clipboard feedback updates `copiedArchetype` only when `activeResultArchetypeRef` (synced in `useEffect`) matches.
 
-## Result Panel Actions
+## Result Panel & Zero-CLS Switcher Architecture
 
-`PersonalityResultPanel` renders inside a single `.scene-scrim .voxel-card` plaque (`data-testid="personality-result"`) whose children are recessed `Card variant="outlined"` / `.voxel-trough` surfaces — zero nested `.voxel-card`, per `.agents/rules/design-spec.md`.
+`PersonalityResultPanel` renders inside a single `.scene-scrim .voxel-card` plaque (`data-testid="personality-result"`) whose children are recessed `Card variant="outlined"` / `.voxel-trough` surfaces using intrinsic vertical flow (`h-full flex flex-col justify-between`) — zero nested `.voxel-card`, zero explicit media breakpoints, and zero scrollbars, per `.agents/rules/design-spec.md`.
 
-- **4-Axis Diagnostic Profile** (`data-testid="axis-breakdown"`) — one labelled bar per axis with the `N/100` score and the low/high pole labels.
-- **Edge & Blind Spot** — the archetype's three strengths plus its `watchout`.
-- **Top-2 Matched Trading Bots** — `#1 Best Bot Match` and `#2 Runner-Up Match` cards, each showing the recipe name, description, prompt snippet, `Backtest: <cadence>` and `N live tools` badges, block summaries (`News (Nh)`, `Memories (<category>)`, technical rule strings), a `Build this bot` link to `/build?idea=<builderIdeaPrompt>`, and an `Open Recipe Studio` link.
-- **Header actions** — `Copy share link` (writes `/personality?archetype=<id>` to the clipboard and flips to `Share link copied`) and `Retake 10Q quiz` (`data-testid="retake-quiz"`).
-- **Archetype switcher** — one button per `ARCHETYPE_IDS` entry labelled with `arch.title`, active one solid accent, driving `onInspectArchetype`.
+- **Top-anchored Archetype switcher** (`data-testid="archetype-switcher"`) — pinned at the top of `PersonalityResultPanel`, one button per `ARCHETYPE_IDS` entry labelled with `arch.title`, active one solid accent (`aria-pressed`), maintaining an invariant 5-button strip across every inspection click.
+- **Header & Meta Actions** — displays the `N% style fit` badge alongside wrap-safe `Best Bot: <recipeName>` (`data-testid="header-best-bot"`), paired with `Back to my quiz match` (`data-testid="return-to-quiz-match"` when inspecting an alternate style), `Share link` / `Link copied`, and `Retake 10Q quiz` (`data-testid="retake-quiz"`).
+- **4-Axis Diagnostic Profile & Edge/Blind Spot** — paired in a responsive 2-column `items-stretch` grid covering four `flex-wrap min-w-0` axis rows (`N/100` + `whitespace-nowrap` pole labels) and the archetype's three strengths + `watchout`.
+- **Top-2 Matched Trading Bots** — `#1 Best Bot Match` and `#2 Runner-Up Match` cards (`BotRecommendationCard`), each showing `match.recipe.name`, canonical `match.recipe.description`, the derived `formatRecipeExecutionSpec(match.recipe)` trough, a 3-stat badge strip (`Backtest: <cadence>`, `N live tools`, `summarizeRecipeCoreGate(match.recipe)`), plus `Build this bot` (`/build?idea=<builderIdeaPrompt>`) and `Open Recipe Studio` (`/recipes`) links.
 
 ## Components
 
-- `PersonalityQuizPage.tsx` — session state machine, URL sync, clipboard handling, and `Cedar Sanctuary` stage composition.
-- `PersonalityQuizStep.tsx` — single-question card (`data-testid="personality-quiz-card"`) with a `Question NN / 10` badge, `context`, `quiz-live-world-hint` (`Leaning: …` or `Scoring 4 trading axes`), accessible `role="progressbar"`, four full-width option buttons (`data-testid="quiz-option-<id>"`), `Previous question`, and `Browse all 5 styles` (`data-testid="skip-to-all-archetypes"`).
-- `PersonalityResultPanel.tsx` — the result plaque described above.
-- `personality-data.ts` — axes, archetypes, scoring, ranking, share-result builder, and the eager recipe-integrity check.
+- `PersonalityQuizPage.tsx` — non-destructive `'quiz_match' | 'inspect'` state machine, router-synced search params, race-guarded clipboard handling, and `Cedar Sanctuary` stage composition (`text-lg font-bold` `h1`, `text-xs font-normal`).
+- `PersonalityQuizStep.tsx` — single-question card (`data-testid="personality-quiz-card"`) with a `Question NN / 10` badge, wrap-safe meta header, `quiz-live-world-hint`, accessible `role="progressbar"`, four full-width option buttons inheriting `text-voxel-trough` contrast on `bg-accent` selection, `Previous question`, and `Browse all 5 styles`.
+- `PersonalityResultPanel.tsx` — the top-switcher result plaque described above (`text-sm font-bold`, `text-xs font-normal`).
+- `personality-data.ts` — axes, archetypes, derived recipe formatters (`formatRecipeExecutionSpec`, `summarizeRecipeCoreGate`), scoring, ranking, share-result builder, and the eager recipe-integrity check.
 - `personality-questions.ts` — the 10 questions and their option deltas.
 
-Typography stays inside two combinations (`text-xs font-normal`, `text-sm font-bold`) and the cards use a single `border-2` border style, per the design budget.
+Each file stays within at most two typography combinations (`text-sm font-bold` + `text-xs font-normal`, or `text-lg font-bold` + `text-xs font-normal` on the page hero) and `border-2` borders.
 
 ## Tests
 
-- `apps/web/src/features/personality/personality-data.test.ts` — 10 questions with 4 options each; `AXIS_DEFINITIONS` length 4; every mapped recipe name exists in `STARTER_RECIPES`; all five archetypes are reachable by answering toward their centroid with distinct top-2 matches and bounded `0..100` axes; `buildSharedArchetypeResult` returns `fitPercent: 98` with a different runner-up for every id.
-- `apps/web/src/features/personality/PersonalityQuizPage.test.tsx` — steps through all 10 questions with back navigation and a live `Leaning:` hint, reveals `#1 Best Bot Match` / `#2 Runner-Up Match` with a `/build?idea=` link, retakes back to Q1; verifies `initialAtmosphere` and `cedar-sanctuary` backdrop parity; checks `?archetype=contrarian-diver` hydration and zero nested `.voxel-card` elements; verifies switching to `news-surfer` mid-quiz replaces session cleanly.
+- `apps/web/src/features/personality/personality-data.test.ts` — 10 questions with 4 options each; `AXIS_DEFINITIONS` length 4; every mapped recipe name exists in `STARTER_RECIPES`; all five archetypes are reachable by answering toward their centroid with distinct top-2 matches and bounded `0..100` axes; verifies `formatRecipeExecutionSpec` and `<= 14`-char `summarizeRecipeCoreGate` parity (including `price_52w_pct` operator preservation and 3-digit news windows); `buildSharedArchetypeResult` returns `fitPercent: 98` with a different runner-up for every id.
+- `apps/web/src/features/personality/PersonalityQuizPage.test.tsx` — steps through all 10 questions with back navigation and a live `Leaning:` hint, reveals `#1 Best Bot Match` / `#2 Runner-Up Match` with a `/build?idea=` link, retakes back to Q1; verifies `initialAtmosphere` and `cedar-sanctuary` backdrop parity; checks `?archetype=contrarian-diver` hydration and zero nested `.voxel-card` elements; verifies router search sync without wiping `quizAnswers`, non-destructive self-reselection and `Back to my quiz match`, reset when `initialArchetype` clears, invariant `archetype-switcher` button count and placement, 4-badge count (`3` data badges in strip), and `.flex-wrap` / `.whitespace-nowrap` meta rows.
 
 ## Related
 

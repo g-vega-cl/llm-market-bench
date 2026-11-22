@@ -26,7 +26,18 @@ export const Route = createFileRoute('/personality')({
 function RouteComponent() {
     const { archetype } = Route.useSearch();
     const { initialAtmosphere } = Route.useLoaderData();
+    const navigate = Route.useNavigate();
+
     return (
-        <PersonalityQuizPage initialArchetype={archetype} initialAtmosphere={initialAtmosphere} />
+        <PersonalityQuizPage
+            initialArchetype={archetype}
+            initialAtmosphere={initialAtmosphere}
+            onArchetypeSearchChange={(next) =>
+                void navigate({
+                    search: next ? { archetype: next } : {},
+                    replace: true,
+                })
+            }
+        />
     );
 }

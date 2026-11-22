@@ -32,18 +32,20 @@ export function PersonalityQuizStep({
     return (
         <div
             data-testid="personality-quiz-card"
-            className="scene-scrim voxel-card flex w-full max-w-2xl flex-col gap-5 rounded-none p-6"
+            className="scene-scrim voxel-card flex w-full max-w-2xl flex-col gap-4 rounded-none p-6"
         >
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
-                <div className="flex items-center gap-2">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Badge colorScheme="accent" variant="soft" size="sm">
                         {`Question ${String(stepIndex + 1).padStart(2, '0')} / ${totalQuestions}`}
                     </Badge>
-                    <span className="text-xs font-normal text-voxel-muted">{question.context}</span>
+                    <span className="min-w-0 break-words text-xs font-normal text-voxel-muted">
+                        {question.context}
+                    </span>
                 </div>
                 <span
                     data-testid="quiz-live-world-hint"
-                    className="text-xs font-normal text-voxel-muted"
+                    className="min-w-0 break-words text-xs font-normal text-voxel-muted"
                 >
                     {liveHint || 'Scoring 4 trading axes'}
                 </span>
@@ -51,6 +53,7 @@ export function PersonalityQuizStep({
 
             <div
                 role="progressbar"
+                aria-label="Diagnostic quiz progress"
                 aria-valuenow={progressPercent}
                 aria-valuemin={0}
                 aria-valuemax={100}
@@ -64,7 +67,7 @@ export function PersonalityQuizStep({
 
             <h2 className="text-sm font-bold leading-snug text-voxel-ink">{question.prompt}</h2>
 
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 gap-4">
                 {question.options.map((option, optionIdx) => {
                     const selected = chosenOptionId === option.id;
                     return (
@@ -78,11 +81,17 @@ export function PersonalityQuizStep({
                             onClick={() => onSelectOption(question.id, option.id)}
                             className="h-auto w-full justify-start px-4 py-3 text-left whitespace-normal"
                         >
-                            <span className="flex flex-col items-start gap-1">
+                            <span className="flex flex-col items-start gap-2">
                                 <span className="text-sm font-bold">
                                     {`${String.fromCharCode(65 + optionIdx)}. ${option.label}`}
                                 </span>
-                                <span className="text-xs font-normal text-voxel-muted">
+                                <span
+                                    className={
+                                        selected
+                                            ? 'text-xs font-normal'
+                                            : 'text-xs font-normal text-voxel-muted'
+                                    }
+                                >
                                     {option.detail}
                                 </span>
                             </span>

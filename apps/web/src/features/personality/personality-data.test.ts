@@ -6,10 +6,41 @@ import {
     type ArchetypeId,
     AXIS_DEFINITIONS,
     buildSharedArchetypeResult,
+    formatRecipeExecutionSpec,
+    getRecipeForArchetype,
     isValidArchetypeId,
     PERSONALITY_QUESTIONS,
     scorePersonalityQuiz,
+    summarizeRecipeCoreGate,
 } from './personality-data';
+
+function buildAnswersTowardProfile(
+    target: (typeof ARCHETYPES)[ArchetypeId]['idealProfile'],
+): Record<string, string> {
+    const desiredHorizon = ((target.horizon - 50) / 50) * 14;
+    const desiredSignal = ((target.signal - 50) / 50) * 14;
+    const desiredContrarian = ((target.contrarian - 50) / 50) * 14;
+    const desiredCadence = ((target.cadence - 50) / 50) * 14;
+    const answers: Record<string, string> = {};
+
+    for (const q of PERSONALITY_QUESTIONS) {
+        let bestOpt = q.options[0];
+        let bestDist = Infinity;
+        for (const opt of q.options) {
+            const dist =
+                (desiredHorizon - (opt.deltas.horizon ?? 0)) ** 2 +
+                (desiredSignal - (opt.deltas.signal ?? 0)) ** 2 +
+                (desiredContrarian - (opt.deltas.contrarian ?? 0)) ** 2 +
+                (desiredCadence - (opt.deltas.cadence ?? 0)) ** 2;
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestOpt = opt;
+            }
+        }
+        answers[q.id] = bestOpt.id;
+    }
+    return answers;
+}
 
 describe('personality-data (10-question 4-axis diagnostic & starter bot matcher)', () => {
     it('defines 10 questions with 4 distinct options and 1:1 archetype-recipe integrity', () => {
@@ -34,31 +65,7 @@ describe('personality-data (10-question 4-axis diagnostic & starter bot matcher)
         const reached = new Set<ArchetypeId>();
 
         for (const targetId of ARCHETYPE_IDS) {
-            const target = ARCHETYPES[targetId].idealProfile;
-            const answers: Record<string, string> = {};
-
-            for (const q of PERSONALITY_QUESTIONS) {
-                const desiredHorizon = ((target.horizon - 50) / 50) * 14;
-                const desiredSignal = ((target.signal - 50) / 50) * 14;
-                const desiredContrarian = ((target.contrarian - 50) / 50) * 14;
-                const desiredCadence = ((target.cadence - 50) / 50) * 14;
-
-                let bestOpt = q.options[0];
-                let bestDist = Infinity;
-                for (const opt of q.options) {
-                    const dist =
-                        (desiredHorizon - (opt.deltas.horizon ?? 0)) ** 2 +
-                        (desiredSignal - (opt.deltas.signal ?? 0)) ** 2 +
-                        (desiredContrarian - (opt.deltas.contrarian ?? 0)) ** 2 +
-                        (desiredCadence - (opt.deltas.cadence ?? 0)) ** 2;
-                    if (dist < bestDist) {
-                        bestDist = dist;
-                        bestOpt = opt;
-                    }
-                }
-                answers[q.id] = bestOpt.id;
-            }
-
+            const answers = buildAnswersTowardProfile(ARCHETYPES[targetId].idealProfile);
             const result = scorePersonalityQuiz(answers);
             expect(result.answeredCount).toBe(10);
             expect(result.primary.archetype.id).toBe(targetId);
@@ -72,6 +79,81 @@ describe('personality-data (10-question 4-axis diagnostic & starter bot matcher)
         }
 
         expect(reached).toEqual(new Set(ARCHETYPE_IDS));
+    });
+
+    it('derives execution spec and <= 14-char core gate tokens directly from starter recipes', () => {
+        for (const id of ARCHETYPE_IDS) {
+            const recipe = getRecipeForArchetype(id);
+            const execSpec = formatRecipeExecutionSpec(recipe);
+            const coreGate = summarizeRecipeCoreGate(recipe);
+
+            expect(coreGate.length).toBeGreaterThan(0);
+            expect(coreGate.length).toBeLessThanOrEqual(14);
+
+            const blocks = recipe.stages[0]?.blocks ?? [];
+            const news = blocks.find((b) => b.type === 'news');
+            const memories = blocks.find((b) => b.type === 'memories');
+            const technicals = blocks.find((b) => b.type === 'technicals');
+
+            if (news) {
+                expect(execSpec).toContain(`News ${news.recency_hours}h`);
+            } else {
+                expect(execSpec).toContain('News Off');
+            }
+            if (memories) {
+                expect(execSpec).toContain(`Memory ${memories.recency_hours}h`);
+            }
+            for (const rule of technicals?.rules ?? []) {
+                expect(execSpec).toContain(`${rule.operator} ${rule.target}`);
+            }
+        }
+
+        // Core gate preserves arbitrary operators and stays <= 14 chars even on 3-digit windows
+        const synthetic = getRecipeForArchetype('news-surfer');
+        expect(
+            summarizeRecipeCoreGate({
+                ...synthetic,
+                stages: [
+                    {
+                        ...synthetic.stages[0],
+                        blocks: [
+                            { id: 'n', type: 'news', contains: ['ai'], recency_hours: 168 },
+                            {
+                                id: 't',
+                                type: 'technicals',
+                                rules: [
+                                    {
+                                        id: 'r',
+                                        metric: 'price_52w_pct',
+                                        operator: '>',
+                                        target: '85',
+                                    },
+                                ],
+                            },
+                        ],
+                    },
+                ],
+            }).length,
+        ).toBeLessThanOrEqual(14);
+        const valueRecipe = getRecipeForArchetype('value-compounder');
+        const valueGateGt = summarizeRecipeCoreGate({
+            ...valueRecipe,
+            stages: [
+                {
+                    ...valueRecipe.stages[0],
+                    blocks: [
+                        {
+                            id: 't',
+                            type: 'technicals',
+                            rules: [
+                                { id: 'r', metric: 'price_52w_pct', operator: '>', target: '85' },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        });
+        expect(valueGateGt).toBe('>85% 52w');
     });
 
     it('builds valid shareable archetype results directly for every archetype id', () => {

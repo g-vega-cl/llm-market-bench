@@ -73,11 +73,11 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         tagline:
             'Ignores noisy headlines in favor of cash flow, valuation discipline, and clean trends.',
         summary:
-            'You treat every trade like owning a durable business. Noise gets tuned out; a missed hype rally bothers you far less than overpaying for weak unit economics. You win by sitting comfortably on your hands when nothing clears your bar.',
+            'You treat every trade like owning a durable business. Noise gets tuned out; missed hype bothers you less than overpaying, so you wait for clear value.',
         strengths: [
             'Resists FOMO during speculative headline spikes',
-            'Anchors decisions to verifiable free cash flow and multiples',
-            'Stays calm holding winners across multi-week drawdowns',
+            'Anchors decisions to free cash flow and multiples',
+            'Stays calm holding winners across slow pullbacks',
         ],
         watchout: 'May hesitate to cut or rotate quickly when a macro regime genuinely flips.',
         recipeName: 'Quality Value Screener',
@@ -91,11 +91,11 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         tagline:
             'Reads policy shocks and sector catalysts first, riding fresh narrative repricing early.',
         summary:
-            'You watch where capital is forced to reprice right now — tariffs, chip bans, breakthrough launches — and pair headline speed with guardrail technical checks so you surf waves without getting trapped at exhausted highs.',
+            'You track where capital must reprice right now — tariffs, chips, launches — pairing headline velocity with guardrails so you never chase exhausted highs.',
         strengths: [
             'Spreads risk across liquid high-velocity themes fast',
-            'Connects macro news directly to second-order equity movers',
-            'Cuts stale narratives promptly instead of bags-holding',
+            'Maps macro news directly to second-order equity movers',
+            'Cuts stale narratives promptly instead of bag-holding',
         ],
         watchout:
             'Avoid chasing extended RSI extremes once everybody already agrees on the headline.',
@@ -110,11 +110,11 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         tagline:
             'Buys orderly liquidation panic when sentiment overshoots and sells into crowd euphoria.',
         summary:
-            'When the tape panics on recycled headlines, you measure volume structure and barometer extremes rather than joining the stampede. You would rather buy exhaustion below VWAP than chase consensus winners.',
+            'When the tape panics on recycled headlines, you read sentiment extremes and volume structure — buying exhaustion below VWAP instead of herd consensus.',
         strengths: [
-            'Comfortable buying high-quality names during emotional flushes',
-            'Maintains strict distinction between structural breaks and panic',
-            'Takes profits automatically into euphoric consensus peaks',
+            'Comfortable buying quality names during sudden flushes',
+            'Separates structural balance-sheet breaks from panic',
+            'Takes profits cleanly into euphoric consensus peaks',
         ],
         watchout:
             'Requires hard discipline against catching falling knives when fundamentals actually break.',
@@ -129,10 +129,10 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         tagline:
             'Finds multi-quarter EPS surprise streaks and trades the clean post-print drift window.',
         summary:
-            'You trust measurable repeatability over vibes: earnings beats backed by real guidance raises, confirmed by relative volume above 1.5x and positive MACD — while skipping names that already spiked out of bounds on the open.',
+            'You trust measurable repeatability over vibes: EPS beats backed by guidance raises, RVOL above 1.5x, and positive MACD while skipping extended spikes.',
         strengths: [
-            'Combines fundamental surprise history with crisp technical confirmation',
-            'Avoids noisy mid-quarter churn outside verifiable event windows',
+            'Combines surprise history with technical confirmation',
+            'Avoids noisy churn outside verified event windows',
             'Follows pre-committed exit rules when drift stalls',
         ],
         watchout: 'Stay mindful of correlated sector exposure during peak earnings weeks.',
@@ -147,11 +147,11 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         tagline:
             'Runs a full tool-first research loop balancing catalysts, memory, and thesis audits.',
         summary:
-            'You value intellectual honesty above any single indicator. Before entering or holding a position, every open thesis gets audited against quotes, price history, news transmission chains, and past post-mortems on every slot.',
+            'You value intellectual honesty over any single signal. Every open thesis is audited against quotes, price history, news chains, and past post-mortems.',
         strengths: [
-            'Forces explicit profit mechanisms before allocating capital',
-            'Audits existing holdings continuously instead of holding by inertia',
-            'Synthesizes macro context, valuation, and technical state uniformly',
+            'Forces explicit profit logic before risking capital',
+            'Audits existing holdings continuously for broken rules',
+            'Blends macro news, valuation, and technical structure',
         ],
         watchout:
             'Over-researching ambiguous setups can reduce turnover if thresholds get too tight.',
@@ -161,6 +161,93 @@ export const ARCHETYPES: Record<ArchetypeId, InvestingArchetype> = {
         idealProfile: { horizon: 64, signal: 50, contrarian: 52, cadence: 50 },
     },
 };
+
+function formatRuleLabel(metric: string, operator: string, target: string): string {
+    if (metric === 'price_52w_pct') return `52w ${operator} ${target}%`;
+    if (metric === 'Price vs VWAP') return `VWAP ${operator} ${target}`;
+    return `${metric} ${operator} ${target}`;
+}
+
+/**
+ * Derives a compact, drift-free single-line execution summary directly from
+ * all canonical blocks in `packages/config/starter-recipes.json`.
+ */
+export function formatRecipeExecutionSpec(recipe: PushStrategy): string {
+    const blocks = recipe.stages[0]?.blocks ?? [];
+    const newsBlocks = blocks.filter((block) => block.type === 'news');
+    const memoryBlocks = blocks.filter((block) => block.type === 'memories');
+    const technicalBlocks = blocks.filter((block) => block.type === 'technicals');
+
+    const segments: string[] = [];
+    if (newsBlocks.length > 0) {
+        for (const n of newsBlocks) segments.push(`News ${n.recency_hours}h`);
+    } else {
+        segments.push('News Off');
+    }
+    for (const mem of memoryBlocks) {
+        segments.push(`Memory ${mem.recency_hours}h`);
+    }
+    const allRules = technicalBlocks.flatMap((t) => t.rules);
+    if (allRules.length > 0) {
+        const formattedRules = allRules
+            .map((r) => formatRuleLabel(r.metric, r.operator, r.target))
+            .join(' · ');
+        segments.push(`Rules: ${formattedRules}`);
+    }
+    return segments.join(' · ');
+}
+
+function compactRuleToken(metric: string, operator: string, target: string): string {
+    if (metric === 'price_52w_pct') return `${operator}${target}% 52w`;
+    if (metric === 'Price vs VWAP') return `VWAP${operator}${target}`;
+    return `${metric}${operator}${target}`;
+}
+
+const CORE_GATE_MAX_CHARS = 14;
+
+function fitNewsCoreGate(prefix: string, compactRules: string[]): string {
+    const preferred = compactRules.find((r) => r.startsWith('RVOL')) ?? compactRules[0];
+    if (preferred) {
+        const candidate = `${prefix} · ${preferred}`;
+        if (candidate.length <= CORE_GATE_MAX_CHARS) return candidate;
+        const tight = `${prefix}·${preferred.replace(/\s+/g, '')}`;
+        if (tight.length <= CORE_GATE_MAX_CHARS) return tight;
+    }
+    return `${prefix} News`.slice(0, CORE_GATE_MAX_CHARS);
+}
+
+/**
+ * Derives a compact badge token (structurally bounded to <= 14 chars) directly
+ * from starter recipe blocks so badges stay single-line at 360px mobile widths.
+ */
+export function summarizeRecipeCoreGate(recipe: PushStrategy): string {
+    const blocks = recipe.stages[0]?.blocks ?? [];
+    const news = blocks.find((block) => block.type === 'news');
+    const compactRules = blocks
+        .filter((block) => block.type === 'technicals')
+        .flatMap((block) =>
+            block.rules.map((r) => compactRuleToken(r.metric, r.operator, r.target)),
+        );
+
+    if (news) {
+        return fitNewsCoreGate(`${news.recency_hours}h`, compactRules);
+    }
+
+    if (compactRules.length > 0) {
+        let acc = compactRules[0];
+        for (let i = 1; i < compactRules.length; i++) {
+            const next = `${acc} · ${compactRules[i]}`;
+            if (next.length > CORE_GATE_MAX_CHARS) break;
+            acc = next;
+        }
+        return acc.slice(0, CORE_GATE_MAX_CHARS);
+    }
+
+    return `${recipe.stages[0]?.selected_tools.length ?? 0} tool checks`.slice(
+        0,
+        CORE_GATE_MAX_CHARS,
+    );
+}
 
 export function isValidArchetypeId(value: unknown): value is ArchetypeId {
     return typeof value === 'string' && (ARCHETYPE_IDS as readonly string[]).includes(value);

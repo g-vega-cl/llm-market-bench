@@ -48,10 +48,19 @@ The hook exposes `statusDetail` (the `queuedHint` value while a job is in flight
 When `isQueueAbandoned` fires, the abandon effect:
 
 1. clears the in-flight latch and `jobId`,
-2. calls `fail(ABANDONED_MESSAGE)` — *"The builder never picked this request up, so it was cancelled. Try again — nothing was spent on it."*,
+2. calls `fail(ABANDONED_MESSAGE, 'abandoned')` — *"The builder never picked this request up, so it was cancelled. Try again — nothing was spent on it."*, emitted as `builder_failed` with `reason_code: 'abandoned'`,
 3. fires `cancelCompileFn({ data: { jobId } })` best-effort (a failure is swallowed; the daemon sweep is the backstop for a closed tab).
 
 The poll `refetchInterval` also stops returning `2000` once the client has given up, so it stops hammering the server while the abandon effect cancels the row.
+
+## Failure Taxonomy
+
+Every failure path in `useBuilderChat` funnels through `fail(message, code)`, which emits `builder_failed` with a short, bounded `reason_code` (`BuilderFailureCode`) plus the human `reason` (truncated to 120 chars). The code is the analytics breakdown dimension; the message is kept only for debugging, because a 120-char sentence as a breakdown value produces one row per distinct sentence. The codes:
+
+- `no_reply` — the poll returned no usable content, or the transport resolved to `undefined` (envelope-less reply)
+- `job_failed` — the queued job reached `failed`/`cancelled` (its `error_message` becomes the `reason`)
+- `enqueue_rejected` — `enqueueCompileFn` threw (meter refusal, pending cap, auth, transport)
+- `abandoned` — the client gave up on an unclaimed job at `QUEUE_ABANDON_MS`
 
 ## Cancelling a Compile
 

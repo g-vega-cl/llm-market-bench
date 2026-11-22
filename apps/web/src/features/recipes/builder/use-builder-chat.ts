@@ -20,6 +20,13 @@ import {
     parseCompilerReply,
 } from './compiler';
 
+/**
+ * Short, bounded failure taxonomy. `reason` keeps the human message for debugging,
+ * but the insight breaks down on this code — a 120-char message string as a
+ * breakdown value produces one row per distinct sentence.
+ */
+export type BuilderFailureCode = 'no_reply' | 'job_failed' | 'enqueue_rejected' | 'abandoned';
+
 export interface UseBuilderChatArgs {
     idea?: string;
     userId?: string | null;
@@ -152,8 +159,11 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     );
 
     const fail = useCallback(
-        (message: string) => {
-            track(posthog, 'builder_failed', { reason: message.slice(0, 120) });
+        (message: string, code: BuilderFailureCode) => {
+            track(posthog, 'builder_failed', {
+                reason_code: code,
+                reason: message.slice(0, 120),
+            });
             setError(message);
             // A failed compile has no reply to act on; a stale one would leave question
             // buttons alive beside a failure message.
@@ -169,12 +179,12 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
             error_message: string | null;
         }) => {
             if (data.status === 'failed' || data.status === 'cancelled') {
-                fail(data.error_message || FAILED_MESSAGE);
+                fail(data.error_message || FAILED_MESSAGE, 'job_failed');
                 return;
             }
             const content = data.result_json?.content;
             if (!content) {
-                fail(NO_REPLY_MESSAGE);
+                fail(NO_REPLY_MESSAGE, 'no_reply');
                 return;
             }
             try {
@@ -203,7 +213,7 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
 
     useEffect(() => {
         if (!job.error) return;
-        fail(job.error instanceof Error ? job.error.message : NO_REPLY_MESSAGE);
+        fail(job.error instanceof Error ? job.error.message : NO_REPLY_MESSAGE, 'no_reply');
         inFlight.current = false;
         setJobId(null);
     }, [job.error, fail]);
@@ -216,7 +226,7 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         const abandoned = jobId;
         inFlight.current = false;
         setJobId(null);
-        fail(ABANDONED_MESSAGE);
+        fail(ABANDONED_MESSAGE, 'abandoned');
         void cancelCompileFn({ data: { jobId: abandoned } }).catch(() => {
             // Best effort: the sweep fails the row within ten minutes regardless.
         });
@@ -231,7 +241,10 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
             setJobId(queued);
         } catch (err) {
             inFlight.current = false;
-            fail(err instanceof Error ? err.message : 'The builder failed to answer');
+            fail(
+                err instanceof Error ? err.message : 'The builder failed to answer',
+                'enqueue_rejected',
+            );
         }
     };
 

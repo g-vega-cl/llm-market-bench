@@ -149,6 +149,19 @@ Production stack traces are minified without source maps. `apps/web/vite.config.
 
 Uploaded symbol sets are visible at `https://us.posthog.com/project/<project_id>/error_tracking/configuration`; captured stack traces resolve against them after the next production deploy.
 
+### Ops-side personal key (creating saved insights)
+
+The source-map key is build-only and deliberately narrow. Creating or editing **saved insights** over the API needs its own personal key with `insight:write` (plus `query:read` to run them), and that key is stored in `apps/web/.env` as `POSTHOG_PERSONAL_API_KEY`:
+
+- `GET /api/users/@me/` → proves auth; `403 API key missing required scope 'insight:write'` is the failure to expect from a key without it.
+- Create: `POST /api/projects/<project_id>/insights/` with `{"name","description","saved":true,"query":{...}}`; `?dry_run=1` validates the query without saving. Read back with `GET /api/projects/<project_id>/insights/<id>/`, and run a saved insight's `query.source` through `POST /api/projects/<project_id>/query/` to see its current numbers.
+- The project's schema is `version: 4` `TrendsQuery`: `formula`/`formulas` are **rejected** (`extra_forbidden`), and `FormulaNode` is not a valid series kind — only `EventsNode`, `ActionsNode`, `DataWarehouseNode`, `GroupNode`. Ratios therefore come from a breakdown (`showPercentStackView`) or a HogQL insight, not a formula.
+- Beware the duplicate variable: the repo-root `.env` also defines `POSTHOG_PERSONAL_API_KEY`, an older key **without** `insight:write`. Any tooling must read the `apps/web/.env` value, or the two should be collapsed to one file.
+
+Builder outcome insights created this way: `14507480` "Builder: fallback share of compiles" (100% stacked, breakdown on `fallback`) and `14507481` "Builder: failures by reason code" (table, breakdown on `reason_code`). Both read zero until a real browser session compiles: `builder_opened` fires from ordinary visits, but `builder_compiled` / `builder_failed` only appear when the builder actually completes or fails — headless automation runs do not emit them.
+
+`builder_failed` carries two properties: a bounded `reason_code` — `no_reply`, `job_failed`, `enqueue_rejected`, `abandoned` — and `reason`, the human message truncated to 120 chars. Break down on the code; the message is only for reading a single event. A free-text message as a breakdown value yields one table row per distinct sentence.
+
 ## Identity resolution and session lifecycle
 
 To accurately track conversion funnels without splitting user profiles or leaking sessions across shared devices, the application standardizes on a client sync lifecycle:

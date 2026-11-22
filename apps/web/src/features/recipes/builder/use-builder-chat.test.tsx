@@ -4,8 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import { useBuilderChat } from './use-builder-chat';
 
+const posthogCapture = vi.fn();
+
 vi.mock('@posthog/react', () => ({
-    usePostHog: () => undefined,
+    usePostHog: () => ({ capture: posthogCapture }),
 }));
 
 vi.mock('./compile-queue', async (importOriginal) => ({
@@ -70,6 +72,11 @@ describe('useBuilderChat (queued compiles)', () => {
             expect(result.current.phase).toBe('error');
             expect(result.current.error).toMatch(/never picked this request up/i);
             expect(cancelCompileFn).toHaveBeenCalledWith({ data: { jobId: 'job-1' } });
+            expect(
+                posthogCapture.mock.calls
+                    .filter(([event]) => event === 'builder_failed')
+                    .at(-1)?.[1],
+            ).toMatchObject({ reason_code: 'abandoned' });
         } finally {
             vi.useRealTimers();
         }
@@ -163,6 +170,30 @@ describe('useBuilderChat (queued compiles)', () => {
         await waitFor(() => expect(result.current.phase).toBe('error'));
         expect(result.current.error).toBe('provider 503');
         expect(result.current.reply).toBeNull();
+    });
+
+    it('reports a failed job under a short reason code, keeping the message', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(
+            job({
+                status: 'failed',
+                result_json: null,
+                error_message: 'The model took too long to answer. Try again.',
+            }) as never,
+        );
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('error'));
+        const [, props] = posthogCapture.mock.calls
+            .filter(([event]) => event === 'builder_failed')
+            .at(-1) as [string, Record<string, unknown>];
+        expect(props.reason_code).toBe('job_failed');
+        expect(props.reason).toMatch(/too long/);
     });
 
     it('turns an envelope-less poll into a legible failure, not a TypeError', async () => {

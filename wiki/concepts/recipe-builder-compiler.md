@@ -78,6 +78,11 @@ Client-supplied roles are filtered to `user`/`assistant` only and each turn is t
   - Does **not** save a local draft (the compiled strategy flows directly into the Compiled Bot Workspace)
   - Calls `clearPendingIdea()`
 - **Analytics** — `track(posthog, ...)` emits `builder_question_answered`, `builder_declined`, and `builder_compiled` (with the cadence), and `BuilderChatPanel` emits `builder_opened` with `seeded`. See `apps/web/src/lib/analytics.ts`.
+- **Failure taxonomy** — every failure path routes through `fail(message, code)`, which emits `builder_failed` with a short, bounded `reason_code` (`BuilderFailureCode`) alongside the human `reason` (truncated to 120 chars). The code is the breakdown dimension; the message is kept only for debugging, because a 120-char sentence as a breakdown value produces one row per distinct sentence. The codes are:
+  - `no_reply` — the poll returned no usable content, or the transport resolved to `undefined` (envelope-less reply)
+  - `job_failed` — the queued job reached `failed`/`cancelled` (its `error_message` becomes the `reason`)
+  - `enqueue_rejected` — `enqueueCompileFn` threw (meter refusal, pending cap, auth, transport)
+  - `abandoned` — the client gave up on an unclaimed job at `QUEUE_ABANDON_MS` (see [[concepts/recipe-compile-queue]])
 
 ## Compiled Bot Workspace (`CompiledBotWorkspace` + `CompiledBotSummaryCard`)
 
@@ -110,7 +115,7 @@ When compilation succeeds (`reply.status === 'ok'`), `BuilderChatPanel` renders 
 
 - `apps/web/src/features/recipes/builder/compiler.test.ts` — manifest, `validateStrategy`, `parseCompilerReply`, `fallbackReply`, `buildConversation`, `isCompilerReply`
 - `apps/web/src/features/recipes/builder/compile-queue.test.ts` — payload shaping (system prompt first, 8-turn cap), the 25/day pre-check, the 2-pending cap, the inserted row shape, and a null poll
-- `apps/web/src/features/recipes/builder/use-builder-chat.test.tsx` — enqueue → poll → question transcript, QUEUED phase, unparseable reply degrades to the template, failed job is retryable with no stale reply, envelope-less poll is legible, meter refusal, double-click latch, explicit template fallback, anonymous parking
+- `apps/web/src/features/recipes/builder/use-builder-chat.test.tsx` — enqueue → poll → question transcript, QUEUED phase, unparseable reply degrades to the template, failed job is retryable with no stale reply, envelope-less poll is legible, meter refusal, double-click latch, explicit template fallback, anonymous parking, and the `builder_failed` `reason_code` taxonomy (`abandoned`, `job_failed` with the message preserved)
 - `apps/engine/recipes/test_worker.py` — compile jobs: meter before the provider call, daily-limit stop without a provider call, provider failure recorded, missing payload fails closed
 - `apps/web/src/features/recipes/builder/BuilderStatusStrip.test.tsx` — always-mounted live region, clock kept out of the live region, slow-provider copy, failure copy, run-state override, wrap classes per design-spec §9
 - `apps/web/src/features/recipes/builder/CompiledBotWorkspace.test.tsx` — default collapsed state, dirty unsaved bot enables Save and says so, running run surfaces with progress, a settled run never hides an unsaved draft, backtest flow auto-saves and navigates

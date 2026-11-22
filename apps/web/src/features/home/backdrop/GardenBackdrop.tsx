@@ -4,6 +4,8 @@ import {
     bakeFootFade,
     bakeLanternSprite,
     bakeSky,
+    disposeCanvas,
+    disposeSceneCanvases,
     drawAtmosphericParticles,
     drawZenithParticles,
     type Firefly,
@@ -12,61 +14,49 @@ import {
     type Scene,
     type SkyMote,
 } from './garden-renderer';
-import {
-    buildGarden,
-    CX,
-    CY,
-    extractWorldFaces,
-    type GardenWorld,
-    type WorldFaces,
-} from './garden-world';
+import { PARTICLE_PRESETS } from './particle-presets';
+import { CX, CY, type ParticleMode, WORLD_METADATA, type WorldId } from './voxel-world';
+import { getWorldAndFaces } from './worlds';
 
 /**
- * The homepage backdrop: a multi-layered voxel garden island floating across
- * dynamic Matcha & Cedar market-session atmospheres (dawn, daylight, dusk,
- * after-hours) with 4-plane depth parallax and phase-reactive micro-life.
+ * Modular living diorama canvas: renders any of the 5 curated voxel worlds
+ * across Matcha & Cedar market-session atmospheres (dawn, daylight, dusk,
+ * after-hours) with 4-plane depth parallax and configurable particle physics.
  */
 
 const IDLE_MS = 20_000;
-// Slightly below 33.33ms so 60Hz vsync (16.67ms) ticks cleanly at 30fps without 20fps drops.
 const FRAME_INTERVAL_MS = 1000 / 30 - 1.5;
-
-let worldCache: GardenWorld | null = null;
-let facesCache: WorldFaces | null = null;
-const getWorldAndFaces = () => {
-    worldCache ??= buildGarden();
-    facesCache ??= extractWorldFaces(worldCache);
-    return { world: worldCache, faces: facesCache };
-};
 
 export interface GardenBackdropProps {
     className?: string;
-    /** Active Matcha & Cedar atmosphere phase. Defaults to 'dusk'. */
+    world?: WorldId;
+    particleMode?: ParticleMode;
     atmosphere?: AtmospherePhase;
-    /** Optional externally controlled paused state. */
     paused?: boolean;
-    /** Notifies parent when reduced/paused state changes. */
     onPausedChange?: (paused: boolean) => void;
-    /**
-     * Whether to render the floating Pause/Play button inside GardenBackdrop.
-     * Defaults to true for standalone usage; set to false when SceneStage renders
-     * HUD controls in its foreground `controls` slot outside `aria-hidden`.
-     */
     showControls?: boolean;
 }
 
 export function GardenBackdrop({
     className,
+    world: worldProp = 'sakura-garden',
+    particleMode: particleModeProp,
     atmosphere = 'dusk',
     paused,
     onPausedChange,
     showControls = true,
 }: GardenBackdropProps) {
+    const activeParticleMode = particleModeProp ?? WORLD_METADATA[worldProp].particleMode;
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const [reduced, setReduced] = useState(false);
     const sceneRef = useRef<Scene | null>(null);
     const atmosphereRef = useRef<AtmospherePhase>(atmosphere);
     atmosphereRef.current = atmosphere;
+    const worldRef = useRef<WorldId>(worldProp);
+    worldRef.current = worldProp;
+    const particleModeRef = useRef<ParticleMode>(activeParticleMode);
+    particleModeRef.current = activeParticleMode;
+    const pausedPropRef = useRef<boolean | undefined>(paused);
     const onPausedChangeRef = useRef(onPausedChange);
     onPausedChangeRef.current = onPausedChange;
 
@@ -94,23 +84,19 @@ export function GardenBackdrop({
         ctx.setTransform(scene.dpr, 0, 0, scene.dpr, 0, 0);
         ctx.clearRect(0, 0, W, H);
 
-        // Plane 1: Atmospheric sky gradient + zenith stars / sun-motes
         if (scene.sky) ctx.drawImage(scene.sky, 0, 0, W, H);
         drawZenithParticles(ctx, scene, time, par);
 
-        // Plane 2: Far high-altitude 3D voxel cloud slabs (slow breeze drift + subtle parallax)
         const farCloudParX = Math.sin(time * 0.08) * 12 + par * 5;
         const farCloudParY = Math.sin(time * 0.12) * 1.2 + parY * 1.4;
         if (scene.cloudsFar) ctx.drawImage(scene.cloudsFar, farCloudParX, farCloudParY, W, H);
 
-        // Plane 3: Floating voxel island with gentle vertical levitation + island micro-life
         const islandParX = par * 3;
         const islandParY = Math.sin(time * 0.45) * 1.8 + parY * 2;
         if (scene.island) ctx.drawImage(scene.island, islandParX, islandParY, W, H);
 
         drawAtmosphericParticles(ctx, scene, time, par, islandParX, islandParY);
 
-        // Plane 4: Near perimeter 3D voxel cloud slabs (faster breeze drift + deeper parallax)
         const nearCloudParX = Math.sin(time * 0.11 + 1.4) * 18 + par * 9;
         const nearCloudParY = Math.cos(time * 0.15) * 1.6 + parY * 2.6;
         if (scene.cloudsNear) ctx.drawImage(scene.cloudsNear, nearCloudParX, nearCloudParY, W, H);
@@ -121,7 +107,8 @@ export function GardenBackdrop({
     const buildLayers = useCallback(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
-        const { world, faces } = getWorldAndFaces();
+        const activeWorldId = worldRef.current;
+        const activeParticles = particleModeRef.current;
         const activeAtmosphere = atmosphereRef.current;
         const dpr = Math.min(window.devicePixelRatio || 1, 1.25);
         const W = canvas.clientWidth;
@@ -130,6 +117,15 @@ export function GardenBackdrop({
         canvas.width = Math.round(W * dpr);
         canvas.height = Math.round(H * dpr);
 
+        const prev = sceneRef.current;
+        const sizeSame = prev !== null && prev.width === W && prev.height === H && prev.dpr === dpr;
+        const atmoSame = sizeSame && prev.atmosphere === activeAtmosphere;
+        const voxelSame = atmoSame && prev.worldId === activeWorldId;
+
+        const { world, faces } = getWorldAndFaces(activeWorldId);
+        const worldMeta = WORLD_METADATA[activeWorldId];
+        const preset = PARTICLE_PRESETS[activeParticles];
+
         const scale = Math.min(W / 96, H / 56);
         const originX = W * 0.5;
         const originY = H * 0.8;
@@ -137,10 +133,9 @@ export function GardenBackdrop({
             originX + (x - CX - (y - CY)) * scale * 0.5,
             originY + (x - CX + (y - CY)) * scale * 0.28 - (z - 18) * scale * 0.4,
         ];
-
         const cloudSet = new Set(world.cloudMaterials);
-
         const lanternRadius = Math.max(8, scale * 2.4);
+
         const petals: Petal[] = world.petals.map(([wx, wy, wz], idx) => {
             const [x, y] = project(wx, wy, wz);
             return {
@@ -151,10 +146,9 @@ export function GardenBackdrop({
                 phase: (idx * 1.17) % 6.28,
                 depth: 0.1 + ((idx * 29) % 15) * 0.01,
                 size: Math.max(1, Math.round(scale * (0.09 + ((idx * 17) % 6) * 0.01))),
-                tint: idx % 2 === 0 ? '#f7cad8' : '#f8e6dc',
+                tint: idx % 2 === 0 ? preset.driftColors[0] : preset.driftColors[1],
             };
         });
-
         const glints = world.glints.map(([wx, wy, wz], idx) => {
             const [x, y] = project(wx, wy, wz);
             return {
@@ -165,12 +159,10 @@ export function GardenBackdrop({
                 size: scale * (0.12 + ((idx * 23) % 14) * 0.01),
             };
         });
-
         const lamps = world.lamps.map(([wx, wy, wz], idx) => {
             const [x, y] = project(wx, wy, wz);
             return { x, y, phase: (idx * 1.41) % 6.28 };
         });
-
         const fireflies: Firefly[] = world.fireflies.map(([wx, wy, wz], idx) => {
             const [x, y] = project(wx, wy, wz);
             return {
@@ -181,34 +173,46 @@ export function GardenBackdrop({
                 speed: 0.7 + (idx % 6) * 0.18,
                 phase: (idx * 0.97) % 6.28,
                 size: Math.max(1.5, Math.round(scale * 0.13)),
-                tint: idx % 3 === 0 ? '#9ef0c0' : '#ffe38e',
+                tint: idx % 3 === 0 ? preset.floaterColors[0] : preset.floaterColors[1],
             };
         });
-
         const koi = world.koi.map(([wx, wy, wz], idx) => {
             const [x, y] = project(wx, wy, wz);
             return { x, y, phase: idx * 0.5 };
         });
+        const skyMotes: SkyMote[] = sizeSame
+            ? prev.skyMotes
+            : Array.from({ length: 26 }, (_, idx) => ({
+                  x: W * (0.06 + ((idx * 37) % 88) * 0.01),
+                  y: H * (0.05 + ((idx * 53) % 44) * 0.01),
+                  phase: (idx * 1.13) % 6.28,
+                  speed: 0.8 + (idx % 5) * 0.32,
+                  size: idx % 4 === 0 ? 2 : 1.5,
+              }));
 
-        const skyMotes: SkyMote[] = Array.from({ length: 26 }, (_, idx) => ({
-            x: W * (0.06 + ((idx * 37) % 88) * 0.01),
-            y: H * (0.05 + ((idx * 53) % 44) * 0.01),
-            phase: (idx * 1.13) % 6.28,
-            speed: 0.8 + (idx % 5) * 0.32,
-            size: idx % 4 === 0 ? 2 : 1.5,
-        }));
+        let sky = prev?.sky ?? null;
+        let foot = prev?.foot ?? null;
+        if (!atmoSame) {
+            disposeCanvas(sky);
+            disposeCanvas(foot);
+            sky = bakeSky(W, H, dpr, activeAtmosphere);
+            foot = bakeFootFade(W, H, dpr, activeAtmosphere);
+        }
 
-        sceneRef.current = {
-            width: W,
-            height: H,
-            dpr,
-            scale,
-            atmosphere: activeAtmosphere,
-            sky: bakeSky(W, H, dpr, activeAtmosphere),
-            foot: bakeFootFade(W, H, dpr, activeAtmosphere),
-            lanternSprite: bakeLanternSprite(lanternRadius, dpr),
-            lanternRadius,
-            island: paintVoxelLayer(
+        let lanternSprite = prev?.lanternSprite ?? null;
+        if (!(sizeSame && prev?.worldId === activeWorldId)) {
+            disposeCanvas(lanternSprite);
+            lanternSprite = bakeLanternSprite(lanternRadius, dpr, worldMeta.glowRgb);
+        }
+
+        let island = prev?.island ?? null;
+        let cloudsFar = prev?.cloudsFar ?? null;
+        let cloudsNear = prev?.cloudsNear ?? null;
+        if (!voxelSame) {
+            disposeCanvas(island);
+            disposeCanvas(cloudsFar);
+            disposeCanvas(cloudsNear);
+            island = paintVoxelLayer(
                 faces.island,
                 world,
                 cloudSet,
@@ -218,8 +222,8 @@ export function GardenBackdrop({
                 scale,
                 project,
                 activeAtmosphere,
-            ),
-            cloudsFar: paintVoxelLayer(
+            );
+            cloudsFar = paintVoxelLayer(
                 faces.cloudsFar,
                 world,
                 cloudSet,
@@ -229,8 +233,8 @@ export function GardenBackdrop({
                 scale,
                 project,
                 activeAtmosphere,
-            ),
-            cloudsNear: paintVoxelLayer(
+            );
+            cloudsNear = paintVoxelLayer(
                 faces.cloudsNear,
                 world,
                 cloudSet,
@@ -240,7 +244,24 @@ export function GardenBackdrop({
                 scale,
                 project,
                 activeAtmosphere,
-            ),
+            );
+        }
+
+        sceneRef.current = {
+            width: W,
+            height: H,
+            dpr,
+            scale,
+            worldId: activeWorldId,
+            particleMode: activeParticles,
+            atmosphere: activeAtmosphere,
+            sky,
+            foot,
+            lanternSprite,
+            lanternRadius,
+            island,
+            cloudsFar,
+            cloudsNear,
             petals,
             glints,
             lamps,
@@ -291,12 +312,16 @@ export function GardenBackdrop({
     useEffect(() => {
         const query = window.matchMedia('(prefers-reduced-motion: reduce)');
         const s = stateRef.current;
-        s.reduced = query.matches;
-        setReduced(query.matches);
-        onPausedChangeRef.current?.(query.matches);
+        // System reduced-motion always wins over an un-toggled initial parent `paused={false}`
+        const initialPaused = query.matches || pausedPropRef.current === true;
+        s.reduced = initialPaused;
+        setReduced(initialPaused);
+        if (initialPaused && pausedPropRef.current === false) {
+            onPausedChangeRef.current?.(true);
+        }
 
         buildLayers();
-        if (!query.matches) {
+        if (!initialPaused) {
             start();
             armIdle();
         }
@@ -360,19 +385,32 @@ export function GardenBackdrop({
             query.removeEventListener('change', onPreference);
             window.clearTimeout(s.idle);
             stop();
+            disposeSceneCanvases(sceneRef.current);
+            sceneRef.current = null;
         };
     }, [armIdle, buildLayers, paintFrame, start, stop]);
 
-    // Rebuild sky & voxel lighting layers whenever the active atmosphere phase changes
     useEffect(() => {
-        if (sceneRef.current && sceneRef.current.atmosphere !== atmosphere) {
+        if (
+            sceneRef.current &&
+            (sceneRef.current.atmosphere !== atmosphere ||
+                sceneRef.current.worldId !== worldProp ||
+                sceneRef.current.particleMode !== activeParticleMode)
+        ) {
             buildLayers();
         }
-    }, [atmosphere, buildLayers]);
+    }, [activeParticleMode, atmosphere, buildLayers, worldProp]);
 
-    // Sync optional externally controlled paused prop (when parent hosts HUD controls)
+    // Sync only explicit parent `paused` transitions after mount so initial reduced-motion state never races
     useEffect(() => {
-        if (paused === undefined) return;
+        if (paused === undefined) {
+            pausedPropRef.current = undefined;
+            return;
+        }
+        const prevProp = pausedPropRef.current;
+        pausedPropRef.current = paused;
+        if (prevProp === paused) return;
+
         const s = stateRef.current;
         if (s.reduced === paused) return;
         s.reduced = paused;
@@ -409,6 +447,8 @@ export function GardenBackdrop({
                 ref={canvasRef}
                 className={className}
                 data-testid="garden-backdrop"
+                data-world={worldProp}
+                data-particle-mode={activeParticleMode}
                 data-atmosphere={atmosphere}
             />
             {showControls ? (

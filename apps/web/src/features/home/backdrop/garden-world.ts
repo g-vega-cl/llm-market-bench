@@ -1,64 +1,32 @@
 /**
- * The garden island, as voxel data.
+ * The Zen Sakura Garden island, as voxel data.
  *
  * Pure and deterministic: same seed, same world, every load and every test.
  * Nothing here touches the DOM — the renderer in GardenBackdrop.tsx turns this
- * into two painted layers, and the tests can assert on it directly.
+ * into layered voxel planes, and the tests can assert on it directly.
  */
 
-export const SX = 104;
-export const SY = 104;
-export const SZ = 72;
-export const CX = SX >> 1;
-export const CY = SY >> 1;
-export const R = 36;
+import {
+    CX,
+    CY,
+    extractWorldFaces,
+    hexToRgb,
+    type Material,
+    R,
+    type Rgb,
+    SX,
+    SY,
+    SZ,
+    type VoxelWorld,
+    type WorldFaces,
+} from './voxel-world';
+
+export type { Material, Rgb, WorldFaces };
+export { CX, CY, extractWorldFaces, R, SX, SY, SZ };
 
 export const POND = { x: CX + 15, y: CY + 12, rx: 14, ry: 10 };
 
-export interface Rgb {
-    r: number;
-    g: number;
-    b: number;
-}
-
-export interface Material {
-    color: Rgb;
-    glow: boolean;
-}
-
-export interface WorldFaces {
-    /** Visible island faces sorted back-to-front: [sortKey, x, y, z, face, idx, ao]. */
-    island: Array<[number, number, number, number, number, number, number]>;
-    /** High-altitude 3D cloud slab faces (far parallax plane). */
-    cloudsFar: Array<[number, number, number, number, number, number, number]>;
-    /** Mid/lower-altitude perimeter 3D cloud slab faces (near parallax plane). */
-    cloudsNear: Array<[number, number, number, number, number, number, number]>;
-}
-
-export interface GardenWorld {
-    /** 1 where a voxel exists. */
-    solid: Uint8Array;
-    /** 1-based index into `palette`; 0 for air. */
-    material: Uint8Array;
-    emissive: Uint8Array;
-    palette: Material[];
-    /** Material ids the renderer must draw in the cloud layers. */
-    cloudMaterials: number[];
-    /** Material ids assigned to the far-plane cloud slabs. */
-    farCloudMaterials: number[];
-    /** World-space anchors the renderer animates against. */
-    petals: Array<[number, number, number]>;
-    glints: Array<[number, number, number]>;
-    lamps: Array<[number, number, number]>;
-    fireflies: Array<[number, number, number]>;
-    koi: Array<[number, number, number]>;
-    voxelCount: number;
-}
-
-const hexToRgb = (hex: string): Rgb => {
-    const n = Number.parseInt(hex.slice(1), 16);
-    return { r: (n >> 16) & 255, g: (n >> 8) & 255, b: n & 255 };
-};
+export type GardenWorld = VoxelWorld;
 
 export function buildGarden(seedValue = 20261121): GardenWorld {
     let seed = seedValue >>> 0;
@@ -570,6 +538,7 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
     for (let i = 0; i < solid.length; i++) if (solid[i]) voxelCount++;
 
     return {
+        worldId: 'sakura-garden',
         solid,
         material,
         emissive,
@@ -583,73 +552,4 @@ export function buildGarden(seedValue = 20261121): GardenWorld {
         koi,
         voxelCount,
     };
-}
-
-/**
- * Extracts visible voxel faces with precomputed ambient occlusion and sorts
- * them into painter's order once per world build, avoiding a 778k-voxel scan
- * on every viewport resize.
- */
-export function extractWorldFaces(world: GardenWorld): WorldFaces {
-    const cloudSet = new Set(world.cloudMaterials);
-    const farCloudSet = new Set(world.farCloudMaterials);
-
-    const island: WorldFaces['island'] = [];
-    const cloudsFar: WorldFaces['cloudsFar'] = [];
-    const cloudsNear: WorldFaces['cloudsNear'] = [];
-
-    const solidAt = (x: number, y: number, z: number) =>
-        x >= 0 &&
-        x < SX &&
-        y >= 0 &&
-        y < SY &&
-        z >= 0 &&
-        z < SZ &&
-        world.solid[(z * SY + y) * SX + x] === 1;
-
-    const occlusion = (x: number, y: number, z: number, face: number) => {
-        let n = 0;
-        if (face === 0) {
-            if (solidAt(x + 1, y, z + 1)) n++;
-            if (solidAt(x - 1, y, z + 1)) n++;
-            if (solidAt(x, y + 1, z + 1)) n++;
-            if (solidAt(x, y - 1, z + 1)) n++;
-            return 1 - n * 0.055;
-        }
-        if (face === 1) {
-            if (solidAt(x, y + 1, z + 1)) n++;
-            if (solidAt(x, y + 1, z - 1)) n++;
-            if (solidAt(x - 1, y + 1, z)) n++;
-            return 1 - n * 0.075;
-        }
-        if (solidAt(x + 1, y, z + 1)) n++;
-        if (solidAt(x + 1, y, z - 1)) n++;
-        if (solidAt(x + 1, y + 1, z)) n++;
-        return 1 - n * 0.075;
-    };
-
-    for (let z = 0; z < SZ; z++) {
-        for (let y = 0; y < SY; y++) {
-            for (let x = 0; x < SX; x++) {
-                const i = (z * SY + y) * SX + x;
-                if (!world.solid[i]) continue;
-                const matId = world.material[i];
-                const bucket = !cloudSet.has(matId)
-                    ? island
-                    : farCloudSet.has(matId)
-                      ? cloudsFar
-                      : cloudsNear;
-                const key = x + y + z;
-                if (!solidAt(x, y, z + 1)) bucket.push([key, x, y, z, 0, i, occlusion(x, y, z, 0)]);
-                if (!solidAt(x, y + 1, z)) bucket.push([key, x, y, z, 1, i, occlusion(x, y, z, 1)]);
-                if (!solidAt(x + 1, y, z)) bucket.push([key, x, y, z, 2, i, occlusion(x, y, z, 2)]);
-            }
-        }
-    }
-
-    island.sort((a, b) => a[0] - b[0]);
-    cloudsFar.sort((a, b) => a[0] - b[0]);
-    cloudsNear.sort((a, b) => a[0] - b[0]);
-
-    return { island, cloudsFar, cloudsNear };
 }

@@ -77,6 +77,29 @@ describe('GardenBackdrop (lifecycle, atmosphere phases, reduced-motion, and null
         expect(canvas).toHaveAttribute('data-atmosphere', 'after-hours');
     });
 
+    it('supports configurable world presets and explicit particleMode overrides', () => {
+        mockMatchMedia(true);
+        const { rerender } = render(
+            <GardenBackdrop world="magma-forge" atmosphere="dusk" showControls={false} paused />,
+        );
+
+        const canvas = screen.getByTestId('garden-backdrop');
+        expect(canvas).toHaveAttribute('data-world', 'magma-forge');
+        expect(canvas).toHaveAttribute('data-particle-mode', 'embers');
+
+        rerender(
+            <GardenBackdrop
+                world="sky-observatory"
+                particleMode="spores"
+                atmosphere="after-hours"
+                showControls={false}
+                paused
+            />,
+        );
+        expect(canvas).toHaveAttribute('data-world', 'sky-observatory');
+        expect(canvas).toHaveAttribute('data-particle-mode', 'spores');
+    });
+
     it('respects prefers-reduced-motion and toggles between Play motion and Pause motion', () => {
         mockMatchMedia(true);
         const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
@@ -96,6 +119,25 @@ describe('GardenBackdrop (lifecycle, atmosphere phases, reduced-motion, and null
         expect(cancelSpy).toHaveBeenCalled();
 
         unmount();
+    });
+
+    it('never starts RAF on mount when paused={false} races prefers-reduced-motion or when paused={true}', () => {
+        mockMatchMedia(true);
+        const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
+        const onPausedChange = vi.fn();
+
+        const first = render(
+            <GardenBackdrop paused={false} onPausedChange={onPausedChange} showControls={false} />,
+        );
+        expect(rafSpy).not.toHaveBeenCalled();
+        expect(onPausedChange).toHaveBeenCalledWith(true);
+        first.unmount();
+
+        rafSpy.mockClear();
+        mockMatchMedia(false);
+        const second = render(<GardenBackdrop paused={true} showControls={false} />);
+        expect(rafSpy).not.toHaveBeenCalled();
+        second.unmount();
     });
 
     it('cleans up window and document event listeners on unmount', () => {

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/personality-quiz]] — 10-question investing style diagnostic matching visitors to voxel worlds and starter recipes
 - [[entities/recipe-playground]] — **reverted** 2026-11-21; kept as a tombstone pointing to the alignment lesson
 - [[entities/agent-pre-tool-gate]] — deterministic PreToolUse hook blocking blanket git staging, multiline python -c, and raw .env dumps
 - [[entities/recipe-studio]] — Auto-indexed page

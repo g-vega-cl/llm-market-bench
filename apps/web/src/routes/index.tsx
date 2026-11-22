@@ -1,8 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { isValidWorldId, type WorldId } from '~/features/home/backdrop/voxel-world';
 import { HomeCtaPage } from '~/features/home/pages/HomeCtaPage';
 import { seo } from '~/lib/seo';
 
 export const Route = createFileRoute('/')({
+    validateSearch: (search: Record<string, unknown>): { world?: WorldId } => ({
+        world: isValidWorldId(search.world) ? search.world : undefined,
+    }),
     head: () => ({
         meta: [
             ...seo({
@@ -12,5 +16,10 @@ export const Route = createFileRoute('/')({
             }),
         ],
     }),
-    component: HomeCtaPage,
+    component: RouteComponent,
 });
+
+function RouteComponent() {
+    const { world } = Route.useSearch();
+    return <HomeCtaPage initialWorld={world} />;
+}

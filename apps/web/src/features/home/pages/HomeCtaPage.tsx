@@ -1,51 +1,42 @@
-import {
-    ATMOSPHERE_PHASES,
-    type AtmospherePhase,
-    Button,
-    resolveAtmospherePhase,
-    SceneStage,
-} from '@llm-market-bench/ui-design-system';
+import { SceneStage } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
 import { GardenBackdrop } from '../backdrop/GardenBackdrop';
+import { nextWorldId, SceneHudControls } from '../backdrop/SceneHudControls';
+import { syncUrlSearchParam, useDioramaStage } from '../backdrop/useDioramaStage';
+import type { WorldId } from '../backdrop/voxel-world';
+import { readPreferredWorld, writePreferredWorld } from '../backdrop/world-storage';
 
-const ATMOSPHERE_LABELS: Record<AtmospherePhase, string> = {
-    dawn: 'Dawn',
-    daylight: 'Daylight',
-    dusk: 'Dusk',
-    'after-hours': 'After-Hours',
-};
+export interface HomeCtaPageProps {
+    /** Optional initial diorama world passed via URL search param (`?world=`). */
+    initialWorld?: WorldId;
+}
 
 /**
- * The homepage: crisp open-sky hero above the multi-layered voxel garden diorama.
- *
- * Built on the design-system `SceneStage` primitive (`variant="hero"`,
- * `motionRole="reactive"`):
- * - Auto-resolves the US Eastern market session atmosphere (`dawn`, `daylight`,
- *   `dusk`, `after-hours`) on mount after a deterministic `'dusk'` SSR render,
- *   with an accessible foreground HUD control to cycle phases on demand.
- * - Keeps the headline and subtitle breathing in the upper zenith sky while
- *   housing the interactive CTA cluster and trust strip inside a compact tactile
- *   `.scene-scrim .voxel-card` Matcha plaque (zero glassmorphism) above the
- *   floating voxel island.
+ * The homepage: crisp open-sky hero above a configurable multi-layered voxel
+ * diorama. Built on `SceneStage` (`variant="hero"`, `motionRole="reactive"`).
  */
-export function HomeCtaPage() {
-    const [atmosphere, setAtmosphere] = useState<AtmospherePhase>('dusk');
-    const [paused, setPaused] = useState(false);
+export function HomeCtaPage({ initialWorld }: HomeCtaPageProps) {
+    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } = useDioramaStage();
+    const [world, setWorld] = useState<WorldId>(initialWorld ?? 'sakura-garden');
 
     useEffect(() => {
-        setAtmosphere(resolveAtmospherePhase(new Date(), 'market-et'));
-    }, []);
+        if (initialWorld) {
+            setWorld(initialWorld);
+            writePreferredWorld(initialWorld);
+            return;
+        }
+        const saved = readPreferredWorld();
+        if (saved) setWorld(saved);
+    }, [initialWorld]);
 
-    const cycleAtmosphere = useCallback(() => {
-        setAtmosphere((current) => {
-            const idx = ATMOSPHERE_PHASES.indexOf(current);
-            return ATMOSPHERE_PHASES[(idx + 1) % ATMOSPHERE_PHASES.length];
+    const cycleWorld = useCallback(() => {
+        setWorld((current) => {
+            const next = nextWorldId(current);
+            writePreferredWorld(next);
+            syncUrlSearchParam('world', next);
+            return next;
         });
-    }, []);
-
-    const toggleMotion = useCallback(() => {
-        setPaused((prev) => !prev);
     }, []);
 
     return (
@@ -56,6 +47,7 @@ export function HomeCtaPage() {
             className="home-hero-viewport flex w-full flex-col text-voxel-ink"
             backdrop={
                 <GardenBackdrop
+                    world={world}
                     atmosphere={atmosphere}
                     paused={paused}
                     onPausedChange={setPaused}
@@ -64,32 +56,19 @@ export function HomeCtaPage() {
                 />
             }
             controls={
-                <>
-                    <Button
-                        type="button"
-                        onClick={cycleAtmosphere}
-                        variant="outline"
-                        colorScheme="neutral"
-                        size="sm"
-                        data-testid="atmosphere-switcher"
-                    >
-                        {`Sky: ${ATMOSPHERE_LABELS[atmosphere]}`}
-                    </Button>
-                    <Button
-                        type="button"
-                        onClick={toggleMotion}
-                        variant="outline"
-                        colorScheme="neutral"
-                        size="sm"
-                    >
-                        {paused ? 'Play motion' : 'Pause motion'}
-                    </Button>
-                </>
+                <SceneHudControls
+                    world={world}
+                    atmosphere={atmosphere}
+                    paused={paused}
+                    onCycleWorld={cycleWorld}
+                    onCycleAtmosphere={cycleAtmosphere}
+                    onTogglePaused={toggleMotion}
+                />
             }
         >
             <div
                 data-testid="home-hero-content"
-                className="flex flex-1 flex-col items-center justify-start gap-6 pb-12 text-center"
+                className="flex flex-1 flex-col items-center justify-start gap-6 pb-16 text-center"
             >
                 <div className="flex flex-col items-center gap-2">
                     <p className="home-hero-copy text-sm font-bold tracking-[0.28em] uppercase text-accent">
@@ -108,7 +87,7 @@ export function HomeCtaPage() {
 
                 <div
                     data-testid="home-cta-plaque"
-                    className="scene-scrim voxel-card flex w-full max-w-md flex-col items-center gap-4 rounded-none px-6 py-5"
+                    className="scene-scrim voxel-card flex w-full max-w-md flex-col items-center gap-3 rounded-none px-6 py-5"
                 >
                     <Link
                         to="/lab"
@@ -116,6 +95,14 @@ export function HomeCtaPage() {
                         className="voxel-btn voxel-btn--hero inline-flex w-full max-w-xs min-h-14 items-center justify-center bg-accent px-10 py-4 text-sm font-bold uppercase tracking-[0.16em] text-accent-ink hover:bg-accent-hover"
                     >
                         Start building
+                    </Link>
+
+                    <Link
+                        to="/personality"
+                        data-testid="take-personality-test"
+                        className="voxel-btn inline-flex w-full max-w-xs min-h-10 items-center justify-center bg-voxel-surface px-6 py-2 text-sm font-bold text-voxel-ink hover:bg-voxel-elevated"
+                    >
+                        Take the investing style test
                     </Link>
 
                     <Link

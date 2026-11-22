@@ -102,7 +102,7 @@ export function SceneStage({
             {controls ? (
                 <div
                     data-slot="scene-controls"
-                    className="pointer-events-auto absolute right-3 bottom-3 z-20 flex items-center gap-2"
+                    className="pointer-events-auto absolute right-3 bottom-3 left-3 z-20 flex flex-wrap items-center justify-end gap-2"
                 >
                     {controls}
                 </div>

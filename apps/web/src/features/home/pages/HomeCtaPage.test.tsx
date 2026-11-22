@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { WORLD_STORAGE_KEY } from '../backdrop/world-storage';
 import { HomeCtaPage } from './HomeCtaPage';
 
 vi.mock('@tanstack/react-router', () => ({
@@ -18,6 +19,10 @@ vi.mock('@tanstack/react-router', () => ({
         </a>
     ),
 }));
+
+beforeEach(() => {
+    window.localStorage.clear();
+});
 
 beforeAll(() => {
     Object.defineProperty(window, 'matchMedia', {
@@ -82,6 +87,9 @@ describe('HomeCtaPage (SceneStage living diorama, dynamic atmosphere & tactile C
         expect(startLink).toHaveAttribute('href', '/lab');
         expect(startLink.className).toContain('font-bold');
 
+        const quizLink = within(plaque).getByTestId('take-personality-test');
+        expect(quizLink).toHaveAttribute('href', '/personality');
+
         const leaderboardLink = within(plaque).getByRole('link', {
             name: /see how the published bots are doing/i,
         });
@@ -129,5 +137,44 @@ describe('HomeCtaPage (SceneStage living diorama, dynamic atmosphere & tactile C
         const initialMotionText = motionBtn.textContent;
         fireEvent.click(motionBtn);
         expect(motionBtn.textContent).not.toBe(initialMotionText);
+    });
+
+    it('cycles all 5 voxel worlds via the HUD switcher, persists preference, and honors initialWorld', () => {
+        const { unmount } = render(<HomeCtaPage />);
+
+        const worldSwitcher = screen.getByTestId('world-switcher');
+        const canvas = screen.getByTestId('garden-backdrop');
+        expect(canvas).toHaveAttribute('data-world', 'sakura-garden');
+
+        const seenWorlds = new Set<string | null>([canvas.getAttribute('data-world')]);
+        for (let i = 0; i < 5; i++) {
+            fireEvent.click(worldSwitcher);
+            seenWorlds.add(canvas.getAttribute('data-world'));
+        }
+        expect(seenWorlds).toEqual(
+            new Set([
+                'sakura-garden',
+                'magma-forge',
+                'bioluminescent-reef',
+                'sky-observatory',
+                'cedar-sanctuary',
+            ]),
+        );
+
+        // Selecting magma-forge updates localStorage and survives remount
+        fireEvent.click(worldSwitcher);
+        expect(window.localStorage.getItem(WORLD_STORAGE_KEY)).toBe('magma-forge');
+        unmount();
+
+        const secondMount = render(<HomeCtaPage />);
+        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', 'magma-forge');
+        secondMount.unmount();
+
+        render(<HomeCtaPage initialWorld="sky-observatory" />);
+        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute(
+            'data-world',
+            'sky-observatory',
+        );
+        expect(window.localStorage.getItem(WORLD_STORAGE_KEY)).toBe('sky-observatory');
     });
 });

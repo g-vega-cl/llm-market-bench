@@ -29,6 +29,12 @@ export const LAB_CATEGORIES: LabCategory[] = [
                     'Visual Voxel DAG builder for news catalyst streams, technical indicator gates, and LLM trading recipes.',
             },
             {
+                to: '/personality',
+                label: 'Investing Style Diagnostic',
+                description:
+                    '10-question personality test matching your trading temperament to one of five voxel worlds and starter bot recipes.',
+            },
+            {
                 to: '/recipes-demo',
                 label: 'Recipe Sample Backtest',
                 description:

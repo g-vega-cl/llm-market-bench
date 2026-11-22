@@ -89,6 +89,8 @@ describe('SceneStage', () => {
         const controls = container.querySelector('[data-slot="scene-controls"]') as HTMLElement;
         expect(controls).not.toBeNull();
         expect(controls.getAttribute('aria-hidden')).toBeNull();
+        expect(controls.className).toContain('flex-wrap');
+        expect(controls.className).toContain('justify-end');
         expect(screen.getByRole('button', { name: 'Sky: Dusk' })).toBeInTheDocument();
     });
 });

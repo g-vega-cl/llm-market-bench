@@ -26,6 +26,7 @@ import { Route as LiveTraderRouteImport } from './routes/live-trader'
 import { Route as LlmLogsRouteImport } from './routes/llm-logs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
+import { Route as PersonalityRouteImport } from './routes/personality'
 import { Route as RecipesDemoRouteImport } from './routes/recipes-demo'
 import { Route as RenkoRouteImport } from './routes/renko'
 import { Route as RetiredAgentsRouteImport } from './routes/retired-agents'
@@ -134,6 +135,11 @@ const LoginRoute = LoginRouteImport.update({
 const LogoutRoute = LogoutRouteImport.update({
   id: '/logout',
   path: '/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PersonalityRoute = PersonalityRouteImport.update({
+  id: '/personality',
+  path: '/personality',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecipesDemoRoute = RecipesDemoRouteImport.update({
@@ -276,6 +282,7 @@ export interface FileRoutesByFullPath {
   '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/personality': typeof PersonalityRoute
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
@@ -318,6 +325,7 @@ export interface FileRoutesByTo {
   '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/personality': typeof PersonalityRoute
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
@@ -362,6 +370,7 @@ export interface FileRoutesById {
   '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/personality': typeof PersonalityRoute
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
@@ -406,6 +415,7 @@ export interface FileRouteTypes {
     | '/llm-logs'
     | '/login'
     | '/logout'
+    | '/personality'
     | '/recipes-demo'
     | '/renko'
     | '/retired-agents'
@@ -448,6 +458,7 @@ export interface FileRouteTypes {
     | '/llm-logs'
     | '/login'
     | '/logout'
+    | '/personality'
     | '/recipes-demo'
     | '/renko'
     | '/retired-agents'
@@ -491,6 +502,7 @@ export interface FileRouteTypes {
     | '/llm-logs'
     | '/login'
     | '/logout'
+    | '/personality'
     | '/recipes-demo'
     | '/renko'
     | '/retired-agents'
@@ -535,6 +547,7 @@ export interface RootRouteChildren {
   LlmLogsRoute: typeof LlmLogsRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
+  PersonalityRoute: typeof PersonalityRoute
   RecipesDemoRoute: typeof RecipesDemoRoute
   RenkoRoute: typeof RenkoRoute
   RetiredAgentsRoute: typeof RetiredAgentsRoute
@@ -675,6 +688,13 @@ declare module '@tanstack/react-router' {
       path: '/logout'
       fullPath: '/logout'
       preLoaderRoute: typeof LogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/personality': {
+      id: '/personality'
+      path: '/personality'
+      fullPath: '/personality'
+      preLoaderRoute: typeof PersonalityRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recipes-demo': {
@@ -903,6 +923,7 @@ const rootRouteChildren: RootRouteChildren = {
   LlmLogsRoute: LlmLogsRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
+  PersonalityRoute: PersonalityRoute,
   RecipesDemoRoute: RecipesDemoRoute,
   RenkoRoute: RenkoRoute,
   RetiredAgentsRoute: RetiredAgentsRoute,

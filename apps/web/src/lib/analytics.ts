@@ -7,6 +7,7 @@ export type AnalyticsEvent =
     | 'run_queued'
     | 'builder_opened'
     | 'builder_compiled'
+    | 'builder_failed'
     | 'builder_question_answered'
     | 'builder_declined'
     | 'gallery_signin_clicked';

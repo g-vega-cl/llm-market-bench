@@ -54,7 +54,13 @@ function QuestionOptions({
     reply: CompilerReply;
     onSend: (text: string) => void;
 }) {
-    if (reply.status !== 'question' || reply.options.length === 0) return null;
+    if (
+        reply.status !== 'question' ||
+        !Array.isArray(reply.options) ||
+        reply.options.length === 0
+    ) {
+        return null;
+    }
     return (
         <div className="flex flex-wrap gap-2">
             {reply.options.map((option) => (

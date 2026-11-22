@@ -5,6 +5,7 @@ import { useRef } from 'react';
 import { track } from '~/lib/analytics';
 import type { RecipeSummaryItem, RecipeUserQuotaStatus } from '../types';
 import { BuilderConversation } from './BuilderConversation';
+import { BuilderStatusStrip } from './BuilderStatusStrip';
 import { CompiledBotWorkspace } from './CompiledBotWorkspace';
 import { useBuilderChat } from './use-builder-chat';
 
@@ -64,6 +65,7 @@ export function BuilderChatPanel({
 
     return (
         <div className="flex flex-col gap-5">
+            <BuilderStatusStrip phase={chat.phase} elapsedMs={chat.elapsedMs} />
             <header className="flex flex-col gap-2 border-b-2 border-voxel-bevel-hi pb-4">
                 <SectionHeading className="text-sm">Build your trading bot</SectionHeading>
                 <p className="max-w-prose text-xs font-normal text-voxel-muted">
@@ -83,9 +85,23 @@ export function BuilderChatPanel({
             />
 
             {chat.error ? (
-                <p role="alert" className="voxel-trough p-3 text-xs font-normal text-danger">
-                    {chat.error}
-                </p>
+                <div
+                    role="alert"
+                    className="voxel-trough bg-voxel-trough flex flex-wrap items-center justify-between gap-2 p-3 min-w-0"
+                >
+                    <p className="text-xs font-normal text-danger min-w-0 break-words">
+                        {chat.error}
+                    </p>
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        colorScheme="neutral"
+                        onClick={chat.retry}
+                        disabled={chat.isCompiling}
+                    >
+                        Try again
+                    </Button>
+                </div>
             ) : null}
             {userId ? null : (
                 <p className="text-xs font-normal text-voxel-muted">

@@ -1,6 +1,8 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
+import type { RecipeJobRecord } from '../types';
 import { CompiledBotWorkspace } from './CompiledBotWorkspace';
 
 const mockNavigate = vi.fn();
@@ -39,23 +41,46 @@ vi.mock('../api/recipes-quota-api', () => ({
     toggleLiveScheduleFn: vi.fn(),
 }));
 
+vi.mock('../api/recipe-jobs-api', () => ({
+    fetchLatestRecipeRunFn: vi.fn().mockResolvedValue(null),
+}));
+
 vi.mock('../api/recipes-studio-api', () => ({
     previewStrategyPromptFn: vi.fn(),
     submitWaitlistPledgeFn: vi.fn(),
 }));
 
+import { fetchLatestRecipeRunFn } from '../api/recipe-jobs-api';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
+
+function renderWithQuery(ui: React.ReactElement) {
+    const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
+}
+
+const runningJob: RecipeJobRecord = {
+    id: 'job-1',
+    recipe_id: 'saved-123',
+    mode: 'backtest',
+    status: 'processing',
+    progress_pct: 41,
+    result_json: null,
+    error_message: null,
+};
 
 beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockResolvedValue(undefined);
+    vi.mocked(fetchLatestRecipeRunFn).mockResolvedValue(null);
 });
 
 describe('CompiledBotWorkspace', () => {
     const strategy = STARTER_RECIPES[0];
 
     it('keeps block editor and raw prompt collapsed by default and offers one primary Backtest CTA', () => {
-        render(<CompiledBotWorkspace initialStrategy={strategy} />);
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={strategy} />);
 
         expect(
             screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i }),
@@ -76,9 +101,53 @@ describe('CompiledBotWorkspace', () => {
 
     it('marks an unsaved compiled bot as dirty so Save Recipe is enabled immediately', () => {
         const unsaved = { ...strategy, id: undefined };
-        render(<CompiledBotWorkspace initialStrategy={unsaved} />);
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={unsaved} />);
 
         expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeEnabled();
+        expect(screen.getByTestId('builder-status')).toHaveTextContent(/draft not saved yet/i);
+    });
+
+    it('shows a running backtest for this recipe so background work is visible', async () => {
+        vi.mocked(fetchLatestRecipeRunFn).mockResolvedValue(runningJob);
+
+        renderWithQuery(
+            <CompiledBotWorkspace initialStrategy={{ ...strategy, id: 'saved-123' }} />,
+        );
+
+        await waitFor(() => expect(screen.getByTestId('builder-status')).toHaveTextContent(/41%/));
+        const strip = screen.getByTestId('builder-status');
+        expect(strip).toHaveTextContent(/BACKTEST RUNNING/i);
+        expect(fetchLatestRecipeRunFn).toHaveBeenCalledWith({ data: { recipeId: 'saved-123' } });
+    });
+
+    it('keeps the unsaved-draft warning visible even when an older run exists', async () => {
+        vi.mocked(fetchLatestRecipeRunFn).mockResolvedValue({
+            ...runningJob,
+            status: 'completed',
+            progress_pct: 100,
+        });
+
+        renderWithQuery(
+            <CompiledBotWorkspace initialStrategy={{ ...strategy, id: 'saved-123' }} />,
+        );
+
+        await waitFor(() =>
+            expect(screen.getByTestId('builder-status')).toHaveTextContent(/finished/i),
+        );
+
+        // Rename the bot: the graph is now dirty while the settled run is still shown.
+        fireEvent.change(screen.getByPlaceholderText('Name this strategy'), {
+            target: { value: 'Chip Momentum v2' },
+        });
+
+        const strip = screen.getByTestId('builder-status');
+        expect(strip).toHaveTextContent(/draft not saved yet/i);
+        expect(strip).toHaveTextContent(/finished/i);
+        // The strip carries the run link itself: no hunting through My Bots.
+        expect(screen.getByRole('link', { name: /open run/i })).toHaveAttribute(
+            'href',
+            '/recipes/backtest/job-1',
+        );
     });
 
     it('auto-saves and navigates to backtest results when clicking Backtest', async () => {
@@ -91,7 +160,7 @@ describe('CompiledBotWorkspace', () => {
             status: 'pending',
         } as never);
 
-        render(<CompiledBotWorkspace initialStrategy={strategy} />);
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={strategy} />);
 
         fireEvent.click(screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i }));
 

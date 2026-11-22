@@ -227,6 +227,21 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
   - A `0x0` deferred mount does not advance `EntranceState` offscreen; animation begins once `buildLayers()` initializes a non-empty `Scene`.
   - `buildLayers()` checks `(width, height, dpr, atmosphere, backingWidth, backingHeight)` before allocating or clearing offscreen canvases.
 
+### 2.11 `/build` Bot Builder Conversation (`BuilderPhase`) & Run Status Poll
+
+- **Source Files**: [`apps/web/src/features/recipes/builder/builder-phases.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/builder/builder-phases.ts), [`apps/web/src/features/recipes/builder/use-builder-chat.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/builder/use-builder-chat.ts), [`apps/web/src/features/recipes/utils/use-latest-recipe-run.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/utils/use-latest-recipe-run.ts)
+- **Entity Page**: [[concepts/recipe-builder-compiler]]
+- **States**:
+  - `BuilderPhase = 'idle' | 'signed-out' | 'compiling' | 'question' | 'declined' | 'ready' | 'error'` — one derived value from `(error, isCompiling, reply, userId)`, rendered by `BuilderStatusStrip`; no boolean fan-out for "loading"/"failed".
+  - Compile transport: `idle` $\\to$ `compiling` $\\to$ `question` (waits for the user) $\\to$ `compiling` … $\\to$ `ready` | `declined` | `error`.
+  - Backtest run poll: `no run` $\\to$ `pending` $\\to$ `processing` $\\to$ `completed` | `failed` | `cancelled`; only `pending`/`processing` is polled (`refetchInterval`), so a settled run costs one read.
+- **Invariants**:
+  - A reply is accepted only when `isCompilerReply()` validates it (an `ok` strategy must pass `validateStrategy`); the transport resolves an envelope-less response to `undefined`, so the boundary asserts with `assertServerFnResult()` instead of dereferencing it.
+  - `error` and `reply` are never both set: a failed compile clears the reply, so question buttons cannot stay clickable beside a failure message.
+  - `inFlight` is a ref latch, not state — two clicks in one tick must not spend two metered compiles.
+  - The compile has one budget (`BUILDER_BUDGET_MS`, 24s) under the measured ~28–30s origin ceiling; a timeout degrades straight to a starter template instead of retrying inside a 3s window.
+  - The strip's elapsed clock is `aria-hidden` and outside the polite live region, so a countdown does not queue one screen-reader announcement per second.
+
 ---
 
 ## 3. Implicit State Debt & Refactoring Backlog
@@ -242,7 +257,7 @@ The following areas in the codebase currently manage state implicitly through co
 | **Systematic Sector Horizons** | `exit_date IS NULL` combined with application date math. | `PositionHorizonState = 'OPEN' \| 'MATURED_HOLD' \| 'EXIT_QUEUED' \| 'CLOSED'` |
 | **Live Trader WebSocket Session** | Ambient client connections and disconnected flags. | `StreamSessionState = 'CONNECTING' \| 'STREAMING' \| 'RECONNECTING' \| 'DISCONNECTED'` |
 
-### 2.7 Strategy Builder Studio, Incremental Backtest & Preview (`ExecutionState`, `RecipeJobStatus`, `PreviewState`, `RecipeSaveState`)
+### 3.1 Strategy Builder Studio, Incremental Backtest & Preview (`ExecutionState`, `RecipeJobStatus`, `PreviewState`, `RecipeSaveState`)
 
 - **Source Files**:
   - [`apps/web/src/features/recipes/types.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/types.ts) ([`RecipeStudioPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/pages/RecipeStudioPage.tsx), [`RecipeBacktestPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/pages/RecipeBacktestPage.tsx))

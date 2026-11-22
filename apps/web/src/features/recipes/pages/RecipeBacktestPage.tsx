@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { isQuerySettled } from '~/lib/query-client';
+import { assertServerFnResult } from '~/lib/server-fn';
 import { enqueueRecipeJobFn, fetchRecipeRunDetailFn } from '../api/recipes-api';
 import { cancelRecipeJobFn } from '../api/recipes-quota-api';
 import { BacktestSessionTraceBlock } from '../components/BacktestSessionTraceBlock';
@@ -296,14 +297,20 @@ export function RecipeBacktestPage({
 
     const query = useQuery({
         queryKey: ['recipe-backtest-run', jobId],
-        queryFn: () => fetchRecipeRunDetailFn({ data: { jobId } }),
+        queryFn: async () =>
+            // An envelope-less reply resolves to `undefined`; throwing keeps the
+            // last good payload instead of flipping the page to "Not Found".
+            assertServerFnResult(
+                await fetchRecipeRunDetailFn({ data: { jobId } }),
+                'The backtest run',
+            ),
         initialData: initialData ?? undefined,
         initialDataUpdatedAt: initialData ? mountedAt : undefined,
         enabled: !readOnlyShowcase,
         staleTime: 1000,
         refetchInterval: (q) => {
             if (readOnlyShowcase) return false;
-            const st = q.state.data?.job.status;
+            const st = q.state.data?.job?.status;
             return st === 'pending' || st === 'processing' ? 1500 : false;
         },
     });

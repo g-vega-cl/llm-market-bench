@@ -40,6 +40,45 @@ export const getRecipeJobStatusFn = createServerFn({ method: 'GET' })
         return getRecipeJobStatus(jobId, user.id);
     });
 
+/**
+ * The newest run for one recipe, used by the /build status strip. Reading per
+ * recipe keeps it index-aligned and correct once a user's recent-jobs window is
+ * full — a global top-N window would drop a still-pending older run.
+ */
+export async function fetchLatestRecipeRun(
+    recipeId: string,
+    userId: string,
+): Promise<RecipeJobRecord | null> {
+    const db = getDbServerClient({ useServiceRole: true });
+    const { data, error } = await db
+        .from('recipe_execution_queue')
+        .select(
+            'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
+        )
+        .eq('recipe_id', recipeId)
+        .eq('user_id', userId)
+        .eq('mode', 'backtest')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) throw new Error(`${error.code ?? 'error'}: ${error.message}`);
+    return (data as RecipeJobRecord | null) ?? null;
+}
+
+export const fetchLatestRecipeRunFn = createServerFn({ method: 'GET' })
+    .validator((d: { recipeId: string }) => d)
+    .handler(async ({ data: { recipeId } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        if (!user?.id) {
+            throw new Error('Unauthorized: please sign in to view backtest runs');
+        }
+        return fetchLatestRecipeRun(recipeId, user.id);
+    });
+
 async function resolveQueuePosition(
     db: ReturnType<typeof getDbServerClient>,
     job: RecipeJobRecord,

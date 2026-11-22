@@ -17,14 +17,18 @@ import type {
     BacktestResultData,
     PreviewState,
     PushStrategy,
+    RecipeJobRecord,
     RecipeSummaryItem,
     RecipeUserQuotaStatus,
     StrategyRecipeRecord,
     StrategyStage,
 } from '../types';
 import { buildBacktestError, upsertSavedRecipeSummary } from '../utils/live-studio-helpers';
+import { useLatestRecipeRun } from '../utils/use-latest-recipe-run';
 import { useLiveScheduleControl } from '../utils/use-live-schedule-control';
 import { RecipeSaveError, useRecipeDraft } from '../utils/use-recipe-draft';
+import { BuilderStatusStrip } from './BuilderStatusStrip';
+import type { StatusTone } from './builder-phases';
 import { CompiledBotSummaryCard } from './CompiledBotSummaryCard';
 
 export interface CompiledBotWorkspaceProps {
@@ -34,6 +38,55 @@ export interface CompiledBotWorkspaceProps {
     summary?: string;
     fallback?: boolean;
     onStartOver?: () => void;
+}
+
+interface RunView {
+    label: string;
+    text: string;
+    tone: StatusTone;
+}
+
+function isInFlightRun(run: RecipeJobRecord | null): boolean {
+    return run?.status === 'pending' || run?.status === 'processing';
+}
+
+/** What the last backtest is doing, so background work is never invisible. */
+function describeRun(run: RecipeJobRecord | null): RunView | null {
+    if (!run) return null;
+    const progress =
+        typeof run.progress_pct === 'number' ? `${Math.round(run.progress_pct)}%` : null;
+    switch (run.status) {
+        case 'pending':
+            return {
+                label: 'BACKTEST QUEUED',
+                text: `Queued${progress ? ` · ${progress}` : ''} — a worker picks it up shortly. You can keep editing.`,
+                tone: 'accent',
+            };
+        case 'processing':
+            return {
+                label: 'BACKTEST RUNNING',
+                text: `Running${progress ? ` · ${progress}` : ''} — you can keep editing while it works.`,
+                tone: 'accent',
+            };
+        case 'completed':
+            return {
+                label: 'LAST BACKTEST',
+                text: 'Last backtest finished.',
+                tone: 'success',
+            };
+        case 'failed':
+            return {
+                label: 'LAST BACKTEST',
+                text: run.error_message
+                    ? `Failed: ${run.error_message}`
+                    : 'Failed — re-run it from My Bots.',
+                tone: 'danger',
+            };
+        case 'cancelled':
+            return { label: 'LAST BACKTEST', text: 'Cancelled.', tone: 'neutral' };
+        default:
+            return null;
+    }
 }
 
 /**
@@ -53,6 +106,20 @@ export function CompiledBotWorkspace({
     const posthog = usePostHog();
     const draft = useRecipeDraft(initialStrategy, initialStrategy.id ? initialStrategy.name : null);
     const strategy = draft.strategy;
+    const { run } = useLatestRecipeRun(strategy.id);
+    const runView = describeRun(run);
+    const runInFlight = isInFlightRun(run);
+    const draftNote = draft.isDirty
+        ? 'Draft not saved yet — Save Recipe persists it before any run.'
+        : 'Saved.';
+    // Both axes stay visible: a finished run from last week must never hide an
+    // unsaved draft, and a running job must never be hidden by the draft note.
+    const statusDetail = [
+        runInFlight ? runView?.text : draftNote,
+        runInFlight ? draftNote : runView?.text,
+    ]
+        .filter(Boolean)
+        .join(' · ');
 
     const [quotaStatus, setQuotaStatus] = useState<RecipeUserQuotaStatus | null>(initialQuota);
     const [userRecipes, setUserRecipes] = useState<RecipeSummaryItem[]>(initialUserRecipes);
@@ -181,6 +248,23 @@ export function CompiledBotWorkspace({
 
     return (
         <div className="flex flex-col gap-6">
+            <BuilderStatusStrip
+                phase="ready"
+                label={runInFlight ? runView?.label : undefined}
+                tone={runInFlight ? runView?.tone : draft.isDirty ? 'neutral' : 'success'}
+                detail={statusDetail}
+                action={
+                    run ? (
+                        <Link
+                            to="/recipes/backtest/$jobId"
+                            params={{ jobId: run.id }}
+                            className="text-xs font-normal text-accent underline underline-offset-4 hover:text-accent-hover"
+                        >
+                            Open run →
+                        </Link>
+                    ) : undefined
+                }
+            />
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-voxel-bevel-hi pb-3">
                 {onStartOver ? (
                     <Button size="sm" variant="outline" colorScheme="neutral" onClick={onStartOver}>

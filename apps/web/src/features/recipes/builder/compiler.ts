@@ -154,6 +154,34 @@ export function validateStrategy(candidate: unknown): PushStrategy {
     return strategy;
 }
 
+/**
+ * True only for a value that is really one of the three reply shapes. The server
+ * function transport hands back `undefined` for an envelope-less response, and a
+ * hand-edited reply can be `{status:'ok'}` with a half-built strategy, so a reply
+ * is trusted only when `validateStrategy` accepts it.
+ */
+export function isCompilerReply(value: unknown): value is CompilerReply {
+    if (!value || typeof value !== 'object') return false;
+    const candidate = value as Record<string, unknown>;
+    const status = String(candidate.status ?? '');
+    if (status === 'ok') {
+        try {
+            validateStrategy(candidate.strategy);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+    if (status === 'question') {
+        return (
+            typeof candidate.question === 'string' &&
+            candidate.question.trim().length > 0 &&
+            Array.isArray(candidate.options)
+        );
+    }
+    return status === 'declined';
+}
+
 /** Parse one model reply into a decision we can act on or show. */
 export function parseCompilerReply(raw: string): CompilerReply {
     const parsed = JSON.parse(stripFences(raw)) as Record<string, unknown>;

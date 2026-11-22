@@ -3,6 +3,7 @@ import {
     buildConversation,
     capabilityManifest,
     fallbackReply,
+    isCompilerReply,
     parseCompilerReply,
     validateStrategy,
 } from './compiler';
@@ -156,5 +157,25 @@ describe('buildConversation', () => {
         expect(conversation[0].role).toBe('system');
         expect(conversation[1]).toEqual({ role: 'user', content: 'buy chips' });
         expect(conversation[2]).toEqual({ role: 'assistant', content: 'Which tickers?' });
+    });
+});
+
+describe('isCompilerReply', () => {
+    it('rejects the values a broken transport can hand back', () => {
+        expect(isCompilerReply(undefined)).toBe(false);
+        expect(isCompilerReply(null)).toBe(false);
+        expect(isCompilerReply({ errorType: 'Runtime.ExitError' })).toBe(false);
+        expect(isCompilerReply({ status: 'ok' })).toBe(false);
+        expect(isCompilerReply({ status: 'ok', strategy: { stages: [{}] } })).toBe(false);
+        expect(isCompilerReply({ status: 'question', question: '  ', options: [] })).toBe(false);
+        expect(isCompilerReply({ status: 'question', question: 'Which?' })).toBe(false);
+    });
+
+    it('accepts each of the three reply shapes', () => {
+        expect(
+            isCompilerReply({ status: 'ok', strategy: validStrategy, summary: 'Chip momentum' }),
+        ).toBe(true);
+        expect(isCompilerReply({ status: 'question', question: 'Which?', options: [] })).toBe(true);
+        expect(isCompilerReply({ status: 'declined', reason: 'no shorts' })).toBe(true);
     });
 });

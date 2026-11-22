@@ -32,6 +32,8 @@ The pop RPC only recovers `processing` rows whose heartbeat lapsed. A row that n
 
 The compile lane loop (`_compile_lane_loop`) runs this sweep at most once per `STALE_COMPILE_SWEEP_INTERVAL_SECONDS = 60`, tracked via `last_sweep_utc`. A sweep failure is logged with `logger.exception("Stale compile sweep failed")` and does not stop the lane. When rows are swept, the daemon logs `Failed N stale compile job(s) no worker claimed`.
 
+A 60s sweep cannot beat a 5s pop poll, so the sweep alone is not enough: a daemon returning to a 12-minute-old row claims and runs it first. `_execute_compile_job` therefore re-reads `created_at` and raises `STALE_COMPILE_MESSAGE` **before** the meter and before any provider call. A late job fails instead of charging a user for a compile they stopped waiting for. Proven live: a synthetic 12-minute-old row was claimed and completed before this guard, and fails without a provider call after it.
+
 ## Client-Side Give-Up Path
 
 The builder UI (`apps/web/src/features/recipes/builder/use-builder-chat.ts`) does not count up forever on an unclaimed job. Two thresholds in `compile-queue.ts` drive the behavior:

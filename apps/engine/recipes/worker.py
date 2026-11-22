@@ -30,6 +30,16 @@ STALE_COMPILE_SECONDS = 600
 STALE_COMPILE_MESSAGE = "The worker never picked this compile up. Try again."
 
 
+def _parse_iso_utc(value: Any) -> datetime | None:
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
+
+
 def fail_stale_compile_jobs(sb: Any, *, timeout_seconds: int = STALE_COMPILE_SECONDS) -> int:
     """Fail `pending` compile rows no worker claimed, releasing the per-user cap.
 
@@ -205,11 +215,24 @@ async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dic
     this worker stays a generic completion executor — one implementation of the
     model contract, no Python copy of the capability manifest to drift.
     """
-    res = sb.table("recipe_execution_queue").select("payload_json, user_id").eq("id", job_id).single().execute()
+    res = (
+        sb.table("recipe_execution_queue")
+        .select("payload_json, user_id, created_at")
+        .eq("id", job_id)
+        .single()
+        .execute()
+    )
     row = getattr(res, "data", None) or {}
     payload = row.get("payload_json")
     if not isinstance(payload, dict) or not payload.get("messages"):
         raise ValueError("compile job has no payload_json messages")
+
+    # The sweep marks unclaimed rows failed, but the pop poll runs every 5s and the
+    # sweep only once a minute, so a row that aged past the window could be claimed
+    # first. Refuse it here, before the meter and before any tokens are spent.
+    created_at = _parse_iso_utc(row.get("created_at"))
+    if created_at is not None and (datetime.now(UTC) - created_at).total_seconds() > STALE_COMPILE_SECONDS:
+        raise RuntimeError(STALE_COMPILE_MESSAGE)
 
     user_id = row.get("user_id") or job.get("job_user_id")
     used = sb.rpc("consume_builder_compile", {"p_user": user_id}).execute().data

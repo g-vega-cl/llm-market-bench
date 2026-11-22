@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **325**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **326**).
 
 ## Top Hotspots
 
@@ -27,7 +27,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/trading/live_intraday_agent.py` | 17 | 4 | 23.5% | 625 | 68 | **HIGH** |
 | `apps/web/src/components/ui/DefaultCatchBoundary.tsx` | 9 | 7 | 77.8% | 201 | 63 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | 14 | 4 | 28.6% | 383 | 56 | **HIGH** |
-| `apps/free_llm_proxy/tests/test_proxy.py` | 17 | 3 | 17.6% | 1742 | 51 | **HIGH** |
+| `apps/engine/recipes/runner.py` | 13 | 4 | 30.8% | 655 | 52 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **325**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **326**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **325**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 325 | 100.0% |
+| `g-vega-cl` | 326 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **325**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 183 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 184 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

@@ -1,9 +1,10 @@
 """Hermetic tests for recipe studio queue worker (Push v2 only)."""
 
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from recipes.push_schema import PushStrategy
-from recipes.worker import process_next_recipe_job
+from recipes.worker import STALE_COMPILE_MESSAGE, process_next_recipe_job
 
 
 def _make_mock_supabase():
@@ -452,7 +453,7 @@ def _compile_client(events, *, content='{"status":"question","question":"Which?"
     return _FakeAsyncClient
 
 
-def _compile_job_client(payload=None, *, usage=1):
+def _compile_job_client(payload=None, *, usage=1, created_at=None):
     client, queue_table, _recipes_table, _alerts = _make_mock_supabase()
     client.rpc.return_value.execute.return_value.data = [
         {
@@ -463,7 +464,7 @@ def _compile_job_client(payload=None, *, usage=1):
             "job_priority": 10,
         }
     ]
-    queue_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+    row = {
         "payload_json": payload
         or {
             "model": "auto-go",
@@ -472,6 +473,9 @@ def _compile_job_client(payload=None, *, usage=1):
         },
         "user_id": "usr-operator",
     }
+    if created_at is not None:
+        row["created_at"] = created_at
+    queue_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = row
     return client, queue_table
 
 
@@ -592,3 +596,22 @@ def test_fail_stale_compile_jobs_marks_pending_rows_failed():
     pending_chain = update_chain.eq.return_value
     pending_chain.eq.assert_called_once_with("status", "pending")
     pending_chain.eq.return_value.lt.assert_called_once()
+
+
+def test_compile_job_refuses_a_row_that_aged_past_the_window():
+    """The pop poll (5s) can beat the sweep (60s): refuse a stale row before metering."""
+    events = []
+    stale = (datetime.now(UTC) - timedelta(minutes=20)).isoformat()
+    client, queue_table = _compile_job_client(created_at=stale)
+    client.rpc.side_effect = _rpc_router(events)
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client(events)):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "FAILED"
+    # no meter and no provider call: the user is not charged for a stale row
+    assert [e[1] for e in events if e[0] == "rpc"] == ["pop_next_recipe_job"]
+    assert not any(e[0] == "post" for e in events)
+    failed = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "failed"]
+    assert failed
+    assert failed[0]["error_message"] == STALE_COMPILE_MESSAGE

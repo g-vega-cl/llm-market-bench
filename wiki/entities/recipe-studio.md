@@ -150,6 +150,11 @@ The **Recipe Studio** is now a two-surface experience:
 - No nested event loop (`async_process_next_recipe_job` awaits directly)
 - Successful jobs: write `result_json`, increment `trial_count`, deposit `live_turn` alerts
 
+### Stale Compile Guard (Claim-Time Refusal)
+Compile jobs are protected against aging out between the sweep and the pop poll. The sweep (`fail_stale_compile_jobs`) marks unclaimed `pending` compile rows failed once they exceed `STALE_COMPILE_SECONDS` (600s) and releases the per-user cap, but the pop poll runs every 5s while the sweep runs only once a minute — so a row that aged past the window could still be claimed first.
+
+`_execute_compile_job` therefore re-reads the row's `created_at` (selected alongside `payload_json, user_id`), parses it with `_parse_iso_utc` (tolerant of `Z` suffixes and naive timestamps, which are assumed UTC), and raises `RuntimeError(STALE_COMPILE_MESSAGE)` when `(now − created_at) > STALE_COMPILE_SECONDS`. The refusal happens **before** `consume_builder_compile` is called and before any provider tokens are spent, so a user is never charged for a stale row. The job is marked `failed` with `error_message = STALE_COMPILE_MESSAGE` ("The worker never picked this compile up. Try again."). Pinned by `test_compile_job_refuses_a_row_that_aged_past_the_window`, which asserts only `pop_next_recipe_job` is called (no meter RPC, no provider POST) and the row is failed with the stale message.
+
 ### Public Recipe Surface
 - `/` = Home CTA page (headline + "Start building" → `/lab`)
 - `/lab` = 3-block directory (My Bots, Investing Style, Research Engines, Audits)

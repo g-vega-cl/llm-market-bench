@@ -8,10 +8,10 @@ category: entity
 The **Recipe Studio** is now a two-surface experience:
 
 1. **`/build` — The Chat Builder** (primary entry point)
-   - A conversational interface where visitors describe a trading strategy in plain English
-   - Compiles into a validated Push v2 recipe (one LLM call, point-in-time news, paper cash)
-   - On success, shows a focused **Compiled Bot Workspace** with a single primary CTA: "▶ Backtest (Random 2W)"
-   - The 5-block editor and raw prompt visualizer are tucked behind collapsible toggles
+   - Hosted inside `BuildDioramaStage` (`cedar-sanctuary` `GardenBackdrop` with SSR `initialAtmosphere` parity)
+   - A conversational interface where visitors describe a trading strategy in plain English or fill the box via `BuilderStarterChips`
+   - Compiles into a validated Push v2 recipe (one LLM call, point-in-time news, paper cash) with a real-phase `BuilderCompilePipeline` (`1. Queue` / `2. Model` / `3. Validate`)
+   - On success, shows a bounded **Compiled Bot Workspace** hero banner with a single primary CTA: "▶ Backtest (Random 2W)" and a calm lower workspace switching between `Blocks & Tools` and `Prompt Preview`
    - Accessible from `/lab` directory and the homepage CTA
 
 2. **`/recipes` — My Bots Dashboard** (signed-in users only)
@@ -50,22 +50,22 @@ The **Recipe Studio** is now a two-surface experience:
 ### 3. Presentation — Two Surfaces
 
 #### `/build` — Chat Builder (`BuilderChatPanel` → `CompiledBotWorkspace`)
-- **Step 1**: Conversational builder (`BuilderChatPanel` + `BuilderConversation`)
-  - User describes bot in plain English
+- **Step 1**: Conversational builder (`BuilderChatPanel` + `BuilderStarterChips` + `BuilderCompilePipeline` + `BuilderConversation`) inside a full-viewport `SceneStage` (`BuildDioramaStage` + `GardenBackdrop`)
+  - Open-sky header above a single `.scene-scrim .voxel-card` with recessed `.voxel-trough` slots (zero nested `.voxel-card`)
+  - User describes bot in plain English or clicks a starter chip to populate the input (explicit click-to-fill, never auto-submit)
   - Compiles via `compileStrategyFn` (25/day quota, `auto-go` model)
   - On `status: 'ok'`, immediately renders **Compiled Bot Workspace**
   - On `status: 'question'`, shows clarifying options
   - On `status: 'declined'`, shows nearest buildable template
   - Guidance links: "Take our 10-question personality test" (`/personality`) and "talk to our AI advisor" (`/chat`)
 
-- **Step 2**: **Compiled Bot Workspace** (`CompiledBotWorkspace` + `CompiledBotSummaryCard`)
-  - Focused summary card with status badge ("SAVED BOT" / "CLOSEST WORKING TEMPLATE" / "BOT READY")
-  - Single primary CTA: "▶ Backtest (Random 2W)" (auto-saves → enqueues → navigates to `/recipes/backtest/$jobId`)
-  - Live toggle: "Enable Live (30m)" / "Pause Live" with max-3-bots conflict confirmation
-  - Turbo button (5m × 1h, 1/day) with countdown
-  - Collapsible "Edit blocks & tools ▼" drawer (`StageBuilder` + `ToolPicker`)
-  - Collapsible "View raw prompt ▼" (`PromptVisualizer` with live data preview)
-  - "← My Bots" link back to dashboard
+- **Step 2**: **Compiled Bot Workspace** (`CompiledBotWorkspace` + `CompiledBotSummaryCard` + `CompiledBotBlueprintSection`)
+  - Bounded top `SceneStage` hero banner (`BuildDioramaStage`) with `.scene-scrim .voxel-card` holding status strip, bot name, summary, badges ("SAVED BOT" / "CLOSEST WORKING TEMPLATE" / "BOT READY"), primary CTA ("▶ Backtest (Random 2W)"), and live toggle ("Enable Live (30m)" / "Live: ON (30m)" with `LiveSwitchConfirmation`)
+  - Calm lower workspace (`CompiledBotBlueprintSection`) below the hero with a WAI-ARIA segmented `.voxel-trough` tab bar (`Blocks & Tools` default via `StageBuilder` | `Prompt Preview` via `PromptVisualizer`), keyboard-navigable with ArrowLeft/ArrowRight/Home/End
+  - "← Describe a different bot" or "← My Bots" link back to dashboard
+  - Atmosphere and paused-motion HUD state survive Step 1 → Step 2 → Start Over because `BuildDioramaStage` is mounted once at the root of `BuilderChatPanel`
+
+`apps/web/src/routes/build.tsx` resolves `initialAtmosphere: resolveAtmospherePhase(new Date(), 'market-et')` in its loader for both the signed-out and signed-in branches, so SSR and hydration agree on the sky phase with zero flash.
 
 #### `/recipes` — My Bots Dashboard (`RecipeDashboardPage`)
 - **Empty state**: Hero card with "Build Your First Bot →" linking to `/build`
@@ -174,6 +174,7 @@ Compile jobs are protected against aging out between the sweep and the pop poll.
 - [[concepts/recipe-ops-telemetry]] — durable scheduler telemetry
 - [[concepts/recipe-builder-usage]] — per-user daily compile metering
 - [[concepts/recipe-builder-compiler]] — plain-English → Push v2 compiler behind `/build`
+- [[concepts/living-scene-backdrops]] — the Cedar Sanctuary `SceneStage` shell the builder renders on
 - [[entities/free-llm-proxy]]
 - [[entities/design-system]]
 - [[concepts/zero-frontend-compute]]

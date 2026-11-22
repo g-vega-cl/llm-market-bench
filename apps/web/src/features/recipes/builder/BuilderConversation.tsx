@@ -1,4 +1,4 @@
-import { Badge, Button, Card } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import type { BuilderMessage, CompilerReply } from './compiler';
 
 export interface BuilderConversationProps {
@@ -7,51 +7,62 @@ export interface BuilderConversationProps {
     reply: CompilerReply | null;
     pendingIdea: string | null;
     isSignedIn: boolean;
+    isCompiling?: boolean;
     onSend: (text: string) => void;
 }
 
 function MessageRow({ message }: { message: BuilderMessage }) {
     return (
-        <Card padding="sm" className="flex flex-col gap-1">
+        <div
+            data-testid="builder-message-row"
+            className="voxel-trough bg-voxel-trough rounded-none p-3 flex flex-col gap-2 min-w-0"
+        >
             <span className="text-xs font-normal uppercase text-voxel-muted">
                 {message.role === 'user' ? 'You' : 'Builder'}
             </span>
             <p className="text-xs font-normal text-voxel-ink whitespace-pre-wrap break-words">
                 {message.content}
             </p>
-        </Card>
+        </div>
     );
 }
 
 function PendingIdeaCard({
     idea,
     isSignedIn,
+    disabled,
     onSend,
 }: {
     idea: string;
     isSignedIn: boolean;
+    disabled: boolean;
     onSend: (text: string) => void;
 }) {
     return (
-        <Card padding="sm" className="flex flex-col gap-2">
+        <div
+            data-testid="builder-pending-idea"
+            className="voxel-trough bg-voxel-trough rounded-none p-3 flex flex-col gap-2 min-w-0"
+        >
             <span className="text-xs font-normal uppercase text-voxel-muted">
                 Saved in this browser
             </span>
             <p className="text-xs font-normal text-voxel-ink break-words">{idea}</p>
             <div>
-                <Button variant="solid" size="sm" onClick={() => onSend(idea)}>
+                <Button variant="solid" size="sm" disabled={disabled} onClick={() => onSend(idea)}>
                     {isSignedIn ? 'Continue' : 'Sign in to continue'}
                 </Button>
             </div>
-        </Card>
+        </div>
     );
 }
 
 function QuestionOptions({
     reply,
+    disabled,
     onSend,
 }: {
     reply: CompilerReply;
+    disabled: boolean;
     onSend: (text: string) => void;
 }) {
     if (
@@ -64,7 +75,13 @@ function QuestionOptions({
     return (
         <div className="flex flex-wrap gap-2">
             {reply.options.map((option) => (
-                <Button key={option} variant="outline" size="sm" onClick={() => onSend(option)}>
+                <Button
+                    key={option}
+                    variant="outline"
+                    size="sm"
+                    disabled={disabled}
+                    onClick={() => onSend(option)}
+                >
                     {option}
                 </Button>
             ))}
@@ -75,17 +92,22 @@ function QuestionOptions({
 function DeclinedCard({ reply }: { reply: CompilerReply }) {
     if (reply.status !== 'declined') return null;
     return (
-        <Card padding="sm" className="flex flex-col gap-2">
-            <Badge colorScheme="warning" variant="soft" size="sm">
-                CANNOT RUN AS DESCRIBED
-            </Badge>
+        <div
+            data-testid="builder-declined-card"
+            className="voxel-trough bg-voxel-trough rounded-none p-3 flex flex-col gap-2 min-w-0"
+        >
+            <div>
+                <Badge colorScheme="warning" variant="soft" size="sm">
+                    CANNOT RUN AS DESCRIBED
+                </Badge>
+            </div>
             <p className="text-xs font-normal text-voxel-ink break-words">{reply.reason}</p>
             {reply.closest ? (
                 <p className="text-xs font-normal text-voxel-muted break-words">
                     Closest buildable version: {reply.closest}
                 </p>
             ) : null}
-        </Card>
+        </div>
     );
 }
 
@@ -95,19 +117,32 @@ export function BuilderConversation({
     reply,
     pendingIdea,
     isSignedIn,
+    isCompiling = false,
     onSend,
 }: BuilderConversationProps) {
+    const hasContent = messages.length > 0 || Boolean(pendingIdea) || Boolean(reply);
+
     return (
-        <section className="flex flex-col gap-3" aria-live="polite">
+        <section
+            className={hasContent ? 'flex flex-col gap-2 min-w-0' : 'sr-only'}
+            aria-live="polite"
+        >
             {messages.map((message, index) => (
                 <MessageRow key={messageIds[index] ?? `m-${index}`} message={message} />
             ))}
 
             {pendingIdea ? (
-                <PendingIdeaCard idea={pendingIdea} isSignedIn={isSignedIn} onSend={onSend} />
+                <PendingIdeaCard
+                    idea={pendingIdea}
+                    isSignedIn={isSignedIn}
+                    disabled={isCompiling}
+                    onSend={onSend}
+                />
             ) : null}
 
-            {reply ? <QuestionOptions reply={reply} onSend={onSend} /> : null}
+            {reply ? (
+                <QuestionOptions reply={reply} disabled={isCompiling} onSend={onSend} />
+            ) : null}
             {reply ? <DeclinedCard reply={reply} /> : null}
         </section>
     );

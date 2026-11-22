@@ -5,13 +5,23 @@ category: concept
 
 # Recipe Builder Compiler
 
-The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compile-queue.ts` (enqueue + poll server functions), with `BuilderChatPanel.tsx` (the chat panel mounted at `/build` and linked from `/lab`), `BuilderConversation.tsx`, and `use-builder-chat.ts` providing the UI and conversation state.
+The **Recipe Builder Compiler** turns a plain-English trading idea into a validated Push v2 recipe. It is the `/build` route's brain: `apps/web/src/features/recipes/builder/compiler.ts` (pure) plus `compile-queue.ts` (enqueue + poll server functions), with `BuilderChatPanel.tsx` (hosted inside `BuildDioramaStage` + `GardenBackdrop` at `/build`, linked from `/lab`), `BuildDioramaStage.tsx`, `BuilderStarterChips.tsx`, `BuilderCompilePipeline.tsx`, `BuilderConversation.tsx`, `CompiledBotWorkspace.tsx`, `CompiledBotSummaryCard.tsx`, `CompiledBotBlueprintSection.tsx`, and `use-builder-chat.ts` providing the UI and conversation state.
 
 The guiding rule is that the model **never edits the graph freehand**. Whatever it returns is re-validated against the same contracts the studio, the save API, the scheduler, and the database enforce, and an unbuildable or twice-invalid reply degrades to a runnable starter template rather than a dead end.
 
 ## Two Entry Points, One Panel
 
 `BuilderChatPanel.tsx` is the single implementation of the chat builder. It is mounted at `/build` (primary) and linked from the homepage (`/`) and the public recipe gallery (`/recipes`). The panel accepts an optional `idea` seed and `userId`, and an optional `redirectTo` (default `/build`) used when an anonymous visitor is sent to sign in. Extracting the panel means the builder is discoverable from the lab directory without duplicating the conversation, metering, or draft-handoff logic.
+
+## Diorama Shell (`BuildDioramaStage`)
+
+`apps/web/src/features/recipes/builder/BuildDioramaStage.tsx` is the single Cedar Sanctuary `SceneStage` shell shared by Step 1 (chat) and Step 2 (compiled workspace) of `/build`. It is mounted at the root of `BuilderChatPanel` so `GardenBackdrop` and the HUD state (atmosphere + paused) survive the Step 1 → Step 2 transition and the "Describe a different bot" reset without unmounting or re-baking offscreen canvases.
+
+- **`DioramaControls`** — `{ atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion }`, produced by `useDioramaStage(initialAtmosphere)` in `BuilderChatPanel` and passed down to `CompiledBotWorkspace` as the `diorama` prop. `CompiledBotWorkspace` falls back to its own `useDioramaStage(initialAtmosphere)` when rendered standalone from `/build?recipeId=<id>`.
+- **`heroViewport`** — `true` in Step 1 renders the full-viewport `home-hero-viewport` stage; `false` in Step 2 renders a compact bounded banner.
+- **Slots** — `backdrop` is a `GardenBackdrop` with `showControls={false}` (the HUD lives in the `controls` slot), and `controls` is `SceneHudControls` (`Sky: <Phase>` + Pause/Play motion). See [[concepts/living-scene-backdrops]].
+
+`apps/web/src/routes/build.tsx` resolves `initialAtmosphere: resolveAtmospherePhase(new Date(), 'market-et')` in its loader for both the signed-out and signed-in branches, so SSR and hydration agree on the sky phase with zero flash (see [[concepts/cumulative-layout-shift]]).
 
 ## Capability Manifest
 
@@ -84,18 +94,33 @@ Client-supplied roles are filtered to `user`/`assistant` only and each turn is t
   - `enqueue_rejected` — `enqueueCompileFn` threw (meter refusal, pending cap, auth, transport)
   - `abandoned` — the client gave up on an unclaimed job at `QUEUE_ABANDON_MS` (see [[concepts/recipe-compile-queue]])
 
-## Compiled Bot Workspace (`CompiledBotWorkspace` + `CompiledBotSummaryCard`)
+## Step 1 Chat Surface (`BuilderChatPanel`)
+
+`BuilderChatPanel` renders an open-sky header (eyebrow, `Build your trading bot.` headline, one-sentence subheadline) above a single `.scene-scrim .voxel-card` (`data-testid="builder-stage-card"`) inside `BuildDioramaStage` with `heroViewport`. The card holds, in order:
+
+- a thin `builder-phase-bar` (`aria-hidden`) whose color tracks `phase` (`bg-accent` queued/compiling, `bg-warning` question/declined, `bg-danger` error, `bg-voxel-bevel-hi` idle),
+- `BuilderStatusStrip` (always mounted, `role="status"`),
+- `BuilderCompilePipeline` while `phase` is `queued`/`compiling`,
+- `BuilderStarterChips` on the idle first step (explicit click-to-fill: `onSelect` calls `onOpen()`, `chat.setDraft(prompt)`, and focuses the input — it never auto-submits),
+- `BuilderConversation` (recessed `.voxel-trough` rows, zero nested `.voxel-card`),
+- the inline error alert with **Try again** / **Use closest template**,
+- the sign-in hint for anonymous visitors,
+- the prompt form (`Input` + `Build My Bot →` / `Send`),
+- the guidance links to `/personality` and `/chat`.
+
+`BuilderConversation` renders each message, pending idea, question options, and declined card as recessed `.voxel-trough` blocks (`data-testid` `builder-message-row`, `builder-pending-idea`, `builder-declined-card`) and disables its action buttons while `isCompiling`.
+
+## Compiled Bot Workspace (`CompiledBotWorkspace` + `CompiledBotSummaryCard` + `CompiledBotBlueprintSection`)
 
 When compilation succeeds (`reply.status === 'ok'`), `BuilderChatPanel` renders `CompiledBotWorkspace` instead of the chat interface:
 
-- **Summary card** (`CompiledBotSummaryCard`) — status badge, bot name, description, active block badges, tool count
-- **Primary CTA** — "▶ Backtest (Random 2W)" (auto-saves → enqueues backtest → navigates to `/recipes/backtest/$jobId`)
-- **Live toggle** — "Enable Live (30m)" / "Pause Live" with max-3-bots conflict confirmation (`LiveSwitchConfirmation`)
-- **Turbo button** — 5m × 1h boost, 1/day per user, countdown label
-- **Collapsible editor** — "Edit blocks & tools ▼" reveals `StageBuilder` (5 blocks, delete-only) + `ToolPicker` (no Select All/Clear)
-- **Collapsible raw prompt** — "View raw prompt ▼" reveals `PromptVisualizer` with live data preview
+- **Bounded hero banner** — `CompiledBotWorkspace` hosts the back link, `BuilderStatusStrip`, inline alerts (`LiveSwitchConfirmation` / `StudioAlertSlot`), and `CompiledBotSummaryCard` inside a `.scene-scrim .voxel-card` (`data-testid="compiled-bot-hero-card"`) over `BuildDioramaStage` + `GardenBackdrop` (with SSR `initialAtmosphere` parity and zero nested `.voxel-card` containers).
+- **Summary card** (`CompiledBotSummaryCard`) — status badge, bot name (`RecipeNameField`), description, active block badges, tool count, primary CTA ("▶ Backtest (Random 2W)"), and live toggle ("Enable Live (30m)" / "Live: ON (30m)" with conflict confirmation). It carries no collapsible toggles and no nested `Card`.
+- **Lower blueprint workspace** (`CompiledBotBlueprintSection`) — a calm section below the hero with a WAI-ARIA segmented `.voxel-trough` tab bar (`role="tablist"`, `role="tab"` buttons with `aria-selected`/`aria-controls`/`tabIndex`, and a `role="tabpanel"`) switching between **Blocks & Tools** (default: `StageBuilder` + `ToolPicker`) and **Prompt Preview** (`PromptVisualizer` with live data preview). ArrowLeft/ArrowRight toggle the active tab and Home/End jump to the first/last tab, moving focus to the selected tab button. This replaces the former collapsible drawers entirely.
 - **"← My Bots" link** — returns to `/recipes` dashboard
 - **Guidance links** — "Take our 10-question personality test" (`/personality`) and "talk to our AI advisor" (`/chat`)
+
+Step 1 (`BuilderChatPanel`) similarly pairs an open-sky header over `GardenBackdrop` with a single `.scene-scrim .voxel-card` containing `BuilderStatusStrip`, `BuilderStarterChips` (explicit click-to-fill starter ideas when idle), `BuilderCompilePipeline` (`1. Queue` / `2. Model` / `3. Validate` driven strictly by real queue/compile state), and recessed `.voxel-trough` rows in `BuilderConversation` (zero nested `.voxel-card`), sharing `BuildDioramaStage` state seamlessly into Step 2.
 
 ## Always-On Status (`BuilderStatusStrip`)
 
@@ -117,8 +142,9 @@ When compilation succeeds (`reply.status === 'ok'`), `BuilderChatPanel` renders 
 - `apps/web/src/features/recipes/builder/compile-queue.test.ts` — payload shaping (system prompt first, 8-turn cap), the 25/day pre-check, the 2-pending cap, the inserted row shape, and a null poll
 - `apps/web/src/features/recipes/builder/use-builder-chat.test.tsx` — enqueue → poll → question transcript, QUEUED phase, unparseable reply degrades to the template, failed job is retryable with no stale reply, envelope-less poll is legible, meter refusal, double-click latch, explicit template fallback, anonymous parking, and the `builder_failed` `reason_code` taxonomy (`abandoned`, `job_failed` with the message preserved)
 - `apps/engine/recipes/test_worker.py` — compile jobs: meter before the provider call, daily-limit stop without a provider call, provider failure recorded, missing payload fails closed
+- `apps/web/src/features/recipes/builder/BuilderChatPanel.test.tsx` — Cedar Sanctuary `SceneStage` + SSR atmosphere parity, explicit click-to-fill `BuilderStarterChips`, stepped `BuilderCompilePipeline`, recessed `.voxel-trough` conversation rows (zero nested `.voxel-card`), compile transition to `CompiledBotWorkspace`, and atmosphere/paused HUD state preserved across Step 1 → Step 2 → Start Over
 - `apps/web/src/features/recipes/builder/BuilderStatusStrip.test.tsx` — always-mounted live region, clock kept out of the live region, slow-provider copy, failure copy, run-state override, wrap classes per design-spec §9
-- `apps/web/src/features/recipes/builder/CompiledBotWorkspace.test.tsx` — default collapsed state, dirty unsaved bot enables Save and says so, running run surfaces with progress, a settled run never hides an unsaved draft, backtest flow auto-saves and navigates
+- `apps/web/src/features/recipes/builder/CompiledBotWorkspace.test.tsx` — bounded `SceneStage` hero without nested cards, segmented `Blocks & Tools` / `Prompt Preview` tablist (default `blocks`, ArrowRight switches to `prompt`), dirty unsaved bot enables Save and says so, running run surfaces with progress, a settled run never hides an unsaved draft, backtest flow auto-saves and navigates
 - `apps/web/src/features/recipes/utils/local-draft.test.ts` — draft round-trip, malformed storage, non-single-stage draft, clearing, pending-idea save/load/clear
 
 ## Related
@@ -128,3 +154,4 @@ When compilation succeeds (`reply.status === 'ok'`), `BuilderChatPanel` renders 
 - [[concepts/state-machines]] — where `RecipeSaveState`, `BacktestError`, `LiveScheduleState` lifecycles are registered
 - [[entities/free-llm-proxy]] — the `auto-go` endpoint the compiler calls
 - [[concepts/zero-lookahead-materialization]] — why `web_search` is banned in recipes
+- [[concepts/living-scene-backdrops]] — the Cedar Sanctuary `SceneStage` shell the builder renders on

@@ -1,9 +1,7 @@
-import { Badge, Button, Card } from '@llm-market-bench/ui-design-system';
+import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import { PromptVisualizer } from '../components/PromptVisualizer';
 import { RecipeNameField, type RecipeSaveState } from '../components/RecipeNameField';
-import { StageBuilder } from '../components/StageBuilder';
-import type { PreviewState, PushStrategy, StrategyStage } from '../types';
+import type { PushStrategy } from '../types';
 
 export interface CompiledBotSummaryCardProps {
     strategy: PushStrategy;
@@ -17,17 +15,10 @@ export interface CompiledBotSummaryCardProps {
     isTogglingLive: boolean;
     isCurrentlyScheduledLive: boolean;
     backtestButtonLabel: string;
-    showBlockEditor: boolean;
-    showRawPrompt: boolean;
-    preview: PreviewState;
     onNameChange: (name: string) => void;
     onSave: () => void;
     onBacktest: () => void;
     onToggleLive: () => void;
-    onToggleBlockEditor: () => void;
-    onToggleRawPrompt: () => void;
-    onStageChange: (updated: StrategyStage) => void;
-    onPreviewLiveData: () => void;
 }
 
 function resolveStatusBadge(strategyId?: string, fallback?: boolean): string {
@@ -36,6 +27,10 @@ function resolveStatusBadge(strategyId?: string, fallback?: boolean): string {
     return 'BOT READY';
 }
 
+/**
+ * Focused bot identity, status badges, and primary CTAs rendered inside
+ * CompiledBotWorkspace's `.scene-scrim .voxel-card` hero container (zero nested cards).
+ */
 export function CompiledBotSummaryCard({
     strategy,
     summary,
@@ -48,17 +43,10 @@ export function CompiledBotSummaryCard({
     isTogglingLive,
     isCurrentlyScheduledLive,
     backtestButtonLabel,
-    showBlockEditor,
-    showRawPrompt,
-    preview,
     onNameChange,
     onSave,
     onBacktest,
     onToggleLive,
-    onToggleBlockEditor,
-    onToggleRawPrompt,
-    onStageChange,
-    onPreviewLiveData,
 }: CompiledBotSummaryCardProps) {
     const stage = strategy.stages[0];
     const activeBlockTypes = Array.from(new Set(stage.blocks.map((b) => b.type)));
@@ -66,117 +54,81 @@ export function CompiledBotSummaryCard({
     const descriptionText = summary || strategy.description;
 
     return (
-        <>
-            <Card padding="lg" className="flex flex-col gap-4">
-                <div className="flex flex-wrap items-center gap-2">
-                    <Badge colorScheme={fallback ? 'warning' : 'success'} variant="soft" size="sm">
-                        {statusBadge}
-                    </Badge>
-                    <span className="text-xs font-normal text-voxel-muted">
-                        Live: 30m · Backtest: {strategy.cadence} · one LLM call
-                    </span>
-                </div>
-
-                <RecipeNameField
-                    value={strategy.name}
-                    onChange={onNameChange}
-                    onSave={onSave}
-                    isDirty={isDirty}
-                    saveState={saveState}
-                    errorMessage={saveError}
-                    disabled={isBusy}
-                />
-
-                {descriptionText && (
-                    <p className="text-xs font-normal text-voxel-muted leading-relaxed">
-                        {descriptionText}
-                    </p>
-                )}
-
-                <div className="flex flex-wrap gap-1.5">
-                    {activeBlockTypes.map((type) => (
-                        <Badge key={type} colorScheme="accent" variant="soft" size="xs">
-                            {type}
-                        </Badge>
-                    ))}
-                    <Badge colorScheme="neutral" variant="soft" size="xs">
-                        {stage.selected_tools.length} tools
-                    </Badge>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                    <Button
-                        size="md"
-                        variant="solid"
-                        onClick={onBacktest}
-                        disabled={isBusy}
-                        isLoading={isRunningBacktest}
-                    >
-                        {backtestButtonLabel}
-                    </Button>
-
-                    <Button
-                        size="sm"
-                        variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
-                        colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
-                        onClick={onToggleLive}
-                        disabled={isBusy}
-                        isLoading={isTogglingLive}
-                    >
-                        {isCurrentlyScheduledLive ? 'Live: ON (30m)' : 'Enable Live (30m)'}
-                    </Button>
-
-                    {isCurrentlyScheduledLive && strategy.id && (
-                        <Link
-                            to="/recipes/live/$recipeId"
-                            params={{ recipeId: strategy.id }}
-                            className="text-xs font-bold text-success hover:underline underline-offset-4"
-                        >
-                            Live Status →
-                        </Link>
-                    )}
-                </div>
-            </Card>
-
-            <div className="flex flex-col gap-3">
-                <div>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="neutral"
-                        aria-expanded={showBlockEditor}
-                        onClick={onToggleBlockEditor}
-                    >
-                        {showBlockEditor ? 'Hide blocks & tools ▲' : 'Edit blocks & tools ▼'}
-                    </Button>
-                </div>
-
-                {showBlockEditor && (
-                    <div className="flex flex-col gap-4">
-                        <StageBuilder stage={stage} onChange={onStageChange} />
-
-                        <div>
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                colorScheme="neutral"
-                                aria-expanded={showRawPrompt}
-                                onClick={onToggleRawPrompt}
-                            >
-                                {showRawPrompt ? 'Hide raw prompt ▲' : 'View raw prompt ▼'}
-                            </Button>
-                        </div>
-
-                        {showRawPrompt && (
-                            <PromptVisualizer
-                                stage={stage}
-                                previewState={preview}
-                                onPreviewLiveData={onPreviewLiveData}
-                            />
-                        )}
-                    </div>
-                )}
+        <div className="flex flex-col gap-4 min-w-0">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-2 min-w-0">
+                <Badge colorScheme={fallback ? 'warning' : 'success'} variant="soft" size="sm">
+                    {statusBadge}
+                </Badge>
+                <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
+                    Live: 30m
+                </span>
+                <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
+                    {`· Backtest: ${strategy.cadence}`}
+                </span>
+                <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
+                    · one LLM call
+                </span>
             </div>
-        </>
+
+            <RecipeNameField
+                value={strategy.name}
+                onChange={onNameChange}
+                onSave={onSave}
+                isDirty={isDirty}
+                saveState={saveState}
+                errorMessage={saveError}
+                disabled={isBusy}
+            />
+
+            {descriptionText ? (
+                <p className="text-xs font-normal text-voxel-muted leading-relaxed break-words">
+                    {descriptionText}
+                </p>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2">
+                {activeBlockTypes.map((type) => (
+                    <Badge key={type} colorScheme="accent" variant="soft" size="xs">
+                        {type}
+                    </Badge>
+                ))}
+                <Badge colorScheme="neutral" variant="soft" size="xs">
+                    {stage.selected_tools.length} tools
+                </Badge>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+                <Button
+                    size="md"
+                    variant="solid"
+                    onClick={onBacktest}
+                    disabled={isBusy}
+                    isLoading={isRunningBacktest}
+                >
+                    {backtestButtonLabel}
+                </Button>
+
+                <Button
+                    size="sm"
+                    variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
+                    colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
+                    onClick={onToggleLive}
+                    disabled={isBusy}
+                    isLoading={isTogglingLive}
+                >
+                    {isCurrentlyScheduledLive ? 'Live: ON (30m)' : 'Enable Live (30m)'}
+                </Button>
+
+                {isCurrentlyScheduledLive && strategy.id ? (
+                    <Link
+                        to="/recipes/live/$recipeId"
+                        params={{ recipeId: strategy.id }}
+                        className="text-sm font-bold text-success hover:underline underline-offset-4"
+                    >
+                        Live Status →
+                    </Link>
+                ) : null}
+            </div>
+        </div>
     );
 }

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CEDAR_WORLD_ID } from '../../home/backdrop/voxel-world';
 import { STARTER_RECIPES } from '../starter-templates';
 import type { RecipeJobRecord } from '../types';
 import { CompiledBotWorkspace } from './CompiledBotWorkspace';
@@ -70,6 +71,30 @@ const runningJob: RecipeJobRecord = {
     error_message: null,
 };
 
+beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        })),
+    });
+
+    if (typeof globalThis.ResizeObserver === 'undefined') {
+        globalThis.ResizeObserver = class ResizeObserver {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        };
+    }
+});
+
 beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockResolvedValue(undefined);
@@ -79,24 +104,42 @@ beforeEach(() => {
 describe('CompiledBotWorkspace', () => {
     const strategy = STARTER_RECIPES[0];
 
-    it('keeps block editor and raw prompt collapsed by default and offers one primary Backtest CTA', () => {
-        renderWithQuery(<CompiledBotWorkspace initialStrategy={strategy} />);
+    it('renders hero summary inside a bounded SceneStage and defaults the lower workspace tab to Blocks & Tools', () => {
+        const { container } = renderWithQuery(
+            <CompiledBotWorkspace initialStrategy={strategy} initialAtmosphere="dusk" />,
+        );
+
+        const stage = container.querySelector('section[data-slot="scene-stage"]');
+        expect(stage).not.toBeNull();
+        expect(stage).toHaveAttribute('data-atmosphere', 'dusk');
+        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', CEDAR_WORLD_ID);
+
+        const heroCard = screen.getByTestId('compiled-bot-hero-card');
+        expect(heroCard).toHaveClass('scene-scrim', 'voxel-card');
+        expect(heroCard.querySelectorAll('.voxel-card')).toHaveLength(0);
 
         expect(
             screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i }),
         ).toBeInTheDocument();
-        expect(screen.queryByText('LLM Call')).not.toBeInTheDocument();
-        expect(screen.queryByText('Prompt Visualizer')).not.toBeInTheDocument();
 
-        // Expand blocks & tools drawer
-        fireEvent.click(screen.getByRole('button', { name: /Edit blocks & tools/i }));
+        // Lower workspace renders Blocks & Tools flat by default inside an accessible tabpanel
+        const blocksTab = screen.getByRole('tab', { name: /Blocks & Tools/i });
+        const promptTab = screen.getByRole('tab', { name: /Prompt Preview/i });
+        expect(blocksTab).toHaveAttribute('aria-selected', 'true');
+        expect(blocksTab).toHaveAttribute('aria-controls', 'panel-blocks');
+        expect(promptTab).toHaveAttribute('aria-selected', 'false');
+        expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'tab-blocks');
+
         expect(screen.getByText('LLM Call')).toBeInTheDocument();
         expect(screen.queryByText('Prompt Visualizer')).not.toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'Select All' })).not.toBeInTheDocument();
 
-        // Expand nested raw prompt toggle
-        fireEvent.click(screen.getByRole('button', { name: /View raw prompt/i }));
+        // Keyboard ArrowRight switches to Prompt Preview tabpanel
+        fireEvent.keyDown(screen.getByRole('tablist'), { key: 'ArrowRight' });
+        expect(promptTab).toHaveAttribute('aria-selected', 'true');
+        expect(screen.getByRole('tabpanel')).toHaveAttribute('aria-labelledby', 'tab-prompt');
         expect(screen.getByText('Prompt Visualizer')).toBeInTheDocument();
+        expect(screen.queryByText('LLM Call')).not.toBeInTheDocument();
     });
 
     it('marks an unsaved compiled bot as dirty so Save Recipe is enabled immediately', () => {

@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **328**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **329**).
 
 ## Top Hotspots
 
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **328**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **329**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **328**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 328 | 100.0% |
+| `g-vega-cl` | 329 | 100.0% |
 
 ### Commit Velocity
 
@@ -75,12 +75,12 @@ Team forensics over the same scoped window (commits analyzed: **328**, months: *
 | 2026-03 | 85 | ▇▇▇▇ |
 | 2026-04 | 96 | ▇▇▇▇ |
 | 2026-05 | 174 | ▇▇▇▇▇▇▇ |
-| 2026-06 | 105 | ▇▇▇▇▇ |
+| 2026-06 | 105 | ▇▇▇▇ |
 | 2026-07 | 58 | ▇▇ |
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 186 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 187 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

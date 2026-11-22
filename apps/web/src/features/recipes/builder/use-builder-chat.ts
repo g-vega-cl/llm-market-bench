@@ -1,11 +1,18 @@
 import { usePostHog } from '@posthog/react';
-import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { track } from '~/lib/analytics';
 import { assertServerFnResult } from '~/lib/server-fn';
 import { clearPendingIdea, loadPendingIdea, savePendingIdea } from '../utils/local-draft';
 import type { BuilderPhase } from './builder-phases';
-import { type BuilderMessage, type CompilerReply, isCompilerReply } from './compiler';
-import { compileStrategyFn } from './compiler-api';
+import { enqueueCompileFn, fetchCompileJobFn } from './compile-queue';
+import {
+    type BuilderMessage,
+    type CompilerReply,
+    fallbackReply,
+    isCompilerReply,
+    parseCompilerReply,
+} from './compiler';
 
 export interface UseBuilderChatArgs {
     idea?: string;
@@ -26,6 +33,8 @@ export interface BuilderChat {
     elapsedMs: number;
     send: (text: string) => Promise<void>;
     retry: () => void;
+    /** Explicit escape hatch from a failed compile: drop in the closest template. */
+    useTemplate: () => void;
     reset: () => void;
 }
 
@@ -33,27 +42,36 @@ export interface BuilderChat {
  * The transport resolves to `undefined` (instead of throwing) when a server
  * function response is not a reply envelope — an edge 502, a cut-off request.
  * Reading `.status` off that used to surface a raw TypeError with no way
- * forward, so an unknown reply is now a legible, retryable message.
+ * forward, so an unknown payload is now a legible, retryable message.
  */
 const NO_REPLY_MESSAGE =
     'The builder did not get an answer back — the request was cut off before it finished. Nothing was queued; try again.';
+const FAILED_MESSAGE = 'The builder failed to answer. Try again, or use the closest template.';
+const UNUSABLE_REPLY =
+    'The model replied with something the engine cannot run, so here is the closest working recipe. Edit it and run it.';
+
+function isInFlight(status: string | undefined): boolean {
+    return status === 'pending' || status === 'processing';
+}
 
 /** One discrete phase: the lifecycle is derived, never a set of booleans. */
 function derivePhase(args: {
     error: string | null;
-    isCompiling: boolean;
+    jobStatus: string | undefined;
     reply: CompilerReply | null;
     userId?: string | null;
 }): BuilderPhase {
     if (args.error) return 'error';
-    if (args.isCompiling) return 'compiling';
+    if (args.jobStatus === 'pending') return 'queued';
+    if (args.jobStatus === 'processing') return 'compiling';
     if (args.reply) return args.reply.status === 'ok' ? 'ready' : args.reply.status;
     return args.userId ? 'idle' : 'signed-out';
 }
 
 /**
- * Builder conversation state: anonymous messages are parked locally and resumed
- * after sign-in, compiles are metered server-side, and every outcome is tracked.
+ * Builder conversation state. Compiles are queued (see compile-queue.ts): `send`
+ * enqueues a job, this hook polls it, and the reply is parsed and validated here
+ * when it lands — so the model contract lives in exactly one place.
  */
 export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArgs): BuilderChat {
     const posthog = usePostHog();
@@ -63,74 +81,130 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     const [messageIds, setMessageIds] = useState<string[]>(() => (idea ? ['seed'] : []));
     const [draft, setDraft] = useState('');
     const [reply, setReply] = useState<CompilerReply | null>(null);
-    const [isCompiling, setIsCompiling] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [jobId, setJobId] = useState<string | null>(null);
     const [elapsedMs, setElapsedMs] = useState(0);
-    // A latch, not state: two clicks in one tick would both see isCompiling as
-    // false and spend two metered compiles.
+    // A latch, not state: two clicks in one tick must not enqueue two compiles.
     const inFlight = useRef(false);
 
     const pendingIdea = messages.length > 0 ? null : loadPendingIdea();
 
-    // Compiles run for seconds and can be cut short, so the strip counts up
-    // while the request is in flight instead of leaving a dead button.
+    const job = useQuery({
+        queryKey: ['builder-compile', jobId],
+        queryFn: async () => {
+            const result = await fetchCompileJobFn({ data: { jobId: jobId as string } });
+            // An envelope-less reply resolves to `undefined`; throwing keeps the
+            // last known job state and lets the poll retry instead of crashing.
+            return assertServerFnResult(result, 'The builder');
+        },
+        enabled: Boolean(jobId),
+        refetchInterval: (q) => (isInFlight(q.state.data?.status) ? 2000 : false),
+    });
+
+    // The strip counts up from the moment the job is queued.
     useEffect(() => {
-        if (!isCompiling) {
+        if (!jobId) {
             setElapsedMs(0);
             return;
         }
         const startedAt = Date.now();
         const timer = setInterval(() => setElapsedMs(Date.now() - startedAt), 1000);
         return () => clearInterval(timer);
-    }, [isCompiling]);
+    }, [jobId]);
 
-    const compile = async (conversation: BuilderMessage[]) => {
-        if (inFlight.current) return;
-        inFlight.current = true;
-        setIsCompiling(true);
-        setError(null);
-        try {
-            // The transport can hand back `undefined` for an envelope-less reply;
-            // that has to fail here, not at the first property read.
-            const result = assertServerFnResult(
-                await compileStrategyFn({ data: { messages: conversation } }),
-                'The builder',
-            );
-            if (!isCompilerReply(result)) {
-                console.error('[builder] compile returned a malformed reply', result);
-                setError(NO_REPLY_MESSAGE);
-                return;
-            }
-            setReply(result);
-            if (result.status === 'question') {
-                track(posthog, 'builder_question_answered');
-                setMessages([...conversation, { role: 'assistant', content: result.question }]);
-                setMessageIds((ids) => [...ids, `q${ids.length}-${Date.now()}`]);
-            } else if (result.status === 'declined') {
-                track(posthog, 'builder_declined');
-            } else {
+    const finish = useCallback(
+        (next: CompilerReply) => {
+            setReply(next);
+            if (next.status === 'ok') {
                 track(posthog, 'builder_compiled', {
-                    cadence: result.strategy.cadence,
-                    fallback: Boolean(result.fallback),
+                    cadence: next.strategy.cadence,
+                    fallback: Boolean(next.fallback),
                 });
                 clearPendingIdea();
+            } else if (next.status === 'question') {
+                track(posthog, 'builder_question_answered');
+                setMessages((prev) => [...prev, { role: 'assistant', content: next.question }]);
+                setMessageIds((ids) => [...ids, `q${ids.length}-${Date.now()}`]);
+            } else {
+                track(posthog, 'builder_declined');
             }
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'The builder failed to answer';
+        },
+        [posthog],
+    );
+
+    const fail = useCallback(
+        (message: string) => {
             track(posthog, 'builder_failed', { reason: message.slice(0, 120) });
             setError(message);
-            // A failed compile has no reply to act on; the stale one would leave
-            // question buttons alive beside a failure message.
+            // A failed compile has no reply to act on; a stale one would leave question
+            // buttons alive beside a failure message.
             setReply(null);
-        } finally {
+        },
+        [posthog],
+    );
+
+    const settle = useCallback(
+        (data: {
+            status: string;
+            result_json: { content?: string } | null;
+            error_message: string | null;
+        }) => {
+            if (data.status === 'failed' || data.status === 'cancelled') {
+                fail(data.error_message || FAILED_MESSAGE);
+                return;
+            }
+            const content = data.result_json?.content;
+            if (!content) {
+                fail(NO_REPLY_MESSAGE);
+                return;
+            }
+            try {
+                const parsed = parseCompilerReply(content);
+                if (!isCompilerReply(parsed)) throw new Error('malformed reply');
+                finish(parsed);
+            } catch {
+                // Degrade instead of dead-ending: the visitor still leaves with a bot.
+                finish(fallbackReply(UNUSABLE_REPLY));
+            }
+        },
+        [fail, finish],
+    );
+
+    // Settle exactly once, when the polled job reaches a terminal state, and on a
+    // failed poll itself.
+    const settledJobId = useRef<string | null>(null);
+    useEffect(() => {
+        if (!jobId || !job.data || isInFlight(job.data.status)) return;
+        if (settledJobId.current === jobId) return;
+        settledJobId.current = jobId;
+        settle(job.data);
+        inFlight.current = false;
+        setJobId(null);
+    }, [jobId, job.data, settle]);
+
+    useEffect(() => {
+        if (!job.error) return;
+        fail(job.error instanceof Error ? job.error.message : NO_REPLY_MESSAGE);
+        inFlight.current = false;
+        setJobId(null);
+    }, [job.error, fail]);
+
+    const requestCompile = async (conversation: BuilderMessage[]) => {
+        if (inFlight.current) return;
+        inFlight.current = true;
+        setError(null);
+        try {
+            const { jobId: queued } = await enqueueCompileFn({ data: { messages: conversation } });
+            setJobId(queued);
+        } catch (err) {
             inFlight.current = false;
-            setIsCompiling(false);
+            fail(err instanceof Error ? err.message : 'The builder failed to answer');
         }
     };
 
     const send = async (text: string) => {
         const trimmed = text.trim();
-        if (!trimmed || isCompiling || inFlight.current) return;
+        if (!trimmed || inFlight.current) return;
 
         // Anonymous visitors may type freely, but compiles spend tokens, so the
         // conversation is parked locally and resumed after sign-in.
@@ -144,13 +218,19 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         setMessages(next);
         setMessageIds((ids) => [...ids, `m${ids.length}-${Date.now()}`]);
         setDraft('');
-        await compile(next);
+        await requestCompile(next);
     };
 
     /** Re-run the last turn without appending a duplicate message. */
     const retry = () => {
-        if (isCompiling || inFlight.current || messages.length === 0) return;
-        void compile(messages);
+        if (inFlight.current || messages.length === 0) return;
+        void requestCompile(messages);
+    };
+
+    /** Explicit fallback: a working starter recipe, never a dead end. */
+    const useTemplate = () => {
+        setError(null);
+        finish(fallbackReply(UNUSABLE_REPLY));
     };
 
     const reset = () => {
@@ -159,6 +239,8 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         setDraft('');
         setReply(null);
         setError(null);
+        setJobId(null);
+        inFlight.current = false;
     };
 
     return {
@@ -167,13 +249,14 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         draft,
         setDraft,
         reply,
-        isCompiling,
+        isCompiling: Boolean(jobId),
         error,
         pendingIdea,
-        phase: derivePhase({ error, isCompiling, reply, userId }),
+        phase: derivePhase({ error, jobStatus: job.data?.status, reply, userId }),
         elapsedMs,
         send,
         retry,
+        useTemplate,
         reset,
     };
 }

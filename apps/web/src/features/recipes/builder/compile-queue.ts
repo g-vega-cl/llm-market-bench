@@ -1,0 +1,135 @@
+import { createServerFn } from '@tanstack/react-start';
+import { getAuthServerClient } from '~/lib/auth';
+import { getDbAdminClient } from '~/lib/db';
+import { type BuilderMessage, buildConversation } from './compiler';
+
+/**
+ * /build compiles are queued, not executed in the request: the edge severs a
+ * synchronous server function around 28-30s, and the free provider regularly needs
+ * longer. The row is picked up by the recipes daemon (`apps/engine/recipes/runner.py`,
+ * 5s poll, MiniPC) which executes the stored request and writes the raw reply.
+ *
+ * The prompt, capability manifest and all validation stay here in TS — the daemon
+ * never knows what a recipe is, so there is nothing to drift.
+ */
+export const BUILDER_DAILY_LIMIT = 25;
+/** In-flight cap: with the meter spent by the worker, enqueues alone must not fan out. */
+export const MAX_PENDING_COMPILES = 2;
+const MAX_MESSAGES = 8;
+const JOB_COLUMNS = 'id, status, progress_pct, result_json, error_message';
+
+export interface CompileJob {
+    id: string;
+    status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+    progress_pct: number | null;
+    result_json: { content?: string } | null;
+    error_message: string | null;
+}
+
+export function builderLimitMessage(): string {
+    return `Daily builder limit reached (${BUILDER_DAILY_LIMIT} compiles). Edit an existing recipe or come back tomorrow.`;
+}
+
+export function pendingCompilesMessage(): string {
+    return `You already have ${MAX_PENDING_COMPILES} compiles in flight. Wait for one to finish, then try again.`;
+}
+
+function todayUtc(): string {
+    return new Date().toISOString().slice(0, 10);
+}
+
+/** Build the stored request body; the daemon posts it verbatim. */
+export function buildCompilePayload(messages: BuilderMessage[]) {
+    return {
+        model: 'auto-go',
+        temperature: 0.2,
+        messages: buildConversation(messages.slice(-MAX_MESSAGES)),
+    };
+}
+
+export async function enqueueCompile(userId: string, messages: BuilderMessage[]): Promise<string> {
+    if (!Array.isArray(messages) || messages.length === 0) {
+        throw new Error('Describe your strategy first');
+    }
+
+    const db = getDbAdminClient();
+
+    const { data: usage } = await db
+        .from('recipe_builder_usage')
+        .select('compiles')
+        .eq('user_id', userId)
+        .eq('usage_day', todayUtc())
+        .maybeSingle();
+    const compiles = Number((usage as { compiles?: number } | null)?.compiles ?? 0);
+    if (compiles >= BUILDER_DAILY_LIMIT) {
+        throw new Error(builderLimitMessage());
+    }
+
+    const { data: pending, error: pendingError } = await db
+        .from('recipe_execution_queue')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('mode', 'compile')
+        .in('status', ['pending', 'processing']);
+    if (pendingError) throw new Error(pendingError.message);
+    if (Array.isArray(pending) && pending.length >= MAX_PENDING_COMPILES) {
+        throw new Error(pendingCompilesMessage());
+    }
+
+    const { data, error } = await db
+        .from('recipe_execution_queue')
+        .insert({
+            recipe_id: null,
+            user_id: userId,
+            mode: 'compile',
+            priority: 10,
+            provider: 'auto-go',
+            model: 'auto-go',
+            payload_json: buildCompilePayload(messages),
+        })
+        .select('id')
+        .single();
+
+    if (error) throw new Error(`${error.code ?? 'error'}: ${error.message}`);
+    return String((data as { id: string }).id);
+}
+
+export async function readCompileJob(jobId: string, userId: string): Promise<CompileJob | null> {
+    const db = getDbAdminClient();
+    const { data, error } = await db
+        .from('recipe_execution_queue')
+        .select(JOB_COLUMNS)
+        .eq('id', jobId)
+        .eq('user_id', userId)
+        .eq('mode', 'compile')
+        .maybeSingle();
+
+    if (error) throw new Error(`${error.code ?? 'error'}: ${error.message}`);
+    return (data as CompileJob | null) ?? null;
+}
+
+export const enqueueCompileFn = createServerFn({ method: 'POST' })
+    .validator((d: { messages: BuilderMessage[] }) => d)
+    .handler(async ({ data: { messages } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        if (!user?.id) {
+            throw new Error('Unauthorized: sign in to build a recipe');
+        }
+        return { jobId: await enqueueCompile(user.id, messages) };
+    });
+
+export const fetchCompileJobFn = createServerFn({ method: 'GET' })
+    .validator((d: { jobId: string }) => d)
+    .handler(async ({ data: { jobId } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        if (!user?.id) {
+            throw new Error('Unauthorized: sign in to build a recipe');
+        }
+        return readCompileJob(jobId, user.id);
+    });

@@ -19,8 +19,8 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/free_llm_proxy/server.py` | 19 | 5 | 26.3% | 795 | 95 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
 | `apps/web/src/routes/index.tsx` | 20 | 4 | 20.0% | 23 | 80 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 20 | 4 | 20.0% | 328 | 80 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 16 | 5 | 31.2% | 562 | 80 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 4 | 21.1% | 328 | 76 | **HIGH** |
 | `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 18 | 4 | 22.2% | 436 | 72 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 12 | 6 | 50.0% | 186 | 72 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 12 | 6 | 50.0% | 226 | 72 | **HIGH** |
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **325**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 181 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 182 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

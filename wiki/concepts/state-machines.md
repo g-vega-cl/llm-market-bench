@@ -232,14 +232,14 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 - **Source Files**: [`apps/web/src/features/recipes/builder/builder-phases.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/builder/builder-phases.ts), [`apps/web/src/features/recipes/builder/use-builder-chat.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/builder/use-builder-chat.ts), [`apps/web/src/features/recipes/utils/use-latest-recipe-run.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/utils/use-latest-recipe-run.ts)
 - **Entity Page**: [[concepts/recipe-builder-compiler]]
 - **States**:
-  - `BuilderPhase = 'idle' | 'signed-out' | 'compiling' | 'question' | 'declined' | 'ready' | 'error'` — one derived value from `(error, isCompiling, reply, userId)`, rendered by `BuilderStatusStrip`; no boolean fan-out for "loading"/"failed".
-  - Compile transport: `idle` $\\to$ `compiling` $\\to$ `question` (waits for the user) $\\to$ `compiling` … $\\to$ `ready` | `declined` | `error`.
+  - `BuilderPhase = 'idle' | 'signed-out' | 'queued' | 'compiling' | 'question' | 'declined' | 'ready' | 'error'` — one derived value from `(error, job status, reply, userId)`, rendered by `BuilderStatusStrip`; no boolean fan-out for "loading"/"failed".
+  - Compile transport: `idle` $\\to$ `queued` (row pending) $\\to$ `compiling` (row processing) $\\to$ `question` (waits for the user) $\\to$ `queued` … $\\to$ `ready` | `declined` | `error`.
   - Backtest run poll: `no run` $\\to$ `pending` $\\to$ `processing` $\\to$ `completed` | `failed` | `cancelled`; only `pending`/`processing` is polled (`refetchInterval`), so a settled run costs one read.
 - **Invariants**:
   - A reply is accepted only when `isCompilerReply()` validates it (an `ok` strategy must pass `validateStrategy`); the transport resolves an envelope-less response to `undefined`, so the boundary asserts with `assertServerFnResult()` instead of dereferencing it.
   - `error` and `reply` are never both set: a failed compile clears the reply, so question buttons cannot stay clickable beside a failure message.
   - `inFlight` is a ref latch, not state — two clicks in one tick must not spend two metered compiles.
-  - The compile has one budget (`BUILDER_BUDGET_MS`, 24s) under the measured ~28–30s origin ceiling; a timeout degrades straight to a starter template instead of retrying inside a 3s window.
+  - The compile is a queued job (`mode='compile'`, `payload_json`, 45s worker timeout); the meter is spent in the worker immediately before the provider call, and enqueue only pre-checks the daily limit plus a 2-pending cap. See [[concepts/recipe-compile-queue]].
   - The strip's elapsed clock is `aria-hidden` and outside the polite live region, so a countdown does not queue one screen-reader announcement per second.
 
 ---

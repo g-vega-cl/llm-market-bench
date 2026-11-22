@@ -2,6 +2,7 @@
 export type BuilderPhase =
     | 'idle'
     | 'signed-out'
+    | 'queued'
     | 'compiling'
     | 'question'
     | 'declined'

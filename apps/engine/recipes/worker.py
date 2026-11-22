@@ -1,4 +1,4 @@
-"""Queue worker for Push v2 Strategy Recipes: backtests and live turns."""
+"""Queue worker for Push v2 Strategy Recipes: backtests, live turns, and /build compiles."""
 
 from __future__ import annotations
 
@@ -7,13 +7,22 @@ import json
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from core.config import logger
+import httpx
+
+from core.config import FREE_LLM_PROXY_URL, FREE_PROXY_MASTER_KEY, logger
 from core.db import get_supabase_client
 from recipes.push_runner import run_push_backtest, run_push_live
 from recipes.push_schema import PushStrategy
 
 JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED", "CANCELLED"]
-SUPPORTED_JOB_MODES = ("backtest", "live_turn")
+SUPPORTED_JOB_MODES = ("backtest", "live_turn", "compile")
+
+# /build compiles ride the same queue. The daemon is not behind the edge's ~30s
+# function ceiling, so it can give the free provider a longer window than the old
+# synchronous request did; the web tier keeps the template fallback for failures.
+COMPILE_TIMEOUT_SECONDS = 45
+BUILDER_DAILY_LIMIT = 25
+DEFAULT_COMPILE_PROXY_URL = "https://llm.clvg.uk/v1"
 
 
 def _default_model_for_mode(mode: str) -> str:
@@ -156,6 +165,45 @@ def _record_job_failure(sb: Any, job: dict[str, Any], exc: Exception) -> None:
         logger.exception("Failed to record error state on queue job")
 
 
+async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dict[str, Any]:
+    """Run one /build compile: meter, POST the stored auto-go request, return the raw reply.
+
+    The prompt and the recipe contract are built and validated by the web tier, so
+    this worker stays a generic completion executor — one implementation of the
+    model contract, no Python copy of the capability manifest to drift.
+    """
+    res = sb.table("recipe_execution_queue").select("payload_json, user_id").eq("id", job_id).single().execute()
+    row = getattr(res, "data", None) or {}
+    payload = row.get("payload_json")
+    if not isinstance(payload, dict) or not payload.get("messages"):
+        raise ValueError("compile job has no payload_json messages")
+
+    user_id = row.get("user_id") or job.get("job_user_id")
+    used = sb.rpc("consume_builder_compile", {"p_user": user_id}).execute().data
+    if isinstance(used, int) and used > BUILDER_DAILY_LIMIT:
+        raise RuntimeError(
+            f"Daily builder limit reached ({BUILDER_DAILY_LIMIT} compiles). "
+            "Edit an existing recipe or come back tomorrow."
+        )
+
+    headers = {"Content-Type": "application/json"}
+    key = (FREE_PROXY_MASTER_KEY or "").strip()
+    if key:
+        headers["Authorization"] = f"Bearer {key}"
+    base_url = (FREE_LLM_PROXY_URL or DEFAULT_COMPILE_PROXY_URL).rstrip("/")
+
+    async with httpx.AsyncClient(timeout=COMPILE_TIMEOUT_SECONDS) as client:
+        response = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
+        response.raise_for_status()
+        body = response.json()
+
+    choices = body.get("choices") or []
+    content = (choices[0].get("message") or {}).get("content") if choices else None
+    if not content:
+        raise RuntimeError("Builder model returned an empty reply")
+    return {"content": content}
+
+
 async def async_process_next_recipe_job(
     client: Any | None = None,
     *,
@@ -205,9 +253,15 @@ async def async_process_next_recipe_job(
             }
         ).eq("id", job_id).eq("status", "processing").execute()
 
-        recipe_id = job["job_recipe_id"]
-        recipe_data, push_strategy = _load_validated_recipe(sb, recipe_id)
-        result = await _execute_recipe_job_mode(sb, job, recipe_data, recipe_id, job_id, mode, push_strategy)
+        recipe_data: dict[str, Any] = {}
+        recipe_id = job.get("job_recipe_id")
+        if mode == "compile":
+            result = await _execute_compile_job(sb, job, job_id)
+        else:
+            if not isinstance(recipe_id, str):
+                raise ValueError("recipe job is missing its recipe_id")
+            recipe_data, push_strategy = _load_validated_recipe(sb, recipe_id)
+            result = await _execute_recipe_job_mode(sb, job, recipe_data, recipe_id, job_id, mode, push_strategy)
 
         if _is_job_cancelled(sb, job_id) or (isinstance(result, dict) and result.get("cancelled")):
             logger.info("Recipe job %s was cancelled mid-run; skipping completion update", job_id)
@@ -232,7 +286,8 @@ async def async_process_next_recipe_job(
             logger.info("Recipe job %s transitioned externally before completion; skipping CAS", job_id)
             return "CANCELLED"
 
-        _update_recipe_cas(sb, recipe_id, recipe_data, mode, result)
+        if recipe_id:
+            _update_recipe_cas(sb, recipe_id, recipe_data, mode, result)
         return "COMPLETED"
 
     except Exception as exc:

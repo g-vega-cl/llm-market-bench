@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
@@ -7,54 +8,209 @@ vi.mock('@posthog/react', () => ({
     usePostHog: () => undefined,
 }));
 
-vi.mock('./compiler-api', () => ({
-    compileStrategyFn: vi.fn(),
+vi.mock('./compile-queue', () => ({
+    enqueueCompileFn: vi.fn(),
+    fetchCompileJobFn: vi.fn(),
+    BUILDER_DAILY_LIMIT: 25,
 }));
 
-import { compileStrategyFn } from './compiler-api';
+import { enqueueCompileFn, fetchCompileJobFn } from './compile-queue';
 
 const onNeedSignIn = vi.fn();
 
+function wrapper({ children }: { children: React.ReactNode }) {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
+
+function job(overrides: Record<string, unknown>) {
+    return {
+        id: 'job-1',
+        status: 'completed',
+        progress_pct: 100,
+        result_json: null,
+        error_message: null,
+        ...overrides,
+    };
+}
+
 beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(enqueueCompileFn).mockResolvedValue({ jobId: 'job-1' } as never);
 });
 
-describe('useBuilderChat', () => {
-    it('turns an envelope-less reply into a retryable failure, not a TypeError', async () => {
-        // The transport resolves to undefined when the response is not a reply
-        // envelope (an edge 502, a cut-off request) — the old code then threw
-        // "Cannot read properties of undefined (reading 'status')".
-        vi.mocked(compileStrategyFn).mockResolvedValue(undefined as never);
+describe('useBuilderChat (queued compiles)', () => {
+    it('enqueues, polls, and lands a question reply in the transcript', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(
+            job({
+                result_json: {
+                    content: JSON.stringify({
+                        status: 'question',
+                        question: 'Which chipmakers?',
+                        options: ['All', 'Large-cap'],
+                    }),
+                },
+            }) as never,
+        );
 
-        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }));
-
-        await act(async () => {
-            await result.current.send('buy chipmakers on ai capex news');
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
         });
-
-        expect(result.current.phase).toBe('error');
-        expect(result.current.error).toMatch(/request was cut off/i);
-        expect(result.current.error).not.toMatch(/reading 'status'/);
-        expect(result.current.reply).toBeNull();
-        expect(result.current.isCompiling).toBe(false);
-        expect(result.current.messages).toHaveLength(1);
-    });
-
-    it('retries the last turn without appending a duplicate message', async () => {
-        vi.mocked(compileStrategyFn)
-            .mockResolvedValueOnce(undefined as never)
-            .mockResolvedValueOnce({
-                status: 'ok',
-                strategy: STARTER_RECIPES[0],
-                summary: 'Chip momentum',
-            } as never);
-
-        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }));
 
         await act(async () => {
             await result.current.send('buy chipmakers');
         });
+
+        await waitFor(() => expect(result.current.phase).toBe('question'));
+        expect(enqueueCompileFn).toHaveBeenCalledWith({
+            data: { messages: [{ role: 'user', content: 'buy chipmakers' }] },
+        });
+        expect(result.current.messages).toHaveLength(2);
+        expect(result.current.messages[1]).toEqual({
+            role: 'assistant',
+            content: 'Which chipmakers?',
+        });
+        expect(result.current.isCompiling).toBe(false);
+    });
+
+    it('shows QUEUED while the job waits for a worker', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(
+            job({ status: 'pending', progress_pct: 5 }) as never,
+        );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('queued'));
+        expect(result.current.isCompiling).toBe(true);
+    });
+
+    it('degrades an unusable model reply to the closest template instead of dead-ending', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(
+            job({ result_json: { content: 'I would rather chat about it.' } }) as never,
+        );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('ready'));
+        const reply = result.current.reply;
+        expect(reply?.status).toBe('ok');
+        if (reply?.status === 'ok') {
+            expect(reply.fallback).toBe(true);
+            expect(reply.strategy.stages).toHaveLength(1);
+        }
+    });
+
+    it('surfaces a failed job as a retryable error with no stale reply', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(
+            job({ status: 'failed', result_json: null, error_message: 'provider 503' }) as never,
+        );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('error'));
+        expect(result.current.error).toBe('provider 503');
+        expect(result.current.reply).toBeNull();
+    });
+
+    it('turns an envelope-less poll into a legible failure, not a TypeError', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(undefined as never);
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('error'));
+        expect(result.current.error).toMatch(/did not come back/i);
+        expect(result.current.error).not.toMatch(/reading 'status'/);
+    });
+
+    it('rejects an enqueue refused by the daily meter', async () => {
+        vi.mocked(enqueueCompileFn).mockRejectedValue(
+            new Error('Daily builder limit reached (25 compiles).') as never,
+        );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+
         expect(result.current.phase).toBe('error');
+        expect(result.current.error).toMatch(/Daily builder limit/);
+        expect(fetchCompileJobFn).not.toHaveBeenCalled();
+    });
+
+    it('latches an in-flight enqueue so a double click spends one compile', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(job({ status: 'pending' }) as never);
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            const first = result.current.send('buy chipmakers');
+            const second = result.current.send('buy chipmakers');
+            await Promise.all([first, second]);
+        });
+
+        expect(enqueueCompileFn).toHaveBeenCalledTimes(1);
+        expect(result.current.messages).toHaveLength(1);
+    });
+
+    it('retries the last turn without appending a duplicate message', async () => {
+        // Each enqueue gets its own job id (as in production), so the poll is a new query.
+        vi.mocked(enqueueCompileFn)
+            .mockResolvedValueOnce({ jobId: 'job-1' } as never)
+            .mockResolvedValueOnce({ jobId: 'job-2' } as never);
+        vi.mocked(fetchCompileJobFn).mockImplementation((async ({
+            data,
+        }: {
+            data: { jobId: string };
+        }) =>
+            data.jobId === 'job-1'
+                ? job({ status: 'failed', result_json: null, error_message: 'provider 503' })
+                : job({
+                      result_json: {
+                          content: JSON.stringify({
+                              status: 'ok',
+                              summary: 'Chip momentum',
+                              strategy: STARTER_RECIPES[0],
+                          }),
+                      },
+                  })) as never);
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+        await waitFor(() => expect(result.current.phase).toBe('error'));
 
         await act(async () => {
             result.current.retry();
@@ -65,58 +221,40 @@ describe('useBuilderChat', () => {
         expect(result.current.messages[0].content).toBe('buy chipmakers');
     });
 
-    it('treats a question reply without an options array as malformed, not as a crash', async () => {
-        vi.mocked(compileStrategyFn).mockResolvedValue({
-            status: 'question',
-            question: 'Which chipmakers?',
-            options: undefined,
-        } as never);
-
-        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }));
-
-        await act(async () => {
-            await result.current.send('buy chipmakers');
-        });
-
-        expect(result.current.phase).toBe('error');
-        expect(result.current.error).toMatch(/cut off/i);
-        expect(result.current.messages).toHaveLength(1);
-    });
-
-    it('latches an in-flight compile so a double click cannot spend two compiles', async () => {
-        let release: (value: unknown) => void = () => undefined;
-        vi.mocked(compileStrategyFn).mockImplementation(
-            () =>
-                new Promise((resolve) => {
-                    release = resolve;
-                }) as never,
+    it('offers the closest template explicitly after a failure', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(
+            job({ status: 'failed', result_json: null, error_message: 'provider 503' }) as never,
         );
 
-        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }));
-
-        await act(async () => {
-            const first = result.current.send('buy chipmakers');
-            const second = result.current.send('buy chipmakers');
-            release({
-                status: 'ok',
-                strategy: STARTER_RECIPES[0],
-                summary: 'Chip momentum',
-            });
-            await Promise.all([first, second]);
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
         });
 
-        expect(compileStrategyFn).toHaveBeenCalledTimes(1);
-        expect(result.current.messages).toHaveLength(1);
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+        await waitFor(() => expect(result.current.phase).toBe('error'));
+
+        act(() => result.current.useTemplate());
+
+        expect(result.current.error).toBeNull();
+        expect(result.current.phase).toBe('ready');
+        const reply = result.current.reply;
+        if (reply?.status === 'ok') {
+            expect(reply.strategy.name).toBe(STARTER_RECIPES[0].name);
+        }
     });
 
-    it('parks an anonymous idea and asks for sign-in instead of compiling', async () => {
-        const { result } = renderHook(() => useBuilderChat({ userId: null, onNeedSignIn }));
+    it('parks an anonymous idea and asks for sign-in instead of enqueuing', async () => {
+        const { result } = renderHook(() => useBuilderChat({ userId: null, onNeedSignIn }), {
+            wrapper,
+        });
 
         await act(async () => {
             await result.current.send('buy chipmakers');
         });
 
-        expect(compileStrategyFn).not.toHaveBeenCalled();
+        expect(enqueueCompileFn).not.toHaveBeenCalled();
         expect(onNeedSignIn).toHaveBeenCalledWith('buy chipmakers');
         expect(result.current.phase).toBe('signed-out');
     });

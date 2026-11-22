@@ -55,6 +55,7 @@ LIVE_TURN_CONCURRENCY = int(os.environ.get("RECIPE_LIVE_CONCURRENCY", "10"))
 # The SQL function is authoritative (c_max_processing_backtests = 3); a larger
 # lane value would only spin on the advisory lock, so clamp to it.
 BACKTEST_CONCURRENCY = min(3, max(1, int(os.environ.get("RECIPE_BACKTEST_CONCURRENCY", "3"))))
+COMPILE_CONCURRENCY = max(1, int(os.environ.get("RECIPE_COMPILE_CONCURRENCY", "3")))
 
 
 def _to_et(now_dt: datetime) -> datetime:
@@ -661,8 +662,30 @@ async def _backtest_lane_loop(sb_client: Any) -> None:
         await asyncio.sleep(POLL_INTERVAL_SECONDS)
 
 
+async def _compile_lane_loop(sb_client: Any) -> None:
+    """Drain /build compile jobs on their own lane so a backtest never delays one.
+
+    A compile is interactive: the user is staring at the builder while it runs, so
+    it gets a bounded semaphore of its own rather than queueing behind backtests.
+    """
+    while True:
+        try:
+            processed = await drain_lane(
+                sb_client, mode="compile", max_jobs=COMPILE_CONCURRENCY, concurrency=COMPILE_CONCURRENCY
+            )
+            if processed == 0:
+                await asyncio.sleep(POLL_INTERVAL_SECONDS)
+        except Exception:
+            logger.exception("Compile lane iteration failed")
+            await asyncio.sleep(POLL_INTERVAL_SECONDS)
+
+
 async def _async_daemon_loop(sb_client: Any) -> None:
-    await asyncio.gather(_live_lane_loop(sb_client), _backtest_lane_loop(sb_client))
+    await asyncio.gather(
+        _live_lane_loop(sb_client),
+        _backtest_lane_loop(sb_client),
+        _compile_lane_loop(sb_client),
+    )
 
 
 def _run_daemon_loop(sb_client: Any) -> None:

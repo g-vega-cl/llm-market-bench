@@ -13,6 +13,14 @@ const SLOW_AFTER_MS = 12_000;
 
 function describe(phase: BuilderPhase, elapsedMs: number, detail?: string): StatusView {
     switch (phase) {
+        case 'queued':
+            return {
+                label: 'QUEUED',
+                text:
+                    detail ??
+                    'waiting for the worker to pick this compile up (usually a few seconds)',
+                tone: 'info',
+            };
         case 'compiling':
             return {
                 label: 'COMPILING',
@@ -97,7 +105,8 @@ export function BuilderStatusStrip({
         text: detail ?? defaults.text,
         tone: tone ?? defaults.tone,
     };
-    const counter = phase === 'compiling' ? `${Math.max(1, Math.round(elapsedMs / 1000))}s` : null;
+    const counting = phase === 'compiling' || phase === 'queued';
+    const counter = counting ? `${Math.max(1, Math.round(elapsedMs / 1000))}s` : null;
 
     return (
         <div

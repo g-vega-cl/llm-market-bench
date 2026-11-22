@@ -418,3 +418,153 @@ def test_process_push_backtest_does_not_overwrite_cancelled_job():
     completed_updates = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "completed"]
     assert completed_updates == []
     recipes_table.update.assert_not_called()
+
+
+# --- mode=compile: the daemon is a dumb auto-go executor ---------------------
+
+
+class _FakeCompileResponse:
+    def __init__(self, content: str) -> None:
+        self._content = content
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self):
+        return {"choices": [{"message": {"content": self._content}}]}
+
+
+def _compile_client(events, *, content='{"status":"question","question":"Which?","options":["A"]}'):
+    class _FakeAsyncClient:
+        def __init__(self, *args, **kwargs):
+            self.timeout = kwargs.get("timeout")
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *exc):
+            return False
+
+        async def post(self, url, json=None, headers=None):
+            events.append(("post", url, json, headers))
+            return _FakeCompileResponse(content)
+
+    return _FakeAsyncClient
+
+
+def _compile_job_client(payload=None, *, usage=1):
+    client, queue_table, _recipes_table, _alerts = _make_mock_supabase()
+    client.rpc.return_value.execute.return_value.data = [
+        {
+            "job_id": "job-compile-1",
+            "job_recipe_id": None,
+            "job_user_id": "usr-operator",
+            "job_mode": "compile",
+            "job_priority": 10,
+        }
+    ]
+    queue_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+        "payload_json": payload
+        or {
+            "model": "auto-go",
+            "temperature": 0.2,
+            "messages": [{"role": "user", "content": "buy chipmakers"}],
+        },
+        "user_id": "usr-operator",
+    }
+    return client, queue_table
+
+
+_COMPILE_JOB = {
+    "job_id": "job-compile-1",
+    "job_recipe_id": None,
+    "job_user_id": "usr-operator",
+    "job_mode": "compile",
+    "job_priority": 10,
+}
+
+
+def _rpc_router(events, *, usage=1, jobs=None):
+    """Route the pop RPC to a job list and the meter RPC to a usage count."""
+
+    def router(name, params=None):
+        events.append(("rpc", name, params))
+        result = MagicMock()
+        result.execute.return_value.data = (
+            (jobs if jobs is not None else [_COMPILE_JOB]) if name == "pop_next_recipe_job" else usage
+        )
+        return result
+
+    return router
+
+
+def test_compile_job_completes_with_raw_reply_and_meters_first():
+    events = []
+    client, queue_table = _compile_job_client()
+    client.rpc.side_effect = _rpc_router(events)
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client(events)):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "COMPLETED"
+    # the meter is spent before any provider call is made
+    kinds = [e[0] for e in events]
+    assert "consume_builder_compile" in [e[1] for e in events if e[0] == "rpc"]
+    assert kinds.index("rpc") < kinds.index("post")
+    assert [e[1] for e in events if e[0] == "rpc"] == [
+        "pop_next_recipe_job",
+        "consume_builder_compile",
+    ]
+
+    completed = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "completed"]
+    assert len(completed) == 1
+    assert completed[0]["result_json"] == {"content": '{"status":"question","question":"Which?","options":["A"]}'}
+    assert completed[0]["progress_pct"] == 100
+
+
+def test_compile_job_stops_at_the_daily_limit_without_calling_the_model():
+    events = []
+    client, queue_table = _compile_job_client()
+    client.rpc.side_effect = _rpc_router(events, usage=26)
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client(events)):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "FAILED"
+    assert [e for e in events if e[0] == "post"] == []
+    failed = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "failed"]
+    assert len(failed) == 1
+    assert "Daily builder limit reached" in failed[0]["error_message"]
+
+
+def test_compile_job_records_a_provider_failure():
+    events = []
+    client, queue_table = _compile_job_client()
+
+    client.rpc.side_effect = _rpc_router(events)
+
+    class _BoomingClient(_compile_client(events)):
+        async def post(self, url, json=None, headers=None):
+            raise RuntimeError("Builder model call failed (503)")
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_BoomingClient):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "FAILED"
+    failed = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "failed"]
+    assert len(failed) == 1
+    assert "503" in failed[0]["error_message"]
+
+
+def test_compile_job_requires_a_payload():
+    client, queue_table = _compile_job_client(payload=None)
+    client.rpc.side_effect = _rpc_router([], usage=1)
+    queue_table.select.return_value.eq.return_value.single.return_value.execute.return_value.data = {
+        "payload_json": None,
+        "user_id": "usr-operator",
+    }
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client([])):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "FAILED"

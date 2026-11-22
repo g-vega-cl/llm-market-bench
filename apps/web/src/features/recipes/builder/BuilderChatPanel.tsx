@@ -92,15 +92,26 @@ export function BuilderChatPanel({
                     <p className="text-xs font-normal text-danger min-w-0 break-words">
                         {chat.error}
                     </p>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        colorScheme="neutral"
-                        onClick={chat.retry}
-                        disabled={chat.isCompiling}
-                    >
-                        Try again
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0 min-w-0">
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            colorScheme="neutral"
+                            onClick={chat.retry}
+                            disabled={chat.isCompiling}
+                        >
+                            Try again
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            colorScheme="neutral"
+                            onClick={chat.useTemplate}
+                            disabled={chat.isCompiling}
+                        >
+                            Use closest template
+                        </Button>
+                    </div>
                 </div>
             ) : null}
             {userId ? null : (

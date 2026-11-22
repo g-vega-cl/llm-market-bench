@@ -24,7 +24,7 @@ The function is `SECURITY DEFINER`, revoked from `PUBLIC`/`anon`/`authenticated`
 
 ## Cap and Consumer
 
-The cap is `BUILDER_DAILY_LIMIT = 25` compiles per user per day, exported by `apps/web/src/features/recipes/builder/compiler-api.ts`. `compileStrategyFn` calls `consume_builder_compile` **before** it contacts `free-llm-proxy`, so a throttled request never spends model tokens; when the returned counter exceeds 25 it throws a message pointing the user at editing an existing recipe. The spend is per compile attempt against the model, not per successful recipe — a compile that produces a clarifying question still counts. See [[concepts/recipe-builder-compiler]].
+The cap is `BUILDER_DAILY_LIMIT = 25` compiles per user per day, exported by `apps/web/src/features/recipes/builder/compile-queue.ts`. The spend moved with the work: `enqueueCompileFn` only pre-checks `recipe_builder_usage` and a 2-pending cap, while the recipes daemon calls `consume_builder_compile` **immediately before** it contacts `free-llm-proxy` — so a job that never runs (daemon down) costs nothing, and a throttled request still never spends model tokens. When the returned counter exceeds 25 the job fails with a message pointing the user at editing an existing recipe. The spend is per compile attempt against the model, not per successful recipe — a compile that produces a clarifying question still counts. See [[concepts/recipe-compile-queue]] and [[concepts/recipe-builder-compiler]].
 
 ## No Public API Surface
 

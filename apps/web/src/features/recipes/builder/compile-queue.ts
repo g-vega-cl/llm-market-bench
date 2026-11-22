@@ -15,6 +15,10 @@ import { type BuilderMessage, buildConversation } from './compiler';
 export const BUILDER_DAILY_LIMIT = 25;
 /** In-flight cap: with the meter spent by the worker, enqueues alone must not fan out. */
 export const MAX_PENDING_COMPILES = 2;
+/** A queued job this old gets an honest "worker is busy" line in the strip. */
+export const QUEUE_SLOW_MS = 60_000;
+/** Past this the client gives up, cancels the row and offers Try again. */
+export const QUEUE_ABANDON_MS = 300_000;
 const MAX_MESSAGES = 8;
 const JOB_COLUMNS = 'id, status, progress_pct, result_json, error_message';
 
@@ -32,6 +36,16 @@ export function builderLimitMessage(): string {
 
 export function pendingCompilesMessage(): string {
     return `You already have ${MAX_PENDING_COMPILES} compiles in flight. Wait for one to finish, then try again.`;
+}
+
+/** Strip copy while a job sits unclaimed; null until it is worth saying. */
+export function queuedHint(elapsedMs: number): string | null {
+    if (elapsedMs < QUEUE_SLOW_MS) return null;
+    return 'still queued — the worker is busy. This is cancelled automatically after 5 minutes, and a stuck job is cleared from your quota after 10.';
+}
+
+export function isQueueAbandoned(elapsedMs: number): boolean {
+    return elapsedMs >= QUEUE_ABANDON_MS;
 }
 
 function todayUtc(): string {
@@ -132,4 +146,36 @@ export const fetchCompileJobFn = createServerFn({ method: 'GET' })
             throw new Error('Unauthorized: sign in to build a recipe');
         }
         return readCompileJob(jobId, user.id);
+    });
+
+/**
+ * Cancel a job the user gave up waiting for. Only a row still `pending` is touched,
+ * so a worker that already claimed it keeps its result; this just frees the cap.
+ */
+export async function cancelCompile(jobId: string, userId: string): Promise<void> {
+    const db = getDbAdminClient();
+    const { error } = await db
+        .from('recipe_execution_queue')
+        .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
+        .eq('id', jobId)
+        .eq('user_id', userId)
+        .eq('mode', 'compile')
+        .eq('status', 'pending');
+    if (error) {
+        throw new Error(`${error.code ?? 'error'}: ${error.message}`);
+    }
+}
+
+export const cancelCompileFn = createServerFn({ method: 'POST' })
+    .validator((d: { jobId: string }) => d)
+    .handler(async ({ data: { jobId } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        if (!user?.id) {
+            throw new Error('Unauthorized: sign in to build a recipe');
+        }
+        await cancelCompile(jobId, user.id);
+        return { cancelled: true };
     });

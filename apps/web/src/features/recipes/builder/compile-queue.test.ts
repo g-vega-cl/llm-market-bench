@@ -4,9 +4,14 @@ import {
     BUILDER_DAILY_LIMIT,
     buildCompilePayload,
     builderLimitMessage,
+    cancelCompile,
     enqueueCompile,
+    isQueueAbandoned,
     MAX_PENDING_COMPILES,
     pendingCompilesMessage,
+    QUEUE_ABANDON_MS,
+    QUEUE_SLOW_MS,
+    queuedHint,
     readCompileJob,
 } from './compile-queue';
 
@@ -36,6 +41,61 @@ function chain(result: { data: unknown; error?: unknown }, onInsert?: (row: unkn
 
 beforeEach(() => {
     vi.clearAllMocks();
+});
+
+describe('a job no worker claims', () => {
+    it('stays quiet for the first minute, then explains the wait', () => {
+        expect(queuedHint(QUEUE_SLOW_MS - 1)).toBeNull();
+        const hint = queuedHint(QUEUE_SLOW_MS);
+        expect(hint).toMatch(/still queued/i);
+        expect(hint).toMatch(/5 minutes/);
+        expect(hint).toMatch(/10/);
+    });
+
+    it('gives up only at the ceiling, never before', () => {
+        expect(isQueueAbandoned(QUEUE_ABANDON_MS - 1)).toBe(false);
+        expect(isQueueAbandoned(QUEUE_ABANDON_MS)).toBe(true);
+    });
+
+    it("cancels only the caller's own pending compile row", async () => {
+        const eqCalls: [string, string][] = [];
+        // object property, not a `let`: TypeScript cannot track a closure assignment
+        const captured: { payload: Record<string, unknown> | null } = { payload: null };
+        const node: Record<string, unknown> = Promise.resolve({ data: null, error: null }) as never;
+        node.update = (row: Record<string, unknown>) => {
+            captured.payload = row;
+            return node;
+        };
+        node.eq = (column: string, value: string) => {
+            eqCalls.push([column, value]);
+            return node;
+        };
+        mockDb.from.mockReturnValue(node);
+
+        await cancelCompile('job-9', 'user-1');
+
+        expect(captured.payload?.status).toBe('cancelled');
+        expect(captured.payload?.cancelled_at).toBeTypeOf('string');
+        // a worker that already claimed the row keeps it: only pending is touched
+        expect(eqCalls).toEqual([
+            ['id', 'job-9'],
+            ['user_id', 'user-1'],
+            ['mode', 'compile'],
+            ['status', 'pending'],
+        ]);
+    });
+
+    it('surfaces a cancel failure instead of pretending it worked', async () => {
+        const node: Record<string, unknown> = Promise.resolve({
+            data: null,
+            error: { code: '42501', message: 'denied' },
+        }) as never;
+        node.update = () => node;
+        node.eq = () => node;
+        mockDb.from.mockReturnValue(node);
+
+        await expect(cancelCompile('job-9', 'user-1')).rejects.toThrow(/42501: denied/);
+    });
 });
 
 describe('buildCompilePayload', () => {

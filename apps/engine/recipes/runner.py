@@ -21,7 +21,11 @@ from recipes.news_corpus import sync_live_news_to_corpus
 from recipes.portfolio_engine import DEFAULT_CONCURRENCY_CONFIG
 from recipes.public_stats import refresh_public_stats
 from recipes.push_schema import is_valid_single_stage_graph
-from recipes.worker import async_process_next_recipe_job, process_next_recipe_job
+from recipes.worker import (
+    async_process_next_recipe_job,
+    fail_stale_compile_jobs,
+    process_next_recipe_job,
+)
 
 ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
 LIVE_SLOTS_ET: tuple[tuple[int, int], ...] = (
@@ -56,6 +60,7 @@ LIVE_TURN_CONCURRENCY = int(os.environ.get("RECIPE_LIVE_CONCURRENCY", "10"))
 # lane value would only spin on the advisory lock, so clamp to it.
 BACKTEST_CONCURRENCY = min(3, max(1, int(os.environ.get("RECIPE_BACKTEST_CONCURRENCY", "3"))))
 COMPILE_CONCURRENCY = max(1, int(os.environ.get("RECIPE_COMPILE_CONCURRENCY", "3")))
+STALE_COMPILE_SWEEP_INTERVAL_SECONDS = 60
 
 
 def _to_et(now_dt: datetime) -> datetime:
@@ -667,9 +672,25 @@ async def _compile_lane_loop(sb_client: Any) -> None:
 
     A compile is interactive: the user is staring at the builder while it runs, so
     it gets a bounded semaphore of its own rather than queueing behind backtests.
+    Once a minute it also fails compile rows no worker ever claimed, so a job that
+    outlived the daemon cannot hold a user's 2-pending cap hostage.
     """
+    last_sweep_utc: datetime | None = None
     while True:
         try:
+            now_utc = datetime.now(UTC)
+            if (
+                last_sweep_utc is None
+                or (now_utc - last_sweep_utc).total_seconds() >= STALE_COMPILE_SWEEP_INTERVAL_SECONDS
+            ):
+                last_sweep_utc = now_utc
+                try:
+                    stale = fail_stale_compile_jobs(sb_client)
+                    if stale:
+                        logger.warning("Failed %d stale compile job(s) no worker claimed", stale)
+                except Exception:
+                    logger.exception("Stale compile sweep failed")
+
             processed = await drain_lane(
                 sb_client, mode="compile", max_jobs=COMPILE_CONCURRENCY, concurrency=COMPILE_CONCURRENCY
             )

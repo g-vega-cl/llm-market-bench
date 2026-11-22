@@ -8,13 +8,16 @@ vi.mock('@posthog/react', () => ({
     usePostHog: () => undefined,
 }));
 
-vi.mock('./compile-queue', () => ({
+vi.mock('./compile-queue', async (importOriginal) => ({
+    // Keep the pure helpers real (the abandon threshold is behaviour under test);
+    // only the server functions are faked.
+    ...(await importOriginal<typeof import('./compile-queue')>()),
     enqueueCompileFn: vi.fn(),
     fetchCompileJobFn: vi.fn(),
-    BUILDER_DAILY_LIMIT: 25,
+    cancelCompileFn: vi.fn().mockResolvedValue({ cancelled: true }),
 }));
 
-import { enqueueCompileFn, fetchCompileJobFn } from './compile-queue';
+import { cancelCompileFn, enqueueCompileFn, fetchCompileJobFn } from './compile-queue';
 
 const onNeedSignIn = vi.fn();
 
@@ -40,6 +43,38 @@ beforeEach(() => {
 });
 
 describe('useBuilderChat (queued compiles)', () => {
+    it('cancels a job no worker claims instead of counting up forever', async () => {
+        vi.useFakeTimers();
+        try {
+            vi.mocked(fetchCompileJobFn).mockResolvedValue(
+                job({ status: 'pending', progress_pct: 0 }) as never,
+            );
+            const { result } = renderHook(
+                () => useBuilderChat({ userId: 'user-1', onNeedSignIn }),
+                { wrapper },
+            );
+
+            await act(async () => {
+                await result.current.send('buy chipmakers on AI capex');
+            });
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(2_500);
+            });
+            expect(result.current.phase).toBe('queued');
+            expect(result.current.statusDetail).toBeNull();
+
+            await act(async () => {
+                await vi.advanceTimersByTimeAsync(301_000);
+            });
+
+            expect(result.current.phase).toBe('error');
+            expect(result.current.error).toMatch(/never picked this request up/i);
+            expect(cancelCompileFn).toHaveBeenCalledWith({ data: { jobId: 'job-1' } });
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
     it('enqueues, polls, and lands a question reply in the transcript', async () => {
         vi.mocked(fetchCompileJobFn).mockResolvedValue(
             job({

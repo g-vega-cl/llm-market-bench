@@ -240,6 +240,7 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
   - `error` and `reply` are never both set: a failed compile clears the reply, so question buttons cannot stay clickable beside a failure message.
   - `inFlight` is a ref latch, not state — two clicks in one tick must not spend two metered compiles.
   - The compile is a queued job (`mode='compile'`, `payload_json`, 45s worker timeout); the meter is spent in the worker immediately before the provider call, and enqueue only pre-checks the daily limit plus a 2-pending cap. See [[concepts/recipe-compile-queue]].
+  - An unclaimed job cannot strand the user: the client cancels its own `pending` row at 5 minutes (`QUEUE_ABANDON_MS` → `FAILED` + Try again) and the daemon fails unclaimed rows at 10 minutes (`fail_stale_compile_jobs`), releasing the cap either way. A `pending` job costs no meter.
   - The strip's elapsed clock is `aria-hidden` and outside the polite live region, so a countdown does not queue one screen-reader announcement per second.
 
 ---

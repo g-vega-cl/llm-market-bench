@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 import httpx
@@ -23,6 +23,39 @@ SUPPORTED_JOB_MODES = ("backtest", "live_turn", "compile")
 COMPILE_TIMEOUT_SECONDS = 45
 BUILDER_DAILY_LIMIT = 25
 DEFAULT_COMPILE_PROXY_URL = "https://llm.clvg.uk/v1"
+# A compile nobody ever claimed (daemon down, or a burst the lane never reached)
+# must not block the per-user 2-pending cap forever. Matches the existing
+# 10-minute recovery rule for stalled `processing` rows.
+STALE_COMPILE_SECONDS = 600
+STALE_COMPILE_MESSAGE = "The worker never picked this compile up. Try again."
+
+
+def fail_stale_compile_jobs(sb: Any, *, timeout_seconds: int = STALE_COMPILE_SECONDS) -> int:
+    """Fail `pending` compile rows no worker claimed, releasing the per-user cap.
+
+    The pop RPC only recovers `processing` rows whose heartbeat lapsed; a row that
+    never moved off `pending` has no heartbeat, so without this it would sit forever
+    (and the client's give-up path had nothing to cancel).
+    """
+    now = datetime.now(UTC)
+    cutoff = (now - timedelta(seconds=timeout_seconds)).isoformat()
+    res = (
+        sb.table("recipe_execution_queue")
+        .update(
+            {
+                "status": "failed",
+                "error_message": STALE_COMPILE_MESSAGE,
+                "completed_at": now.isoformat(),
+            }
+        )
+        .eq("mode", "compile")
+        .eq("status", "pending")
+        .lt("created_at", cutoff)
+        .select("id")
+        .execute()
+    )
+    rows = getattr(res, "data", None)
+    return len(rows) if isinstance(rows, list) else 0
 
 
 def _default_model_for_mode(mode: str) -> str:

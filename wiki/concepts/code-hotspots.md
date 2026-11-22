@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **325**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 182 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 183 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

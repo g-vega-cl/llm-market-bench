@@ -568,3 +568,27 @@ def test_compile_job_requires_a_payload():
         res = process_next_recipe_job(client, target_mode="compile")
 
     assert res == "FAILED"
+
+
+def test_fail_stale_compile_jobs_marks_pending_rows_failed():
+    from recipes.worker import STALE_COMPILE_MESSAGE, fail_stale_compile_jobs
+
+    client, queue_table, _recipes_table, _alerts = _make_mock_supabase()
+    queue_table.update.return_value.eq.return_value.eq.return_value.lt.return_value.select.return_value.execute.return_value.data = [
+        {"id": "job-stale-1"},
+        {"id": "job-stale-2"},
+    ]
+
+    count = fail_stale_compile_jobs(client, timeout_seconds=600)
+
+    assert count == 2
+    payload = queue_table.update.call_args[0][0]
+    assert payload["status"] == "failed"
+    assert payload["error_message"] == STALE_COMPILE_MESSAGE
+    assert payload["completed_at"]
+    # only pending compile rows are swept (eq chains: each call returns a new builder)
+    update_chain = queue_table.update.return_value
+    update_chain.eq.assert_called_once_with("mode", "compile")
+    pending_chain = update_chain.eq.return_value
+    pending_chain.eq.assert_called_once_with("status", "pending")
+    pending_chain.eq.return_value.lt.assert_called_once()

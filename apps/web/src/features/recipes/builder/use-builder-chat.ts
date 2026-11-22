@@ -5,7 +5,13 @@ import { track } from '~/lib/analytics';
 import { assertServerFnResult } from '~/lib/server-fn';
 import { clearPendingIdea, loadPendingIdea, savePendingIdea } from '../utils/local-draft';
 import type { BuilderPhase } from './builder-phases';
-import { enqueueCompileFn, fetchCompileJobFn } from './compile-queue';
+import {
+    cancelCompileFn,
+    enqueueCompileFn,
+    fetchCompileJobFn,
+    isQueueAbandoned,
+    queuedHint,
+} from './compile-queue';
 import {
     type BuilderMessage,
     type CompilerReply,
@@ -31,6 +37,8 @@ export interface BuilderChat {
     pendingIdea: string | null;
     phase: BuilderPhase;
     elapsedMs: number;
+    /** Extra strip copy for a job that is sitting unclaimed; null until it matters. */
+    statusDetail: string | null;
     send: (text: string) => Promise<void>;
     retry: () => void;
     /** Explicit escape hatch from a failed compile: drop in the closest template. */
@@ -49,6 +57,8 @@ const NO_REPLY_MESSAGE =
 const FAILED_MESSAGE = 'The builder failed to answer. Try again, or use the closest template.';
 const UNUSABLE_REPLY =
     'The model replied with something the engine cannot run, so here is the closest working recipe. Edit it and run it.';
+const ABANDONED_MESSAGE =
+    'The builder never picked this request up, so it was cancelled. Try again — nothing was spent on it.';
 
 function isInFlight(status: string | undefined): boolean {
     return status === 'pending' || status === 'processing';
@@ -86,6 +96,9 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     const [elapsedMs, setElapsedMs] = useState(0);
     // A latch, not state: two clicks in one tick must not enqueue two compiles.
     const inFlight = useRef(false);
+    // Mirrors `elapsedMs` for the poll interval, which cannot read render state.
+    const elapsedRef = useRef(0);
+    elapsedRef.current = elapsedMs;
 
     const pendingIdea = messages.length > 0 ? null : loadPendingIdea();
 
@@ -98,7 +111,13 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
             return assertServerFnResult(result, 'The builder');
         },
         enabled: Boolean(jobId),
-        refetchInterval: (q) => (isInFlight(q.state.data?.status) ? 2000 : false),
+        refetchInterval: (q) => {
+            if (!isInFlight(q.state.data?.status)) return false;
+            // Stop hammering the server once the client has given up; the abandon
+            // effect below then cancels the row and frees the per-user cap.
+            if (isQueueAbandoned(elapsedRef.current)) return false;
+            return 2000;
+        },
     });
 
     // The strip counts up from the moment the job is queued.
@@ -189,6 +208,20 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         setJobId(null);
     }, [job.error, fail]);
 
+    // Give up on a job no worker ever claimed: cancel the row so it stops holding
+    // the 2-pending cap, then tell the user instead of counting up forever. The
+    // daemon's stale sweep is the backstop for a tab that was closed instead.
+    useEffect(() => {
+        if (!jobId || !isQueueAbandoned(elapsedMs)) return;
+        const abandoned = jobId;
+        inFlight.current = false;
+        setJobId(null);
+        fail(ABANDONED_MESSAGE);
+        void cancelCompileFn({ data: { jobId: abandoned } }).catch(() => {
+            // Best effort: the sweep fails the row within ten minutes regardless.
+        });
+    }, [jobId, elapsedMs, fail]);
+
     const requestCompile = async (conversation: BuilderMessage[]) => {
         if (inFlight.current) return;
         inFlight.current = true;
@@ -254,6 +287,7 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         pendingIdea,
         phase: derivePhase({ error, jobStatus: job.data?.status, reply, userId }),
         elapsedMs,
+        statusDetail: jobId && isInFlight(job.data?.status) ? queuedHint(elapsedMs) : null,
         send,
         retry,
         useTemplate,

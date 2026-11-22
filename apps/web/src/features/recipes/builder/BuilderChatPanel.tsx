@@ -65,7 +65,11 @@ export function BuilderChatPanel({
 
     return (
         <div className="flex flex-col gap-5">
-            <BuilderStatusStrip phase={chat.phase} elapsedMs={chat.elapsedMs} />
+            <BuilderStatusStrip
+                phase={chat.phase}
+                elapsedMs={chat.elapsedMs}
+                detail={chat.statusDetail ?? undefined}
+            />
             <header className="flex flex-col gap-2 border-b-2 border-voxel-bevel-hi pb-4">
                 <SectionHeading className="text-sm">Build your trading bot</SectionHeading>
                 <p className="max-w-prose text-xs font-normal text-voxel-muted">

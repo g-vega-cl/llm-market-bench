@@ -21,6 +21,16 @@ const LIGHT: [number, number, number] = (() => {
     return [v[0] / m, v[1] / m, v[2] / m];
 })();
 
+/** Sunlit top faces get the warm cloud ramp; shaded flanks get the cool one. */
+function pickFaceTint(
+    palette: AtmospherePalette,
+    cloud: 'far' | 'near' | null,
+    face: number,
+): [number, number, number] {
+    if (cloud) return face === 0 ? palette.cloudTopTint : palette.cloudSideTint;
+    return face === 0 ? palette.topTint : palette.sideTint;
+}
+
 const CEDAR_PARTICLE_COLORS = {
     driftColors: ['#e89648', '#f2c86b', '#d96b34'] as const,
     floaterColors: ['#c6f2bd', '#ffd880'] as const,
@@ -58,6 +68,33 @@ export interface SkyMote {
     size: number;
 }
 
+/** Comfortable open-sky band the hero copy owns; drifting clouds never cross it while visible. */
+export const CLOUD_CLEAR_CORRIDOR = { minX: 0.33, maxX: 0.67, minY: 0.08, maxY: 0.55 } as const;
+
+/** Drift speed in CSS px/s: distant clouds crawl, near ones visibly travel. */
+export const CLOUD_DRIFT_SPEED = { far: 3, near: 7 } as const;
+
+/** Horizontal band one cloud travels, plus which end sits against the copy column. */
+export interface CloudLane {
+    min: number;
+    max: number;
+    fadeAt: 'start' | 'end' | null;
+}
+
+export interface CloudSprite {
+    canvas: HTMLCanvasElement;
+    /** Left edge in stage CSS px at `time = 0`. */
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    lane: CloudLane;
+    /** Travel offset at `time = 0`, so the first frame matches the static composition. */
+    phase: number;
+    speed: number;
+    parallax: number;
+}
+
 export interface Scene {
     width: number;
     height: number;
@@ -71,8 +108,8 @@ export interface Scene {
     lanternRadius: number;
     island: HTMLCanvasElement | null;
     islandBounds: IslandVerticalBounds;
-    cloudsFar: HTMLCanvasElement | null;
-    cloudsNear: HTMLCanvasElement | null;
+    cloudsFar: CloudSprite[];
+    cloudsNear: CloudSprite[];
     petals: Petal[];
     glints: Array<{ x: number; y: number; phase: number; speed: number; size: number }>;
     lamps: Array<{ x: number; y: number; phase: number }>;
@@ -90,7 +127,11 @@ interface AtmospherePalette {
     topTint: [number, number, number];
     sideTint: [number, number, number];
     islandFog: [number, number, number];
-    cloudFog: [number, number, number];
+    cloudHaze: [number, number, number];
+    cloudTopTint: [number, number, number];
+    cloudSideTint: [number, number, number];
+    /** Clouds keep their own exposure so dark phases do not render them as sunlit. */
+    cloudLightScale: number;
     lanternAlphaScale: number;
     showStars: boolean;
     showFireflies: boolean;
@@ -119,7 +160,10 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
         topTint: [1.05, 0.99, 0.96],
         sideTint: [0.94, 0.97, 1.04],
         islandFog: [64, 82, 76],
-        cloudFog: [148, 142, 132],
+        cloudHaze: [208, 182, 160],
+        cloudTopTint: [1.0, 0.96, 0.88],
+        cloudSideTint: [0.86, 0.91, 1.04],
+        cloudLightScale: 0.95,
         lanternAlphaScale: 0.72,
         showStars: false,
         showFireflies: false,
@@ -146,7 +190,10 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
         topTint: [1.03, 1.04, 0.99],
         sideTint: [0.96, 1.01, 1.02],
         islandFog: [68, 98, 86],
-        cloudFog: [156, 174, 164],
+        cloudHaze: [206, 214, 208],
+        cloudTopTint: [1.0, 1.0, 0.97],
+        cloudSideTint: [0.9, 0.96, 1.04],
+        cloudLightScale: 0.96,
         lanternAlphaScale: 0.36,
         showStars: false,
         showFireflies: false,
@@ -173,7 +220,10 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
         topTint: [1.04, 1.01, 0.93],
         sideTint: [0.95, 0.99, 1.04],
         islandFog: [52, 74, 70],
-        cloudFog: [132, 138, 124],
+        cloudHaze: [186, 162, 140],
+        cloudTopTint: [0.98, 0.93, 0.83],
+        cloudSideTint: [0.8, 0.85, 1.0],
+        cloudLightScale: 0.84,
         lanternAlphaScale: 1.0,
         showStars: true,
         showFireflies: true,
@@ -200,7 +250,10 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
         topTint: [0.86, 0.96, 1.08],
         sideTint: [0.82, 0.92, 1.06],
         islandFog: [24, 42, 38],
-        cloudFog: [64, 86, 80],
+        cloudHaze: [58, 80, 80],
+        cloudTopTint: [0.62, 0.72, 0.9],
+        cloudSideTint: [0.5, 0.6, 0.82],
+        cloudLightScale: 0.62,
         lanternAlphaScale: 1.32,
         showStars: true,
         showFireflies: true,
@@ -252,6 +305,15 @@ export function bakeSky(
     glow.addColorStop(1, palette.horizonGlow[2]);
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, H);
+
+    // Horizon haze behind the cloud planes; the planes' own aerial perspective comes from cloudHaze fog.
+    const [hazeR, hazeG, hazeB] = palette.cloudHaze;
+    const haze = ctx.createLinearGradient(0, H * 0.44, 0, H * 0.96);
+    haze.addColorStop(0, `rgba(${hazeR}, ${hazeG}, ${hazeB}, 0)`);
+    haze.addColorStop(0.58, `rgba(${hazeR}, ${hazeG}, ${hazeB}, 0.15)`);
+    haze.addColorStop(1, `rgba(${hazeR}, ${hazeG}, ${hazeB}, 0)`);
+    ctx.fillStyle = haze;
+    ctx.fillRect(0, H * 0.44, W, H * 0.52);
 
     // Phase-tuned extended top atmospheric vignette so open-sky cream copy and CTAs maintain AAA contrast
     const topVignette = ctx.createLinearGradient(0, 0, 0, H * 0.86);
@@ -312,6 +374,25 @@ export function bakeLanternSprite(
     return off;
 }
 
+/** Distance haze: islands darken by depth, clouds bleach toward the horizon by altitude plane. */
+function cloudFogAmount(cloud: 'far' | 'near' | null, x: number, y: number, depthRatio: number) {
+    if (!cloud) return Math.min(0.16, Math.max(0, depthRatio - 0.72) * 0.7);
+    const cap = cloud === 'far' ? 0.2 : 0.1;
+    const dist = Math.hypot(x - CX, y - CY);
+    return cap * Math.min(1, Math.max(0, (dist - 24) / 90));
+}
+
+/** Key light per face, with cloud-specific bounce: bright warm tops, cool shaded flanks. */
+const CLOUD_FACE_K = [1, 0.93, 0.86] as const;
+
+function faceLightK(face: number, cloud: 'far' | 'near' | null): number {
+    // Clouds are lit flat and bright; the hard terrain ramp would turn them to rock.
+    if (cloud) return CLOUD_FACE_K[Math.min(face, 2)];
+    if (face === 0) return 0.74 + 0.52 * LIGHT[2];
+    if (face === 1) return 0.48 + 0.38 * (-LIGHT[1] + 0.38);
+    return 0.36 + 0.38 * (LIGHT[0] + 0.5);
+}
+
 function shadeFaceRgb(
     rIn: number,
     gIn: number,
@@ -321,25 +402,18 @@ function shadeFaceRgb(
     y: number,
     face: number,
     ao: number,
-    cloud: boolean,
+    cloud: 'far' | 'near' | null,
     depthMax: number,
     atmosphere: AtmospherePhase,
 ): string {
     const palette = ATMOSPHERE_PALETTES[atmosphere];
-    let fog = Math.min(0.16, Math.max(0, (x + y) / depthMax - 0.72) * 0.7);
-    if (cloud) {
-        const dist = Math.hypot(x - CX, y - CY);
-        fog = Math.min(0.45, Math.max(0, (dist - 38) / 58) * 0.45);
-    }
+    const fog = cloudFogAmount(cloud, x, y, (x + y) / depthMax);
 
-    let k: number;
-    if (face === 0) k = 0.74 + 0.52 * LIGHT[2];
-    else if (face === 1) k = 0.48 + 0.38 * (-LIGHT[1] + 0.38);
-    else k = 0.36 + 0.38 * (LIGHT[0] + 0.5);
-    k *= ao * palette.lightScale;
+    let k =
+        faceLightK(face, cloud) * ao * palette.lightScale * (cloud ? palette.cloudLightScale : 1);
     if (glow) k = atmosphere === 'after-hours' ? 1.32 : 1.18;
 
-    const tint = face === 0 ? palette.topTint : palette.sideTint;
+    const tint = pickFaceTint(palette, cloud, face);
 
     let r = rIn * k * tint[0];
     let g2 = gIn * k * tint[1];
@@ -351,7 +425,7 @@ function shadeFaceRgb(
         b = Math.min(255, b + 14);
     }
 
-    const [fogR, fogG, fogB] = cloud ? palette.cloudFog : palette.islandFog;
+    const [fogR, fogG, fogB] = cloud ? palette.cloudHaze : palette.islandFog;
     r += (fogR - r) * fog;
     g2 += (fogG - g2) * fog;
     b += (fogB - b) * fog;
@@ -359,10 +433,36 @@ function shadeFaceRgb(
     return `rgb(${Math.min(255, r) | 0},${Math.min(255, g2) | 0},${Math.min(255, b) | 0})`;
 }
 
+/** Traces one isometric voxel face at projected `(px, py)`; shared by layer and sprite bakes. */
+function traceVoxelFace(
+    ctx: CanvasRenderingContext2D,
+    px: number,
+    py: number,
+    face: number,
+    HW: number,
+    HH: number,
+    ZH: number,
+) {
+    ctx.beginPath();
+    if (face === 0) {
+        ctx.moveTo(px, py - HH * 2);
+        ctx.lineTo(px + HW, py - HH);
+        ctx.lineTo(px, py);
+        ctx.lineTo(px - HW, py - HH);
+    } else {
+        const sx = face === 1 ? -HW : HW;
+        ctx.moveTo(px + sx, py - HH);
+        ctx.lineTo(px, py);
+        ctx.lineTo(px, py + ZH * 2);
+        ctx.lineTo(px + sx, py - HH + ZH * 2);
+    }
+    ctx.closePath();
+    ctx.fill();
+}
+
 export function paintVoxelLayer(
     list: WorldFaces['island'],
     world: RenderableWorld,
-    cloudSet: Set<number>,
     W: number,
     H: number,
     dpr: number,
@@ -394,27 +494,220 @@ export function paintVoxelLayer(
             y,
             face,
             ao,
-            cloudSet.has(world.material[i]),
+            null,
             depthMax,
             atmosphere,
         );
-        o.beginPath();
-        if (face === 0) {
-            o.moveTo(px, py - HH * 2);
-            o.lineTo(px + HW, py - HH);
-            o.lineTo(px, py);
-            o.lineTo(px - HW, py - HH);
-        } else {
-            const sx = face === 1 ? -HW : HW;
-            o.moveTo(px + sx, py - HH);
-            o.lineTo(px, py);
-            o.lineTo(px, py + ZH * 2);
-            o.lineTo(px + sx, py - HH + ZH * 2);
-        }
-        o.closePath();
-        o.fill();
+        traceVoxelFace(o, px, py, face, HW, HH, ZH);
     }
     return off;
+}
+
+/** Screen-space bounding box of a face list, used to crop a cloud sprite. */
+function measureBounds(
+    faces: WorldFaces['island'],
+    project: (x: number, y: number, z: number) => [number, number],
+    HW: number,
+    HH: number,
+    ZH: number,
+) {
+    let minX = Number.POSITIVE_INFINITY;
+    let minY = Number.POSITIVE_INFINITY;
+    let maxX = Number.NEGATIVE_INFINITY;
+    let maxY = Number.NEGATIVE_INFINITY;
+    for (const [, x, y, z, face] of faces) {
+        const [px, py] = project(x, y, z);
+        for (const [qx, qy] of faceCorners(px, py, face, HW, HH, ZH)) {
+            if (qx < minX) minX = qx;
+            if (qx > maxX) maxX = qx;
+            if (qy < minY) minY = qy;
+            if (qy > maxY) maxY = qy;
+        }
+    }
+    return { minX, minY, maxX, maxY };
+}
+
+/** Corner points of one projected voxel face, used for cropping a cloud sprite. */
+function faceCorners(
+    px: number,
+    py: number,
+    face: number,
+    HW: number,
+    HH: number,
+    ZH: number,
+): Array<[number, number]> {
+    if (face === 0) {
+        return [
+            [px, py - HH * 2],
+            [px + HW, py - HH],
+            [px, py],
+            [px - HW, py - HH],
+        ];
+    }
+    const sx = face === 1 ? -HW : HW;
+    return [
+        [px + sx, py - HH],
+        [px, py],
+        [px, py + ZH * 2],
+        [px + sx, py - HH + ZH * 2],
+    ];
+}
+
+/**
+ * Clouds drift outward from the hero copy: a cloud that shares the copy's rows gets the flank it
+ * already sits on and dissolves against the copy edge, so it can leave and return without ever
+ * sitting behind the headline. Clouds whose rows clear the copy (all of them on portrait) drift
+ * the full stage instead.
+ */
+export function computeCloudLane(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    stageWidth: number,
+    stageHeight: number,
+): CloudLane {
+    const sharesCopyRows =
+        y < stageHeight * CLOUD_CLEAR_CORRIDOR.maxY &&
+        y + height > stageHeight * CLOUD_CLEAR_CORRIDOR.minY;
+    if (!sharesCopyRows) return { min: -width, max: stageWidth, fadeAt: null };
+
+    const gutter = 8;
+    const isLeft = x + width / 2 < stageWidth / 2;
+    return isLeft
+        ? {
+              min: -width,
+              max: stageWidth * CLOUD_CLEAR_CORRIDOR.minX - width - gutter,
+              fadeAt: 'end',
+          }
+        : {
+              min: stageWidth * CLOUD_CLEAR_CORRIDOR.maxX + gutter,
+              max: stageWidth,
+              fadeAt: 'start',
+          };
+}
+
+/** Position of a cloud at `time`; the signed speed decides which way it travels. */
+export function cloudDriftAt(
+    lane: CloudLane,
+    speed: number,
+    phase: number,
+    time: number,
+): { x: number } {
+    const span = Math.max(1, lane.max - lane.min);
+    const travel = (((time * speed + phase) % span) + span) % span;
+    return { x: lane.min + travel };
+}
+
+/** Opacity of a cloud: dissolves over the last stretch before the copy column, opaque elsewhere. */
+export function cloudAlphaAt(sprite: { width: number }, lane: CloudLane, x: number): number {
+    if (lane.fadeAt === null) return 1;
+    const fadePx = Math.max(24, Math.min(48, sprite.width * 0.12));
+    const remaining = lane.fadeAt === 'end' ? lane.max - x : x - lane.min;
+    return Math.max(0, Math.min(1, remaining / fadePx));
+}
+
+/** Bakes a single cloud's faces into a cropped canvas anchored at its stage position. */
+function bakeOneCloud(
+    entry: { plane: 'far' | 'near'; faces: WorldFaces['island'] },
+    world: RenderableWorld,
+    dims: { width: number; height: number; dpr: number; scale: number },
+    project: (x: number, y: number, z: number) => [number, number],
+    atmosphere: AtmospherePhase,
+): CloudSprite | null {
+    const { width, height, dpr, scale } = dims;
+    const HW = scale * 0.5;
+    const HH = scale * 0.34;
+    const ZH = scale * 0.46;
+    const { minX, minY, maxX, maxY } = measureBounds(entry.faces, project, HW, HH, ZH);
+    const pad = 2;
+    const spriteWidth = Math.ceil(maxX - minX) + pad * 2;
+    const spriteHeight = Math.ceil(maxY - minY) + pad * 2;
+    if (spriteWidth <= 0 || spriteHeight <= 0) return null;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(spriteWidth * dpr);
+    canvas.height = Math.round(spriteHeight * dpr);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    const originX = minX - pad;
+    const originY = minY - pad;
+    ctx.setTransform(dpr, 0, 0, dpr, -originX * dpr, -originY * dpr);
+
+    for (const [, x, y, z, face, i, ao] of entry.faces) {
+        const material = world.palette[world.material[i] - 1];
+        if (!material) continue;
+        const [px, py] = project(x, y, z);
+        ctx.fillStyle = shadeFaceRgb(
+            material.color.r,
+            material.color.g,
+            material.color.b,
+            material.glow,
+            x,
+            y,
+            face,
+            ao,
+            entry.plane,
+            (SX + SY) * 0.9,
+            atmosphere,
+        );
+        traceVoxelFace(ctx, px, py, face, HW, HH, ZH);
+    }
+
+    const lane = computeCloudLane(originX, originY, spriteWidth, spriteHeight, width, height);
+    const span = Math.max(1, lane.max - lane.min);
+    const baseSpeed = entry.plane === 'far' ? CLOUD_DRIFT_SPEED.far : CLOUD_DRIFT_SPEED.near;
+    return {
+        canvas,
+        x: originX,
+        y: originY,
+        width: spriteWidth,
+        height: spriteHeight,
+        lane,
+        phase: Math.min(span, Math.max(0, originX - lane.min)),
+        // Flank clouds drift outward from the copy, so their lane end is the entry point.
+        speed: lane.fadeAt === 'end' ? -baseSpeed : baseSpeed,
+        parallax: entry.plane === 'far' ? 1.4 : 2.6,
+    };
+}
+
+/**
+ * Bakes every cloud into its own cropped canvas so it can be drifted and faded on its own
+ * instead of sharing one full-stage layer with five neighbours.
+ */
+export function bakeCloudSprites(
+    faces: WorldFaces,
+    world: RenderableWorld,
+    dims: { width: number; height: number; dpr: number; scale: number },
+    project: (x: number, y: number, z: number) => [number, number],
+    atmosphere: AtmospherePhase,
+): { far: CloudSprite[]; near: CloudSprite[] } {
+    const groups = new Map<number, { plane: 'far' | 'near'; faces: WorldFaces['island'] }>();
+    const collect = (list: WorldFaces['island'], plane: 'far' | 'near') => {
+        for (const face of list) {
+            const group = world.cloudGroupOf.get(world.material[face[5]]);
+            if (group === undefined) continue;
+            const entry = groups.get(group) ?? { plane, faces: [] };
+            entry.faces.push(face);
+            groups.set(group, entry);
+        }
+    };
+    collect(faces.cloudsFar, 'far');
+    collect(faces.cloudsNear, 'near');
+
+    const far: CloudSprite[] = [];
+    const near: CloudSprite[] = [];
+    for (const group of [...groups.keys()].sort((a, b) => a - b)) {
+        const entry = groups.get(group);
+        if (!entry || entry.faces.length === 0) continue;
+
+        const sprite = bakeOneCloud(entry, world, dims, project, atmosphere);
+        if (!sprite) continue;
+        (entry.plane === 'far' ? far : near).push(sprite);
+    }
+
+    return { far, near };
 }
 
 export function drawZenithParticles(
@@ -551,12 +844,21 @@ function drawCedarMistAndLeaves(
     par: number,
     alphaScale: number,
 ) {
-    ctx.fillStyle = 'rgba(218, 232, 224, 0.09)';
+    // Soft drifting haze wisps instead of hard-edged bands, so the horizon reads as air.
     ctx.globalAlpha = alphaScale;
+    const wispRadius = Math.max(24, scene.scale * 9);
     for (let i = 0; i < 3; i++) {
-        const bandY = scene.height * (0.58 + i * 0.08);
-        const bandX = ((time * (6 + i * 2.5) + i * 220) % (scene.width + 260)) - 130 + par * 8;
-        ctx.fillRect(bandX, bandY, scene.scale * 18, Math.max(2, scene.scale * 0.45));
+        const wispY = scene.height * (0.58 + i * 0.08);
+        const wispX =
+            ((time * (6 + i * 2.5) + i * 220) % (scene.width + wispRadius * 2)) -
+            wispRadius +
+            par * 8;
+        const wisp = ctx.createRadialGradient(wispX, wispY, 0, wispX, wispY, wispRadius);
+        wisp.addColorStop(0, 'rgba(218, 232, 224, 0.10)');
+        wisp.addColorStop(0.55, 'rgba(218, 232, 224, 0.045)');
+        wisp.addColorStop(1, 'rgba(218, 232, 224, 0)');
+        ctx.fillStyle = wisp;
+        ctx.fillRect(wispX - wispRadius, wispY - wispRadius, wispRadius * 2, wispRadius * 2);
     }
 
     const H = scene.height;
@@ -611,6 +913,7 @@ export function disposeSceneCanvases(scene: Scene | null) {
     disposeCanvas(scene.foot);
     disposeCanvas(scene.lanternSprite);
     disposeCanvas(scene.island);
-    disposeCanvas(scene.cloudsFar);
-    disposeCanvas(scene.cloudsNear);
+    for (const sprite of [...scene.cloudsFar, ...scene.cloudsNear]) {
+        disposeCanvas(sprite.canvas);
+    }
 }

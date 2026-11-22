@@ -1,8 +1,12 @@
 import type { AtmospherePhase } from '@llm-market-bench/ui-design-system';
 import {
+    bakeCloudSprites,
     bakeFootFade,
     bakeLanternSprite,
     bakeSky,
+    type CloudSprite,
+    cloudAlphaAt,
+    cloudDriftAt,
     disposeCanvas,
     drawAtmosphericParticles,
     drawZenithParticles,
@@ -163,18 +167,32 @@ function drawSteppedIslandReveal(
     ctx.globalAlpha = 1;
 }
 
-function drawCloudLayer(
+/** Draws one cloud plane; each sprite drifts in its own lane and fades out of the copy column. */
+function drawCloudSprites(
     ctx: CanvasRenderingContext2D,
-    layer: HTMLCanvasElement | null,
-    alpha: number,
-    offsetX: number,
-    offsetY: number,
-    width: number,
-    height: number,
+    sprites: CloudSprite[],
+    time: number,
+    parX: number,
+    parY: number,
+    alphaScale: number,
+    W: number,
+    H: number,
 ) {
-    if (!layer || alpha <= 0) return;
-    ctx.globalAlpha = alpha;
-    ctx.drawImage(layer, offsetX, offsetY, width, height);
+    if (alphaScale <= 0) return;
+    for (const sprite of sprites) {
+        const { x } = cloudDriftAt(sprite.lane, sprite.speed, sprite.phase, time);
+        const alpha = cloudAlphaAt(sprite, sprite.lane, x);
+        const finalAlpha = alpha * alphaScale;
+        if (finalAlpha <= 0.002) continue;
+        ctx.globalAlpha = finalAlpha;
+        ctx.drawImage(
+            sprite.canvas,
+            x + parX * sprite.parallax * 1.8,
+            sprite.y + parY * sprite.parallax,
+            sprite.width,
+            sprite.height,
+        );
+    }
     ctx.globalAlpha = 1;
 }
 
@@ -195,18 +213,14 @@ export function drawCedarSceneFrame(
     drawZenithParticles(ctx, scene, time, parX);
 
     const ambientAlpha = computeAmbientEntranceAlpha(entrance);
-    const farCloudParX = Math.sin(time * 0.08) * 12 + parX * 5;
-    const farCloudParY = Math.sin(time * 0.12) * 1.2 + parY * 1.4;
-    drawCloudLayer(ctx, scene.cloudsFar, ambientAlpha, farCloudParX, farCloudParY, W, H);
+    drawCloudSprites(ctx, scene.cloudsFar, time, parX, parY, ambientAlpha, W, H);
 
     const islandParX = parX * 3;
     const islandParY = Math.sin(time * 0.45) * 1.8 + parY * 2;
     drawSteppedIslandReveal(ctx, scene, entrance, islandParX, islandParY);
     drawAtmosphericParticles(ctx, scene, time, parX, islandParX, islandParY, ambientAlpha);
 
-    const nearCloudParX = Math.sin(time * 0.11 + 1.4) * 18 + parX * 9;
-    const nearCloudParY = Math.cos(time * 0.15) * 1.6 + parY * 2.6;
-    drawCloudLayer(ctx, scene.cloudsNear, ambientAlpha, nearCloudParX, nearCloudParY, W, H);
+    drawCloudSprites(ctx, scene.cloudsNear, time, parX, parY, ambientAlpha, W, H);
 
     if (scene.foot) ctx.drawImage(scene.foot, 0, H * 0.84, W, H * 0.16);
 }
@@ -272,8 +286,7 @@ function disposeAtmoLayers(prev: Scene) {
     disposeCanvas(prev.sky);
     disposeCanvas(prev.foot);
     disposeCanvas(prev.island);
-    disposeCanvas(prev.cloudsFar);
-    disposeCanvas(prev.cloudsNear);
+    for (const sprite of [...prev.cloudsFar, ...prev.cloudsNear]) disposeCanvas(sprite.canvas);
 }
 
 function resolveAtmoLayers(
@@ -296,14 +309,13 @@ function resolveAtmoLayers(
     }
     if (prev) disposeAtmoLayers(prev);
     const { width, height, dpr, scale } = dims;
-    const cloudSet = new Set(world.cloudMaterials);
+    const cloudSprites = bakeCloudSprites(faces, world, dims, project, atmosphere);
     return {
         sky: bakeSky(width, height, dpr, atmosphere),
         foot: bakeFootFade(width, height, dpr, atmosphere),
         island: paintVoxelLayer(
             faces.island,
             world,
-            cloudSet,
             width,
             height,
             dpr,
@@ -311,28 +323,8 @@ function resolveAtmoLayers(
             project,
             atmosphere,
         ),
-        cloudsFar: paintVoxelLayer(
-            faces.cloudsFar,
-            world,
-            cloudSet,
-            width,
-            height,
-            dpr,
-            scale,
-            project,
-            atmosphere,
-        ),
-        cloudsNear: paintVoxelLayer(
-            faces.cloudsNear,
-            world,
-            cloudSet,
-            width,
-            height,
-            dpr,
-            scale,
-            project,
-            atmosphere,
-        ),
+        cloudsFar: cloudSprites.far,
+        cloudsNear: cloudSprites.near,
     };
 }
 

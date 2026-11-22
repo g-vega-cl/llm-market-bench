@@ -336,7 +336,7 @@ export function buildCedarSanctuary(seedValue = 20261125): VoxelWorld {
     const { glints, lamps: bridgeLamps } = buildWaterworksAndBridge(c, heightAt, mats);
     const archLamps = buildSanctuaryArchitecture(c, heightAt, mats);
     plantHighlandForest(c, heightAt, mats);
-    buildStandardClouds(c, ['#9bb0a7', '#c5d4cb', '#ede8da'], ['#889e95', '#b3c4bb', '#ded9cb']);
+    buildStandardClouds(c, ['#c6cbc8', '#e8eae3', '#f6f2e6'], ['#b2bdba', '#dbe2da', '#ece8dc']);
 
     const petals = Array.from({ length: 24 }, () => {
         const u = c.ri(-76, 76);
@@ -367,6 +367,7 @@ export function buildCedarSanctuary(seedValue = 20261125): VoxelWorld {
         palette: c.palette,
         cloudMaterials: c.cloudIds,
         farCloudMaterials: c.farCloudIds,
+        cloudGroupOf: c.cloudGroupOf,
         petals,
         glints,
         lamps: [...bridgeLamps, ...archLamps],

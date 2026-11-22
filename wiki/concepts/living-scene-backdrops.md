@@ -95,7 +95,10 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 - `footFade` — bottom fade band color.
 - `lightScale` — global voxel face brightness multiplier.
 - `topTint` / `sideTint` — per-face RGB tint multipliers.
-- `islandFog` / `cloudFog` — depth-fog RGB targets for island and cloud faces.
+- `islandFog` — depth-fog RGB target for island faces.
+- `cloudHaze` — horizon RGB that cloud faces bleach toward, and the colour of the baked horizon haze band; cloud fog is capped (`0.2` far plane, `0.1` near plane) so distance never greys them into the terrain.
+- `cloudTopTint` / `cloudSideTint` — cloud-only per-face tint multipliers (warm lit tops, cool shaded flanks); terrain keeps `topTint` / `sideTint`.
+- `cloudLightScale` — cloud-only exposure multiplier, so `dusk` and `after-hours` do not render sunlit clouds.
 - `lanternAlphaScale` — lantern glow halo intensity.
 - `showStars` / `showFireflies` / `showSunMotes` — which zenith and micro-life layers render.
 
@@ -124,7 +127,7 @@ The backdrop is a single curated world. `voxel-world.ts` exports `CEDAR_WORLD_ID
   - *Left Highland Bluff*: two-story timber lodge on dressed granite foundation with warm paper windows (`windowGlow`), stone chimney, gable eaves, porch sconces, and tall Douglas pines.
   - *Central Brook Valley*: gently recessed terrain keeping foreground CTA copy readable while exposing a winding brook, arched cedar footbridge with lanterns, and an elevated timber aqueduct trestle.
   - *Right Maple & Cascade Bluff*: crimson/amber autumn maple grove, east cedar torii gate, granite path lanterns, and a cliffside waterfall plunge (`carveCliffWaterfall`).
-- **Flanking Under-crust & Clouds (`worlds/shared-terrain.ts`)**: `buildPanoramicUndercrust` tapers the underside granite cone and hanging roots across `RU`/`RV`, and `buildStandardClouds` places 6 flat-bottomed 3D cloud slabs split into `cloudsFar` and `cloudsNear` parallax buckets, with the far upper slab offset to the east flank so the central open-sky CTA corridor stays unobstructed.
+- **Flanking Under-crust & Clouds (`worlds/shared-terrain.ts`)**: `buildPanoramicUndercrust` tapers the underside granite cone and hanging roots across `RU`/`RV`, and `buildStandardClouds` places 6 field-carved cloud puffs (3–4 overlapping lobe domes each, flat bottomed) across the open-sky flanks, clear of the CTA corridor. Every cloud registers its own material group (`cloudGroupOf`), so `bakeCloudSprites` can crop each one into an individual canvas. `createVoxelCanvas` exposes `cloudPuff(u, v, z0, halfU, halfV, mats, plane)` (replacing the old rectangular `cloudSlab`) and `cloudMat(hex, far, group)` which records each cloud's material group in `cloudGroupOf`.
 
 ### Homepage & Diagnostic Integration
 
@@ -136,11 +139,23 @@ The backdrop is a single curated world. `voxel-world.ts` exports `CEDAR_WORLD_ID
 `drawCedarSceneFrame` (`apps/web/src/features/home/backdrop/garden-scene.ts`) composites four depth planes back-to-front:
 
 1. **Atmospheric sky** — phase-baked gradient plus `drawZenithParticles` (twinkling stars for dusk/after-hours, drifting sun-motes for dawn/daylight).
-2. **Far high-altitude cloud slabs** — slow breeze drift (`sin(time * 0.08)`) plus subtle parallax.
-3. **Panoramic cedar island** — gentle vertical levitation (`sin(time * 0.45)`) plus surface water glints (`drawSurfaceGlints`), brook/pool ripples (`drawSurfaceRipples`), warm amber lantern glow halos (`drawBeaconHalos`), dusk/night fireflies (`drawFireflies`), drifting valley mist bands, and falling autumn maple leaves (`drawCedarMistAndLeaves`).
-4. **Near perimeter cloud slabs** — faster breeze drift (`sin(time * 0.11 + 1.4)`) plus deeper parallax.
+2. **Far cloud sprites** — one cropped canvas per cloud, drifting outward from the copy at `CLOUD_DRIFT_SPEED.far` (`3px/s`) with subtle parallax.
+3. **Panoramic cedar island** — gentle vertical levitation (`sin(time * 0.45)`) plus surface water glints (`drawSurfaceGlints`), brook/pool ripples (`drawSurfaceRipples`), warm amber lantern glow halos (`drawBeaconHalos`), dusk/night fireflies (`drawFireflies`), soft drifting haze wisps (`drawCedarMistAndLeaves`), and falling autumn maple leaves (`drawCedarMistAndLeaves`).
+4. **Near cloud sprites** — faster outward drift (`7px/s`) plus deeper parallax; `cloudAlphaAt` dissolves any cloud that shares the hero copy's rows before its lane reaches the copy column, so a drifting cloud is never readable behind the headline, and `cloudAlphaAt` returns `1` for every cloud on portrait viewports where the band sits below the copy.
 
 Offscreen layers are built by `buildCedarScene` (`garden-scene.ts`) once per mount/resize/atmosphere change and disposed on rebuild. `getCedarWorldAndFaces()` (`worlds.ts`) caches face extraction and calls `stripWorldBuffers` to free raw occupancy buffers once extracted. `disposeCanvas` / `disposeSceneCanvases` (`garden-renderer.ts`) zero offscreen canvas storage on rebuild and unmount.
+
+### Cloud Sprite System (`garden-renderer.ts`)
+
+Each cloud is baked into its own cropped canvas so it can drift and fade independently instead of sharing one full-stage layer with five neighbours:
+
+- `bakeCloudSprites(faces, world, dims, project, atmosphere)` groups cloud faces by `world.cloudGroupOf` (material id → cloud group index, registered by `cloudMat(hex, far, group)`), sorts groups, and calls `bakeOneCloud` per group. `bakeOneCloud` measures the screen-space bounding box (`measureBounds`), crops a padded canvas, and paints faces with `traceVoxelFace` + `shadeFaceRgb`.
+- `computeCloudLane(x, y, width, height, stageWidth, stageHeight)` returns a `CloudLane { min, max, fadeAt }`. A cloud whose rows overlap `CLOUD_CLEAR_CORRIDOR` (`minX 0.33`, `maxX 0.67`, `minY 0.08`, `maxY 0.55`) gets the flank it already sits on and `fadeAt` pointing at the copy edge; a cloud clear of the copy rows (all of them on portrait) gets the full stage with `fadeAt: null`.
+- `cloudDriftAt(lane, speed, phase, time)` wraps position within the lane span; flank clouds get a signed speed (`-baseSpeed` for left, `+baseSpeed` for right) so they drift outward from the copy.
+- `cloudAlphaAt(sprite, lane, x)` dissolves over the last `max(24, min(48, width * 0.12))` px before the copy-facing lane end, returning `1` everywhere when `fadeAt` is null.
+- `CLOUD_DRIFT_SPEED` is `{ far: 3, near: 7 }` CSS px/s; `CloudSprite` carries `canvas`, `x`, `y`, `width`, `height`, `lane`, `phase`, `speed`, `parallax` (far `1.4`, near `2.6`).
+
+`Scene.cloudsFar` / `Scene.cloudsNear` are `CloudSprite[]`; `disposeSceneCanvases` disposes every sprite canvas.
 
 ### Cedar Particle Palette
 
@@ -171,8 +186,9 @@ const CEDAR_PARTICLE_COLORS = {
 - `packages/ui-design-system/src/lib/atmosphere.test.ts` — verifies all four phases, EST/EDT boundaries, local-mode thresholds, and `NaN` fallback to `dusk`.
 - `apps/web/src/test/scene-stage.test.tsx` — verifies hero/footer landmarks, default `dusk` atmosphere, `data-motion-role`, `aria-hidden` backdrop, scrim panel without `backdrop-blur`, `HeroBackground` atmosphere/backdrop slots, and wrapped `controls` slot.
 - `apps/web/src/test/design-standardization.test.tsx` — verifies `SceneStage` containment/scrim invariants and `HeroBackground` token discipline.
-- `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` & `apps/web/src/features/home/backdrop/garden-scene.test.ts` — verify `data-world={CEDAR_WORLD_ID}`, `data-atmosphere`, all 4 distinct `ATMOSPHERE_PALETTES`, controlled props + `showControls={false}`, reduced-motion toggle, non-zero canvas lifecycle + mid-entrance settle, listener cleanup, portrait mobile `computeCedarFraming` lowering, bounded canvas coordinates (`computeIslandVerticalBounds`), and stepped entrance reveal kinematics.
-- `apps/web/src/features/home/backdrop/worlds.test.ts` — verifies panoramic `cedar-sanctuary` seed determinism, horizontal `gridToUv` span (`>= RU * 1.8`), flat-bottomed cloud slabs (same-base neighbor ratio `>= 0.99`), and monotonic painter depth sort order.
+- `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` & `apps/web/src/features/home/backdrop/garden-scene.test.ts` — verify `data-world={CEDAR_WORLD_ID}`, `data-atmosphere`, all 4 distinct `ATMOSPHERE_PALETTES`, controlled props + `showControls={false}`, reduced-motion toggle, non-zero canvas lifecycle + mid-entrance settle, listener cleanup, portrait mobile `computeCedarFraming` lowering, bounded canvas coordinates (`computeIslandVerticalBounds`), stepped entrance reveal kinematics, and 10 offscreen canvases (sky, foot, island, lantern sprite + one cropped canvas per cloud).
+- `apps/web/src/features/home/backdrop/garden-renderer.test.ts` — verifies `computeCloudLane` flank assignment (left `fadeAt: 'end'`, right `fadeAt: 'start'`, full-stage `fadeAt: null` for clouds clear of the copy rows), `cloudAlphaAt` full opacity on frame one and zero at the copy-facing lane end, no flank cloud ever overlapping the copy column across its cycle, outward drift direction, gap-free wrap, near clouds faster than far, and full opacity for clouds below the copy band (portrait).
+- `apps/web/src/features/home/backdrop/worlds.test.ts` — verifies panoramic `cedar-sanctuary` seed determinism, horizontal `gridToUv` span (`>= RU * 1.8`), puffy stepped cloud silhouettes (crown inset `<= 0.75` of base, crown bbox fill `<= 0.92`, base `z >= 24`, no cloud within 3 voxels of terrain), and the under→mid→top tone ramp (top `<= 0.3`, mid `>= 0.45`, under `<= 0.35`).
 - `apps/web/src/features/home/pages/HomeCtaPage.test.tsx` — verifies the `SceneStage` hero shell, `initialAtmosphere` SSR/CSR parity, open-sky 3-CTA stack (`home-cta-actions`, zero `.scene-scrim` card container or trust bullets), HUD atmosphere/motion controls with no `world-switcher`, and `/personality` link.
 - `apps/web/src/features/personality/personality-data.test.ts` & `apps/web/src/features/personality/PersonalityQuizPage.test.tsx` — verify the 10-question 4-axis diagnostic scoring engine, full 5-archetype reachability, starter recipe integrity, top-2 bot matches linking to `/build?idea=`, `?archetype=` hydration, and `cedar-sanctuary` stage parity.
 

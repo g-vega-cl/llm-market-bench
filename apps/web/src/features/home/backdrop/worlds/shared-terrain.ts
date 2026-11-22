@@ -52,41 +52,26 @@ export function buildPanoramicUndercrust(
     }
 }
 
-/** Places 6 wide 3D Minecraft-style cloud slabs around the panoramic cedar ridge flanks. */
+/** Scatters six field-carved cloud puffs across the open-sky flanks, clear of the CTA corridor. */
 export function buildStandardClouds(
     c: VoxelCanvasBuilder,
     nearHex: [string, string, string],
     farHex: [string, string, string],
 ) {
-    const mats = {
-        near: [c.cloudMat(nearHex[0]), c.cloudMat(nearHex[1]), c.cloudMat(nearHex[2])] as [
-            number,
-            number,
-            number,
-        ],
-        far: [
-            c.cloudMat(farHex[0], true),
-            c.cloudMat(farHex[1], true),
-            c.cloudMat(farHex[2], true),
-        ] as [number, number, number],
-    };
+    const ramp = (hex: [string, string, string], far: boolean, group: number) =>
+        hex.map((h) => c.cloudMat(h, far, group)) as [number, number, number];
 
-    const [flx, fly] = uvToGrid(-82, -32);
-    c.cloudSlab(flx, fly, 34, 18, 10, 2, mats, { dx: 4, dy: 2, w: 10, d: 5 }, 'far');
+    const clouds: Array<[number, number, number, number, number, 'far' | 'near']> = [
+        [-58, -40, 44, 20, 7, 'near'],
+        [-56, -8, 42, 17, 6, 'near'],
+        [-62, 16, 42, 15, 6, 'far'],
+        [62, -46, 46, 19, 7, 'near'],
+        [48, -16, 36, 17, 6, 'near'],
+        [60, 0, 39, 15, 6, 'far'],
+    ];
 
-    const [frx, fry] = uvToGrid(66, -34);
-    c.cloudSlab(frx - 10, fry, 32, 18, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'far');
-
-    // Keep far upper cloud offset to the east flank so the central open-sky CTA corridor stays unobstructed
-    const [fcx, fcy] = uvToGrid(36, -42);
-    c.cloudSlab(fcx - 6, fcy, 36, 18, 9, 2, mats, { dx: 4, dy: 2, w: 10, d: 4 }, 'far');
-
-    const [nlx, nly] = uvToGrid(-90, 14);
-    c.cloudSlab(nlx, nly, 18, 17, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'near');
-
-    const [nrx, nry] = uvToGrid(88, 14);
-    c.cloudSlab(nrx - 4, nry, 18, 17, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'near');
-
-    const [nfx, nfy] = uvToGrid(14, 54);
-    c.cloudSlab(nfx - 6, nfy, 13, 16, 8, 2, mats, { dx: 3, dy: 2, w: 9, d: 4 }, 'near');
+    clouds.forEach(([u, v, z, halfU, halfV, plane], group) => {
+        const mats = plane === 'far' ? ramp(farHex, true, group) : ramp(nearHex, false, group);
+        c.cloudPuff(u, v, z, halfU, halfV, { near: mats, far: mats }, plane);
+    });
 }

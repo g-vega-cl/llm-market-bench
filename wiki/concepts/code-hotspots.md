@@ -16,10 +16,10 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/routes/__root.tsx` | 18 | 11 | 61.1% | 349 | 198 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 22 | 8 | 36.4% | 358 | 176 | **CRITICAL** |
 | `apps/web/src/routes/-__root.test.tsx` | 14 | 8 | 57.1% | 530 | 112 | **CRITICAL** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 21 | 5 | 23.8% | 328 | 105 | **CRITICAL** |
 | `apps/free_llm_proxy/server.py` | 19 | 5 | 26.3% | 795 | 95 | **HIGH** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
 | `apps/web/src/routes/index.tsx` | 20 | 4 | 20.0% | 23 | 80 | **HIGH** |
+| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 20 | 4 | 20.0% | 328 | 80 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 16 | 5 | 31.2% | 562 | 80 | **HIGH** |
 | `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 18 | 4 | 22.2% | 436 | 72 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 12 | 6 | 50.0% | 186 | 72 | **HIGH** |
@@ -27,7 +27,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/trading/live_intraday_agent.py` | 17 | 4 | 23.5% | 625 | 68 | **HIGH** |
 | `apps/web/src/components/ui/DefaultCatchBoundary.tsx` | 9 | 7 | 77.8% | 201 | 63 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.test.tsx` | 14 | 4 | 28.6% | 383 | 56 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.test.tsx` | 13 | 4 | 30.8% | 973 | 52 | **HIGH** |
+| `apps/free_llm_proxy/tests/test_proxy.py` | 17 | 3 | 17.6% | 1742 | 51 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **324**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 178 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 179 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

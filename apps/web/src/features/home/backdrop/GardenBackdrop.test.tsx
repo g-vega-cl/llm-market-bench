@@ -190,7 +190,8 @@ describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-
         const canvas = screen.getByTestId('garden-backdrop') as HTMLCanvasElement;
         const offscreenCanvases = createdOffscreenCanvases.filter((c) => c !== canvas);
         expect(canvas.className).toContain('opacity-100');
-        expect(offscreenCanvases).toHaveLength(6);
+        // sky, foot, island, lantern sprite + one cropped canvas per cloud
+        expect(offscreenCanvases).toHaveLength(10);
         expect(fakeCtx.clip).not.toHaveBeenCalled();
 
         // Advance one entrance frame past frame interval -> stepped reveal clip activates

@@ -70,6 +70,8 @@ export interface RenderableWorld {
     palette: Material[];
     cloudMaterials: number[];
     farCloudMaterials: number[];
+    /** Material id -> cloud group index, so each cloud can be baked and drifted on its own. */
+    cloudGroupOf: Map<number, number>;
     /** Falling autumn cedar & maple leaves. */
     petals: Array<[number, number, number]>;
     /** Reflective brook & waterfall glints. */
@@ -95,6 +97,7 @@ export function stripWorldBuffers(world: VoxelWorld): RenderableWorld {
         palette: world.palette,
         cloudMaterials: world.cloudMaterials,
         farCloudMaterials: world.farCloudMaterials,
+        cloudGroupOf: world.cloudGroupOf,
         petals: world.petals,
         glints: world.glints,
         lamps: world.lamps,
@@ -113,10 +116,11 @@ export interface VoxelCanvasBuilder {
     rnd: () => number;
     ri: (a: number, b: number) => number;
     mat: (hex: string, glow?: boolean) => number;
-    cloudMat: (hex: string, far?: boolean) => number;
+    cloudMat: (hex: string, far?: boolean, group?: number) => number;
     palette: Material[];
     cloudIds: number[];
     farCloudIds: number[];
+    cloudGroupOf: Map<number, number>;
     solid: Uint8Array;
     material: Uint8Array;
     emissive: Uint8Array;
@@ -144,33 +148,113 @@ export interface VoxelCanvasBuilder {
         glow?: boolean,
     ) => void;
     sphere: (cx: number, cy: number, cz: number, r: number, m: number, glow?: boolean) => void;
-    cloudSlab: (
-        x0: number,
-        y0: number,
+    cloudPuff: (
+        u: number,
+        v: number,
         z0: number,
-        w: number,
-        d: number,
-        h: number,
+        halfU: number,
+        halfV: number,
         mats: { near: [number, number, number]; far: [number, number, number] },
-        crown?: { dx: number; dy: number; w: number; d: number },
         plane?: 'far' | 'near',
     ) => void;
     countVoxels: () => number;
 }
 
-function paintCloudRegion(
-    filled: (x: number, y: number, z: number) => boolean,
-    put: (x: number, y: number, z: number, m: number) => void,
-    x0: number,
-    y0: number,
-    z0: number,
-    w: number,
-    d: number,
-    matId: number,
-) {
-    for (let j = 0; j < d; j++) {
-        for (let i = 0; i < w; i++) {
-            if (!filled(x0 + i, y0 + j, z0)) put(x0 + i, y0 + j, z0, matId);
+/**
+ * Deterministic value noise in `[-0.5, 0.5]` used to break cloud tier edges into
+ * 1–2 voxel steps so no outline run reads as a straight rectangle edge.
+ */
+function cloudEdgeNoise(x: number, y: number, z: number): number {
+    let h = (x * 374761393 + y * 668265263 + z * 2246822519) >>> 0;
+    h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+    return ((h ^ (h >>> 16)) >>> 0) / 4294967296 - 0.5;
+}
+
+/** Highest lobe field value at a camera-space `(u, v)` sample; `> 0` means solid cloud. */
+function cloudLobeField(
+    cellU: number,
+    cellV: number,
+    lobes: Array<[number, number, number]>,
+    centerU: number,
+    centerV: number,
+    radiusU: number,
+    radiusV: number,
+): number {
+    let field = -1;
+    for (const [lobeU, lobeV, lobeR] of lobes) {
+        const du = (cellU - (centerU + lobeU * radiusU)) / (radiusU * lobeR);
+        const dv = (cellV - (centerV + lobeV * radiusV)) / (radiusV * lobeR);
+        field = Math.max(field, 1 - du * du - dv * dv);
+    }
+    return field;
+}
+
+/** Grid-space bounding box of a rotated-isometric cloud tier, padded two voxels for ragged edges. */
+function cloudTierBounds(centerU: number, centerV: number, radiusU: number, radiusV: number) {
+    const corners = [
+        uvToGrid(centerU - radiusU - 2, centerV - radiusV - 2),
+        uvToGrid(centerU + radiusU + 2, centerV + radiusV + 2),
+        uvToGrid(centerU - radiusU - 2, centerV + radiusV + 2),
+        uvToGrid(centerU + radiusU + 2, centerV - radiusV - 2),
+    ];
+    return {
+        minX: Math.min(...corners.map((c) => c[0])),
+        maxX: Math.max(...corners.map((c) => c[0])),
+        minY: Math.min(...corners.map((c) => c[1])),
+        maxY: Math.max(...corners.map((c) => c[1])),
+    };
+}
+
+/** Builds the lobe cluster shared by every tier of one cloud, so the steps nest. */
+function cloudLobes(
+    rnd: () => number,
+    ri: (a: number, b: number) => number,
+): Array<[number, number, number]> {
+    const lobes: Array<[number, number, number]> = [];
+    const lobeCount = ri(2, 3);
+    for (let i = 0; i < lobeCount; i++) {
+        const angle = rnd() * Math.PI * 2;
+        // Lobe centre (<=0.30R) plus lobe radius (<=0.72R) keeps the union within ~1.02R.
+        const spread = i === 0 ? 0 : 0.16 + rnd() * 0.14;
+        lobes.push([Math.cos(angle) * spread, Math.sin(angle) * spread, 0.5 + rnd() * 0.22]);
+    }
+    return lobes;
+}
+
+/** Rasterizes one flat cloud tier of the given height from the lobe field. */
+function paintCloudTier(args: {
+    put: (x: number, y: number, z: number, m: number) => void;
+    rnd: () => number;
+    u: number;
+    v: number;
+    halfU: number;
+    halfV: number;
+    lobes: Array<[number, number, number]>;
+    z0: number;
+    tier: { scale: number; height: number; mat: number; jitter: number; flatBase?: boolean };
+}) {
+    const { put, rnd, u, v, halfU, halfV, lobes, z0, tier } = args;
+    // `u` and `v` only exist on cells of equal parity, so snapping the centre to
+    // that lattice guarantees every tier keeps a solid core instead of falling between samples.
+    const centerU = Math.round(u + (rnd() - 0.5) * tier.jitter);
+    const centerV = Math.round(v + (rnd() - 0.5) * tier.jitter);
+    const parityFix = (centerU - centerV) & 1;
+    const cv = centerV + parityFix;
+    const radiusU = halfU * tier.scale;
+    const radiusV = halfV * tier.scale;
+    const bounds = cloudTierBounds(centerU, cv, radiusU, radiusV);
+
+    for (let y = bounds.minY; y <= bounds.maxY; y++) {
+        for (let x = bounds.minX; x <= bounds.maxX; x++) {
+            const [cellU, cellV] = gridToUv(x, y);
+            const field = cloudLobeField(cellU, cellV, lobes, centerU, cv, radiusU, radiusV);
+            for (let k = 0; k < tier.height; k++) {
+                // Per-layer noise jitters each course by a voxel, so tiers never stack as flat
+                // plates; the bottom course stays on the pure field so the underside is flat.
+                const erode = tier.flatBase && k === 0 ? 0 : 0.28;
+                if (field + cloudEdgeNoise(x >> 1, y >> 1, z0 + k) * erode <= 0) continue;
+                put(x, y, z0 + k, tier.mat);
+            }
         }
     }
 }
@@ -193,9 +277,11 @@ export function createVoxelCanvas(seedValue: number): VoxelCanvasBuilder {
         palette.push({ color: hexToRgb(hex), glow });
         return palette.length;
     };
-    const cloudMat = (hex: string, far = false) => {
+    const cloudGroupOf = new Map<number, number>();
+    const cloudMat = (hex: string, far = false, group = 0) => {
         const id = mat(hex);
         cloudIds.push(id);
+        cloudGroupOf.set(id, group);
         if (far) farCloudIds.push(id);
         return id;
     };
@@ -271,37 +357,59 @@ export function createVoxelCanvas(seedValue: number): VoxelCanvasBuilder {
         }
     }
 
-    function cloudSlab(
-        x0: number,
-        y0: number,
+    /**
+     * Carves one flat-bottomed cloud as a cluster of 3–4 overlapping puffs, each with
+     * its own two-step dome at a different height, so the skyline is a series of humps
+     * rather than one terraced plateau.
+     */
+    function cloudPuff(
+        u: number,
+        v: number,
         z0: number,
-        w: number,
-        d: number,
-        h: number,
+        halfU: number,
+        halfV: number,
         mats: { near: [number, number, number]; far: [number, number, number] },
-        crown?: { dx: number; dy: number; w: number; d: number },
         plane: 'far' | 'near' = 'near',
     ) {
-        const bx = Math.min(Math.max(x0, 2), SX - w - 3);
-        const by = Math.min(Math.max(y0, 2), SY - d - 3);
-        const bz = Math.min(Math.max(z0, 2), SZ - h - (crown ? 4 : 3));
-        const [undersideMat, midMat, topMat] = plane === 'far' ? mats.far : mats.near;
+        const [underMat, midMat, topMat] = plane === 'far' ? mats.far : mats.near;
+        if (!(halfU > 0) || !(halfV > 0) || !Number.isFinite(z0)) return;
+        // Every column drops to the base plate on the under→mid ramp (never the cell's own
+        // material, or a capped column would flood itself bright), and never displaces terrain.
+        const putColumn = (x: number, y: number, z: number, m: number) => {
+            for (let zz = z0; zz <= z; zz++) {
+                if (filled(x, y, zz)) continue;
+                put(x, y, zz, zz === z ? m : zz === z0 ? underMat : midMat);
+            }
+        };
 
-        for (let k = 0; k < h; k++) {
-            const matId = k === 0 ? undersideMat : k === h - 1 ? topMat : midMat;
-            paintCloudRegion(filled, put, bx, by, bz + k, w, d, matId);
-        }
-        if (crown) {
-            paintCloudRegion(
-                filled,
-                put,
-                bx + crown.dx,
-                by + crown.dy,
-                bz + h,
-                crown.w,
-                crown.d,
-                topMat,
-            );
+        const puffCount = ri(3, 4);
+        for (let i = 0; i < puffCount; i++) {
+            const along = (i / (puffCount - 1)) * 2 - 1;
+            const pu = u + along * halfU * 0.62 + (rnd() - 0.5) * 1.2;
+            const pv = v + (rnd() - 0.5) * halfV * 0.5;
+            const radiusU = halfU * (0.42 + rnd() * 0.2);
+            const radiusV = halfV * (0.55 + rnd() * 0.25);
+            const lift = i === 0 ? 0 : ri(0, 1);
+            const lobes = cloudLobes(rnd, ri);
+            const courses = [
+                { scale: 1, height: 2, mat: midMat, jitter: 0, flatBase: lift === 0 },
+                { scale: 0.72, height: 1, mat: topMat, jitter: 0.8 },
+            ];
+            let z = z0 + lift;
+            for (const tier of courses) {
+                paintCloudTier({
+                    put: putColumn,
+                    rnd,
+                    u: pu,
+                    v: pv,
+                    halfU: radiusU,
+                    halfV: radiusV,
+                    lobes,
+                    z0: z,
+                    tier,
+                });
+                z += tier.height;
+            }
         }
     }
 
@@ -319,6 +427,7 @@ export function createVoxelCanvas(seedValue: number): VoxelCanvasBuilder {
         palette,
         cloudIds,
         farCloudIds,
+        cloudGroupOf,
         solid,
         material,
         emissive,
@@ -329,7 +438,7 @@ export function createVoxelCanvas(seedValue: number): VoxelCanvasBuilder {
         box,
         cyl,
         sphere,
-        cloudSlab,
+        cloudPuff,
         countVoxels,
     };
 }

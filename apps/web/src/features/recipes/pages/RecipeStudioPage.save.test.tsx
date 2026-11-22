@@ -201,7 +201,7 @@ describe('RecipeStudioPage > draft and explicit save', () => {
 
         expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeDisabled();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Trump & Chips News Momentum' }));
+        fireEvent.click(screen.getByRole('button', { name: /QNMR/ }));
 
         expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeEnabled();
     });

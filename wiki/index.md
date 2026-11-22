@@ -110,6 +110,7 @@
 
 ## Concepts
 
+- [[concepts/starter-recipes]] — catalog of pre-built recipe templates in packages/config/starter-recipes.json
 - [[concepts/recipe-compile-queue]] — Auto-indexed page
 - [[concepts/server-fn-envelope-guard]] — TanStack Start server-function envelope guard (`assertServerFnResult`)
 - [[concepts/visual-work-alignment]] — postmortem of the reverted playground: artistic work needs a human eye on a static artifact before any animation code exists

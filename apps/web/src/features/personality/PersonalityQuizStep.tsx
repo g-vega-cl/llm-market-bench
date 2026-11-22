@@ -5,8 +5,16 @@ export interface PersonalityQuizStepProps {
     question: QuizQuestion;
     stepIndex: number;
     totalQuestions: number;
+    /** Act this question belongs to (1-indexed display, 0-indexed `actIndex`). */
+    actTitle: string;
+    actIndex: number;
+    totalActs: number;
     chosenOptionId?: string;
     liveHint: string;
+    /** Act 4 carries the optional free-text field. */
+    showSelfDescription: boolean;
+    selfDescription: string;
+    onSelfDescriptionChange: (value: string) => void;
     onSelectOption: (questionId: string, optionId: string) => void;
     onPrevious: () => void;
     onBrowseAll: () => void;
@@ -21,8 +29,14 @@ export function PersonalityQuizStep({
     question,
     stepIndex,
     totalQuestions,
+    actTitle,
+    actIndex,
+    totalActs,
     chosenOptionId,
     liveHint,
+    showSelfDescription,
+    selfDescription,
+    onSelfDescriptionChange,
     onSelectOption,
     onPrevious,
     onBrowseAll,
@@ -37,10 +51,10 @@ export function PersonalityQuizStep({
             <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Badge colorScheme="accent" variant="soft" size="sm">
-                        {`Question ${String(stepIndex + 1).padStart(2, '0')} / ${totalQuestions}`}
+                        {`Act ${actIndex + 1} of ${totalActs}`}
                     </Badge>
-                    <span className="min-w-0 break-words text-xs font-normal text-voxel-muted">
-                        {question.context}
+                    <span className="min-w-0 break-words text-sm font-bold text-voxel-ink">
+                        {actTitle}
                     </span>
                 </div>
                 <span
@@ -65,7 +79,59 @@ export function PersonalityQuizStep({
                 />
             </div>
 
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-xs font-normal text-voxel-muted">
+                <div
+                    data-testid="quiz-act-track"
+                    aria-hidden="true"
+                    className="flex items-center gap-2"
+                >
+                    {Array.from({ length: totalActs }, (_, i) => (
+                        <span
+                            key={`act-pip-${String(i)}`}
+                            className={
+                                i < actIndex
+                                    ? 'h-2 w-4 border-2 border-voxel-bevel-lo bg-accent'
+                                    : i === actIndex
+                                      ? 'h-2 w-4 border-2 border-accent bg-voxel-elevated'
+                                      : 'h-2 w-4 border-2 border-voxel-bevel-lo bg-voxel-trough'
+                            }
+                        />
+                    ))}
+                </div>
+                <span className="flex min-w-0 flex-wrap items-baseline justify-end gap-2">
+                    <span className="min-w-0 break-words">{question.context}</span>
+                    <span className="whitespace-nowrap">
+                        {`Question ${String(stepIndex + 1).padStart(2, '0')} / ${totalQuestions}`}
+                    </span>
+                </span>
+            </div>
+
             <h2 className="text-sm font-bold leading-snug text-voxel-ink">{question.prompt}</h2>
+
+            {showSelfDescription ? (
+                <div className="voxel-trough flex min-w-0 flex-col gap-2 rounded-none p-3">
+                    <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
+                        <label
+                            htmlFor="personality-self-description"
+                            className="min-w-0 break-words text-xs font-normal text-voxel-muted"
+                        >
+                            In your own words — anything you want the bot to be like (optional):
+                        </label>
+                        <span className="min-w-0 whitespace-nowrap text-xs font-normal text-voxel-muted">
+                            {`${String(selfDescription.length)} / 180`}
+                        </span>
+                    </div>
+                    <textarea
+                        id="personality-self-description"
+                        data-testid="quiz-self-description"
+                        rows={2}
+                        maxLength={180}
+                        value={selfDescription}
+                        onChange={(event) => onSelfDescriptionChange(event.target.value)}
+                        className="w-full min-w-0 resize-none border-2 border-voxel-bevel-lo bg-voxel-surface p-2 text-xs font-normal text-voxel-ink outline-none focus:border-accent"
+                    />
+                </div>
+            ) : null}
 
             <div className="grid grid-cols-1 gap-4">
                 {question.options.map((option, optionIdx) => {
@@ -120,7 +186,7 @@ export function PersonalityQuizStep({
                     data-testid="skip-to-all-archetypes"
                     onClick={onBrowseAll}
                 >
-                    Browse all 5 styles
+                    Browse all 16 types
                 </Button>
             </div>
         </div>

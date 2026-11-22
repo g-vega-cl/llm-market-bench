@@ -1,4 +1,8 @@
-import { assertNoPrevOutputPlaceholder, assertSingleLlmStage } from '../api/recipes-validators';
+import {
+    assertKnownRuleMetrics,
+    assertNoPrevOutputPlaceholder,
+    assertSingleLlmStage,
+} from '../api/recipes-validators';
 import { STARTER_RECIPES } from '../starter-templates';
 import type { PushStrategy, StrategyBlock } from '../types';
 import { CURATED_TOOLS } from '../types';
@@ -151,6 +155,7 @@ export function validateStrategy(candidate: unknown): PushStrategy {
 
     assertSingleLlmStage(strategy);
     assertNoPrevOutputPlaceholder(strategy);
+    assertKnownRuleMetrics(strategy);
     return strategy;
 }
 

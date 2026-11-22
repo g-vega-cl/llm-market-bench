@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { archiveRecipeFn } from '../api/archive-recipe';
 import { saveRecipeFn } from '../api/recipes-api';
@@ -166,24 +166,17 @@ describe('RecipeStudioPage > removing a strategy', () => {
 });
 
 describe('RecipeStudioPage > templates', () => {
-    it('lists all five starter templates with the selected description', () => {
+    it('lists all sixteen starter templates in the shared code grid with the selected description', () => {
         render(<RecipeStudioPage />);
 
-        expect(
-            screen.getByRole('button', { name: 'Trump & Chips News Momentum' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Claude Agent Portfolio Mirror' }),
-        ).toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Quality Value Screener' })).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Contrarian Sentiment Fader' }),
-        ).toBeInTheDocument();
-        expect(
-            screen.getByRole('button', { name: 'Earnings Catalyst Hunter' }),
-        ).toBeInTheDocument();
+        const grid = screen.getByTestId('template-code-grid');
+        expect(within(grid).getAllByRole('button')).toHaveLength(16);
+        // Each cell is labelled by its type code; the recipe name lives in the in-flow line.
+        expect(within(grid).getByRole('button', { name: /QNMR/ })).toBeInTheDocument();
+        expect(within(grid).getByRole('button', { name: /LNFR/ })).toBeInTheDocument();
+        expect(within(grid).getByRole('button', { name: /LVFP/ })).toBeInTheDocument();
 
-        expect(screen.getByTestId('template-description')).toHaveTextContent(
+        expect(screen.getByTestId('template-code-grid-description')).toHaveTextContent(
             /News-driven momentum/i,
         );
     });

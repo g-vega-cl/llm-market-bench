@@ -10,7 +10,11 @@ export type AnalyticsEvent =
     | 'builder_failed'
     | 'builder_question_answered'
     | 'builder_declined'
-    | 'gallery_signin_clicked';
+    | 'gallery_signin_clicked'
+    | 'quiz_started'
+    | 'quiz_question_answered'
+    | 'quiz_act_completed'
+    | 'quiz_completed';
 
 type CaptureClient =
     | {

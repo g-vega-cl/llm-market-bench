@@ -2,6 +2,11 @@ import { PageLayout } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useRef, useState } from 'react';
+import {
+    ARCHETYPES,
+    CODE_BY_RECIPE_NAME,
+    TYPE_GRID,
+} from '~/features/personality/personality-data';
 import { track } from '~/lib/analytics';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import {
@@ -58,6 +63,15 @@ interface RecipeStudioPageProps {
     initialQuota?: RecipeUserQuotaStatus | null;
     initialUserRecipes?: RecipeSummaryItem[];
 }
+
+const TEMPLATE_GRID_ROWS = ['LV', 'LN', 'QV', 'QN'];
+const TEMPLATE_GRID_COLUMNS = ['FP', 'FR', 'MP', 'MR'];
+
+/** The 16 starter templates as the shared 4x4 type-code grid, in row-major order. */
+const TEMPLATE_GRID_CELLS = TYPE_GRID.map((cell) => ({
+    code: cell.code,
+    label: cell.archetypeId ? ARCHETYPES[cell.archetypeId].title : cell.code,
+}));
 
 export function RecipeStudioPage({
     initialStrategy = null,
@@ -135,6 +149,15 @@ export function RecipeStudioPage({
         setBacktestError(null);
         setPreview({ status: 'template' });
         setConflictingLiveRecipe(null);
+    };
+
+    const handleSelectTemplateByCode = (code: string) => {
+        const archetypeId = TYPE_GRID.find((cell) => cell.code === code)?.archetypeId;
+        if (!archetypeId) return;
+        const index = STARTER_RECIPES.findIndex(
+            (recipe) => recipe.name === ARCHETYPES[archetypeId].recipeName,
+        );
+        if (index >= 0) handleSelectTemplate(index);
     };
 
     const handleStageChange = (updated: StrategyStage) => {
@@ -446,6 +469,24 @@ export function RecipeStudioPage({
                     activeIndex={activeTemplateIdx}
                     disabled={draft.isSaving || isRunningBacktest}
                     onSelect={handleSelectTemplate}
+                    grid={{
+                        cells: TEMPLATE_GRID_CELLS,
+                        rowHeaders: TEMPLATE_GRID_ROWS,
+                        columnHeaders: TEMPLATE_GRID_COLUMNS,
+                        activeCode:
+                            activeTemplateIdx >= 0
+                                ? CODE_BY_RECIPE_NAME.get(
+                                      STARTER_RECIPES[activeTemplateIdx]?.name ?? '',
+                                  )
+                                : undefined,
+                        onSelectCode: handleSelectTemplateByCode,
+                        description:
+                            activeTemplateIdx >= 0
+                                ? `${String(STARTER_RECIPES[activeTemplateIdx]?.name ?? '')} - ${String(
+                                      STARTER_RECIPES[activeTemplateIdx]?.description ?? '',
+                                  )}`
+                                : undefined,
+                    }}
                 />
 
                 <div className="flex flex-col gap-4">

@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CEDAR_WORLD_ID } from '../home/backdrop/voxel-world';
 import { PersonalityQuizPage } from './PersonalityQuizPage';
-import { PERSONALITY_QUESTIONS } from './personality-data';
+import { type ArchetypeId, PERSONALITY_QUESTIONS } from './personality-data';
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({
@@ -50,8 +50,22 @@ beforeAll(() => {
     }
 });
 
-describe('PersonalityQuizPage (10-question diagnostic & Cedar Sanctuary SceneStage)', () => {
-    it('steps through all 10 questions with back navigation, live style updates, and reveals top-2 bots', () => {
+beforeEach(() => {
+    window.localStorage.clear();
+});
+
+/** Answers every question with option A, stepping through each act checkpoint. */
+function answerAll(): void {
+    for (const [index, q] of PERSONALITY_QUESTIONS.entries()) {
+        fireEvent.click(screen.getByTestId(`quiz-option-${q.options[0].id}`));
+        if ((index + 1) % 4 === 0 && index < PERSONALITY_QUESTIONS.length - 1) {
+            fireEvent.click(screen.getByTestId('continue-act'));
+        }
+    }
+}
+
+describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneStage)', () => {
+    it('steps through all 16 questions with back navigation, live style updates, and reveals top-2 bots', () => {
         render(<PersonalityQuizPage initialAtmosphere="daylight" />);
 
         expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', CEDAR_WORLD_ID);
@@ -62,26 +76,44 @@ describe('PersonalityQuizPage (10-question diagnostic & Cedar Sanctuary SceneSta
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
         expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
 
-        // Answer Question 1 -> advances to Question 2 and updates live leaning archetype hint
+        // Answer Question 1 -> advances to Question 2. No letter is revealed yet:
+        // the first act is not complete, so the hint falls back to its default.
         fireEvent.click(
             screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[0].options[0].id}`),
         );
         expect(screen.getByText(PERSONALITY_QUESTIONS[1].prompt)).toBeInTheDocument();
-        expect(screen.getByTestId('quiz-live-world-hint').textContent).toContain('Leaning:');
+        expect(screen.getByTestId('quiz-live-world-hint').textContent).toBe(
+            'Scoring 4 trading axes',
+        );
 
-        // Navigate back to Question 1 and step forward through all 10 questions
+        // Navigate back to Question 1 and step forward through all 16 questions,
+        // checking that the first completed act reveals exactly one letter.
         fireEvent.click(screen.getByRole('button', { name: /previous question/i }));
         expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
 
-        for (const q of PERSONALITY_QUESTIONS) {
+        for (const [index, q] of PERSONALITY_QUESTIONS.entries()) {
             fireEvent.click(screen.getByTestId(`quiz-option-${q.options[0].id}`));
+            if (index === 2) {
+                // Three of four horizon probes are in: still no letter revealed.
+                expect(screen.getByTestId('quiz-live-world-hint').textContent).toBe(
+                    'Scoring 4 trading axes',
+                );
+            }
+            if ((index + 1) % 4 === 0 && index < PERSONALITY_QUESTIONS.length - 1) {
+                const checkpoint = screen.getByTestId('act-checkpoint');
+                expect(checkpoint).toBeInTheDocument();
+                expect(checkpoint.textContent).toContain('complete');
+                expect(screen.queryByTestId('personality-quiz-card')).toBeNull();
+                fireEvent.click(screen.getByTestId('continue-act'));
+                expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
+            }
         }
 
         const result = screen.getByTestId('personality-result');
         expect(result).toBeInTheDocument();
         expect(within(result).getByTestId('axis-breakdown')).toBeInTheDocument();
-        expect(within(result).getByText('#1 Best Bot Match')).toBeInTheDocument();
-        expect(within(result).getByText('#2 Runner-Up Match')).toBeInTheDocument();
+        expect(within(result).getByText('Your best match')).toBeInTheDocument();
+        expect(within(result).getByTestId('neighbour-type')).toBeInTheDocument();
 
         const buildLinks = within(result).getAllByRole('link', { name: /build this bot/i });
         expect(buildLinks[0].getAttribute('href')).toContain('/build?idea=');
@@ -130,12 +162,12 @@ describe('PersonalityQuizPage (10-question diagnostic & Cedar Sanctuary SceneSta
         ).toBeTruthy();
 
         const buttons = within(switcher).getAllByRole('button');
-        expect(buttons).toHaveLength(5);
+        expect(buttons).toHaveLength(16);
 
         for (const button of buttons) {
             fireEvent.click(button);
             const cards = within(result).getAllByTestId('bot-recommendation-card');
-            expect(cards).toHaveLength(2);
+            expect(cards).toHaveLength(1);
             for (const card of cards) {
                 expect(card.querySelectorAll('.voxel-badge')).toHaveLength(4);
                 expect(card.querySelectorAll('.overflow-y-auto')).toHaveLength(0);
@@ -148,65 +180,162 @@ describe('PersonalityQuizPage (10-question diagnostic & Cedar Sanctuary SceneSta
         expect(axisPanel.querySelectorAll('.whitespace-nowrap').length).toBeGreaterThanOrEqual(16);
     });
 
-    it('preserves quiz answers across inspection, returns on self-selection, and avoids self-navigation wipes', () => {
-        const syncedParams: Array<string | null> = [];
-        const { rerender } = render(
-            <PersonalityQuizPage
-                onArchetypeSearchChange={(next) => {
-                    syncedParams.push(next);
-                }}
-            />,
-        );
-        for (const q of PERSONALITY_QUESTIONS) {
-            fireEvent.click(screen.getByTestId(`quiz-option-${q.options[0].id}`));
-        }
-        const initialTitle = screen.getByTestId('archetype-title').textContent;
-        const matchedSlug = syncedParams.at(-1) as 'value-compounder' | undefined;
-        expect(matchedSlug).toBeTruthy();
+    it('keeps a finished quiz when the router coalesces rapid self-emitted searches', () => {
+        const synced: Array<ArchetypeId | null> = [];
+        const onSearch = (next: ArchetypeId | null) => {
+            synced.push(next);
+        };
+        const { rerender } = render(<PersonalityQuizPage onArchetypeSearchChange={onSearch} />);
+        answerAll();
 
-        // Simulate TanStack Router propagating the self-emitted search param back cleanly
+        // Two rapid switcher clicks: a real router may only commit the second param.
+        const switcher = screen.getByTestId('archetype-switcher');
+        const [firstButton, secondButton] = within(switcher).getAllByRole('button');
+        fireEvent.click(firstButton);
+        fireEvent.click(secondButton);
+        const committed = synced.at(-1) ?? undefined;
+        expect(committed).toBeTruthy();
+
         rerender(
             <PersonalityQuizPage
-                initialArchetype={matchedSlug}
-                onArchetypeSearchChange={(next) => {
-                    syncedParams.push(next);
-                }}
+                initialArchetype={committed ?? undefined}
+                onArchetypeSearchChange={onSearch}
             />,
         );
+
+        // The finished answers must survive the coalesced delivery.
+        expect(screen.getByTestId('return-to-quiz-match')).toBeInTheDocument();
+    });
+
+    it('collects the optional Act-4 words and seeds the builder without changing the type', () => {
+        const { rerender } = render(<PersonalityQuizPage />);
+
+        // Walk to the last Act-3 question (index 11); Act 4 has not started yet.
+        for (const [index, q] of PERSONALITY_QUESTIONS.entries()) {
+            if (index === 11) break;
+            fireEvent.click(screen.getByTestId(`quiz-option-${q.options[0].id}`));
+            if ((index + 1) % 4 === 0) fireEvent.click(screen.getByTestId('continue-act'));
+        }
+        expect(screen.getByText(PERSONALITY_QUESTIONS[11].prompt)).toBeInTheDocument();
+        expect(screen.queryByTestId('quiz-self-description')).toBeNull();
+
+        fireEvent.click(
+            screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[11].options[0].id}`),
+        );
+        fireEvent.click(screen.getByTestId('continue-act'));
+        expect(screen.getByTestId('quiz-self-description')).toBeInTheDocument();
+
+        const words = 'no semiconductors, keep cash above 30 percent';
+        for (const q of PERSONALITY_QUESTIONS.slice(12)) {
+            fireEvent.change(screen.getByTestId('quiz-self-description'), {
+                target: { value: words },
+            });
+            fireEvent.click(screen.getByTestId(`quiz-option-${q.options[0].id}`));
+        }
+
+        const result = screen.getByTestId('personality-result');
+        expect(within(result).getByTestId('your-words')).toHaveTextContent(words);
+        const buildLink = within(result).getByRole('link', { name: /build this bot/i });
+        const idea =
+            new URL(buildLink.getAttribute('href') ?? '', 'https://example.test').searchParams.get(
+                'idea',
+            ) ?? '';
+        expect(idea).toContain(words);
+
+        // A re-render (the router pushing the matched type back down) must not drop
+        // the words. Only a full remount can, which is why the route never redirects.
+        rerender(<PersonalityQuizPage initialAtmosphere="dusk" />);
+        expect(
+            within(screen.getByTestId('personality-result')).getByTestId('your-words'),
+        ).toHaveTextContent(words);
+    });
+
+    it('offers to resume a draft saved on this device', () => {
+        const firstThree = PERSONALITY_QUESTIONS.slice(0, 3);
+        const draft = {
+            answers: Object.fromEntries(firstThree.map((q) => [q.id, q.options[0].id])),
+            stepIndex: 3,
+            selfDescription: 'no crypto',
+        };
+        window.localStorage.setItem('benchify:personality-draft', JSON.stringify(draft));
+
+        render(<PersonalityQuizPage />);
+
+        expect(screen.getByTestId('resume-quiz')).toBeInTheDocument();
+        fireEvent.click(screen.getByTestId('resume-quiz-button'));
+
+        expect(screen.queryByTestId('resume-quiz')).toBeNull();
+        expect(screen.getByText(PERSONALITY_QUESTIONS[3].prompt)).toBeInTheDocument();
+    });
+
+    it('preserves quiz answers across inspection, returns on self-selection, and avoids self-navigation wipes', () => {
+        const syncedParams: Array<string | null> = [];
+        let routedParam: ArchetypeId | undefined;
+        const onSearch = (next: ArchetypeId | null) => {
+            syncedParams.push(next);
+            routedParam = next ?? undefined;
+        };
+        const { rerender } = render(<PersonalityQuizPage onArchetypeSearchChange={onSearch} />);
+
+        // Mirror the real router: every self-emitted search propagates back down as a prop.
+        const propagate = () => {
+            if (!routedParam) return;
+            rerender(
+                <PersonalityQuizPage
+                    initialArchetype={routedParam}
+                    onArchetypeSearchChange={onSearch}
+                />,
+            );
+        };
+
+        answerAll();
+        propagate();
+
+        const matchedSlug = syncedParams.at(-1);
+        expect(matchedSlug).toBeTruthy();
         expect(screen.queryByTestId('return-to-quiz-match')).toBeNull();
 
-        // Explore a different archetype without shifting switcher button count
+        // Explore a different type without shifting the grid's cell count
         const switcher = screen.getByTestId('archetype-switcher');
-        expect(within(switcher).getAllByRole('button')).toHaveLength(5);
-        const altButton = within(switcher)
-            .getAllByRole('button')
-            .find((b) => b.textContent !== initialTitle);
+        const gridButtons = within(switcher).getAllByRole('button');
+        expect(gridButtons).toHaveLength(16);
+        const matchCode = screen.getByTestId('archetype-code').textContent;
+        const altButton = gridButtons.find((button) => button.textContent !== matchCode);
         expect(altButton).toBeDefined();
         if (altButton) fireEvent.click(altButton);
+        propagate();
 
-        expect(within(switcher).getAllByRole('button')).toHaveLength(5);
-        expect(screen.getByTestId('archetype-title')).toHaveTextContent(
+        expect(within(switcher).getAllByRole('button')).toHaveLength(16);
+        expect(screen.getByTestId('archetype-code')).toHaveTextContent(
             altButton?.textContent ?? '',
         );
         expect(screen.getByTestId('return-to-quiz-match')).toBeInTheDocument();
 
-        // Clicking own quiz match archetype in switcher transitions back to quiz_match mode
-        const selfButton = within(switcher)
-            .getAllByRole('button')
-            .find((b) => b.textContent === initialTitle);
+        // Clicking your own cell returns to quiz_match mode
+        const selfButton = gridButtons.find((button) => button.textContent === matchCode);
         expect(selfButton).toBeDefined();
         if (selfButton) fireEvent.click(selfButton);
+        propagate();
         expect(screen.queryByTestId('return-to-quiz-match')).toBeNull();
 
         // Explore again and use explicit Back to my quiz match action
         if (altButton) fireEvent.click(altButton);
+        propagate();
         fireEvent.click(screen.getByTestId('return-to-quiz-match'));
-        expect(screen.getByTestId('archetype-title')).toHaveTextContent(initialTitle ?? '');
+        propagate();
+        expect(screen.getByTestId('archetype-code')).toHaveTextContent(matchCode ?? '');
 
         // External navigation to ?archetype=news-surfer then back to bare /personality resets to Q1
-        rerender(<PersonalityQuizPage initialArchetype="news-surfer" />);
+        rerender(
+            <PersonalityQuizPage
+                initialArchetype="news-surfer"
+                onArchetypeSearchChange={onSearch}
+            />,
+        );
         expect(screen.getByTestId('archetype-title')).toHaveTextContent('The Headline Surfer');
-        rerender(<PersonalityQuizPage initialArchetype={undefined} />);
+        rerender(
+            <PersonalityQuizPage initialArchetype={undefined} onArchetypeSearchChange={onSearch} />,
+        );
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
     });
 });

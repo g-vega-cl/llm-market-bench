@@ -44,11 +44,13 @@ import { Route as DailyPredictionsIndexRouteImport } from './routes/daily-predic
 import { Route as LeaderboardIndexRouteImport } from './routes/leaderboard/index'
 import { Route as MarketOverviewIndexRouteImport } from './routes/market-overview/index'
 import { Route as MemoriesIndexRouteImport } from './routes/memories/index'
+import { Route as PersonalityIndexRouteImport } from './routes/personality.index'
 import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as RecipesIndexRouteImport } from './routes/recipes/index'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
+import { Route as PersonalityTCodeRouteImport } from './routes/personality.t.$code'
 import { Route as AuthedRecipesBacktestJobIdRouteImport } from './routes/_authed/recipes/backtest/$jobId'
 import { Route as AuthedRecipesLiveRecipeIdRouteImport } from './routes/_authed/recipes/live/$recipeId'
 
@@ -227,6 +229,11 @@ const MemoriesIndexRoute = MemoriesIndexRouteImport.update({
   path: '/memories/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PersonalityIndexRoute = PersonalityIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PersonalityRoute,
+} as any)
 const PortfoliosIndexRoute = PortfoliosIndexRouteImport.update({
   id: '/portfolios/',
   path: '/portfolios/',
@@ -251,6 +258,11 @@ const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
   id: '/memories/chain/$memoryId',
   path: '/memories/chain/$memoryId',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PersonalityTCodeRoute = PersonalityTCodeRouteImport.update({
+  id: '/t/$code',
+  path: '/t/$code',
+  getParentRoute: () => PersonalityRoute,
 } as any)
 const AuthedRecipesBacktestJobIdRoute =
   AuthedRecipesBacktestJobIdRouteImport.update({
@@ -282,7 +294,7 @@ export interface FileRoutesByFullPath {
   '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
-  '/personality': typeof PersonalityRoute
+  '/personality': typeof PersonalityRouteWithChildren
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
@@ -301,10 +313,12 @@ export interface FileRoutesByFullPath {
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/market-overview/': typeof MarketOverviewIndexRoute
   '/memories/': typeof MemoriesIndexRoute
+  '/personality/': typeof PersonalityIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
   '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/personality/t/$code': typeof PersonalityTCodeRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
   '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
@@ -325,7 +339,6 @@ export interface FileRoutesByTo {
   '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
-  '/personality': typeof PersonalityRoute
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
@@ -344,10 +357,12 @@ export interface FileRoutesByTo {
   '/leaderboard': typeof LeaderboardIndexRoute
   '/market-overview': typeof MarketOverviewIndexRoute
   '/memories': typeof MemoriesIndexRoute
+  '/personality': typeof PersonalityIndexRoute
   '/portfolios': typeof PortfoliosIndexRoute
   '/reasoning': typeof ReasoningIndexRoute
   '/recipes': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/personality/t/$code': typeof PersonalityTCodeRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
   '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
@@ -370,7 +385,7 @@ export interface FileRoutesById {
   '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
-  '/personality': typeof PersonalityRoute
+  '/personality': typeof PersonalityRouteWithChildren
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
@@ -389,10 +404,12 @@ export interface FileRoutesById {
   '/leaderboard/': typeof LeaderboardIndexRoute
   '/market-overview/': typeof MarketOverviewIndexRoute
   '/memories/': typeof MemoriesIndexRoute
+  '/personality/': typeof PersonalityIndexRoute
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
   '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
+  '/personality/t/$code': typeof PersonalityTCodeRoute
   '/_authed/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
   '/_authed/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
@@ -434,10 +451,12 @@ export interface FileRouteTypes {
     | '/leaderboard/'
     | '/market-overview/'
     | '/memories/'
+    | '/personality/'
     | '/portfolios/'
     | '/reasoning/'
     | '/recipes/'
     | '/memories/chain/$memoryId'
+    | '/personality/t/$code'
     | '/recipes/backtest/$jobId'
     | '/recipes/live/$recipeId'
   fileRoutesByTo: FileRoutesByTo
@@ -458,7 +477,6 @@ export interface FileRouteTypes {
     | '/llm-logs'
     | '/login'
     | '/logout'
-    | '/personality'
     | '/recipes-demo'
     | '/renko'
     | '/retired-agents'
@@ -477,10 +495,12 @@ export interface FileRouteTypes {
     | '/leaderboard'
     | '/market-overview'
     | '/memories'
+    | '/personality'
     | '/portfolios'
     | '/reasoning'
     | '/recipes'
     | '/memories/chain/$memoryId'
+    | '/personality/t/$code'
     | '/recipes/backtest/$jobId'
     | '/recipes/live/$recipeId'
   id:
@@ -521,10 +541,12 @@ export interface FileRouteTypes {
     | '/leaderboard/'
     | '/market-overview/'
     | '/memories/'
+    | '/personality/'
     | '/portfolios/'
     | '/reasoning/'
     | '/recipes/'
     | '/memories/chain/$memoryId'
+    | '/personality/t/$code'
     | '/_authed/recipes/backtest/$jobId'
     | '/_authed/recipes/live/$recipeId'
   fileRoutesById: FileRoutesById
@@ -547,7 +569,7 @@ export interface RootRouteChildren {
   LlmLogsRoute: typeof LlmLogsRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
-  PersonalityRoute: typeof PersonalityRoute
+  PersonalityRoute: typeof PersonalityRouteWithChildren
   RecipesDemoRoute: typeof RecipesDemoRoute
   RenkoRoute: typeof RenkoRoute
   RetiredAgentsRoute: typeof RetiredAgentsRoute
@@ -816,6 +838,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MemoriesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/personality/': {
+      id: '/personality/'
+      path: '/'
+      fullPath: '/personality/'
+      preLoaderRoute: typeof PersonalityIndexRouteImport
+      parentRoute: typeof PersonalityRoute
+    }
     '/portfolios/': {
       id: '/portfolios/'
       path: '/portfolios'
@@ -850,6 +879,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/memories/chain/$memoryId'
       preLoaderRoute: typeof MemoriesChainMemoryIdRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/personality/t/$code': {
+      id: '/personality/t/$code'
+      path: '/t/$code'
+      fullPath: '/personality/t/$code'
+      preLoaderRoute: typeof PersonalityTCodeRouteImport
+      parentRoute: typeof PersonalityRoute
     }
     '/_authed/recipes/backtest/$jobId': {
       id: '/_authed/recipes/backtest/$jobId'
@@ -905,6 +941,20 @@ const CompaniesRouteWithChildren = CompaniesRoute._addFileChildren(
   CompaniesRouteChildren,
 )
 
+interface PersonalityRouteChildren {
+  PersonalityIndexRoute: typeof PersonalityIndexRoute
+  PersonalityTCodeRoute: typeof PersonalityTCodeRoute
+}
+
+const PersonalityRouteChildren: PersonalityRouteChildren = {
+  PersonalityIndexRoute: PersonalityIndexRoute,
+  PersonalityTCodeRoute: PersonalityTCodeRoute,
+}
+
+const PersonalityRouteWithChildren = PersonalityRoute._addFileChildren(
+  PersonalityRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
@@ -923,7 +973,7 @@ const rootRouteChildren: RootRouteChildren = {
   LlmLogsRoute: LlmLogsRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
-  PersonalityRoute: PersonalityRoute,
+  PersonalityRoute: PersonalityRouteWithChildren,
   RecipesDemoRoute: RecipesDemoRoute,
   RenkoRoute: RenkoRoute,
   RetiredAgentsRoute: RetiredAgentsRoute,

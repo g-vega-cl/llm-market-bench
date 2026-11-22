@@ -22,13 +22,19 @@
           {
             "id": "blk-news-1",
             "type": "news",
-            "contains": ["Trump", "chips"],
+            "contains": [
+              "Trump",
+              "chips"
+            ],
             "recency_hours": 48
           },
           {
             "id": "blk-mem-1",
             "type": "memories",
-            "contains": ["tariff", "semiconductor"],
+            "contains": [
+              "tariff",
+              "semiconductor"
+            ],
             "recency_hours": 168,
             "category": "MARKET_EVENT",
             "min_importance": 5
@@ -37,8 +43,18 @@
             "id": "blk-tech-1",
             "type": "technicals",
             "rules": [
-              { "id": "rule-pe", "metric": "P/E", "operator": "<", "target": "45" },
-              { "id": "rule-rsi", "metric": "RSI", "operator": "<", "target": "70" }
+              {
+                "id": "rule-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "45"
+              },
+              {
+                "id": "rule-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "70"
+              }
             ]
           },
           {
@@ -74,13 +90,23 @@
           {
             "id": "blk-news-1",
             "type": "news",
-            "contains": ["earnings", "guidance", "acquisition", "AI", "Fed"],
+            "contains": [
+              "earnings",
+              "guidance",
+              "acquisition",
+              "AI",
+              "Fed"
+            ],
             "recency_hours": 48
           },
           {
             "id": "blk-mem-1",
             "type": "memories",
-            "contains": ["earnings", "guidance", "position"],
+            "contains": [
+              "earnings",
+              "guidance",
+              "position"
+            ],
             "recency_hours": 336,
             "category": "ALL",
             "min_importance": 4
@@ -89,9 +115,24 @@
             "id": "blk-tech-1",
             "type": "technicals",
             "rules": [
-              { "id": "rule-rsi", "metric": "RSI", "operator": "<", "target": "75" },
-              { "id": "rule-vwap", "metric": "Price vs VWAP", "operator": ">", "target": "0" },
-              { "id": "rule-rvol", "metric": "RVOL", "operator": ">", "target": "1.2" }
+              {
+                "id": "rule-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "75"
+              },
+              {
+                "id": "rule-vwap",
+                "metric": "Price vs VWAP",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-rvol",
+                "metric": "RVOL",
+                "operator": ">",
+                "target": "1.2"
+              }
             ]
           },
           {
@@ -110,7 +151,11 @@
     "stages": [
       {
         "id": "stage-1",
-        "selected_tools": ["get_key_metrics", "get_technical_indicators", "get_price_history"],
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history"
+        ],
         "blocks": [
           {
             "id": "blk-prompt-1",
@@ -121,10 +166,30 @@
             "id": "blk-tech-1",
             "type": "technicals",
             "rules": [
-              { "id": "rule-pe", "metric": "P/E", "operator": "<", "target": "28" },
-              { "id": "rule-fcf", "metric": "FCF", "operator": ">", "target": "0" },
-              { "id": "rule-macd", "metric": "MACD", "operator": ">", "target": "0" },
-              { "id": "rule-52w", "metric": "price_52w_pct", "operator": "<", "target": "90" }
+              {
+                "id": "rule-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "28"
+              },
+              {
+                "id": "rule-fcf",
+                "metric": "FCF",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-macd",
+                "metric": "MACD",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-52w",
+                "metric": "price_52w_pct",
+                "operator": "<",
+                "target": "90"
+              }
             ]
           },
           {
@@ -159,13 +224,22 @@
           {
             "id": "blk-news-1",
             "type": "news",
-            "contains": ["selloff", "downgrade", "fear", "recession"],
+            "contains": [
+              "selloff",
+              "downgrade",
+              "fear",
+              "recession"
+            ],
             "recency_hours": 72
           },
           {
             "id": "blk-mem-1",
             "type": "memories",
-            "contains": ["selloff", "panic", "reversal"],
+            "contains": [
+              "selloff",
+              "panic",
+              "reversal"
+            ],
             "recency_hours": 336,
             "category": "POST_MORTEM",
             "min_importance": 4
@@ -174,8 +248,18 @@
             "id": "blk-tech-1",
             "type": "technicals",
             "rules": [
-              { "id": "rule-rsi", "metric": "RSI", "operator": "<", "target": "35" },
-              { "id": "rule-vwap", "metric": "Price vs VWAP", "operator": "<", "target": "0" }
+              {
+                "id": "rule-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "35"
+              },
+              {
+                "id": "rule-vwap",
+                "metric": "Price vs VWAP",
+                "operator": "<",
+                "target": "0"
+              }
             ]
           },
           {
@@ -210,13 +294,23 @@
           {
             "id": "blk-news-1",
             "type": "news",
-            "contains": ["earnings", "EPS", "beats", "misses", "guidance"],
+            "contains": [
+              "earnings",
+              "EPS",
+              "beats",
+              "misses",
+              "guidance"
+            ],
             "recency_hours": 72
           },
           {
             "id": "blk-mem-1",
             "type": "memories",
-            "contains": ["earnings", "guidance", "surprise"],
+            "contains": [
+              "earnings",
+              "guidance",
+              "surprise"
+            ],
             "recency_hours": 504,
             "category": "CALENDAR_EVENT",
             "min_importance": 3
@@ -225,12 +319,748 @@
             "id": "blk-tech-1",
             "type": "technicals",
             "rules": [
-              { "id": "rule-rvol", "metric": "RVOL", "operator": ">", "target": "1.5" },
-              { "id": "rule-macd", "metric": "MACD", "operator": ">", "target": "0" }
+              {
+                "id": "rule-rvol",
+                "metric": "RVOL",
+                "operator": ">",
+                "target": "1.5"
+              },
+              {
+                "id": "rule-macd",
+                "metric": "MACD",
+                "operator": ">",
+                "target": "0"
+              }
             ]
           },
           {
             "id": "blk-format-1",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Value Pullback Rotator",
+    "description": "No live news feed; rotates into cash-generative value names on oversold pullbacks below VWAP, using post-mortem memories of past reversals.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history",
+          "search_past_memories",
+          "get_stock_quote"
+        ],
+        "blocks": [
+          {
+            "id": "blk-lvfr-prompt",
+            "type": "prompt",
+            "text": "This is a patient value rotation with no live news feed, so price and fundamentals are the only inputs. Hunt for profitable companies that have been sold off without a broken business: call get_key_metrics to confirm positive free cash flow and a sane multiple, then get_technical_indicators to confirm RSI is under 40 and price sits below VWAP. Use get_price_history to check the decline is orderly rather than a structural collapse. Search past memories for how similar pullbacks in these names resolved before you commit. Buy in thirds, add only when the next leg down is shallower than the last, and rotate out of any position whose thesis the most recent pullback invalidated."
+          },
+          {
+            "id": "blk-lvfr-mem",
+            "type": "memories",
+            "contains": [
+              "pullback",
+              "valuation",
+              "reversal"
+            ],
+            "recency_hours": 168,
+            "category": "POST_MORTEM",
+            "min_importance": 3
+          },
+          {
+            "id": "blk-lvfr-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-lvfr-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "40"
+              },
+              {
+                "id": "rule-lvfr-vwap",
+                "metric": "Price vs VWAP",
+                "operator": "<",
+                "target": "0"
+              },
+              {
+                "id": "rule-lvfr-fcf",
+                "metric": "FCF",
+                "operator": ">",
+                "target": "0"
+              }
+            ]
+          },
+          {
+            "id": "blk-lvfr-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Patient Compound Accumulator",
+    "description": "No news block; a slow, low-turnover accumulator that buys durable compounders at reasonable P/E with rising ROE and positive MACD.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history",
+          "get_earnings_history"
+        ],
+        "blocks": [
+          {
+            "id": "blk-pca-prompt",
+            "type": "prompt",
+            "text": "You are running the slowest book in the fleet and you are judged on years, not sessions. Ignore headlines entirely; there is no news block and none is coming. Use get_key_metrics to find businesses earning a return on equity above twelve percent and trading under a twenty-two multiple, and get_technical_indicators to confirm MACD has turned positive so you are not catching a falling knife. Call get_earnings_history to verify the compounding is real across quarters, not one lucky print. Buy small, hold through drawdowns, and only trim when the multiple exceeds the business quality. Turning over a position inside a quarter needs an explicit reason in the output."
+          },
+          {
+            "id": "blk-pca-mem",
+            "type": "memories",
+            "contains": [
+              "earnings",
+              "guidance",
+              "compounding"
+            ],
+            "recency_hours": 168,
+            "category": "CALENDAR_EVENT",
+            "min_importance": 3
+          },
+          {
+            "id": "blk-pca-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-pca-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "22"
+              },
+              {
+                "id": "rule-pca-roe",
+                "metric": "ROE",
+                "operator": ">",
+                "target": "12"
+              },
+              {
+                "id": "rule-pca-macd",
+                "metric": "MACD",
+                "operator": ">",
+                "target": "0"
+              }
+            ]
+          },
+          {
+            "id": "blk-pca-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Quality Momentum Rotator",
+    "description": "No news block; rotates into high-ROE names near 52-week highs on above-average volume, exiting when momentum and quality diverge.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history",
+          "get_stock_quote"
+        ],
+        "blocks": [
+          {
+            "id": "blk-qmr-prompt",
+            "type": "prompt",
+            "text": "Momentum only pays when the business underneath is good, so this cell screens for quality first and timing second. There is no news feed; everything you need is in the tape and the filings. Use get_key_metrics to require ROE above ten percent, get_technical_indicators to confirm price is in the top forty percent of its 52-week range and relative volume is above 1.1, and get_price_history and get_stock_quote to see whether the move is orderly accumulation or a single spike. Rotate weekly at most: replace the weakest holding only when a new name beats it on both quality and momentum, and cut any position whose relative volume dries up while price stalls."
+          },
+          {
+            "id": "blk-qmr-mem",
+            "type": "memories",
+            "contains": [
+              "valuation",
+              "upgrade",
+              "momentum"
+            ],
+            "recency_hours": 168,
+            "category": "ALL",
+            "min_importance": 4
+          },
+          {
+            "id": "blk-qmr-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-qmr-roe",
+                "metric": "ROE",
+                "operator": ">",
+                "target": "10"
+              },
+              {
+                "id": "rule-qmr-52w",
+                "metric": "price_52w_pct",
+                "operator": ">",
+                "target": "60"
+              },
+              {
+                "id": "rule-qmr-rvol",
+                "metric": "RVOL",
+                "operator": ">",
+                "target": "1.1"
+              }
+            ]
+          },
+          {
+            "id": "blk-qmr-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Deep Value Snapback",
+    "description": "Zero injected context: hunts deeply discounted names under thirty RSI near 52-week lows and reads the market-feeling barometer before buying the snapback.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history",
+          "get_market_feeling"
+        ],
+        "blocks": [
+          {
+            "id": "blk-dvs-prompt",
+            "type": "prompt",
+            "text": "This cell trades with no injected news and no memory of prior calls, so every decision must stand on the data you pull in this session. Start with get_market_feeling: you want to buy deep value when the crowd is fearful, not when it is merely bored. Screen with get_key_metrics for a multiple under twenty and with get_technical_indicators for RSI below thirty and a price in the bottom thirty percent of its 52-week range. Use get_price_history to distinguish a washout candle from a slow bleed. Enter only a starter position, define the invalidation level in the output, and exit fast if the snapback does not appear within a few sessions."
+          },
+          {
+            "id": "blk-dvs-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-dvs-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "30"
+              },
+              {
+                "id": "rule-dvs-52w",
+                "metric": "price_52w_pct",
+                "operator": "<",
+                "target": "30"
+              },
+              {
+                "id": "rule-dvs-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "20"
+              }
+            ]
+          },
+          {
+            "id": "blk-dvs-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Cheap Tape Rotator",
+    "description": "No news and no memories; rotates through cheap, cash-generative names trading under VWAP on mild oversold readings.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history",
+          "get_earnings_history"
+        ],
+        "blocks": [
+          {
+            "id": "blk-ctr-prompt",
+            "type": "prompt",
+            "text": "Keep this book cheap and keep it moving. No news is injected and no prior memories are loaded, so treat the screen as the entire universe each time you run. Use get_key_metrics to require free cash flow above zero and a multiple under twenty-five, then get_technical_indicators to require RSI below forty-five with price under VWAP, which is where you get paid for buying rather than chasing. Call get_earnings_history to make sure the cheapness is not a pending miss, and get_price_history to confirm liquidity. Hold a name only while it stays cheap and cash-generative; rotate into the next qualifying name when the current one stops being either."
+          },
+          {
+            "id": "blk-ctr-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-ctr-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "45"
+              },
+              {
+                "id": "rule-ctr-vwap",
+                "metric": "Price vs VWAP",
+                "operator": "<",
+                "target": "0"
+              },
+              {
+                "id": "rule-ctr-fcf",
+                "metric": "FCF",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-ctr-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "25"
+              }
+            ]
+          },
+          {
+            "id": "blk-ctr-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Fundamental Momentum Scalper",
+    "description": "No news or memory blocks; a fast in-and-out book that pairs a sub-35 multiple and decent ROE with positive MACD, checking ticker news before each entry.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history",
+          "get_ticker_news"
+        ],
+        "blocks": [
+          {
+            "id": "blk-fms-prompt",
+            "type": "prompt",
+            "text": "You scalp momentum but refuse to scalp garbage, so every name must clear a fundamentals filter before the tape matters. No news digest and no memories are injected, which means your only context is what you fetch. Use get_key_metrics for a multiple under thirty-five and ROE above eight, get_technical_indicators for MACD above zero, and get_ticker_news on each candidate to catch a headline that would invalidate the setup before you take it. Trade small, hold for hours rather than weeks, and exit on the first close back below your entry or when MACD rolls over. If the ticker news is ambiguous, skip the name and move to the next one."
+          },
+          {
+            "id": "blk-fms-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-fms-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "35"
+              },
+              {
+                "id": "rule-fms-macd",
+                "metric": "MACD",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-fms-roe",
+                "metric": "ROE",
+                "operator": ">",
+                "target": "8"
+              }
+            ]
+          },
+          {
+            "id": "blk-fms-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Multiple Re-Rating Rotator",
+    "description": "No news block; rides multiple expansion by buying names under forty times earnings that are being re-rated on volume near 52-week highs.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_key_metrics",
+          "get_technical_indicators",
+          "get_price_history",
+          "get_stock_quote",
+          "get_earnings_history"
+        ],
+        "blocks": [
+          {
+            "id": "blk-mrr-prompt",
+            "type": "prompt",
+            "text": "Your edge is catching a re-rating while it is still a re-rating and not yet a bubble. No news is injected; you infer the story from the tape and from recent memories of upgrades. Use get_earnings_history to confirm the earnings trajectory supports a higher multiple, get_key_metrics to keep the entry under forty times earnings, and get_technical_indicators to require MACD positive, relative volume above 1.3, and price in the top forty percent of its range. Call get_stock_quote and get_price_history to see whether the expansion is broad or just one print. Add on the first controlled pullback, and exit once the multiple stops expanding even as the price grinds higher."
+          },
+          {
+            "id": "blk-mrr-mem",
+            "type": "memories",
+            "contains": [
+              "multiple",
+              "upgrade",
+              "rerating"
+            ],
+            "recency_hours": 48,
+            "category": "ALL",
+            "min_importance": 3
+          },
+          {
+            "id": "blk-mrr-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-mrr-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "40"
+              },
+              {
+                "id": "rule-mrr-macd",
+                "metric": "MACD",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-mrr-rvol",
+                "metric": "RVOL",
+                "operator": ">",
+                "target": "1.3"
+              },
+              {
+                "id": "rule-mrr-52w",
+                "metric": "price_52w_pct",
+                "operator": ">",
+                "target": "60"
+              }
+            ]
+          },
+          {
+            "id": "blk-mrr-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Catalyst Hold Sleeve",
+    "description": "Seventy-two hours of guidance, sector and policy news plus market-event memories; buys strong-ROE leaders near highs and holds the catalyst rather than flipping it.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_technical_indicators",
+          "get_key_metrics",
+          "get_price_history",
+          "get_todays_news_menu",
+          "get_earnings_history"
+        ],
+        "blocks": [
+          {
+            "id": "blk-chs-prompt",
+            "type": "prompt",
+            "text": "This sleeve exists to hold a catalyst, not to trade around it. Read the injected news and memories and name the specific policy, sector or guidance event driving each candidate; if you cannot name the mechanism, the name does not belong here. Use get_todays_news_menu to widen the search beyond what was injected, get_earnings_history to confirm the catalyst lands on real numbers, get_key_metrics for ROE above twelve, and get_technical_indicators for MACD positive with price in the top quarter of its range. Enter in one clip, then leave it alone. Exit only when the catalyst is fully priced, formally withdrawn, or the price breaks its pre-catalyst base."
+          },
+          {
+            "id": "blk-chs-news",
+            "type": "news",
+            "contains": [
+              "guidance",
+              "sector",
+              "policy"
+            ],
+            "recency_hours": 72
+          },
+          {
+            "id": "blk-chs-mem",
+            "type": "memories",
+            "contains": [
+              "catalyst",
+              "policy",
+              "sector"
+            ],
+            "recency_hours": 168,
+            "category": "MARKET_EVENT",
+            "min_importance": 4
+          },
+          {
+            "id": "blk-chs-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-chs-macd",
+                "metric": "MACD",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-chs-52w",
+                "metric": "price_52w_pct",
+                "operator": ">",
+                "target": "75"
+              },
+              {
+                "id": "rule-chs-roe",
+                "metric": "ROE",
+                "operator": ">",
+                "target": "12"
+              }
+            ]
+          },
+          {
+            "id": "blk-chs-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Headline Panic Fader",
+    "description": "Twenty-four hours of panic, downgrade and selloff headlines plus short-horizon post-mortems; buys oversold names below VWAP and fades the fear quickly.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_market_feeling",
+          "get_technical_indicators",
+          "get_price_history",
+          "get_todays_news_menu",
+          "search_past_memories"
+        ],
+        "blocks": [
+          {
+            "id": "blk-hpf-prompt",
+            "type": "prompt",
+            "text": "Your job is to buy fear that is priced in and sell it back within days. Start with get_market_feeling and get_todays_news_menu to gauge how loud the panic actually is; a single downgrade is not a selloff, so check whether the injected headlines describe broad fear or one analyst note. Use get_technical_indicators for RSI below thirty and price under VWAP, and get_price_history to separate a capitulation candle from a genuine break of the business. Search past memories for how these panic episodes resolved and which names bounced. Size small, set a hard time stop of a few sessions, and take profit into the first relief rally rather than waiting for the old high."
+          },
+          {
+            "id": "blk-hpf-news",
+            "type": "news",
+            "contains": [
+              "panic",
+              "downgrade",
+              "selloff"
+            ],
+            "recency_hours": 24
+          },
+          {
+            "id": "blk-hpf-mem",
+            "type": "memories",
+            "contains": [
+              "panic",
+              "reversal"
+            ],
+            "recency_hours": 48,
+            "category": "POST_MORTEM",
+            "min_importance": 3
+          },
+          {
+            "id": "blk-hpf-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-hpf-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "30"
+              },
+              {
+                "id": "rule-hpf-52w",
+                "metric": "price_52w_pct",
+                "operator": "<",
+                "target": "35"
+              },
+              {
+                "id": "rule-hpf-vwap",
+                "metric": "Price vs VWAP",
+                "operator": "<",
+                "target": "0"
+              }
+            ]
+          },
+          {
+            "id": "blk-hpf-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Fast News Contrarian",
+    "description": "Twenty-four hours of headline, cut and selloff news with ninety-six hours of post-mortems; a quick contrarian book that buys overreactions in cash-generative names.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_market_feeling",
+          "get_ticker_news",
+          "get_stock_quote",
+          "get_technical_indicators",
+          "get_todays_news_menu"
+        ],
+        "blocks": [
+          {
+            "id": "blk-fnc-prompt",
+            "type": "prompt",
+            "text": "Speed is the point here: read the last day of headlines, decide whether the market overreacted, and act in the same session. Use get_todays_news_menu and get_ticker_news to find names hit by a headline, cut or selloff, then get_stock_quote and get_market_feeling to judge whether the selling is mechanical. Require get_technical_indicators to show RSI under forty and price under VWAP, and never touch a name without positive free cash flow, because you are buying a business dip and not a solvency story. Use the post-mortems to recall how similar overreactions ended. Hold for days, not weeks, and exit on the bounce or the moment the thesis needs a second headline to stay alive."
+          },
+          {
+            "id": "blk-fnc-news",
+            "type": "news",
+            "contains": [
+              "headline",
+              "cut",
+              "selloff"
+            ],
+            "recency_hours": 24
+          },
+          {
+            "id": "blk-fnc-mem",
+            "type": "memories",
+            "contains": [
+              "headline",
+              "overreaction",
+              "reversal"
+            ],
+            "recency_hours": 96,
+            "category": "POST_MORTEM",
+            "min_importance": 4
+          },
+          {
+            "id": "blk-fnc-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-fnc-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "40"
+              },
+              {
+                "id": "rule-fnc-vwap",
+                "metric": "Price vs VWAP",
+                "operator": "<",
+                "target": "0"
+              },
+              {
+                "id": "rule-fnc-fcf",
+                "metric": "FCF",
+                "operator": ">",
+                "target": "0"
+              }
+            ]
+          },
+          {
+            "id": "blk-fnc-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Print Window Scalper",
+    "description": "Twenty-four hours of earnings and beat/miss headlines with seventy-two hours of calendar memories; scalps the post-print window on heavy volume near 52-week highs.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_technical_indicators",
+          "get_key_metrics",
+          "get_stock_quote",
+          "get_todays_news_menu",
+          "get_ticker_news"
+        ],
+        "blocks": [
+          {
+            "id": "blk-pws-prompt",
+            "type": "prompt",
+            "text": "You trade the hours around an earnings print and you are out before the drift gets old. Use get_todays_news_menu and get_ticker_news to find names that just reported, then get_stock_quote to see where the print left the price. Require get_technical_indicators to confirm relative volume above two and price in the top twenty percent of its 52-week range, and get_key_metrics to check the beat was not bought with a stretched multiple. Consult the injected calendar memories to recall how this name behaved after prior surprises. Enter only after the opening range settles, size for a single session, and take the trade off when volume fades or the next print is inside a week."
+          },
+          {
+            "id": "blk-pws-news",
+            "type": "news",
+            "contains": [
+              "earnings",
+              "guidance",
+              "beat",
+              "miss"
+            ],
+            "recency_hours": 24
+          },
+          {
+            "id": "blk-pws-mem",
+            "type": "memories",
+            "contains": [
+              "earnings",
+              "drift",
+              "surprise"
+            ],
+            "recency_hours": 72,
+            "category": "CALENDAR_EVENT",
+            "min_importance": 3
+          },
+          {
+            "id": "blk-pws-tech",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-pws-rvol",
+                "metric": "RVOL",
+                "operator": ">",
+                "target": "2"
+              },
+              {
+                "id": "rule-pws-macd",
+                "metric": "MACD",
+                "operator": ">",
+                "target": "0"
+              },
+              {
+                "id": "rule-pws-52w",
+                "metric": "price_52w_pct",
+                "operator": ">",
+                "target": "80"
+              }
+            ]
+          },
+          {
+            "id": "blk-pws-format",
             "type": "output_format"
           }
         ]

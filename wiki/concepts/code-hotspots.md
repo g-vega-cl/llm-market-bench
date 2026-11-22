@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **329**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **330**).
 
 ## Top Hotspots
 
@@ -23,7 +23,7 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/engine/trading/test_live_intraday_agent.py` | 16 | 5 | 31.2% | 562 | 80 | **HIGH** |
 | `apps/engine/recipes/worker.py` | 13 | 6 | 46.2% | 321 | 78 | **HIGH** |
 | `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 19 | 4 | 21.1% | 328 | 76 | **HIGH** |
-| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 18 | 4 | 22.2% | 436 | 72 | **HIGH** |
+| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 18 | 4 | 22.2% | 474 | 72 | **HIGH** |
 | `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 12 | 6 | 50.0% | 186 | 72 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 12 | 6 | 50.0% | 226 | 72 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 17 | 4 | 23.5% | 625 | 68 | **HIGH** |
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **329**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **330**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **329**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 329 | 100.0% |
+| `g-vega-cl` | 330 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **329**, months: *
 | 2026-08 | 114 | ▇▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇▇ |
-| 2026-11 | 187 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 188 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

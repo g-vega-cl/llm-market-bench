@@ -37,3 +37,38 @@ export function assertNoPrevOutputPlaceholder(recipe: { stages: readonly Strateg
         }
     }
 }
+
+/**
+ * Canonical rule-metric vocabulary. `metric` is a free-form string in the schema,
+ * so without this gate a typo produces a rule the model can never satisfy — the
+ * indicator simply is not in any curated tool's output, and the gate is silently
+ * ignored at run time instead of failing at build time.
+ */
+export const RULE_METRIC_LABELS = [
+    'RSI',
+    'MACD',
+    'RVOL',
+    'Price vs VWAP',
+    'price_52w_pct',
+    'P/E',
+    'FCF',
+    'ROE',
+    'market_cap',
+    'beta',
+] as const;
+
+export type RuleMetricLabel = (typeof RULE_METRIC_LABELS)[number];
+
+export function assertKnownRuleMetrics(recipe: { stages: readonly StrategyStage[] }): void {
+    const allowed = new Set<string>(RULE_METRIC_LABELS);
+    for (const stage of recipe.stages ?? []) {
+        for (const block of stage.blocks ?? []) {
+            if (block.type !== 'technicals') continue;
+            for (const rule of block.rules) {
+                if (!allowed.has(rule.metric)) {
+                    throw new Error(`Invalid strategy: unknown rule metric "${rule.metric}"`);
+                }
+            }
+        }
+    }
+}

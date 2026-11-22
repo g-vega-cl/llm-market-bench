@@ -1,43 +1,18 @@
-import { resolveAtmospherePhase } from '@llm-market-bench/ui-design-system';
-import { createFileRoute } from '@tanstack/react-router';
-import { PersonalityQuizPage } from '~/features/personality/PersonalityQuizPage';
+import { createFileRoute, Outlet } from '@tanstack/react-router';
 import { type ArchetypeId, isValidArchetypeId } from '~/features/personality/personality-data';
-import { seo } from '~/lib/seo';
 
+/**
+ * Layout-only route for `/personality`: it owns the validated `?archetype=` search
+ * param (inherited by both children) and renders nothing but an outlet, so the quiz
+ * index (`/personality`) and a shared type (`/personality/t/CODE`) stay siblings.
+ */
 export const Route = createFileRoute('/personality')({
-    loader: () => ({
-        initialAtmosphere: resolveAtmospherePhase(new Date(), 'market-et'),
-    }),
     validateSearch: (search: Record<string, unknown>): { archetype?: ArchetypeId } => ({
         archetype: isValidArchetypeId(search.archetype) ? search.archetype : undefined,
     }),
-    head: () => ({
-        meta: [
-            ...seo({
-                title: 'Investing Style & Best Trading Bot Quiz | Benchify',
-                description:
-                    'Take the 10-question diagnostic to map your investing personality across Horizon, Signal, Crowd Stance, and Cadence and unlock your matched starter trading bot.',
-            }),
-        ],
-    }),
-    component: RouteComponent,
+    component: PersonalityLayout,
 });
 
-function RouteComponent() {
-    const { archetype } = Route.useSearch();
-    const { initialAtmosphere } = Route.useLoaderData();
-    const navigate = Route.useNavigate();
-
-    return (
-        <PersonalityQuizPage
-            initialArchetype={archetype}
-            initialAtmosphere={initialAtmosphere}
-            onArchetypeSearchChange={(next) =>
-                void navigate({
-                    search: next ? { archetype: next } : {},
-                    replace: true,
-                })
-            }
-        />
-    );
+function PersonalityLayout() {
+    return <Outlet />;
 }

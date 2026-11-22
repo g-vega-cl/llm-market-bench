@@ -112,8 +112,10 @@ def test_enqueue_live_recipes_excludes_archived_recipes():
 def test_load_starter_recipes_are_all_valid_single_stage_graphs():
     """Every seeded template must pass the same validator the worker enforces."""
     templates = load_starter_recipes()
-    assert len(templates) == 5
-    assert len({tmpl["name"] for tmpl in templates}) == 5
+    # The catalogue grows with the personality grid; assert the invariants that
+    # matter (non-empty, unique names, valid Push v2) rather than pinning a count.
+    assert len(templates) >= 5
+    assert len({tmpl["name"] for tmpl in templates}) == len(templates)
     for tmpl in templates:
         PushStrategy.model_validate(tmpl)
 

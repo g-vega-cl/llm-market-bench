@@ -23,7 +23,7 @@ The route `loader` resolves `initialAtmosphere: resolveAtmospherePhase(new Date(
 
 `/personality?archetype=<id>` opens the page directly in **inspect** mode for that archetype (shareable result links), while a bare `/personality` starts the quiz at question 1. The route head declares the title `Investing Style & Best Trading Bot Quiz | Benchify` plus a description naming the four axes.
 
-The homepage links here from the `Take the investing style test` button (`data-testid="take-personality-test"`) inside `home-cta-plaque`, and `/lab` lists it as **Investing Style Diagnostic** under `Research & Prediction Engines`.
+The homepage links here from the `Take the investing style test` button (`data-testid="take-personality-test"`) inside `home-cta-actions`, and `/lab` lists it as **Investing Style Diagnostic** under `Research & Prediction Engines`.
 
 ## The 10-Question Diagnostic
 

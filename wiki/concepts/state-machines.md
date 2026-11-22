@@ -215,6 +215,18 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
   - `/personality` route passes `onArchetypeSearchChange` using TanStack Router `navigate({ replace: true })`; self-emitted search updates tracked via FIFO `pendingSelfSearchesRef` keep `quizAnswers` intact even across pipelined transitions, while external `?archetype=` transitions or bare `/personality` navigations cleanly re-seed `session`.
   - Async clipboard copy updates `copiedArchetype` inside a `useEffect`-maintained `activeResultArchetypeRef` guard without render-phase ref mutation.
 
+### 2.10 Cedar Sanctuary Backdrop (`MotionState` & `EntranceState`)
+
+- **Source Files**: [`apps/web/src/features/home/backdrop/GardenBackdrop.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/home/backdrop/GardenBackdrop.tsx), [`apps/web/src/features/home/backdrop/garden-scene.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/home/backdrop/garden-scene.ts)
+- **Entity Page**: [[concepts/living-scene-backdrops]]
+- **States**:
+  - `MotionState = 'running' | 'idle' | 'paused'` (eliminates illegal simultaneous `{ running: true, reduced: true }` flags)
+  - `EntranceState = { kind: 'animating'; elapsed: number } | { kind: 'settled' }`
+- **Invariants**:
+  - System `prefers-reduced-motion: reduce` and explicit pause transitions (`settleAndPause`) atomically cancel timeouts/`rAF` and advance `entrance` to `{ kind: 'settled' }`, preventing partially clipped mid-entrance frames.
+  - A `0x0` deferred mount does not advance `EntranceState` offscreen; animation begins once `buildLayers()` initializes a non-empty `Scene`.
+  - `buildLayers()` checks `(width, height, dpr, atmosphere, backingWidth, backingHeight)` before allocating or clearing offscreen canvases.
+
 ---
 
 ## 3. Implicit State Debt & Refactoring Backlog

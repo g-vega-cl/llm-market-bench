@@ -268,9 +268,10 @@
         background:
             linear-gradient(
                 180deg,
-                rgba(9, 18, 16, 0.48) 0%,
-                rgba(9, 18, 16, 0.2) 26%,
-                rgba(8, 16, 14, 0) 44%
+                rgba(9, 18, 16, 0.58) 0%,
+                rgba(9, 18, 16, 0.48) 44%,
+                rgba(9, 18, 16, 0.56) 66%,
+                rgba(8, 16, 14, 0) 86%
             ),
             radial-gradient(
                 ellipse 65% 55% at 50% 84%,
@@ -294,9 +295,10 @@
         background:
             linear-gradient(
                 180deg,
-                rgba(10, 22, 19, 0.54) 0%,
-                rgba(10, 22, 19, 0.24) 26%,
-                rgba(8, 16, 14, 0) 44%
+                rgba(10, 22, 19, 0.60) 0%,
+                rgba(10, 22, 19, 0.48) 44%,
+                rgba(10, 22, 19, 0.52) 66%,
+                rgba(8, 16, 14, 0) 86%
             ),
             radial-gradient(
                 ellipse 65% 55% at 50% 84%,
@@ -320,9 +322,10 @@
         background:
             linear-gradient(
                 180deg,
-                rgba(8, 16, 14, 0.44) 0%,
-                rgba(8, 16, 14, 0.18) 26%,
-                rgba(8, 16, 14, 0) 44%
+                rgba(8, 16, 14, 0.56) 0%,
+                rgba(8, 16, 14, 0.44) 44%,
+                rgba(8, 16, 14, 0.50) 66%,
+                rgba(8, 16, 14, 0) 86%
             ),
             radial-gradient(
                 ellipse 65% 55% at 50% 84%,
@@ -346,9 +349,10 @@
         background:
             linear-gradient(
                 180deg,
-                rgba(4, 9, 8, 0.52) 0%,
-                rgba(4, 9, 8, 0.2) 26%,
-                rgba(8, 16, 14, 0) 44%
+                rgba(4, 9, 8, 0.56) 0%,
+                rgba(4, 9, 8, 0.32) 44%,
+                rgba(4, 9, 8, 0.22) 66%,
+                rgba(8, 16, 14, 0) 86%
             ),
             radial-gradient(
                 ellipse 65% 55% at 50% 84%,

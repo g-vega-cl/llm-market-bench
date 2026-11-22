@@ -44,7 +44,7 @@ beforeAll(() => {
     }
 });
 
-describe('HomeCtaPage (Cedar Sanctuary SceneStage, zero-flash initialAtmosphere & tactile CTA plaque)', () => {
+describe('HomeCtaPage (Cedar Sanctuary SceneStage, zero-flash initialAtmosphere & open-sky CTAs)', () => {
     it('renders on SceneStage with reactive motion role and zero-scroll hero viewport shell', () => {
         const { container } = render(<HomeCtaPage initialAtmosphere="after-hours" />);
         const section = container.querySelector('section');
@@ -75,37 +75,33 @@ describe('HomeCtaPage (Cedar Sanctuary SceneStage, zero-flash initialAtmosphere 
         expect(container.querySelector('[data-testid="garden-backdrop"]')).toBeInTheDocument();
     });
 
-    it('frames the CTA cluster and trust strip inside an opaque .scene-scrim .voxel-card plaque without backdrop-blur', () => {
+    it('renders the three primary CTAs directly in the open sky without a card plaque or trust bullets', () => {
         render(<HomeCtaPage />);
 
-        const plaque = screen.getByTestId('home-cta-plaque');
-        expect(plaque.className).toContain('scene-scrim');
-        expect(plaque.className).toContain('voxel-card');
-        expect(plaque.className).toContain('rounded-none');
-        expect(plaque.className).not.toContain('backdrop-blur');
+        expect(screen.queryByTestId('home-cta-plaque')).toBeNull();
+        expect(screen.queryByTestId('home-trust-strip')).toBeNull();
+        expect(screen.queryByText(/Paper cash only/i)).toBeNull();
+        expect(screen.queryByText(/Live every 30m ET/i)).toBeNull();
+        expect(screen.queryByText(/Every loser stays on the record/i)).toBeNull();
 
-        const startLink = within(plaque).getByTestId('start-building');
+        const actions = screen.getByTestId('home-cta-actions');
+        expect(actions.className).not.toContain('scene-scrim');
+        expect(actions.className).not.toContain('voxel-card');
+        expect(actions.className).not.toContain('backdrop-blur');
+        expect(actions.className).toContain('gap-4');
+
+        const startLink = within(actions).getByTestId('start-building');
         expect(startLink).toHaveAttribute('href', '/lab');
         expect(startLink.className).toContain('font-bold');
 
-        const quizLink = within(plaque).getByTestId('take-personality-test');
+        const quizLink = within(actions).getByTestId('take-personality-test');
         expect(quizLink).toHaveAttribute('href', '/personality');
 
-        const leaderboardLink = within(plaque).getByRole('link', {
+        const leaderboardLink = within(actions).getByRole('link', {
             name: /see how the published bots are doing/i,
         });
         expect(leaderboardLink).toHaveAttribute('href', '/leaderboard');
-
-        const trustStrip = within(plaque).getByTestId('home-trust-strip');
-        expect(trustStrip.className).toContain('flex-wrap');
-
-        const items = within(trustStrip).getAllByText(
-            /Paper cash only|Live every 30m ET|Every loser stays on the record/,
-        );
-        expect(items).toHaveLength(3);
-        for (const item of items) {
-            expect(item.className).toContain('whitespace-nowrap');
-        }
+        expect(leaderboardLink.className).toContain('home-hero-copy');
     });
 
     it('exposes Sky and Pause HUD controls outside aria-hidden without a multi-world switcher', () => {

@@ -135,4 +135,80 @@ describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-
         );
         expect(removeDocSpy.mock.calls.map(([ev]) => ev)).toContain('visibilitychange');
     });
+
+    it('renders non-zero viewport layers, advances entrance RAF, settles immediately on pause, and disposes canvases', () => {
+        mockMatchMedia(false);
+        let rafCallback: FrameRequestCallback | undefined;
+        let nowMs = 1000;
+        vi.spyOn(performance, 'now').mockImplementation(() => nowMs);
+        vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+            rafCallback = cb;
+            return 11;
+        });
+        vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
+
+        const fakeGradient = { addColorStop: vi.fn() };
+        const fakeCtx = {
+            setTransform: vi.fn(),
+            clearRect: vi.fn(),
+            createLinearGradient: vi.fn(() => fakeGradient),
+            createRadialGradient: vi.fn(() => fakeGradient),
+            fillRect: vi.fn(),
+            beginPath: vi.fn(),
+            moveTo: vi.fn(),
+            lineTo: vi.fn(),
+            rect: vi.fn(),
+            closePath: vi.fn(),
+            fill: vi.fn(),
+            stroke: vi.fn(),
+            drawImage: vi.fn(),
+            clip: vi.fn(),
+            save: vi.fn(),
+            restore: vi.fn(),
+            globalAlpha: 1,
+            globalCompositeOperation: 'source-over',
+            fillStyle: '',
+            strokeStyle: '',
+            lineWidth: 1,
+        } as unknown as CanvasRenderingContext2D;
+
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(fakeCtx);
+        vi.spyOn(HTMLCanvasElement.prototype, 'clientWidth', 'get').mockReturnValue(390);
+        vi.spyOn(HTMLCanvasElement.prototype, 'clientHeight', 'get').mockReturnValue(780);
+
+        const origCreateElement = document.createElement.bind(document);
+        const createdOffscreenCanvases: HTMLCanvasElement[] = [];
+        vi.spyOn(document, 'createElement').mockImplementation((tagName: string) => {
+            const el = origCreateElement(tagName);
+            if (tagName === 'canvas') createdOffscreenCanvases.push(el as HTMLCanvasElement);
+            return el;
+        });
+
+        const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
+        const { unmount } = render(<GardenBackdrop />);
+
+        const canvas = screen.getByTestId('garden-backdrop') as HTMLCanvasElement;
+        const offscreenCanvases = createdOffscreenCanvases.filter((c) => c !== canvas);
+        expect(canvas.className).toContain('opacity-100');
+        expect(offscreenCanvases).toHaveLength(6);
+        expect(fakeCtx.clip).not.toHaveBeenCalled();
+
+        // Advance one entrance frame past frame interval -> stepped reveal clip activates
+        nowMs += 40;
+        rafCallback?.(nowMs);
+        expect(fakeCtx.clip).toHaveBeenCalled();
+        expect(fakeCtx.drawImage).toHaveBeenCalled();
+
+        // Pausing mid-entrance settles the diorama completely without clip mask
+        (fakeCtx.clip as ReturnType<typeof vi.fn>).mockClear();
+        fireEvent.click(screen.getByRole('button', { name: 'Pause motion' }));
+        expect(clearTimeoutSpy).toHaveBeenCalled();
+        expect(fakeCtx.clip).not.toHaveBeenCalled();
+
+        unmount();
+        for (const offscreen of offscreenCanvases) {
+            expect(offscreen.width).toBe(0);
+            expect(offscreen.height).toBe(0);
+        }
+    });
 });

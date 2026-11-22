@@ -77,8 +77,9 @@ export function buildStandardClouds(
     const [frx, fry] = uvToGrid(66, -34);
     c.cloudSlab(frx - 10, fry, 32, 18, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'far');
 
-    const [fcx, fcy] = uvToGrid(-6, -42);
-    c.cloudSlab(fcx - 6, fcy, 38, 18, 9, 2, mats, { dx: 4, dy: 2, w: 10, d: 4 }, 'far');
+    // Keep far upper cloud offset to the east flank so the central open-sky CTA corridor stays unobstructed
+    const [fcx, fcy] = uvToGrid(36, -42);
+    c.cloudSlab(fcx - 6, fcy, 36, 18, 9, 2, mats, { dx: 4, dy: 2, w: 10, d: 4 }, 'far');
 
     const [nlx, nly] = uvToGrid(-90, 14);
     c.cloudSlab(nlx, nly, 18, 17, 10, 2, mats, { dx: 4, dy: 2, w: 9, d: 5 }, 'near');

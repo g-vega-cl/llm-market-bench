@@ -10,6 +10,11 @@ import {
     type WorldId,
 } from './voxel-world';
 
+export interface IslandVerticalBounds {
+    minY: number;
+    maxY: number;
+}
+
 const LIGHT: [number, number, number] = (() => {
     const v: [number, number, number] = [-0.45, -0.48, 0.75];
     const m = Math.hypot(v[0], v[1], v[2]);
@@ -65,6 +70,7 @@ export interface Scene {
     lanternSprite: HTMLCanvasElement | null;
     lanternRadius: number;
     island: HTMLCanvasElement | null;
+    islandBounds: IslandVerticalBounds;
     cloudsFar: HTMLCanvasElement | null;
     cloudsNear: HTMLCanvasElement | null;
     petals: Petal[];
@@ -78,7 +84,7 @@ export interface Scene {
 interface AtmospherePalette {
     skyStops: Array<[number, string]>;
     horizonGlow: [string, string, string];
-    topVignette: [string, string];
+    topVignette: [string, string, string];
     footFade: string;
     lightScale: number;
     topTint: [number, number, number];
@@ -107,7 +113,7 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
             'rgba(214, 148, 112, 0.09)',
             'rgba(214, 148, 112, 0)',
         ],
-        topVignette: ['rgba(9, 18, 16, 0.48)', 'rgba(9, 18, 16, 0.20)'],
+        topVignette: ['rgba(9, 18, 16, 0.58)', 'rgba(9, 18, 16, 0.48)', 'rgba(9, 18, 16, 0.56)'],
         footFade: 'rgba(14, 24, 21, 0.42)',
         lightScale: 0.98,
         topTint: [1.05, 0.99, 0.96],
@@ -134,7 +140,7 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
             'rgba(138, 192, 162, 0.08)',
             'rgba(138, 192, 162, 0)',
         ],
-        topVignette: ['rgba(10, 22, 19, 0.54)', 'rgba(10, 22, 19, 0.24)'],
+        topVignette: ['rgba(10, 22, 19, 0.60)', 'rgba(10, 22, 19, 0.48)', 'rgba(10, 22, 19, 0.52)'],
         footFade: 'rgba(15, 28, 24, 0.38)',
         lightScale: 1.07,
         topTint: [1.03, 1.04, 0.99],
@@ -161,7 +167,7 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
             'rgba(214, 162, 102, 0.08)',
             'rgba(214, 162, 102, 0)',
         ],
-        topVignette: ['rgba(8, 16, 14, 0.44)', 'rgba(8, 16, 14, 0.18)'],
+        topVignette: ['rgba(8, 16, 14, 0.56)', 'rgba(8, 16, 14, 0.44)', 'rgba(8, 16, 14, 0.50)'],
         footFade: 'rgba(12, 22, 20, 0.42)',
         lightScale: 1.0,
         topTint: [1.04, 1.01, 0.93],
@@ -188,7 +194,7 @@ export const ATMOSPHERE_PALETTES: Record<AtmospherePhase, AtmospherePalette> = {
             'rgba(72, 132, 116, 0.06)',
             'rgba(72, 132, 116, 0)',
         ],
-        topVignette: ['rgba(4, 9, 8, 0.52)', 'rgba(4, 9, 8, 0.20)'],
+        topVignette: ['rgba(4, 9, 8, 0.56)', 'rgba(4, 9, 8, 0.32)', 'rgba(4, 9, 8, 0.22)'],
         footFade: 'rgba(6, 12, 11, 0.52)',
         lightScale: 0.76,
         topTint: [0.86, 0.96, 1.08],
@@ -247,13 +253,14 @@ export function bakeSky(
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, W, H);
 
-    // Phase-tuned top atmospheric vignette so open-sky cream typography reads at AAA contrast
-    const topVignette = ctx.createLinearGradient(0, 0, 0, H * 0.44);
+    // Phase-tuned extended top atmospheric vignette so open-sky cream copy and CTAs maintain AAA contrast
+    const topVignette = ctx.createLinearGradient(0, 0, 0, H * 0.86);
     topVignette.addColorStop(0, palette.topVignette[0]);
-    topVignette.addColorStop(0.6, palette.topVignette[1]);
+    topVignette.addColorStop(0.52, palette.topVignette[1]);
+    topVignette.addColorStop(0.76, palette.topVignette[2]);
     topVignette.addColorStop(1, 'rgba(8, 16, 14, 0)');
     ctx.fillStyle = topVignette;
-    ctx.fillRect(0, 0, W, H * 0.44);
+    ctx.fillRect(0, 0, W, H * 0.86);
 
     return off;
 }
@@ -441,34 +448,18 @@ export function drawZenithParticles(
     }
 }
 
-/** Releases GPU backing storage for an offscreen canvas safely. */
-export function disposeCanvas(canvas: HTMLCanvasElement | null | undefined) {
-    if (!canvas) return;
-    canvas.width = 0;
-    canvas.height = 0;
-}
-
-/** Releases all offscreen layer canvases owned by a Scene before GC or rebuild. */
-export function disposeSceneCanvases(scene: Scene | null) {
-    if (!scene) return;
-    disposeCanvas(scene.sky);
-    disposeCanvas(scene.foot);
-    disposeCanvas(scene.lanternSprite);
-    disposeCanvas(scene.island);
-    disposeCanvas(scene.cloudsFar);
-    disposeCanvas(scene.cloudsNear);
-}
-
 function drawSurfaceGlints(
     ctx: CanvasRenderingContext2D,
     scene: Scene,
     time: number,
     islandParX: number,
     islandParY: number,
+    alphaScale: number,
 ) {
     ctx.fillStyle = CEDAR_PARTICLE_COLORS.glintHex;
     for (const g of scene.glints) {
-        ctx.globalAlpha = 0.09 + 0.26 * (0.5 + 0.5 * Math.sin(time * g.speed + g.phase));
+        ctx.globalAlpha =
+            (0.09 + 0.26 * (0.5 + 0.5 * Math.sin(time * g.speed + g.phase))) * alphaScale;
         ctx.fillRect(g.x + islandParX, g.y + islandParY, g.size, Math.max(1, g.size * 0.45));
     }
     ctx.globalAlpha = 1;
@@ -480,6 +471,7 @@ function drawSurfaceRipples(
     time: number,
     islandParX: number,
     islandParY: number,
+    alphaScale: number,
 ) {
     if (scene.koi.length === 0) return;
     ctx.strokeStyle = CEDAR_PARTICLE_COLORS.rippleHex;
@@ -490,7 +482,7 @@ function drawSurfaceRipples(
         const ry = rx * 0.56;
         const cx = k.x + islandParX + Math.sin(time * 0.6 + k.phase) * 2.5;
         const cy = k.y + islandParY + Math.cos(time * 0.6 + k.phase) * 1.4;
-        ctx.globalAlpha = (1 - cycle) * 0.55;
+        ctx.globalAlpha = (1 - cycle) * 0.55 * alphaScale;
         ctx.beginPath();
         ctx.moveTo(cx, cy - ry);
         ctx.lineTo(cx + rx, cy);
@@ -509,6 +501,7 @@ function drawBeaconHalos(
     time: number,
     islandParX: number,
     islandParY: number,
+    alphaScale: number,
 ) {
     if (!scene.lanternSprite) return;
     const r = scene.lanternRadius;
@@ -516,7 +509,7 @@ function drawBeaconHalos(
     for (const l of scene.lamps) {
         const flicker =
             0.78 + 0.22 * Math.sin(time * 2.4 + l.phase) * Math.sin(time * 1.3 + l.phase * 2);
-        ctx.globalAlpha = Math.min(1, flicker * lanternAlphaScale);
+        ctx.globalAlpha = Math.min(1, flicker * lanternAlphaScale) * alphaScale;
         ctx.drawImage(
             scene.lanternSprite,
             l.x + islandParX - r,
@@ -536,9 +529,10 @@ function drawFireflies(
     time: number,
     islandParX: number,
     islandParY: number,
+    alphaScale: number,
 ) {
     if (!showFireflies || scene.fireflies.length === 0) return;
-    const boost = scene.atmosphere === 'after-hours' ? 1 : 0.72;
+    const boost = (scene.atmosphere === 'after-hours' ? 1 : 0.72) * alphaScale;
     for (const f of scene.fireflies) {
         const fx = f.x + islandParX + Math.sin(time * f.speed + f.phase) * f.ampX;
         const fy = f.y + islandParY + Math.cos(time * (f.speed * 0.85) + f.phase) * f.ampY;
@@ -555,8 +549,10 @@ function drawCedarMistAndLeaves(
     scene: Scene,
     time: number,
     par: number,
+    alphaScale: number,
 ) {
     ctx.fillStyle = 'rgba(218, 232, 224, 0.09)';
+    ctx.globalAlpha = alphaScale;
     for (let i = 0; i < 3; i++) {
         const bandY = scene.height * (0.58 + i * 0.08);
         const bandX = ((time * (6 + i * 2.5) + i * 220) % (scene.width + 260)) - 130 + par * 8;
@@ -568,7 +564,7 @@ function drawCedarMistAndLeaves(
         const y = p.y + ((time * p.vy * 6.5) % (H + 80)) - 40;
         const x = p.x + Math.sin(time * 0.92 + p.phase) * (p.sway * 1.4) + par * 12 * p.depth;
         ctx.fillStyle = p.tint;
-        ctx.globalAlpha = 0.45 + 0.28 * Math.sin(time * 0.9 + p.phase);
+        ctx.globalAlpha = (0.45 + 0.28 * Math.sin(time * 0.9 + p.phase)) * alphaScale;
         ctx.fillRect(x, y, p.size, p.size);
     }
     ctx.globalAlpha = 1;
@@ -581,12 +577,40 @@ export function drawAtmosphericParticles(
     par: number,
     islandParX: number,
     islandParY: number,
+    alphaScale = 1,
 ) {
+    if (alphaScale <= 0) return;
     const palette = ATMOSPHERE_PALETTES[scene.atmosphere];
 
-    drawSurfaceGlints(ctx, scene, time, islandParX, islandParY);
-    drawSurfaceRipples(ctx, scene, time, islandParX, islandParY);
-    drawBeaconHalos(ctx, scene, palette.lanternAlphaScale, time, islandParX, islandParY);
-    drawFireflies(ctx, scene, palette.showFireflies, time, islandParX, islandParY);
-    drawCedarMistAndLeaves(ctx, scene, time, par);
+    drawSurfaceGlints(ctx, scene, time, islandParX, islandParY, alphaScale);
+    drawSurfaceRipples(ctx, scene, time, islandParX, islandParY, alphaScale);
+    drawBeaconHalos(
+        ctx,
+        scene,
+        palette.lanternAlphaScale,
+        time,
+        islandParX,
+        islandParY,
+        alphaScale,
+    );
+    drawFireflies(ctx, scene, palette.showFireflies, time, islandParX, islandParY, alphaScale);
+    drawCedarMistAndLeaves(ctx, scene, time, par, alphaScale);
+}
+
+/** Releases GPU backing storage for an offscreen canvas safely. */
+export function disposeCanvas(canvas: HTMLCanvasElement | null | undefined) {
+    if (!canvas) return;
+    canvas.width = 0;
+    canvas.height = 0;
+}
+
+/** Releases all offscreen layer canvases owned by a Scene before GC or rebuild. */
+export function disposeSceneCanvases(scene: Scene | null) {
+    if (!scene) return;
+    disposeCanvas(scene.sky);
+    disposeCanvas(scene.foot);
+    disposeCanvas(scene.lanternSprite);
+    disposeCanvas(scene.island);
+    disposeCanvas(scene.cloudsFar);
+    disposeCanvas(scene.cloudsNear);
 }

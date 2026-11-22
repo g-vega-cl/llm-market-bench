@@ -5,12 +5,12 @@ category: concept
 
 # Living Scene Backdrops & Expressive Motion
 
-Expressive animated backdrops are permitted across **major page heroes and parallax footers** while preserving legibility, Voxel geometry, and performance. The architecture separates sky, midground scenery, and independent procedural micro-entities into discrete layers, clips them inside contained stages, and protects foreground CTAs with opaque Matcha scrims — never glassmorphism blur. This concept is codified in `.agents/rules/design-spec.md` §12 and implemented by the `SceneStage` / `HeroBackground` layouts plus the `atmosphere` utility in `packages/ui-design-system`.
+Expressive animated backdrops are permitted across **major page heroes and parallax footers** while preserving legibility, Voxel geometry, and performance. The architecture separates sky, midground scenery, and independent procedural micro-entities into discrete layers, clips them inside contained stages, and protects foreground CTAs with opaque Matcha scrims — never glassmorphism blur — or with extended top atmospheric sky vignettes. This concept is codified in `.agents/rules/design-spec.md` §12 and implemented by the `SceneStage` / `HeroBackground` layouts plus the `atmosphere` utility in `packages/ui-design-system`.
 
 ## Core Principles
 
 1. **Modular layered dioramas + ambient life** — Separate sky, midground scenery, and independent procedural micro-entities (clouds, fauna, footer sprites) into discrete layers. Never flat looping videos or static baked clips.
-2. **Containment & CTA scrims (zero glassmorphism)** — Clip animated stages inside `SceneStage` / `HeroBackground` (`overflow-hidden isolate`) with hard scroll ceilings so motion never bleeds into data tables. Protect CTAs with opaque/semi-opaque Matcha backing panels (`.scene-scrim` / `.voxel-card`, never `backdrop-blur`).
+2. **Containment & CTA legibility (zero glassmorphism)** — Clip animated stages inside `SceneStage` / `HeroBackground` (`overflow-hidden isolate`) with hard scroll ceilings so motion never bleeds into data tables. Protect foreground UI either with opaque/semi-opaque Matcha surfaces (`.voxel-btn`, `.scene-scrim` / `.voxel-card`, never `backdrop-blur`) or with extended top atmospheric sky vignettes maintaining accessible contrast (`>= 4.5:1` AA / `>= 7:1` AAA) with central diorama sightlines clear of bright cloud slabs.
 3. **Zero SSR/CSR flash & CLS invariance** — Route loaders (`apps/web/src/routes/index.tsx`, `apps/web/src/routes/personality.tsx`) resolve the US Eastern market atmosphere (`resolveAtmospherePhase(new Date(), 'market-et')`) server-side and pass `initialAtmosphere` into `useDioramaStage(initialAtmosphere)`. CSS `.scene-atmosphere-*` gradients match `ATMOSPHERE_PALETTES` stops pixel-for-pixel, and `<canvas>` cross-fades in cleanly once the first frame paints so SSR and CSR never produce layout shifts or sky flashes. See [[concepts/cumulative-layout-shift]].
 4. **Motion roles & bans** — Declare `data-motion-role`: `background` (calm ambient depth), `reactive` (bounded pointer/hover), or `story` (bounded scroll hero/footer). Full-page WebGL takeovers and scroll-jacking are prohibited on data routes.
 5. **Resize resilience, perf & reduced motion** — Anchor parallax travel to container/`window.innerHeight` with resize invalidation (never document `maxScroll`). Use offscreen-baked canvas capped at `<= 30fps`, mark backdrops `aria-hidden="true"` + `pointer-events-none`, and honor `prefers-reduced-motion`.
@@ -91,7 +91,7 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 
 - `skyStops` — 7+ vertical gradient stops (the zenith top color is unique per phase).
 - `horizonGlow` — three-stop radial glow centered behind the ridge silhouette.
-- `topVignette` — two-stop top atmospheric vignette tuned for AAA cream-text contrast.
+- `topVignette` — three-stop extended top atmospheric vignette (spanning ~86% of stage height) tuned for AAA cream-text contrast.
 - `footFade` — bottom fade band color.
 - `lightScale` — global voxel face brightness multiplier.
 - `topTint` / `sideTint` — per-face RGB tint multipliers.
@@ -119,28 +119,28 @@ The backdrop is a single curated world. `voxel-world.ts` exports `CEDAR_WORLD_ID
 
 ### Geometry & Camera Framing
 
-- **Panoramic Voxel Grid (`voxel-world.ts`)**: `144×144×64` (`RU = 84`, `RV = 42`) with `uvToGrid` / `gridToUv` camera-space projection helpers so the floating cedar ridge stretches horizontally across wide viewports (~90% desktop width at `scale = Math.min(W / 92, H / 46)`, `originY = H * 0.68`) with crisp isometric tile proportions (`HW = scale * 0.5`, `HH = scale * 0.34`, `ZH = scale * 0.46`). The `createVoxelCanvas` builder exposes `putUV(u, v, z, m, glow?)` alongside `put`/`box`/`cyl`/`sphere` so world geometry can be authored in camera-aligned `(u, v)` space.
+- **Panoramic Voxel Grid (`voxel-world.ts`)**: `144×144×64` (`RU = 84`, `RV = 42`) with `uvToGrid` / `gridToUv` camera-space projection helpers so the floating cedar ridge stretches horizontally across wide viewports (`computeCedarFraming` in `garden-scene.ts`: ~90% desktop width at `scale = Math.min(W / 92, H / 46)`, anchoring desktop/landscape `originY = 0.68 * H` while smoothly lowering `originY` toward `0.82 * H` on portrait mobile aspect ratios `W < H` so hero CTAs stay clear above the trees) with crisp isometric tile proportions (`HW = scale * 0.5`, `HH = scale * 0.34`, `ZH = scale * 0.46`). The `createVoxelCanvas` builder exposes `putUV(u, v, z, m, glow?)` alongside `put`/`box`/`cyl`/`sphere` so world geometry can be authored in camera-aligned `(u, v)` space.
 - **Twin-Bluff Cedar Sanctuary (`worlds/cedar-sanctuary.ts`)**:
   - *Left Highland Bluff*: two-story timber lodge on dressed granite foundation with warm paper windows (`windowGlow`), stone chimney, gable eaves, porch sconces, and tall Douglas pines.
   - *Central Brook Valley*: gently recessed terrain keeping foreground CTA copy readable while exposing a winding brook, arched cedar footbridge with lanterns, and an elevated timber aqueduct trestle.
   - *Right Maple & Cascade Bluff*: crimson/amber autumn maple grove, east cedar torii gate, granite path lanterns, and a cliffside waterfall plunge (`carveCliffWaterfall`).
-- **Flanking Under-crust & Clouds (`worlds/shared-terrain.ts`)**: `buildPanoramicUndercrust` tapers the underside granite cone and hanging roots across `RU`/`RV`, and `buildStandardClouds` places 6 flat-bottomed 3D cloud slabs split into `cloudsFar` and `cloudsNear` parallax buckets.
+- **Flanking Under-crust & Clouds (`worlds/shared-terrain.ts`)**: `buildPanoramicUndercrust` tapers the underside granite cone and hanging roots across `RU`/`RV`, and `buildStandardClouds` places 6 flat-bottomed 3D cloud slabs split into `cloudsFar` and `cloudsNear` parallax buckets, with the far upper slab offset to the east flank so the central open-sky CTA corridor stays unobstructed.
 
 ### Homepage & Diagnostic Integration
 
 - `apps/web/src/features/home/pages/HomeCtaPage.tsx` and `apps/web/src/features/personality/PersonalityQuizPage.tsx` share `useDioramaStage(initialAtmosphere)` (`apps/web/src/features/home/backdrop/useDioramaStage.ts`) initialized synchronously from route loaders (avoiding SSR/CSR flicker) plus `SceneHudControls.tsx` (`Sky: <Phase>`, `Pause motion`/`Play motion`).
-- `GardenBackdrop` starts with `opacity-0` and flips `canvasReady` (`opacity-100 transition-opacity duration-200`, disabled under `prefers-reduced-motion`) after painting frame 0 onto a `clientWidth × clientHeight` viewport.
+- **Single-Island SSR -> CSR Stepped Build-In**: `GardenBackdrop` matches the SSR atmospheric sky immediately, then animates the single `sortKey`-sorted `island` canvas via [`computeIslandRevealFrame`](apps/web/src/features/home/backdrop/garden-scene.ts) — clipping upwards in quantized isometric voxel block columns (`stepPx = Math.max(4, Math.round(scale * 2.2))`) over `1.1s` (`ENTRANCE_DURATION_S`) with zero painter-order seams and zero extra GPU canvas buffers before settling cleanly into unclipped steady-state rendering. Clouds and particles fade in over the upper half (`computeAmbientEntranceAlpha`). `GardenBackdrop` tracks reveal lifecycle via a discrete `EntranceState` union (`'animating' | 'settled'`), skipping straight to `'settled'` under `prefers-reduced-motion` or explicit pause.
 
 ### 4-Plane Depth Parallax & Micro-Life
 
-`paintFrame` composites four depth planes back-to-front:
+`drawCedarSceneFrame` (`apps/web/src/features/home/backdrop/garden-scene.ts`) composites four depth planes back-to-front:
 
 1. **Atmospheric sky** — phase-baked gradient plus `drawZenithParticles` (twinkling stars for dusk/after-hours, drifting sun-motes for dawn/daylight).
 2. **Far high-altitude cloud slabs** — slow breeze drift (`sin(time * 0.08)`) plus subtle parallax.
 3. **Panoramic cedar island** — gentle vertical levitation (`sin(time * 0.45)`) plus surface water glints (`drawSurfaceGlints`), brook/pool ripples (`drawSurfaceRipples`), warm amber lantern glow halos (`drawBeaconHalos`), dusk/night fireflies (`drawFireflies`), drifting valley mist bands, and falling autumn maple leaves (`drawCedarMistAndLeaves`).
 4. **Near perimeter cloud slabs** — faster breeze drift (`sin(time * 0.11 + 1.4)`) plus deeper parallax.
 
-`getCedarWorldAndFaces()` (`worlds.ts`) caches face extraction and calls `stripWorldBuffers` to free raw occupancy buffers once extracted. `disposeCanvas` / `disposeSceneCanvases` (`garden-renderer.ts`) zero offscreen canvas storage on rebuild and unmount.
+Offscreen layers are built by `buildCedarScene` (`garden-scene.ts`) once per mount/resize/atmosphere change and disposed on rebuild. `getCedarWorldAndFaces()` (`worlds.ts`) caches face extraction and calls `stripWorldBuffers` to free raw occupancy buffers once extracted. `disposeCanvas` / `disposeSceneCanvases` (`garden-renderer.ts`) zero offscreen canvas storage on rebuild and unmount.
 
 ### Cedar Particle Palette
 
@@ -160,7 +160,7 @@ const CEDAR_PARTICLE_COLORS = {
 ## CSS Foundations (`apps/web/src/styles/app.css`)
 
 - `.voxel-dot-matrix` — radial-gradient dot texture at 20px spacing.
-- `.scene-atmosphere-dawn` / `-daylight` / `-dusk` / `-after-hours` — layered Matcha & Cedar CSS backgrounds combining the top contrast vignette, bottom radial horizon glow, and linear sky stops matching `ATMOSPHERE_PALETTES`.
+- `.scene-atmosphere-dawn` / `-daylight` / `-dusk` / `-after-hours` — layered Matcha & Cedar CSS backgrounds combining the extended top contrast vignette (to ~86% height), bottom radial horizon glow, and linear sky stops matching `ATMOSPHERE_PALETTES`.
 - `.scene-scrim` — semi-opaque Matcha backing (`rgba(20, 28, 24, 0.88)`), zero `backdrop-blur`.
 - `.scene-stage-hero` (`min-height: 20rem`) / `.scene-stage-footer` (`min-height: 11rem`).
 - `.scene-stage-hero.home-hero-viewport` — `min-height: calc(100dvh - 3.875rem)` so the homepage hero fills the viewport below the sticky navbar.
@@ -171,9 +171,9 @@ const CEDAR_PARTICLE_COLORS = {
 - `packages/ui-design-system/src/lib/atmosphere.test.ts` — verifies all four phases, EST/EDT boundaries, local-mode thresholds, and `NaN` fallback to `dusk`.
 - `apps/web/src/test/scene-stage.test.tsx` — verifies hero/footer landmarks, default `dusk` atmosphere, `data-motion-role`, `aria-hidden` backdrop, scrim panel without `backdrop-blur`, `HeroBackground` atmosphere/backdrop slots, and wrapped `controls` slot.
 - `apps/web/src/test/design-standardization.test.tsx` — verifies `SceneStage` containment/scrim invariants and `HeroBackground` token discipline.
-- `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` — verifies `data-world={CEDAR_WORLD_ID}`, `data-atmosphere`, all 4 distinct `ATMOSPHERE_PALETTES`, controlled props + `showControls={false}`, reduced-motion toggle, and listener cleanup.
+- `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` & `apps/web/src/features/home/backdrop/garden-scene.test.ts` — verify `data-world={CEDAR_WORLD_ID}`, `data-atmosphere`, all 4 distinct `ATMOSPHERE_PALETTES`, controlled props + `showControls={false}`, reduced-motion toggle, non-zero canvas lifecycle + mid-entrance settle, listener cleanup, portrait mobile `computeCedarFraming` lowering, bounded canvas coordinates (`computeIslandVerticalBounds`), and stepped entrance reveal kinematics.
 - `apps/web/src/features/home/backdrop/worlds.test.ts` — verifies panoramic `cedar-sanctuary` seed determinism, horizontal `gridToUv` span (`>= RU * 1.8`), flat-bottomed cloud slabs (same-base neighbor ratio `>= 0.99`), and monotonic painter depth sort order.
-- `apps/web/src/features/home/pages/HomeCtaPage.test.tsx` — verifies the `SceneStage` hero shell, `initialAtmosphere` SSR/CSR parity, `.scene-scrim .voxel-card` CTA plaque, HUD atmosphere/motion controls with no `world-switcher`, and `/personality` link.
+- `apps/web/src/features/home/pages/HomeCtaPage.test.tsx` — verifies the `SceneStage` hero shell, `initialAtmosphere` SSR/CSR parity, open-sky 3-CTA stack (`home-cta-actions`, zero `.scene-scrim` card container or trust bullets), HUD atmosphere/motion controls with no `world-switcher`, and `/personality` link.
 - `apps/web/src/features/personality/personality-data.test.ts` & `apps/web/src/features/personality/PersonalityQuizPage.test.tsx` — verify the 10-question 4-axis diagnostic scoring engine, full 5-archetype reachability, starter recipe integrity, top-2 bot matches linking to `/build?idea=`, `?archetype=` hydration, and `cedar-sanctuary` stage parity.
 
 ## Related

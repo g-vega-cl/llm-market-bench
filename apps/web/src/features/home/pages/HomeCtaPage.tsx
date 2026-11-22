@@ -54,15 +54,15 @@ export function HomeCtaPage({ initialAtmosphere }: HomeCtaPageProps) {
                         Build your own trading bot.
                     </h1>
 
-                    <p className="home-hero-copy max-w-[44ch] text-sm font-normal leading-relaxed text-voxel-ink">
+                    <p className="home-hero-copy max-w-[44ch] text-xs font-normal leading-relaxed text-voxel-ink">
                         Describe a strategy in plain English, test it on point-in-time news, and
                         switch it Live.
                     </p>
                 </div>
 
                 <div
-                    data-testid="home-cta-plaque"
-                    className="scene-scrim voxel-card flex w-full max-w-md flex-col items-center gap-3 rounded-none px-6 py-5"
+                    data-testid="home-cta-actions"
+                    className="flex w-full max-w-md flex-col items-center gap-4"
                 >
                     <Link
                         to="/lab"
@@ -82,19 +82,10 @@ export function HomeCtaPage({ initialAtmosphere }: HomeCtaPageProps) {
 
                     <Link
                         to="/leaderboard"
-                        className="text-sm font-normal text-voxel-ink underline decoration-voxel-bevel-hi underline-offset-4 hover:text-accent"
+                        className="home-hero-copy text-sm font-bold text-voxel-ink underline decoration-voxel-bevel-hi underline-offset-4 hover:text-accent"
                     >
                         See how the published bots are doing
                     </Link>
-
-                    <div
-                        data-testid="home-trust-strip"
-                        className="flex flex-wrap items-baseline justify-center gap-x-4 gap-y-1 text-sm font-normal text-voxel-ink"
-                    >
-                        <span className="whitespace-nowrap">Paper cash only</span>
-                        <span className="whitespace-nowrap">• Live every 30m ET</span>
-                        <span className="whitespace-nowrap">• Every loser stays on the record</span>
-                    </div>
                 </div>
             </div>
         </SceneStage>

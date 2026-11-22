@@ -3,6 +3,8 @@
 from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
+
 from recipes.push_schema import PushStrategy
 from recipes.worker import STALE_COMPILE_MESSAGE, process_next_recipe_job
 
@@ -615,3 +617,26 @@ def test_compile_job_refuses_a_row_that_aged_past_the_window():
     failed = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "failed"]
     assert failed
     assert failed[0]["error_message"] == STALE_COMPILE_MESSAGE
+
+
+def test_failure_recording_never_stores_an_empty_message():
+    """Found live: a 45s httpx timeout recorded error_message = "" and the UI could only say "failed"."""
+    from recipes.worker import _record_job_failure
+
+    client, queue_table, _recipes, _alerts = _make_mock_supabase()
+    _record_job_failure(client, {"job_id": "job-timeout"}, httpx.ReadTimeout(""))
+
+    payload = queue_table.update.call_args[0][0]
+    assert payload["status"] == "failed"
+    assert payload["error_message"]
+    assert "too long" in payload["error_message"]
+    assert "try again" in payload["error_message"].lower()
+
+
+def test_failure_recording_falls_back_to_the_exception_type():
+    from recipes.worker import _record_job_failure
+
+    client, queue_table, _recipes, _alerts = _make_mock_supabase()
+    _record_job_failure(client, {"job_id": "job-weird"}, RuntimeError(""))
+
+    assert queue_table.update.call_args[0][0]["error_message"] == "RuntimeError: the job stopped without a message."

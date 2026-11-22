@@ -34,6 +34,8 @@ The compile lane loop (`_compile_lane_loop`) runs this sweep at most once per `S
 
 A 60s sweep cannot beat a 5s pop poll, so the sweep alone is not enough: a daemon returning to a 12-minute-old row claims and runs it first. `_execute_compile_job` therefore re-reads `created_at` and raises `STALE_COMPILE_MESSAGE` **before** the meter and before any provider call. A late job fails instead of charging a user for a compile they stopped waiting for. Proven live: a synthetic 12-minute-old row was claimed and completed before this guard, and fails without a provider call after it.
 
+Two more live findings from the same probe round: a provider timeout recorded `error_message = ""` (the row was `failed` with no text, so the UI could only say "failed"), and 45s was too tight — a real compile hit 46s against the free provider. `_failure_text()` now returns "The model took too long to answer. Try again." for `httpx.TimeoutException` and `<Type>: the job stopped without a message.` otherwise, and the budget is `COMPILE_TIMEOUT_SECONDS` = 60s (`RECIPE_COMPILE_TIMEOUT_SECONDS`, floor 30).
+
 ## Client-Side Give-Up Path
 
 The builder UI (`apps/web/src/features/recipes/builder/use-builder-chat.ts`) does not count up forever on an unclaimed job. Two thresholds in `compile-queue.ts` drive the behavior:

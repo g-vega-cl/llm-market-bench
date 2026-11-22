@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
@@ -20,7 +21,9 @@ SUPPORTED_JOB_MODES = ("backtest", "live_turn", "compile")
 # /build compiles ride the same queue. The daemon is not behind the edge's ~30s
 # function ceiling, so it can give the free provider a longer window than the old
 # synchronous request did; the web tier keeps the template fallback for failures.
-COMPILE_TIMEOUT_SECONDS = 45
+# 45s proved tight: a live smoke compile failed at 46s against the free provider.
+# Nothing upstream caps this (the client polls), so give the model 60s.
+COMPILE_TIMEOUT_SECONDS = max(30, int(os.environ.get("RECIPE_COMPILE_TIMEOUT_SECONDS", "60")))
 BUILDER_DAILY_LIMIT = 25
 DEFAULT_COMPILE_PROXY_URL = "https://llm.clvg.uk/v1"
 # A compile nobody ever claimed (daemon down, or a burst the lane never reached)
@@ -192,6 +195,17 @@ async def _execute_recipe_job_mode(
     )
 
 
+def _failure_text(exc: Exception) -> str:
+    """An empty error message tells the user nothing; httpx timeouts stringify to ""."""
+    text = str(exc).strip()
+    if text:
+        return text
+    if isinstance(exc, httpx.TimeoutException):
+        # Shared with backtests, so no compile-specific second count here.
+        return "The model took too long to answer. Try again."
+    return f"{type(exc).__name__}: the job stopped without a message."
+
+
 def _record_job_failure(sb: Any, job: dict[str, Any], exc: Exception) -> None:
     """Persist FAILED status on the popped queue row without masking the original error."""
     if not job.get("job_id"):
@@ -200,7 +214,7 @@ def _record_job_failure(sb: Any, job: dict[str, Any], exc: Exception) -> None:
         sb.table("recipe_execution_queue").update(
             {
                 "status": "failed",
-                "error_message": str(exc),
+                "error_message": _failure_text(exc),
                 "completed_at": datetime.now(UTC).isoformat(),
             }
         ).eq("id", job["job_id"]).execute()

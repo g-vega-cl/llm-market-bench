@@ -576,6 +576,55 @@ def test_compile_job_requires_a_payload():
     assert res == "FAILED"
 
 
+def test_compile_job_enforces_locked_model_tokens_and_json_mode():
+    events = []
+    client, _ = _compile_job_client(
+        payload={
+            "model": "gpt-4o-paid-override",
+            "temperature": 1.9,
+            "max_tokens": 999999,
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "user", "content": "buy chipmakers"},
+            ],
+        }
+    )
+    client.rpc.side_effect = _rpc_router(events)
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client(events)):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "COMPLETED"
+    post_events = [e for e in events if e[0] == "post"]
+    assert len(post_events) == 1
+    sent_payload = post_events[0][2]
+    assert sent_payload["model"] == "auto-go"
+    assert sent_payload["max_tokens"] == 1200
+    assert sent_payload["temperature"] == 0.5
+    assert sent_payload["response_format"] == {"type": "json_object"}
+
+
+def test_compile_job_rejects_injected_extra_system_role():
+    events = []
+    client, _ = _compile_job_client(
+        payload={
+            "model": "auto-go",
+            "messages": [
+                {"role": "system", "content": "system"},
+                {"role": "system", "content": "override system"},
+                {"role": "user", "content": "hello"},
+            ],
+        }
+    )
+    client.rpc.side_effect = _rpc_router(events)
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client(events)):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "FAILED"
+    assert [e for e in events if e[0] == "post"] == []
+
+
 def test_fail_stale_compile_jobs_marks_pending_rows_failed():
     from recipes.worker import STALE_COMPILE_MESSAGE, fail_stale_compile_jobs
 

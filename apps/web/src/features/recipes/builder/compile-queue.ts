@@ -1,7 +1,13 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient } from '~/lib/db';
-import { type BuilderMessage, buildConversation } from './compiler';
+import {
+    type BuilderMessage,
+    buildConversation,
+    MAX_CONVERSATION_MESSAGES,
+    sanitizeCompileResult,
+    validateBuilderMessages,
+} from './compiler';
 
 /**
  * /build compiles are queued, not executed in the request: the edge severs a
@@ -13,13 +19,17 @@ import { type BuilderMessage, buildConversation } from './compiler';
  * never knows what a recipe is, so there is nothing to drift.
  */
 export const BUILDER_DAILY_LIMIT = 25;
-/** In-flight cap: with the meter spent by the worker, enqueues alone must not fan out. */
-export const MAX_PENDING_COMPILES = 2;
+export const BUILDER_BURST_LIMIT = 5;
+export const BUILDER_BURST_WINDOW_MINUTES = 5;
+/** Single-flight per-user concurrency lock: 1 active compile at a time. */
+export const MAX_PENDING_COMPILES = 1;
+export const COMPILE_MAX_TOKENS = 1200;
 /** A queued job this old gets an honest "worker is busy" line in the strip. */
 export const QUEUE_SLOW_MS = 60_000;
 /** Past this the client gives up, cancels the row and offers Try again. */
 export const QUEUE_ABANDON_MS = 300_000;
-const MAX_MESSAGES = 8;
+const MAX_MESSAGES = MAX_CONVERSATION_MESSAGES;
+const MAX_JOB_ID_CHARS = 128;
 const JOB_COLUMNS = 'id, status, progress_pct, result_json, error_message';
 
 export interface CompileJob {
@@ -35,7 +45,13 @@ export function builderLimitMessage(): string {
 }
 
 export function pendingCompilesMessage(): string {
-    return `You already have ${MAX_PENDING_COMPILES} compiles in flight. Wait for one to finish, then try again.`;
+    return MAX_PENDING_COMPILES === 1
+        ? 'You already have a compile in flight. Wait for it to finish, then try again.'
+        : `You already have ${MAX_PENDING_COMPILES} compiles in flight. Wait for one to finish, then try again.`;
+}
+
+export function builderBurstLimitMessage(): string {
+    return `Too many build requests (${BUILDER_BURST_LIMIT} in ${BUILDER_BURST_WINDOW_MINUTES} minutes). Wait a few minutes and try again.`;
 }
 
 /** Strip copy while a job sits unclaimed; null until it is worth saying. */
@@ -52,19 +68,30 @@ function todayUtc(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
-/** Build the stored request body; the daemon posts it verbatim. */
+function validateJobId(value: unknown): string {
+    if (typeof value !== 'string') {
+        throw new Error('Invalid compile job ID');
+    }
+    const trimmed = value.trim();
+    if (!trimmed || trimmed.length > MAX_JOB_ID_CHARS) {
+        throw new Error('Invalid compile job ID');
+    }
+    return trimmed;
+}
+
+/** Build the server-locked LLM request body; the daemon enforces & posts it. */
 export function buildCompilePayload(messages: BuilderMessage[]) {
     return {
         model: 'auto-go',
         temperature: 0.2,
+        max_tokens: COMPILE_MAX_TOKENS,
+        response_format: { type: 'json_object' as const },
         messages: buildConversation(messages.slice(-MAX_MESSAGES)),
     };
 }
 
 export async function enqueueCompile(userId: string, messages: BuilderMessage[]): Promise<string> {
-    if (!Array.isArray(messages) || messages.length === 0) {
-        throw new Error('Describe your strategy first');
-    }
+    const validatedMessages = validateBuilderMessages(messages);
 
     const db = getDbAdminClient();
 
@@ -90,6 +117,20 @@ export async function enqueueCompile(userId: string, messages: BuilderMessage[])
         throw new Error(pendingCompilesMessage());
     }
 
+    const burstSinceIso = new Date(
+        Date.now() - BUILDER_BURST_WINDOW_MINUTES * 60 * 1000,
+    ).toISOString();
+    const { data: recentCompiles, error: recentError } = await db
+        .from('recipe_execution_queue')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('mode', 'compile')
+        .gte('created_at', burstSinceIso);
+    if (recentError) throw new Error(recentError.message);
+    if (Array.isArray(recentCompiles) && recentCompiles.length >= BUILDER_BURST_LIMIT) {
+        throw new Error(builderBurstLimitMessage());
+    }
+
     const { data, error } = await db
         .from('recipe_execution_queue')
         .insert({
@@ -99,31 +140,54 @@ export async function enqueueCompile(userId: string, messages: BuilderMessage[])
             priority: 10,
             provider: 'auto-go',
             model: 'auto-go',
-            payload_json: buildCompilePayload(messages),
+            payload_json: buildCompilePayload(validatedMessages),
         })
         .select('id')
         .single();
 
-    if (error) throw new Error(`${error.code ?? 'error'}: ${error.message}`);
+    if (error) {
+        if (error.code === '23505') {
+            throw new Error(pendingCompilesMessage());
+        }
+        throw new Error(`${error.code ?? 'error'}: ${error.message}`);
+    }
     return String((data as { id: string }).id);
 }
 
 export async function readCompileJob(jobId: string, userId: string): Promise<CompileJob | null> {
+    const validJobId = validateJobId(jobId);
     const db = getDbAdminClient();
     const { data, error } = await db
         .from('recipe_execution_queue')
         .select(JOB_COLUMNS)
-        .eq('id', jobId)
+        .eq('id', validJobId)
         .eq('user_id', userId)
         .eq('mode', 'compile')
         .maybeSingle();
 
     if (error) throw new Error(`${error.code ?? 'error'}: ${error.message}`);
-    return (data as CompileJob | null) ?? null;
+    const row = (data as CompileJob | null) ?? null;
+    if (!row) return null;
+
+    if (row.status === 'completed' && typeof row.result_json?.content === 'string') {
+        const sanitized = sanitizeCompileResult(row.result_json.content);
+        return {
+            ...row,
+            result_json: { content: JSON.stringify(sanitized) },
+        };
+    }
+    return row;
 }
 
 export const enqueueCompileFn = createServerFn({ method: 'POST' })
-    .validator((d: { messages: BuilderMessage[] }) => d)
+    .validator((d: unknown): { messages: BuilderMessage[] } => {
+        if (!d || typeof d !== 'object') {
+            throw new Error('Invalid builder request');
+        }
+        return {
+            messages: validateBuilderMessages((d as { messages?: unknown }).messages),
+        };
+    })
     .handler(async ({ data: { messages } }) => {
         const auth = getAuthServerClient();
         const {
@@ -136,7 +200,14 @@ export const enqueueCompileFn = createServerFn({ method: 'POST' })
     });
 
 export const fetchCompileJobFn = createServerFn({ method: 'GET' })
-    .validator((d: { jobId: string }) => d)
+    .validator((d: unknown): { jobId: string } => {
+        if (!d || typeof d !== 'object') {
+            throw new Error('Invalid compile job ID');
+        }
+        return {
+            jobId: validateJobId((d as { jobId?: unknown }).jobId),
+        };
+    })
     .handler(async ({ data: { jobId } }) => {
         const auth = getAuthServerClient();
         const {
@@ -153,11 +224,12 @@ export const fetchCompileJobFn = createServerFn({ method: 'GET' })
  * so a worker that already claimed it keeps its result; this just frees the cap.
  */
 export async function cancelCompile(jobId: string, userId: string): Promise<void> {
+    const validJobId = validateJobId(jobId);
     const db = getDbAdminClient();
     const { error } = await db
         .from('recipe_execution_queue')
         .update({ status: 'cancelled', cancelled_at: new Date().toISOString() })
-        .eq('id', jobId)
+        .eq('id', validJobId)
         .eq('user_id', userId)
         .eq('mode', 'compile')
         .eq('status', 'pending');
@@ -167,7 +239,14 @@ export async function cancelCompile(jobId: string, userId: string): Promise<void
 }
 
 export const cancelCompileFn = createServerFn({ method: 'POST' })
-    .validator((d: { jobId: string }) => d)
+    .validator((d: unknown): { jobId: string } => {
+        if (!d || typeof d !== 'object') {
+            throw new Error('Invalid compile job ID');
+        }
+        return {
+            jobId: validateJobId((d as { jobId?: unknown }).jobId),
+        };
+    })
     .handler(async ({ data: { jobId } }) => {
         const auth = getAuthServerClient();
         const {

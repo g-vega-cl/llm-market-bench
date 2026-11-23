@@ -25,9 +25,11 @@ SUPPORTED_JOB_MODES = ("backtest", "live_turn", "compile")
 # Nothing upstream caps this (the client polls), so give the model 60s.
 COMPILE_TIMEOUT_SECONDS = max(30, int(os.environ.get("RECIPE_COMPILE_TIMEOUT_SECONDS", "60")))
 BUILDER_DAILY_LIMIT = 25
+COMPILE_MAX_TOKENS = 1200
+COMPILE_MAX_MESSAGES = 9  # 1 system + up to 8 conversation turns
 DEFAULT_COMPILE_PROXY_URL = "https://llm.clvg.uk/v1"
 # A compile nobody ever claimed (daemon down, or a burst the lane never reached)
-# must not block the per-user 2-pending cap forever. Matches the existing
+# must not block the per-user single-flight cap forever. Matches the existing
 # 10-minute recovery rule for stalled `processing` rows.
 STALE_COMPILE_SECONDS = 600
 STALE_COMPILE_MESSAGE = "The worker never picked this compile up. Try again."
@@ -222,8 +224,54 @@ def _record_job_failure(sb: Any, job: dict[str, Any], exc: Exception) -> None:
         logger.exception("Failed to record error state on queue job")
 
 
+def _sanitize_compile_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    """Enforce server-locked compile parameters so tampered queue rows cannot proxy arbitrary LLM calls."""
+    messages = payload.get("messages")
+    if not isinstance(messages, list) or not messages or len(messages) > COMPILE_MAX_MESSAGES:
+        raise ValueError("compile job has invalid messages count")
+
+    sanitized_messages: list[dict[str, str]] = []
+    for idx, msg in enumerate(messages):
+        if not isinstance(msg, dict):
+            raise ValueError("compile job message must be an object")
+        role = msg.get("role")
+        content = msg.get("content")
+        if idx == 0:
+            if role not in ("system", "user"):
+                raise ValueError("compile job first message must be system or user")
+        elif role not in ("user", "assistant"):
+            raise ValueError("compile job contains forbidden message role")
+        if not isinstance(content, str) or not content.strip():
+            raise ValueError("compile job message content must be non-empty text")
+        max_len = 8000 if role == "system" else 2200
+        sanitized_messages.append({"role": role, "content": content[:max_len]})
+
+    if sanitized_messages[-1]["role"] != "user":
+        raise ValueError("compile job must end with a user message")
+
+    raw_max_tokens = payload.get("max_tokens")
+    max_tokens = (
+        min(max(int(raw_max_tokens), 1), COMPILE_MAX_TOKENS)
+        if isinstance(raw_max_tokens, int) and not isinstance(raw_max_tokens, bool)
+        else COMPILE_MAX_TOKENS
+    )
+    raw_temp = payload.get("temperature")
+    temperature = (
+        min(max(float(raw_temp), 0.0), 0.5)
+        if isinstance(raw_temp, (int, float)) and not isinstance(raw_temp, bool)
+        else 0.2
+    )
+    return {
+        "model": "auto-go",
+        "temperature": temperature,
+        "max_tokens": max_tokens,
+        "response_format": {"type": "json_object"},
+        "messages": sanitized_messages,
+    }
+
+
 async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dict[str, Any]:
-    """Run one /build compile: meter, POST the stored auto-go request, return the raw reply.
+    """Run one /build compile: meter, POST the locked auto-go request, return the raw reply.
 
     The prompt and the recipe contract are built and validated by the web tier, so
     this worker stays a generic completion executor — one implementation of the
@@ -240,6 +288,7 @@ async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dic
     payload = row.get("payload_json")
     if not isinstance(payload, dict) or not payload.get("messages"):
         raise ValueError("compile job has no payload_json messages")
+    locked_payload = _sanitize_compile_payload(payload)
 
     # The sweep marks unclaimed rows failed, but the pop poll runs every 5s and the
     # sweep only once a minute, so a row that aged past the window could be claimed
@@ -263,9 +312,19 @@ async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dic
     base_url = (FREE_LLM_PROXY_URL or DEFAULT_COMPILE_PROXY_URL).rstrip("/")
 
     async with httpx.AsyncClient(timeout=COMPILE_TIMEOUT_SECONDS) as client:
-        response = await client.post(f"{base_url}/chat/completions", json=payload, headers=headers)
+        response = await client.post(f"{base_url}/chat/completions", json=locked_payload, headers=headers)
         response.raise_for_status()
         body = response.json()
+
+    usage = body.get("usage")
+    if isinstance(usage, dict):
+        logger.info(
+            "Compile job %s completed for user=%s (prompt_tokens=%s, completion_tokens=%s)",
+            job_id,
+            user_id,
+            usage.get("prompt_tokens"),
+            usage.get("completion_tokens"),
+        )
 
     choices = body.get("choices") or []
     content = (choices[0].get("message") or {}).get("content") if choices else None

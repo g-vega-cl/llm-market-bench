@@ -260,9 +260,14 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
             return;
         }
 
-        const next: BuilderMessage[] = [...messages, { role: 'user', content: trimmed }];
+        // After a decline, the previous user prompt did not add an assistant turn,
+        // so starting fresh keeps strict user/assistant alternation intact.
+        const baseMessages = reply?.status === 'declined' ? [] : messages;
+        const baseIds = reply?.status === 'declined' ? [] : messageIds;
+        const next: BuilderMessage[] = [...baseMessages, { role: 'user', content: trimmed }];
         setMessages(next);
-        setMessageIds((ids) => [...ids, `m${ids.length}-${Date.now()}`]);
+        setMessageIds([...baseIds, `m${baseIds.length}-${Date.now()}`]);
+        setReply(null);
         setDraft('');
         await requestCompile(next);
     };

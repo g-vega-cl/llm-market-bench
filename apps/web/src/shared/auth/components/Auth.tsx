@@ -2,6 +2,7 @@ import { Button, Input, Label } from '@llm-market-bench/ui-design-system';
 import { useEffect, useState } from 'react';
 import { getAuthBrowserClient } from '~/lib/auth-client';
 import { buildOAuthCallbackUrl, resolveCurrentReturnPath } from '../redirect';
+import { TurnstileWidget } from './TurnstileWidget';
 
 function GoogleIcon() {
     return (
@@ -33,6 +34,7 @@ export function Auth({
     status,
     afterSubmit,
     redirectPath,
+    captchaResetKey = 0,
 }: {
     actionText: string;
     onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
@@ -44,13 +46,18 @@ export function Auth({
      * the trailing `next` param of the OAuth callback.
      */
     redirectPath?: string;
+    /** Increment after a failed auth attempt so single-use Turnstile tokens refresh. */
+    captchaResetKey?: number;
 }) {
     const [browserReturnPath, setBrowserReturnPath] = useState('/');
+    const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+    const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY;
     useEffect(() => {
         setBrowserReturnPath(resolveCurrentReturnPath());
     }, []);
     const returnPath = redirectPath ?? browserReturnPath;
     const isRecipesGate = returnPath.startsWith('/recipes');
+    const captchaPending = Boolean(turnstileSiteKey) && !captchaToken;
 
     const handleGoogleLogin = async () => {
         const authClient = getAuthBrowserClient();
@@ -111,11 +118,18 @@ export function Auth({
                             className="rounded-none text-xs font-normal"
                         />
                     </div>
+                    <input type="hidden" name="captchaToken" value={captchaToken ?? ''} />
+                    <TurnstileWidget
+                        siteKey={turnstileSiteKey}
+                        resetKey={captchaResetKey}
+                        onToken={setCaptchaToken}
+                    />
                     <Button
                         type="submit"
                         colorScheme="info"
                         className="w-full uppercase font-bold text-sm"
                         isLoading={status === 'pending'}
+                        disabled={captchaPending}
                     >
                         {actionText}
                     </Button>

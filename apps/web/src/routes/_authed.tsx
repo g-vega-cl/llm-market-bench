@@ -5,12 +5,17 @@ import { Login } from '~/shared/auth';
 import { buildAuthRedirectSearch } from '~/shared/auth/redirect';
 
 export const loginFn = createServerFn({ method: 'POST' })
-    .validator((d: { email: string; password: string }) => d)
+    .validator((d: { email: string; password: string; captchaToken?: string }) => d)
     .handler(async ({ data }) => {
         const authClient = getAuthServerClient();
+        const captchaToken =
+            typeof data.captchaToken === 'string' && data.captchaToken.trim()
+                ? data.captchaToken.trim()
+                : undefined;
         const { data: authData, error } = await authClient.auth.signInWithPassword({
             email: data.email,
             password: data.password,
+            ...(captchaToken ? { options: { captchaToken } } : {}),
         });
 
         if (error) {

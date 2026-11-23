@@ -110,6 +110,7 @@
 
 ## Concepts
 
+- [[concepts/turnstile-captcha]] — Cloudflare Turnstile CAPTCHA gating password login and signup
 - [[concepts/page-surface-conventions]] — PageLayout padding opt-out (`withPadding={false}`) and action-vs-browse page title rules, enforced by `page-surface-conventions.test.tsx`
 - [[concepts/starter-recipes]] — catalog of pre-built recipe templates in packages/config/starter-recipes.json
 - [[concepts/recipe-compile-queue]] — Auto-indexed page

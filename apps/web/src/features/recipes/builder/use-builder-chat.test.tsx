@@ -324,4 +324,47 @@ describe('useBuilderChat (queued compiles)', () => {
         expect(onNeedSignIn).toHaveBeenCalledWith('buy chipmakers');
         expect(result.current.phase).toBe('signed-out');
     });
+
+    it('starts a clean user-led conversation when refining after a declined reply', async () => {
+        vi.mocked(fetchCompileJobFn)
+            .mockResolvedValueOnce(
+                job({
+                    result_json: {
+                        content: JSON.stringify({
+                            status: 'declined',
+                            reason: 'Shorting is not supported.',
+                            closest: 'Long-only chipmaker rotation.',
+                        }),
+                    },
+                }) as never,
+            )
+            .mockResolvedValueOnce(
+                job({
+                    result_json: {
+                        content: JSON.stringify({
+                            status: 'question',
+                            question: 'Which tickers?',
+                            options: ['NVDA', 'AMD'],
+                        }),
+                    },
+                }) as never,
+            );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('short chipmakers');
+        });
+        await waitFor(() => expect(result.current.phase).toBe('declined'));
+
+        await act(async () => {
+            await result.current.send('long chipmakers only');
+        });
+
+        expect(enqueueCompileFn).toHaveBeenLastCalledWith({
+            data: { messages: [{ role: 'user', content: 'long chipmakers only' }] },
+        });
+    });
 });

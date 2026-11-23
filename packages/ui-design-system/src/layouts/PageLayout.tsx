@@ -13,8 +13,6 @@ export interface PageLayoutProps {
     className?: string;
     maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
     withPadding?: boolean;
-    /** Vertical rhythm. `tight` brings the first block under the navbar. */
-    paddingY?: 'default' | 'tight';
 }
 
 const maxWidthMap = {
@@ -25,24 +23,18 @@ const maxWidthMap = {
     full: 'max-w-none',
 };
 
-const paddingYMap = {
-    default: 'py-8 md:py-12',
-    tight: 'py-3',
-};
-
 export function PageLayout({
     children,
     className,
     maxWidth = 'lg',
     withPadding = true,
-    paddingY = 'default',
 }: PageLayoutProps) {
     return (
         <div
             className={cn(
                 'mx-auto w-full',
                 maxWidthMap[maxWidth],
-                withPadding && cn('px-6 md:px-12', paddingYMap[paddingY]),
+                withPadding && 'px-6 md:px-12 py-8 md:py-12',
                 className,
             )}
         >

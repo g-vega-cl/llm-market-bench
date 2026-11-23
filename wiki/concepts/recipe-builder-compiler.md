@@ -88,7 +88,7 @@ Client-supplied roles are filtered to `user`/`assistant` only and each turn is t
 
 ## Step 1 Chat Surface (`BuilderChatPanel`)
 
-`BuilderChatPanel` renders a centered header (eyebrow, `Build your trading bot.` headline, one-sentence subheadline) above a single `.voxel-card` (`data-testid="builder-stage-card"`) over the global fixed dot-matrix `GlobalBackground`. The card holds, in order:
+`BuilderChatPanel` renders a single `.voxel-card` (`data-testid="builder-stage-card"`) over the global fixed dot-matrix `GlobalBackground`, with **no visible headline block** — the eyebrow, `Build your trading bot.` headline and subheadline were removed because they pushed the card down the viewport without adding anything the composer does not say; the page name now comes from the route `<title>` plus exactly one `sr-only` `<h1>` per state ("Build a trading bot from one sentence", rendered by `BuilderChatPanel` for the chat and by `CompiledBotWorkspace` for a compiled bot). The card holds, in order:
 
 - a thin `builder-phase-bar` (`aria-hidden`) whose color tracks `phase` (`bg-accent` queued/compiling, `bg-warning` question/declined, `bg-danger` error, `bg-voxel-bevel-hi` idle),
 - `BuilderStatusStrip` (always mounted, `role="status"`),
@@ -115,7 +115,7 @@ When compilation succeeds (`reply.status === 'ok'`), `BuilderChatPanel` renders 
 
 `/build` renders one status line for its whole life — never only while a spinner spins — because a compile is a slow request and a silent screen is indistinguishable from a broken one:
 
-- `BuilderChatPanel` mounts it above the header with the hook's `phase` and `elapsedMs`: `READY`, `SIGN IN TO BUILD`, `QUEUED` (waiting for the daemon), `COMPILING` (counting up), `YOUR ANSWER NEEDED`, `CANNOT RUN AS DESCRIBED`, `BOT READY`, `FAILED`. Only the label and text sit in the `role="status"` live region — the elapsed clock is `aria-hidden`, so a countdown does not queue one announcement per second.
+- `BuilderChatPanel` mounts it at the top of the chat card with the hook's `phase` and `elapsedMs`: `READY`, `SIGN IN TO BUILD`, `QUEUED` (waiting for the daemon), `COMPILING` (counting up), `YOUR ANSWER NEEDED`, `CANNOT RUN AS DESCRIBED`, `BOT READY`, `FAILED`. Only the label and text sit in the `role="status"` live region — the elapsed clock is `aria-hidden`, so a countdown does not queue one announcement per second.
 - `CompiledBotWorkspace` uses the same component for the draft and for background work. Both axes stay visible (`Draft not saved yet · Last backtest finished`), because a settled run from last week must never hide an unsaved draft. The run itself comes from `useLatestRecipeRun`, which reads the newest job **for that recipe** (`fetchLatestRecipeRunFn`, index-aligned) through TanStack Query and sets `refetchInterval` only while it is `pending`/`processing` — a hidden tab pauses, a transport failure keeps the last good row, and one cache entry is shared.
 - A failure also renders the message plus a `Try again` button wired to `retry()`, which re-runs the last turn under an `inFlight` latch so a double click cannot spend two metered compiles.
 

@@ -66,9 +66,11 @@ describe('BuilderChatPanel (GlobalBackground, Expansible Textarea & Voxel Pipeli
         expect(screen.queryByTestId('garden-backdrop')).toBeNull();
         expect(screen.queryByTestId('builder-starter-chips')).toBeNull();
 
-        expect(
-            screen.getByRole('heading', { name: /build your trading bot/i }),
-        ).toBeInTheDocument();
+        const pageHeading = screen.getByRole('heading', {
+            level: 1,
+            name: /build a trading bot from one sentence/i,
+        });
+        expect(pageHeading).toHaveClass('sr-only');
         expect(screen.getByTestId('builder-stage-card')).toHaveClass('voxel-card');
         expect(screen.getByTestId('builder-stage-card')).not.toHaveClass('scene-scrim');
 

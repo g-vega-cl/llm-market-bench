@@ -104,17 +104,7 @@ export function BuilderChatPanel({
 
     return (
         <div className="flex flex-1 flex-col items-center justify-start gap-6 pb-8">
-            <header className="flex flex-col items-center gap-2 text-center">
-                <p className="text-xs font-normal tracking-wider uppercase text-accent">
-                    Benchify Strategy Builder
-                </p>
-                <h1 className="text-lg font-bold text-voxel-ink">Build your trading bot.</h1>
-                <p className="max-w-prose text-xs font-normal leading-relaxed text-voxel-muted">
-                    Describe what your bot should trade and when to enter or exit. We&apos;ll
-                    compile it into a point-in-time strategy you can backtest on paper cash right
-                    away.
-                </p>
-            </header>
+            <h1 className="sr-only">Build a trading bot from one sentence</h1>
 
             <div
                 data-testid="builder-stage-card"

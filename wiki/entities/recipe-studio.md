@@ -51,7 +51,7 @@ The **Recipe Studio** is now a two-surface experience:
 
 #### `/build` — Chat Builder (`BuilderChatPanel` → `CompiledBotWorkspace`)
 - **Step 1**: Conversational builder (`BuilderChatPanel` + `BuilderCompilePipeline` + `BuilderConversation`) inside `PageLayout` over the fixed dot-matrix `GlobalBackground`
-  - Centered header above a single `.voxel-card` with recessed `.voxel-trough` slots (zero nested `.voxel-card`)
+  - No visible headline block — the page name comes from the route `<title>` plus exactly one `sr-only` `<h1>` ("Build a trading bot from one sentence"), rendered by `BuilderChatPanel` for the chat state and by `CompiledBotWorkspace` for the compiled state; a single `.voxel-card` with recessed `.voxel-trough` slots (zero nested `.voxel-card`)
   - Primary submit button (`Build My Bot →` / `Send`) sits above an auto-expansible `<textarea>` (`maxLength={2000}`, `Enter` for newline, `Ctrl/Cmd+Enter` to submit)
   - Compiles via `compileStrategyFn` (25/day quota, `auto-go` model)
   - On `status: 'ok'`, immediately renders **Compiled Bot Workspace**

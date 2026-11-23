@@ -85,6 +85,12 @@ describe('CompiledBotWorkspace', () => {
         expect(container.querySelector('section[data-slot="scene-stage"]')).toBeNull();
         expect(screen.queryByTestId('garden-backdrop')).toBeNull();
 
+        // The compiled state is still the /build page: exactly one sr-only h1 carries the name
+        const pageHeadings = screen.getAllByRole('heading', { level: 1 });
+        expect(pageHeadings).toHaveLength(1);
+        expect(pageHeadings[0]).toHaveClass('sr-only');
+        expect(pageHeadings[0]).toHaveTextContent('Build a trading bot from one sentence');
+
         const heroCard = screen.getByTestId('compiled-bot-hero-card');
         expect(heroCard).toHaveClass('voxel-card');
         expect(heroCard).not.toHaveClass('scene-scrim');

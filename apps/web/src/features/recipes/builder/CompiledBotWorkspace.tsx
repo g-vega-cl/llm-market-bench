@@ -257,6 +257,7 @@ export function CompiledBotWorkspace({
 
     return (
         <div className="flex flex-col gap-6 min-w-0">
+            <h1 className="sr-only">Build a trading bot from one sentence</h1>
             <div
                 data-testid="compiled-bot-hero-card"
                 className="voxel-card mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-none p-6 min-w-0"

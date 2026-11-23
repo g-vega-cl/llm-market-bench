@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { ChatPage } from '~/features/chat/ChatPage';
+import { seo } from '~/lib/seo';
 
 interface ChatSearch {
     q?: string;
@@ -10,6 +11,15 @@ export const Route = createFileRoute('/chat')({
     validateSearch: (search: Record<string, unknown>): ChatSearch => ({
         q: typeof search.q === 'string' ? search.q : undefined,
         ticker: typeof search.ticker === 'string' ? search.ticker : undefined,
+    }),
+    head: () => ({
+        meta: [
+            ...seo({
+                title: 'Investment Chat Gateway | Benchify',
+                description:
+                    'Interrogate autonomous trading agents, query memories and causal chains, and evaluate investment theses against live trade history.',
+            }),
+        ],
     }),
     component: ChatRouteComponent,
 });

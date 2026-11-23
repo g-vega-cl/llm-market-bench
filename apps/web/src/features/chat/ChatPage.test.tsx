@@ -36,7 +36,11 @@ describe('ChatPage Component', () => {
 
     it('renders gated private beta banner when user is not authorized', () => {
         render(<ChatPage user={null} />);
-        expect(screen.getAllByText(/Investment Chat Gateway/i).length).toBeGreaterThan(0);
+        const pageHeading = screen.getByRole('heading', {
+            level: 1,
+            name: /investment chat gateway/i,
+        });
+        expect(pageHeading).toHaveClass('sr-only');
         expect(screen.getByText(/Private Beta/i)).toBeInTheDocument();
         expect(screen.getByText(/Sign In to Access/i)).toBeInTheDocument();
     });

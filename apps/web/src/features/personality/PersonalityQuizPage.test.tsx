@@ -132,6 +132,11 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         expect(screen.getByTestId('archetype-title')).toHaveTextContent('The Contrarian Diver');
         expect(screen.queryByTestId('apply-homepage-world')).toBeNull();
 
+        // Share route: the page heading names the same archetype as the document title
+        expect(
+            screen.getByRole('heading', { level: 1, name: /the contrarian diver/i }),
+        ).toHaveClass('sr-only');
+
         // Design spec: zero nested .voxel-card elements inside personality-result
         const resultPlaque = screen.getByTestId('personality-result');
         expect(resultPlaque.querySelectorAll('.voxel-card')).toHaveLength(0);

@@ -375,6 +375,18 @@ export function PersonalityQuizPage({
         : '';
     const liveHint = revealedLetters ? `Leaning: ${revealedLetters}` : '';
 
+    // The share route (/personality/t/<CODE>) has an archetype-specific document
+    // title, so its page heading names the same archetype instead of the generic
+    // tool. A retake keeps the URL, so follow the live result once the visitor has
+    // scored a new one — otherwise the heading would name the archetype they left.
+    const headingArchetype =
+        session.phase === 'result' && session.mode === 'quiz_match'
+            ? liveQuizResult.primary.archetype.id
+            : initialArchetype;
+    const pageHeading = headingArchetype
+        ? `${ARCHETYPES[headingArchetype].title} — investing style diagnostic`
+        : 'Investing style diagnostic: discover your best trading bot';
+
     const currentQuestion =
         session.phase === 'answering' ? PERSONALITY_QUESTIONS[session.stepIndex] : undefined;
     const currentActIndex = currentQuestion
@@ -436,9 +448,7 @@ export function PersonalityQuizPage({
             }
         >
             <div className="flex flex-1 flex-col items-center justify-start gap-6 pb-16">
-                <h1 className="sr-only">
-                    Investing style diagnostic: discover your best trading bot
-                </h1>
+                <h1 className="sr-only">{pageHeading}</h1>
 
                 {showResume && draft ? (
                     <div

@@ -10,12 +10,13 @@ Gated "Should I invest in this stock?" chat interface connecting users with LLM 
 ## Architecture
 
 ### UI Architecture
-- **Dedicated `/chat` terminal** (`ChatPage.tsx`): Full-page responsive research terminal with hero background, section heading, and chat stream. This is the primary entry point for the chat gateway.
+- **Dedicated `/chat` terminal** (`ChatPage.tsx`): Full-page responsive research terminal — no hero banner and no visible page title ([[entities/design-system]] action-surface rule), an `sr-only` `<h1>` carrying "Investment Chat Gateway", then the "Interactive Research Terminal" section heading and the chat stream. This is the primary entry point for the chat gateway.
+- **Route metadata** (`apps/web/src/routes/chat.tsx`): the route declares a `head()` built from the shared `seo()` helper (`~/lib/seo`), emitting the document title `Investment Chat Gateway | Benchify` and the description "Interrogate autonomous trading agents, query memories and causal chains, and evaluate investment theses against live trade history." The visible page carries no title block, so the document title and the `sr-only` `<h1>` are the only names the surface exposes.
 - **Floating drawer widget** (`ChatWidget.tsx`): Previously rendered globally, now unused in the root layout. The widget component still exists but is not currently rendered on any page.
 
 ### Chat Components
 - **ChatInterface**: Core component providing message stream, input, tool trace accordion, and suggested prompt chips. Handles authorization gating, localStorage persistence, and auto-scrolling.
-- **ChatPage**: Wraps ChatInterface in a full-page layout with hero header and section heading.
+- **ChatPage**: Wraps ChatInterface in a full-page layout with a `sr-only` page heading and the section heading; the former AI-gradient hero was removed with the rest of the title block.
 
 ### Tool Suite (5 specialized tools)
 The chat agent (DeepSeek Flash) uses these tools against Supabase:

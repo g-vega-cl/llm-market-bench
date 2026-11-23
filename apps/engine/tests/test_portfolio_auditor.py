@@ -959,7 +959,15 @@ class TestPicksPortfolioAudit:
             return (100.0, 102.0, 99.0, 101.0)
 
         async def _exit(session_date, price_map, **_kwargs):
-            return {"status": "success", "portfolios": {"sys-picks-consensus": {"equity": 10042.0}}}
+            return {
+                "status": "success",
+                "portfolios": {
+                    "sys-picks-consensus": {
+                        "equity": 10042.0,
+                        "legs": [{"ticker": "NVDA", "side": "SELL", "quantity": 10, "pnl": 42.0}],
+                    }
+                },
+            }
 
         with (
             patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", side_effect=_prices),
@@ -970,9 +978,38 @@ class TestPicksPortfolioAudit:
         assert len(anomalies) == 1
         assert len(healed) == 1
         assert healed[0]["new_equity"] == 10042.0
+        assert healed[0]["details"] == "Liquidated 1 leg(s) at the official close print"
         assert flagged == []
         mock_exit.assert_awaited_once()
         assert mock_exit.await_args.args[1] == {"NVDA": 101.0}
+
+    @pytest.mark.asyncio
+    async def test_picks_heal_that_writes_nothing_is_flagged_not_healed(self):
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+
+        from audit.portfolio_auditor import _audit_picks_portfolios
+
+        now_ny = datetime(2026, 11, 19, 18, 0, tzinfo=ZoneInfo("America/New_York"))
+        rows = [{"id": "t1", "ticker": "NVDA", "signal": "BUY", "executed_at": "2026-11-19T14:30:00Z"}]
+        portfolios = {"sys-picks-consensus": {"id": "pf-1", "owner_id": "sys-picks-consensus"}}
+        client = self._client(rows)
+
+        async def _prices(ticker, session_date, force_refresh=False):
+            return (100.0, 102.0, 99.0, 101.0)
+
+        async def _exit(session_date, price_map, **_kwargs):
+            return {"status": "skipped", "skipped": {"sys-picks-consensus": "missing close price for NVDA"}}
+
+        with (
+            patch("tasks.evaluate_daily_predictions.fetch_intraday_prices", side_effect=_prices),
+            patch("execution.stock_picks_trading.execute_picks_exits", side_effect=_exit),
+        ):
+            anomalies, healed, flagged = await _audit_picks_portfolios(client, portfolios, now_ny, auto_heal=True)
+
+        assert healed == []
+        assert len(flagged) == 1
+        assert "auto-heal incomplete: missing close price for NVDA" in flagged[0]["details"]
 
 
 @pytest.mark.asyncio

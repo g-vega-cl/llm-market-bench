@@ -261,7 +261,6 @@ async def run_future_forces_task(
         if res.data:
             portfolio.id = res.data[0]["id"]
             portfolio.cash_balance = 10000.00
-            portfolio.total_equity = 10000.00
 
     # 2. Seed baseline forces if absent
     if portfolio.id:

@@ -352,15 +352,25 @@ async def execute_picks_exits(
 
         existing_exits = (
             client.table("trades")
-            .select("id")
+            .select("ticker,signal")
             .eq("portfolio_id", portfolio_id)
             .eq("executed_at", exit_ts)
             .execute()
             .data
             or []
         )
-        if existing_exits:
+        exited_tickers = {str(row["ticker"]) for row in existing_exits if row.get("signal") in ("SELL", "COVER")}
+        remaining = [entry for entry in open_entries if str(entry["ticker"]) not in exited_tickers]
+        if not remaining:
             skipped[owner_id] = "already exited for this session"
+            continue
+
+        # Fail closed: a session is closed whole or not at all. Writing exits for the
+        # priced legs would persist an equity that silently omits the ones we could not price.
+        unpriced = sorted({str(entry["ticker"]) for entry in remaining if _price(price_map, entry["ticker"]) <= 0})
+        if unpriced:
+            skipped[owner_id] = f"missing close price for {','.join(unpriced)}"
+            logger.warning(f"[{owner_id}] Leaving {session_date} open: no close price for {', '.join(unpriced)}")
             continue
 
         cash = float(portfolio.cash_balance)
@@ -369,12 +379,8 @@ async def execute_picks_exits(
         realized_pnl_total = 0.0
         legs: list[dict[str, Any]] = []
 
-        for entry in open_entries:
+        for entry in remaining:
             price = _price(price_map, entry["ticker"])
-            if price <= 0:
-                logger.warning(f"[{owner_id}] Leaving {entry['ticker']} open: no close price")
-                continue
-
             shares = int(entry["quantity"])
             entry_price = float(entry["price"])
             is_long = entry["signal"] == "BUY"
@@ -446,8 +452,9 @@ async def execute_picks_exits(
                 },
                 on_conflict="portfolio_id,date",
             ).execute()
+            # `Portfolio.total_equity` is a derived property (metrics → cash), so the
+            # in-memory object is never told its equity; the row written above is truth.
             portfolio.cash_balance = new_cash
-            portfolio.total_equity = new_cash
 
         closed[owner_id] = {
             "portfolio_id": portfolio_id,
@@ -525,8 +532,8 @@ async def _mirror_long_legs_to_alpaca(legs: list[dict[str, Any]], owner_id: str)
                 limit_price=round(float(leg["entry_price"]), 2),
                 agent_id=owner_id,
             )
-    except Exception as exc:
-        logger.warning(f"Alpaca mirror error during picks entry for {owner_id}: {exc}")
+    except Exception:
+        logger.exception(f"Alpaca mirror error during picks entry for {owner_id}")
 
 
 async def _picks_entry_tickers(client: Any, session_date: str) -> list[str]:

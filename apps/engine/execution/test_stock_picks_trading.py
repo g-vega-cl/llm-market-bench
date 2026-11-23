@@ -2,7 +2,6 @@
 
 import os
 import sys
-from uuid import uuid4
 
 import pytest
 
@@ -11,6 +10,14 @@ sys.path.append(os.path.join(os.getcwd(), "apps", "engine"))
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from execution.picks_fakes import (
+    SESSION,
+    FakeSupabase,
+    open_price_map,
+    portfolio_getter,
+    seed_session,
+    stored_portfolio_getter,
+)
 from execution.stock_picks_trading import (
     PICKS_MODEL_TRACKS,
     SYS_PICKS_OWNER_PREFIX,
@@ -21,196 +28,19 @@ from execution.stock_picks_trading import (
     within_entry_window,
 )
 
-SESSION = "2026-11-19"
-LONG_TICKERS = ["AAA", "BBB", "CCC"]
-SHORT_TICKERS = ["DDD", "EEE", "FFF"]
 
+@pytest.fixture(autouse=True)
+def alpaca_mirror(monkeypatch):
+    """Keep tests off the shared Alpaca paper account and record the mirror calls."""
+    from execution import stock_picks_trading
 
-class _Response:
-    def __init__(self, data):
-        self.data = data
+    mirrored: dict[str, list[dict]] = {}
 
+    async def _record(legs, owner_id):
+        mirrored.setdefault(owner_id, []).extend(legs)
 
-class _Query:
-    """Minimal PostgREST-style query builder over an in-memory table store."""
-
-    def __init__(self, store, table):
-        self.store = store
-        self.table = table
-        self.filters = []
-        self.action = "select"
-        self.payload = None
-        self.conflict = None
-
-    def select(self, *_args, **_kwargs):
-        self.action = "select"
-        return self
-
-    def insert(self, payload):
-        self.action = "insert"
-        self.payload = payload
-        return self
-
-    def update(self, payload):
-        self.action = "update"
-        self.payload = payload
-        return self
-
-    def upsert(self, payload, on_conflict=None):
-        self.action = "upsert"
-        self.payload = payload
-        self.conflict = on_conflict
-        return self
-
-    def delete(self):
-        self.action = "delete"
-        return self
-
-    def eq(self, column, value):
-        self.filters.append(("eq", column, value))
-        return self
-
-    def in_(self, column, values):
-        self.filters.append(("in", column, set(values)))
-        return self
-
-    def is_(self, column, value):
-        self.filters.append(("is", column, value))
-        return self
-
-    def match(self, mapping):
-        for key, value in mapping.items():
-            self.filters.append(("eq", key, value))
-        return self
-
-    def order(self, *_args, **_kwargs):
-        return self
-
-    def limit(self, *_args, **_kwargs):
-        return self
-
-    def _matches(self, row):
-        for op, column, value in self.filters:
-            cell = row.get(column)
-            if op == "eq" and str(cell) != str(value):
-                return False
-            if op == "in" and cell not in value:
-                return False
-            if op == "is" and str(value).lower() == "null" and cell is not None:
-                return False
-        return True
-
-    def execute(self):
-        rows = self.store.rows.setdefault(self.table, [])
-        if self.action == "select":
-            return _Response([dict(r) for r in rows if self._matches(r)])
-        if self.action == "insert":
-            items = self.payload if isinstance(self.payload, list) else [self.payload]
-            inserted = []
-            for item in items:
-                row = dict(item)
-                row.setdefault("id", str(uuid4()))
-                rows.append(row)
-                inserted.append(dict(row))
-            return _Response(inserted)
-        if self.action == "update":
-            updated = []
-            for row in rows:
-                if self._matches(row):
-                    row.update(self.payload)
-                    updated.append(dict(row))
-            return _Response(updated)
-        if self.action == "upsert":
-            items = self.payload if isinstance(self.payload, list) else [self.payload]
-            keys = [k.strip() for k in (self.conflict or "id").split(",")]
-            stored = []
-            for item in items:
-                match = next((r for r in rows if all(str(r.get(k)) == str(item.get(k)) for k in keys)), None)
-                if match is not None:
-                    match.update(item)
-                    stored.append(dict(match))
-                else:
-                    row = dict(item)
-                    row.setdefault("id", str(uuid4()))
-                    rows.append(row)
-                    stored.append(dict(row))
-            return _Response(stored)
-        if self.action == "delete":
-            removed = [dict(r) for r in rows if self._matches(r)]
-            self.store.rows[self.table] = [r for r in rows if not self._matches(r)]
-            return _Response(removed)
-        raise AssertionError(f"unsupported action {self.action}")
-
-
-class FakeSupabase:
-    def __init__(self, rows=None):
-        self.rows = {name: [dict(r) for r in data] for name, data in (rows or {}).items()}
-
-    def table(self, name):
-        return _Query(self, name)
-
-    def count(self, name, **filters):
-        return len([r for r in self.rows.get(name, []) if all(str(r.get(k)) == str(v) for k, v in filters.items())])
-
-
-class StubPortfolio:
-    def __init__(self, owner_id, pid, cash=10000.0):
-        self.owner_id = owner_id
-        self.id = pid
-        self.cash_balance = cash
-        self.total_equity = cash
-
-
-def _seed_session(store, session=SESSION, models=PICKS_MODEL_TRACKS):
-    baskets = store.rows.setdefault("daily_stock_baskets", [])
-    picks = store.rows.setdefault("daily_stock_picks", [])
-    for index, model in enumerate(models):
-        basket_id = f"basket-{index}"
-        baskets.append({"id": basket_id, "target_date": session, "model_name": model, "status": "pending"})
-        for rank, ticker in enumerate(LONG_TICKERS, start=1):
-            picks.append(
-                {
-                    "id": f"pick-{index}-up-{rank}",
-                    "basket_id": basket_id,
-                    "target_date": session,
-                    "model_name": model,
-                    "ticker": ticker,
-                    "direction": "UP",
-                    "rank": rank,
-                    "confidence": 70.0,
-                    "status": "pending",
-                }
-            )
-        for rank, ticker in enumerate(SHORT_TICKERS, start=1):
-            picks.append(
-                {
-                    "id": f"pick-{index}-down-{rank}",
-                    "basket_id": basket_id,
-                    "target_date": session,
-                    "model_name": model,
-                    "ticker": ticker,
-                    "direction": "DOWN",
-                    "rank": rank,
-                    "confidence": 70.0,
-                    "status": "pending",
-                }
-            )
-    return store
-
-
-def _portfolio_getter():
-    created: dict[str, StubPortfolio] = {}
-
-    async def _get(owner_id: str) -> StubPortfolio:
-        if owner_id not in created:
-            created[owner_id] = StubPortfolio(owner_id, f"pf-{len(created)}")
-        return created[owner_id]
-
-    return created, _get
-
-
-def _open_price_map(price=100.0, tickers=None):
-    return {t: price for t in (tickers or LONG_TICKERS + SHORT_TICKERS)}
+    monkeypatch.setattr(stock_picks_trading, "_mirror_long_legs_to_alpaca", _record)
+    return mirrored
 
 
 def test_entry_window_bounds():
@@ -229,13 +59,13 @@ def test_owner_id_preserves_model_case():
 
 
 @pytest.mark.asyncio
-async def test_picks_entries_create_six_legs_per_basket():
-    store = _seed_session(FakeSupabase())
-    portfolios, getter = _portfolio_getter()
+async def test_picks_entries_create_six_legs_per_basket(alpaca_mirror):
+    store = seed_session(FakeSupabase())
+    portfolios, getter = portfolio_getter()
 
     result = await execute_picks_entries(
         SESSION,
-        price_map=_open_price_map(),
+        price_map=open_price_map(),
         get_supabase_client_fn=lambda: store,
         get_or_create_system_portfolio_fn=getter,
     )
@@ -260,21 +90,27 @@ async def test_picks_entries_create_six_legs_per_basket():
         assert portfolio.cash_balance == pytest.approx(10000.0 - 3 * shares * entry_long)
         assert portfolio.total_equity == pytest.approx(10000.0)
 
+    # All legs are handed to the mirror, which drops shorts; long legs carry the order.
+    mirrored_legs = [leg for legs in alpaca_mirror.values() for leg in legs]
+    assert len(mirrored_legs) == 24
+    assert len([leg for leg in mirrored_legs if leg["side"] == "LONG"]) == 12
+    assert all(leg["trade_id"] for leg in mirrored_legs if leg["side"] == "LONG")
+
 
 @pytest.mark.asyncio
 async def test_picks_entries_are_idempotent():
-    store = _seed_session(FakeSupabase())
-    _, getter = _portfolio_getter()
+    store = seed_session(FakeSupabase())
+    _, getter = portfolio_getter()
 
     first = await execute_picks_entries(
         SESSION,
-        price_map=_open_price_map(),
+        price_map=open_price_map(),
         get_supabase_client_fn=lambda: store,
         get_or_create_system_portfolio_fn=getter,
     )
     second = await execute_picks_entries(
         SESSION,
-        price_map=_open_price_map(),
+        price_map=open_price_map(),
         get_supabase_client_fn=lambda: store,
         get_or_create_system_portfolio_fn=getter,
     )
@@ -286,12 +122,12 @@ async def test_picks_entries_are_idempotent():
 
 @pytest.mark.asyncio
 async def test_picks_entries_before_inception_are_skipped():
-    store = _seed_session(FakeSupabase(), session="2026-11-18")
-    _, getter = _portfolio_getter()
+    store = seed_session(FakeSupabase(), session="2026-11-18")
+    _, getter = portfolio_getter()
 
     result = await execute_picks_entries(
         "2026-11-18",
-        price_map=_open_price_map(),
+        price_map=open_price_map(),
         get_supabase_client_fn=lambda: store,
         get_or_create_system_portfolio_fn=getter,
     )
@@ -302,9 +138,9 @@ async def test_picks_entries_before_inception_are_skipped():
 
 @pytest.mark.asyncio
 async def test_picks_entry_skips_leg_without_price():
-    store = _seed_session(FakeSupabase())
-    _, getter = _portfolio_getter()
-    price_map = _open_price_map()
+    store = seed_session(FakeSupabase())
+    _, getter = portfolio_getter()
+    price_map = open_price_map()
     price_map.pop("CCC")
 
     result = await execute_picks_entries(
@@ -321,18 +157,18 @@ async def test_picks_entry_skips_leg_without_price():
 
 @pytest.mark.asyncio
 async def test_picks_exit_realizes_pnl_and_snapshots_performance():
-    store = _seed_session(FakeSupabase())
-    portfolios, getter = _portfolio_getter()
+    store = seed_session(FakeSupabase())
+    portfolios, getter = stored_portfolio_getter(store)
     await execute_picks_entries(
         SESSION,
-        price_map=_open_price_map(),
+        price_map=open_price_map(),
         get_supabase_client_fn=lambda: store,
         get_or_create_system_portfolio_fn=getter,
     )
 
     result = await execute_picks_exits(
         SESSION,
-        price_map=_open_price_map(price=101.0),
+        price_map=open_price_map(price=101.0),
         get_supabase_client_fn=lambda: store,
         get_or_create_system_portfolio_fn=getter,
     )
@@ -357,7 +193,11 @@ async def test_picks_exit_realizes_pnl_and_snapshots_performance():
     expected_cash = (10000.0 - 3 * 16 * entry_long) + 3 * 16 * exit_long + 3 * short_pnl
     for portfolio in portfolios.values():
         assert portfolio.cash_balance == pytest.approx(expected_cash)
-        assert portfolio.total_equity == pytest.approx(expected_cash)
+        row = next(r for r in store.rows["portfolios"] if r["id"] == portfolio.id)
+        assert row["cash_balance"] == pytest.approx(expected_cash)
+        assert row["total_equity"] == pytest.approx(expected_cash)
+        assert row["realized"] == pytest.approx(expected_cash)
+        assert row["buying_power"] == pytest.approx(expected_cash)
 
     perf = store.rows["portfolio_performance"]
     assert len(perf) == 4
@@ -367,13 +207,94 @@ async def test_picks_exit_realizes_pnl_and_snapshots_performance():
 
 
 @pytest.mark.asyncio
-async def test_picks_exit_without_open_legs_is_skipped():
-    store = _seed_session(FakeSupabase())
-    _, getter = _portfolio_getter()
+async def test_picks_exit_with_a_missing_close_price_writes_nothing():
+    store = seed_session(FakeSupabase())
+    portfolios, getter = stored_portfolio_getter(store)
+    await execute_picks_entries(
+        SESSION,
+        price_map=open_price_map(),
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+    cash_after_entry = {portfolio.id: portfolio.cash_balance for portfolio in portfolios.values()}
+
+    price_map = open_price_map(price=101.0)
+    price_map.pop("CCC")
+    result = await execute_picks_exits(
+        SESSION,
+        price_map=price_map,
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+
+    # Fail closed: no partial session, no wrong equity snapshot.
+    assert result["status"] == "skipped"
+    assert set(result["skipped"]) == set(portfolios)
+    assert all("CCC" in reason for reason in result["skipped"].values())
+    assert store.count("trades") == 24  # entries only, no exits
+    assert all(t.get("realized_pnl") is None for t in store.rows["trades"])
+    assert store.count("portfolio_positions") == 12
+    assert not store.rows.get("portfolio_performance")
+    for portfolio in portfolios.values():
+        row = next(r for r in store.rows["portfolios"] if r["id"] == portfolio.id)
+        assert row["cash_balance"] == pytest.approx(cash_after_entry[portfolio.id])
+
+
+@pytest.mark.asyncio
+async def test_picks_exit_resumes_a_partially_written_session():
+    store = seed_session(FakeSupabase())
+    portfolios, getter = stored_portfolio_getter(store)
+    await execute_picks_entries(
+        SESSION,
+        price_map=open_price_map(),
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+
+    # Simulate a crash after the first leg of the first portfolio was committed.
+    victim = portfolios[picks_owner_id(PICKS_MODEL_TRACKS[0])]
+    entry = next(t for t in store.rows["trades"] if t["portfolio_id"] == victim.id and t["signal"] == "BUY")
+    store.rows["trades"].append(
+        {
+            "id": "exit-already-written",
+            "portfolio_id": victim.id,
+            "ticker": entry["ticker"],
+            "signal": "SELL",
+            "quantity": entry["quantity"],
+            "price": 101.0,
+            "realized_pnl": 1.0,
+            "executed_at": "2026-11-19T21:00:00Z",
+        }
+    )
 
     result = await execute_picks_exits(
         SESSION,
-        price_map=_open_price_map(price=101.0),
+        price_map=open_price_map(price=101.0),
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+
+    assert result["status"] == "success"
+    victim_exits = [
+        t for t in store.rows["trades"] if t["portfolio_id"] == victim.id and t["signal"] in ("SELL", "COVER")
+    ]
+    assert len(victim_exits) == 6  # the pre-existing row plus the five it still owed
+    assert len([t for t in victim_exits if t["ticker"] == entry["ticker"]]) == 1
+    for owner, portfolio in portfolios.items():
+        exits = [
+            t for t in store.rows["trades"] if t["portfolio_id"] == portfolio.id and t["signal"] in ("SELL", "COVER")
+        ]
+        assert len(exits) == 6, owner
+
+
+@pytest.mark.asyncio
+async def test_picks_exit_without_open_legs_is_skipped():
+    store = seed_session(FakeSupabase())
+    _, getter = portfolio_getter()
+
+    result = await execute_picks_exits(
+        SESSION,
+        price_map=open_price_map(price=101.0),
         get_supabase_client_fn=lambda: store,
         get_or_create_system_portfolio_fn=getter,
     )

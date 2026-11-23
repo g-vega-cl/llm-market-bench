@@ -544,15 +544,23 @@ async def _audit_picks_portfolios(
                 price_map,
                 get_supabase_client_fn=lambda: client,
             )
+            closed_this = (result.get("portfolios") or {}).get(owner_id) or {}
+            if not closed_this:
+                reason = (result.get("skipped") or {}).get(owner_id) or result.get("reason") or "no exit executed"
+                flagged.append({**anomaly, "details": f"{anomaly['details']}; auto-heal incomplete: {reason}"})
+                logger.warning(f"Could not auto-heal {owner_id} for {session_date}: {reason}")
+                continue
+
+            legs_closed = len(closed_this.get("legs") or [])
             healed.append(
                 {
                     "date": session_date,
                     "owner_id": owner_id,
-                    "details": f"Liquidated {len(price_map)} leg(s) at the official close print",
-                    "new_equity": (result.get("portfolios", {}).get(owner_id, {}) or {}).get("equity"),
+                    "details": f"Liquidated {legs_closed} leg(s) at the official close print",
+                    "new_equity": closed_this.get("equity"),
                 }
             )
-            logger.warning(f"Auto-healed {owner_id} for {session_date}: liquidated {len(price_map)} stale picks leg(s)")
+            logger.warning(f"Auto-healed {owner_id} for {session_date}: liquidated {legs_closed} stale picks leg(s)")
 
     return anomalies, healed, flagged
 

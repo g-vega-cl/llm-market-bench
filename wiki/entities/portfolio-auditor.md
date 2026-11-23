@@ -35,6 +35,15 @@ When run with `--fix` (`auto_heal=True`), the auditor reconstructs missing Daily
 
 For `unliquidated_picks_legs`, auto-heal fetches the stale session's official close print per ticker (`fetch_intraday_prices(..., force_refresh=True)`) and delegates to `execute_picks_exits(session_date, price_map)`, which writes the `SELL`/`COVER` rows, closes the entry legs' `realized_pnl`, deletes the long `portfolio_positions` rows, and upserts the session's `portfolio_performance` snapshot. A ticker whose close price cannot be resolved is logged via `logger.exception` and left out of the price map rather than priced at a fabricated value.
 
+### Incomplete Heals Are Flagged, Never Claimed
+
+`execute_picks_exits` fails closed: a session is closed whole or not at all, so a missing close price for any remaining leg makes it skip that owner entirely (`skipped[owner_id] = "missing close price for <tickers>"`) and write no trades, no position deletions, and no `portfolio_performance` row. The auditor therefore inspects the exit result before recording a heal:
+
+- If `result["portfolios"][owner_id]` is present, the anomaly is moved to `healed` with `details = "Liquidated N leg(s) at the official close print"` (N = the legs actually closed, not the size of the price map) and `new_equity` taken from that owner's result.
+- If the owner is absent from the result, the anomaly stays in `flagged` with its details suffixed `auto-heal incomplete: <reason>` (the per-owner `skipped` reason, the top-level `reason`, or `no exit executed`), and a warning is logged.
+
+This keeps the report honest: a heal that wrote nothing is never reported as healed, and the stale legs remain visible for the next run — which resumes cleanly because already-written exit rows at that session's `exit_ts` are skipped by ticker.
+
 When no prior `portfolio_performance` history exists (the portfolio's first session), the auditor anchors the starting equity to `INITIAL_PORTFOLIO_CASH` ($10,000) rather than the portfolio's current `cash_balance`, so a dirty or already-drifted cash figure cannot compound into the healed equity.
 
 For `DESYNCED_EQUITY_DAILY_SPY` anomalies, auto-heal rewrites the date's `portfolio_performance` row (`total_equity`, `cash_balance`, `buying_power`, `realized`) to the expected cumulative equity (prior closing equity + summed `realized_pnl` of the session's `SELL`/`COVER` trades). When the corrected date is the most recent session in the lookback window, the live `portfolios` row is updated to the same values so the portfolio's current state matches the healed history.

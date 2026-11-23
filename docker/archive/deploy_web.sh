@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-TARGET_HOST="cv-minipc@minipc"
+TARGET_HOST="${DEPLOY_WEB_HOST:-cv-minipc@192.168.88.7}"
 REMOTE_DIR="~/llm-market-bench"
 SKIP_TESTS=false
 LOCAL_ONLY=false
@@ -25,11 +25,29 @@ for arg in "$@"; do
     esac
 done
 
-WEB_ENV_FILE="${REPO_ROOT}/apps/web/.env"
-ARCHIVE_ENV_FILE="${SCRIPT_DIR}/.env"
+DEFAULT_WEB_ENV="${HOME}/.config/benchify/web.env"
+DEFAULT_ARCHIVE_ENV="${HOME}/.config/benchify/archive.env"
+
+if [[ -z "${WEB_ENV_FILE:-}" ]]; then
+    if [[ -f "${DEFAULT_WEB_ENV}" ]]; then
+        WEB_ENV_FILE="${DEFAULT_WEB_ENV}"
+    else
+        WEB_ENV_FILE="${REPO_ROOT}/apps/web/.env"
+    fi
+fi
+
+if [[ -z "${ARCHIVE_ENV_FILE:-}" ]]; then
+    if [[ -f "${DEFAULT_ARCHIVE_ENV}" ]]; then
+        ARCHIVE_ENV_FILE="${DEFAULT_ARCHIVE_ENV}"
+    else
+        ARCHIVE_ENV_FILE="${SCRIPT_DIR}/.env"
+    fi
+fi
+
+export WEB_ENV_FILE
 
 if [[ ! -f "${WEB_ENV_FILE}" ]]; then
-    echo "ERROR: Missing ${WEB_ENV_FILE}. Create it from apps/web/.env.example before deploying."
+    echo "ERROR: Missing ${WEB_ENV_FILE}. Create it from apps/web/.env.example or set WEB_ENV_FILE."
     exit 1
 fi
 
@@ -123,12 +141,13 @@ if [[ "${LOCAL_ONLY}" == "false" ]]; then
     rsync -avz --delete --exclude 'node_modules' "${REPO_ROOT}/packages/database/" "${TARGET_HOST}:${REMOTE_DIR}/packages/database/"
     rsync -avz --delete --exclude 'node_modules' "${REPO_ROOT}/packages/ui-design-system/" "${TARGET_HOST}:${REMOTE_DIR}/packages/ui-design-system/"
 
+    rsync -avz "${WEB_ENV_FILE}" "${TARGET_HOST}:${REMOTE_DIR}/apps/web/.env"
     if [[ -f "${ARCHIVE_ENV_FILE}" ]]; then
         rsync -avz "${ARCHIVE_ENV_FILE}" "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/.env"
     fi
 
     echo "=== [4/4] Rebuilding and starting web-app + web-proxy on ${TARGET_HOST} ==="
-    ssh "${TARGET_HOST}" "bash -lc 'set -a && source ${REMOTE_DIR}/apps/web/.env && if [ -f ${REMOTE_DIR}/docker/archive/.env ]; then source ${REMOTE_DIR}/docker/archive/.env; fi && set +a && cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build web-app web-proxy && docker compose -f docker-compose.secondary.yml ps web-app web-proxy'"
+    ssh "${TARGET_HOST}" "bash -lc 'set -a && source ${REMOTE_DIR}/apps/web/.env && if [ -f ${REMOTE_DIR}/docker/archive/.env ]; then source ${REMOTE_DIR}/docker/archive/.env; fi && set +a && export WEB_ENV_FILE=${REMOTE_DIR}/apps/web/.env && cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build web-app web-proxy && docker compose -f docker-compose.secondary.yml ps web-app web-proxy'"
     smoke_check "${TARGET_HOST}" "${TARGET_HOST}"
 else
     echo "=== [3/4] Skipping MiniPC sync/deploy (--local-only) ==="

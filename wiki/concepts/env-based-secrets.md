@@ -11,10 +11,21 @@ No secret value — database password, JWT signing secret, service-role key — 
 
 ## How It Is Applied
 
-- **Compose interpolation** — `docker/archive/docker-compose.yml` uses `${POSTGRES_PASSWORD}` and `${PGRST_JWT_SECRET}` with no defaults for secrets (so a missing value fails loudly), and `${VAR:-default}` for non-secret fields like `POSTGRES_DB` and the OpenAPI proxy URI.
+- **Compose interpolation** — `docker/archive/docker-compose.yml` uses `${POSTGRES_PASSWORD}` and `${PGRST_JWT_SECRET}` with no defaults for secrets (so a missing value fails loudly), and `${VAR:-default}` for non-secret fields like `POSTGRES_DB` and the OpenAPI proxy URI. The `web-app` service in both `docker-compose.yml` and `docker-compose.secondary.yml` loads its env file through `env_file: ${WEB_ENV_FILE:-../../apps/web/.env}`, so the deployer can supply an out-of-tree file without editing compose.
 - **Template** — `docker/archive/.env.example` lists every required key with blank secret values.
 - **Rotation** — [[entities/rotate-secrets]] generates fresh secrets and mints matching PostgREST JWTs, then writes them into the `.env` files for the archive stack, engine, and web app in one pass.
 - **Regression guard** — `apps/engine/tests/test_docker_archive_secrets.py` fails the build if a known leaked secret reappears in the compose file or if the `${...}` references are removed.
+
+## Out-of-Tree Deploy Env Files
+
+`docker/archive/deploy_web.sh` resolves its two env files through overridable variables instead of fixed repo paths, so a deploy can run from an isolated clone that never contains secrets:
+
+| Variable | Default resolution order |
+| :--- | :--- |
+| `WEB_ENV_FILE` | `~/.config/benchify/web.env` if present, else `apps/web/.env` |
+| `ARCHIVE_ENV_FILE` | `~/.config/benchify/archive.env` if present, else `docker/archive/.env` |
+
+An explicit value in the environment always wins. The script exports `WEB_ENV_FILE` so the compose interpolation resolves to the same file, rsyncs the resolved web env file to `${REMOTE_DIR}/apps/web/.env` on the target host, and re-exports `WEB_ENV_FILE` there before `docker compose up`. `docker/archive/watch_web_deploy.sh` invokes the deployer with both variables pointed at `~/.config/benchify/`, which is the intended production layout. See [[entities/self-hosted-web-deployment]].
 
 ## Netlify Secrets Scanning
 
@@ -44,6 +55,7 @@ Secrets committed to a repo are effectively permanent — they persist in git hi
 
 - [[entities/rotate-secrets]]
 - [[entities/database]]
+- [[entities/self-hosted-web-deployment]]
 - [[concepts/auth-db-client-separation]]
 - [[concepts/auditability]]
 - [[sources/web-deployment-source]]

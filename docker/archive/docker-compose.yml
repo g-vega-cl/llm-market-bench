@@ -64,7 +64,7 @@ services:
     depends_on:
       - archive-proxy
     env_file:
-      - ../../apps/web/.env
+      - ${WEB_ENV_FILE:-../../apps/web/.env}
     environment:
       ARCHIVE_DB_URL: http://archive-proxy:80
       NODE_ENV: production

@@ -16,6 +16,7 @@ The TanStack Start dashboard in `apps/web` ships two ways: the Netlify build (`a
 | Primary services | `docker/archive/docker-compose.yml` (`web-app`, `web-proxy`) | Runs on the workstation |
 | Edge services | `docker/archive/docker-compose.secondary.yml` (`web-app`, `web-proxy`) | Runs on the MiniPC |
 | Deployer | `docker/archive/deploy_web.sh` | Build, sync, restart, and smoke-check both hosts |
+| Deploy watcher | `docker/archive/watch_web_deploy.sh` | Polls `origin/main` in an isolated clone and triggers the deployer on web changes |
 | Build-context filter | `.dockerignore` (repo root) | Keeps secrets, docs, and caches out of the image |
 
 ## Image (`docker/archive/Dockerfile.web`)
@@ -42,7 +43,7 @@ Four stages on `node:24-slim` with `corepack`-activated `pnpm@10.15.0`:
 
 Both compose files declare the same pair:
 
-- **`web-app`** — built from `Dockerfile.web` with context `../..`; container names `market-bench-web-app` (primary) and `market-bench-web-app-secondary` (MiniPC); `restart: unless-stopped`; `depends_on: archive-proxy`; `env_file: ../../apps/web/.env`; `ARCHIVE_DB_URL=http://archive-proxy:80` so server-side reads go over the Docker network instead of the public tunnel; `expose: 3000`; 512M memory limit.
+- **`web-app`** — built from `Dockerfile.web` with context `../..`; container names `market-bench-web-app` (primary) and `market-bench-web-app-secondary` (MiniPC); `restart: unless-stopped`; `depends_on: archive-proxy`; `env_file: ${WEB_ENV_FILE:-../../apps/web/.env}` so the deployer can point the container at an out-of-tree env file; `ARCHIVE_DB_URL=http://archive-proxy:80` so server-side reads go over the Docker network instead of the public tunnel; `expose: 3000`; 512M memory limit.
 - **`web-proxy`** — `nginx:alpine`, container names `market-bench-web-proxy` / `market-bench-web-proxy-secondary`, `depends_on: web-app` and `archive-proxy`, publishing `${WEB_BIND_ADDRESS:-0.0.0.0}:3005:80`, and mounting `docker/archive/nginx.web.conf` read-only.
 
 ## Nginx Front Door (`docker/archive/nginx.web.conf`)
@@ -61,14 +62,39 @@ Both compose files declare the same pair:
 ./docker/archive/deploy_web.sh [--skip-tests] [--local-only] [--remote-only] [target-host]
 ```
 
-`target-host` defaults to `cv-minipc@minipc`. The script requires `apps/web/.env` (and sources `docker/archive/.env` when present) with `set -a`, so `VITE_*` build args and compose variables are exported without printing secrets.
+`target-host` defaults to `${DEPLOY_WEB_HOST:-cv-minipc@192.168.88.7}` (the MiniPC's LAN address), so the deploy target can be overridden per machine without editing the script.
+
+### Env file resolution
+
+Both env files are resolved through overridable variables rather than fixed repo paths:
+
+| Variable | Default resolution order |
+| :--- | :--- |
+| `WEB_ENV_FILE` | `~/.config/benchify/web.env` if present, else `apps/web/.env` |
+| `ARCHIVE_ENV_FILE` | `~/.config/benchify/archive.env` if present, else `docker/archive/.env` |
+
+An explicit `WEB_ENV_FILE` / `ARCHIVE_ENV_FILE` in the environment always wins. The script exports `WEB_ENV_FILE` so the compose interpolation (`env_file: ${WEB_ENV_FILE:-../../apps/web/.env}`) picks up the same file, and it fails loudly with `ERROR: Missing <path>. Create it from apps/web/.env.example or set WEB_ENV_FILE.` when the web env file cannot be found. Keeping the real env files under `~/.config/benchify/` lets the deployer run from an isolated clone without secrets ever living inside the checkout (see [[concepts/env-based-secrets]]).
+
+The script sources the archive env file when present with `set -a`, so `VITE_*` build args and compose variables are exported without printing secrets.
 
 1. **[1/4] Local checks** — `pnpm biome check apps/web packages/ui-design-system packages/database`, `pnpm --filter web typecheck`, and `pnpm --filter web test --maxWorkers=2`; skipped with `--skip-tests`.
 2. **[2/4] Primary** — `docker compose -f docker-compose.yml up -d --build web-app web-proxy`; skipped with `--remote-only`.
-3. **[3/4] Sync** — verifies SSH, creates the remote directory tree, rsyncs the workspace manifests plus `.gitignore` / `.dockerignore`, `Dockerfile.web` / `nginx.web.conf` / `docker-compose.secondary.yml`, `apps/web` (excluding `node_modules`, `dist`, `coverage`, `.netlify`, `.tanstack`, `.scratch`), `packages/config`, `packages/database`, `packages/ui-design-system`, and `docker/archive/.env`; skipped with `--local-only`.
-4. **[4/4] Remote** — sources the remote env files, rebuilds and starts `web-app` + `web-proxy`, and prints `docker compose ps`.
+3. **[3/4] Sync** — verifies SSH, creates the remote directory tree, rsyncs the workspace manifests plus `.gitignore` / `.dockerignore`, `Dockerfile.web` / `nginx.web.conf` / `docker-compose.secondary.yml`, `apps/web` (excluding `node_modules`, `dist`, `coverage`, `.netlify`, `.tanstack`, `.scratch`), `packages/config`, `packages/database`, `packages/ui-design-system`, the resolved `WEB_ENV_FILE` to `${REMOTE_DIR}/apps/web/.env`, and `ARCHIVE_ENV_FILE` to `${REMOTE_DIR}/docker/archive/.env` when it exists; skipped with `--local-only`.
+4. **[4/4] Remote** — sources the remote env files, exports `WEB_ENV_FILE=${REMOTE_DIR}/apps/web/.env` so the remote compose interpolation resolves to the synced file, rebuilds and starts `web-app` + `web-proxy`, and prints `docker compose ps`.
 
 **Smoke check** — after each host, `smoke_check` polls `http://localhost:3005/health` up to six times (2s apart), then requires the `/` HTML to contain `Benchify`, to link an `/assets/app-*.css` asset, and for that asset to return 200. A failure prints a warning and returns non-zero, which aborts the run under `set -euo pipefail`.
+
+## Automated Deploy Watcher (`docker/archive/watch_web_deploy.sh`)
+
+A self-contained polling watcher that turns a push to `main` into a deploy without any external CI runner — safe for a public repository because it only reads from the remote and runs locally.
+
+- **Isolated clone** — `BENCHIFY_DEPLOY_REPO` (default `~/.local/share/benchify-deploy-repo`) is cloned `--branch main --single-branch` from `BENCHIFY_REPO_URL` (default `https://github.com/g-vega-cl/llm-market-bench.git`) on first run, so the watcher never touches the working checkout.
+- **Single-flight lock** — `flock -n 9` on `/tmp/benchify-web-deploy.lock`; a second invocation exits `0` immediately instead of racing a deploy.
+- **State file** — `~/.config/benchify/last-attempted-web-sha` records the last SHA considered. The first run initializes it and exits without deploying.
+- **Change filter** — `git diff --quiet <last> <remote> --` over `apps/web`, `packages/config`, `packages/database`, `packages/ui-design-system`, `docker/archive/Dockerfile.web`, `docker/archive/nginx.web.conf`, `docker/archive/docker-compose.yml`, `docker/archive/docker-compose.secondary.yml`, `docker/archive/deploy_web.sh`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, and `.dockerignore`. A commit touching none of those records the SHA and skips the build.
+- **Attempt-before-run** — the new SHA is written to the state file *before* the deploy runs, so a failing commit is not retried every poll interval.
+- **Deploy** — `git reset --hard <remote-sha>`, `pnpm install --frozen-lockfile`, then `./docker/archive/deploy_web.sh` with `WEB_ENV_FILE=~/.config/benchify/web.env` and `ARCHIVE_ENV_FILE=~/.config/benchify/archive.env`, which is exactly the out-of-tree env layout the deployer resolves by default.
+- **PATH pinning** — the script prepends `~/.nvm/versions/node/v24.22.1/bin` and `~/.local/bin` so `pnpm` and `git` resolve under a cron/systemd-timer environment.
 
 ## Build Context (`.dockerignore`)
 
@@ -83,7 +109,7 @@ The repo-root `.dockerignore` excludes `.git`, `.github`, `.husky`, `.scratch`, 
 - [[entities/web-app]] — the TanStack Start application this stack serves
 - [[entities/secondary-minipc-edge]] — the MiniPC edge node that runs the secondary `web-app` / `web-proxy` pair
 - [[concepts/hybrid-database-archival]] — the archive stack the web app reads through `archive-proxy`
-- [[concepts/env-based-secrets]] — build-time `VITE_*` handling and secret hygiene
+- [[concepts/env-based-secrets]] — build-time `VITE_*` handling, out-of-tree env files, and secret hygiene
 - [[concepts/performance-auditing-strategy]] — Lighthouse CI, including the manual `workflow_dispatch` audit
 - [[concepts/chunk-reload-recovery]] — immutable hashed-asset caching policy
 - [[entities/live-agent-trader]] — the tape SSE stream proxied at `/api/tape/`

@@ -8,10 +8,11 @@ category: entity
 The **Recipe Studio** is now a two-surface experience:
 
 1. **`/build` — The Chat Builder** (primary entry point)
-   - Rendered inside `PageLayout` transparently over the global fixed dot-matrix `GlobalBackground` (no opaque `bg-voxel-canvas` or diorama backdrop)
-   - A conversational interface where visitors describe a trading strategy in plain English inside an auto-expansible `<textarea>` with the `Build My Bot →` button above it (no starter chips)
-   - Compiles into a validated Push v2 recipe (one LLM call, point-in-time news, paper cash) with a real-phase `BuilderCompilePipeline` (`1. Queue` / `2. Model` / `3. Validate`)
-   - On success, shows a **Compiled Bot Workspace** summary `.voxel-card` with a single primary CTA: "▶ Backtest (Random 2W)" and a calm lower workspace switching between `Blocks & Tools` and `Prompt Preview`
+   - Steps 1–2 render on the design-system `SceneStage` (`variant="hero"`, `motionRole="reactive"`) over the panoramic `GardenBackdrop` Cedar Sanctuary diorama with `SceneHudControls`, inside a `.scene-scrim .voxel-card` (no opaque `bg-voxel-canvas` or `GlobalBackground`)
+   - A conversational interface where visitors describe a trading strategy in plain English inside an auto-expansible `<textarea>` with the `Continue to Alignment →` button below it and one-tap starter chips above it
+   - Compiles into a validated Push v2 recipe (one LLM call, point-in-time news, paper cash) with a real-phase `BuilderCompilePipeline` (`1. Queue` / `2. Model` / `3. Validate`) and a 3-step `BuilderStepper` (`1. Describe` → `2. Align` → `3. Backtest & Go Live`)
+   - Step 2 presents one round of 3–5 tailored multiple-choice alignment questions (`BuilderAlignmentCard`) before compiling the final bot
+   - On success, shows a **Compiled Bot Workspace** summary `.voxel-card` inside `PageLayout` over `GlobalBackground`, with a single primary CTA: "▶ Backtest (Random 2W)" and a calm lower workspace switching between `Blocks & Tools` and `Prompt Preview`
    - Accessible from `/lab` directory and the homepage CTA
 
 2. **`/recipes` — My Bots Dashboard** (signed-in users only)
@@ -36,7 +37,7 @@ The **Recipe Studio** is now a two-surface experience:
 
 ### 2. Engine Processing (`apps/engine/recipes/`) — unchanged core
 - `push_schema.py`: Pydantic models for Push v2 (`PushStrategy`, `StrategyStage`, blocks). Exactly one stage enforced.
-- `push_hydrator.py`: Point-in-time filtering and stage prompt hydration
+- `push_hydrator.py`: Point-in-time filtering and stage prompt hydration. Renders `prompt` blocks first, data blocks in the middle, and `output_format` blocks last so instructions lead the prompt and the schema lock is always final, regardless of block order in the stage.
 - `portfolio_engine.py`: Shared Long-Only simulator (`PortfolioState`, `apply_portfolio_step`), whole-share sizing, Alpaca mirror
 - `intraday_bars.py`: 3x/day ET slot expansion for backtests, live slot capture
 - `pit_tools.py`: Strict point-in-time tool dispatcher for backtests
@@ -49,19 +50,19 @@ The **Recipe Studio** is now a two-surface experience:
 
 ### 3. Presentation — Two Surfaces
 
-#### `/build` — Chat Builder (`BuilderChatPanel` → `CompiledBotWorkspace`)
-- **Step 1**: Conversational builder (`BuilderChatPanel` + `BuilderCompilePipeline` + `BuilderConversation`) inside `PageLayout` over the fixed dot-matrix `GlobalBackground`
-  - No visible headline block — the page name comes from the route `<title>` plus exactly one `sr-only` `<h1>` ("Build a trading bot from one sentence"), rendered by `BuilderChatPanel` for the chat state and by `CompiledBotWorkspace` for the compiled state; a single `.voxel-card` with recessed `.voxel-trough` slots (zero nested `.voxel-card`)
-  - Primary submit button (`Build My Bot →` / `Send`) sits above an auto-expansible `<textarea>` (`maxLength={2000}`, `Enter` for newline, `Ctrl/Cmd+Enter` to submit)
-  - Compiles via `compileStrategyFn` (25/day quota, `auto-go` model)
-  - On `status: 'ok'`, immediately renders **Compiled Bot Workspace**
-  - On `status: 'question'`, shows clarifying options
+#### `/build` — 3-Step Chat Builder (`BuilderChatPanel` → `BuilderAlignmentCard` → `CompiledBotWorkspace`)
+- **Step 1 (Describe)**: Conversational builder (`BuilderChatPanel` + `BuilderStepper` + `BuilderCompilePipeline` + `BuilderConversation`) inside `SceneStage` (`GardenBackdrop` + `.scene-scrim .voxel-card`)
+  - No visible headline block — the page name comes from the route `<title>` plus exactly one `sr-only` `<h1>` ("Build a trading bot from one sentence"), rendered by `BuilderChatPanel` for Steps 1–2 and by `CompiledBotWorkspace` for Step 3; a single `.voxel-card` with recessed `.voxel-trough` slots (zero nested `.voxel-card`)
+  - Starter idea chips (`builder-starter-chips`) sit above an auto-expansible `<textarea>` (`maxLength={2000}`, `Enter` for newline, `Ctrl/Cmd+Enter` to submit), with the primary hero CTA (`Continue to Alignment →`) below the textarea
+  - Compiles via `enqueueCompileFn` / `fetchCompileJobFn` (25/day quota, `auto-go` model)
+- **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions (clickable pills + optional custom input, `Skip & build with defaults`, and `Build Final Bot →` hero CTA) before compiling the final bot (`status: 'ok'`)
   - On `status: 'declined'`, shows nearest buildable template
   - Guidance links: `"Take our 16-question personality test"` (`/personality`, derived from `PERSONALITY_QUESTIONS.length`) and `"talk to our AI advisor"` (`/chat`)
 
-- **Step 2**: **Compiled Bot Workspace** (`CompiledBotWorkspace` + `CompiledBotSummaryCard` + `CompiledBotBlueprintSection`)
-  - Centered `.voxel-card` summary holding status strip, bot name, summary, badges ("SAVED BOT" / "CLOSEST WORKING TEMPLATE" / "BOT READY"), primary CTA ("▶ Backtest (Random 2W)"), and live toggle ("Enable Live (30m)" / "Live: ON (30m)" with `LiveSwitchConfirmation`)
-  - Calm lower workspace (`CompiledBotBlueprintSection`) below the summary card with a WAI-ARIA segmented `.voxel-trough` tab bar (`Blocks & Tools` default via `StageBuilder` | `Prompt Preview` via `PromptVisualizer`), keyboard-navigable with ArrowLeft/ArrowRight/Home/End
+- **Step 3 (Backtest & Go Live)**: **Compiled Bot Workspace** (`CompiledBotWorkspace` + `CompiledBotSummaryCard` + `CompiledBotBlueprintSection`) inside `PageLayout` over `GlobalBackground`
+  - Centered `.voxel-card` summary holding `BuilderStepper` (Step 3 active), single `BuilderStatusStrip` (owning the single `BOT READY` / `SAVED BOT` / `CLOSEST WORKING TEMPLATE` / `PROMPT NEEDED` / active backtest badge), bot name (`RecipeNameField`), summary, block/tool badges, and a recessed `compiled-bot-next-action` trough highlighting the primary hero CTA ("▶ Backtest (Random 2W)") alongside the recessed live toggle ("Enable Live (30m)" / "Live: ON (30m)" with `LiveSwitchConfirmation`)
+  - Empty-prompt guard: a blank `prompt` block renders `PROMPT NEEDED` and disables Save, Backtest, and the live toggle
+  - Calm lower workspace (`CompiledBotBlueprintSection`) below the summary card with a WAI-ARIA segmented `.voxel-trough` tab bar (`Blocks & Tools` default via `StageBuilder` pinning the single editable `prompt` block first | `Prompt Preview` via `PromptVisualizer`), keyboard-navigable with ArrowLeft/ArrowRight/Home/End
   - "← Describe a different bot" or "← My Bots" link back to dashboard
 
 #### `/recipes` — My Bots Dashboard (`RecipeDashboardPage`)
@@ -94,7 +95,7 @@ The **Recipe Studio** is now a two-surface experience:
 
 ### 5-Block Push-Based Model (`version: "2.0-push"`)
 - Single LLM call per run (enforced at Studio UI, engine schema, scheduler, save API, fork API, builder compiler, DB constraint)
-- Blocks: `output_format` (immutable, rendered last), `prompt`, `news`, `memories`, `technicals`
+- Blocks: `output_format` (immutable, rendered last), `prompt` (required, rendered first), `news`, `memories`, `technicals`
 - Starter templates in `packages/config/starter-recipes.json` (5 templates, all `cadence: "3h"`)
 
 ### My Strategies: Soft-Hide (Never Delete)
@@ -143,7 +144,7 @@ The **Recipe Studio** is now a two-surface experience:
 
 ### Worker Modes & Safety
 - `JobOutcome`: `EMPTY` | `COMPLETED` | `FAILED`
-- `SUPPORTED_JOB_MODES`: `backtest`, `live_turn`
+- `SUPPORTED_JOB_MODES`: `backtest`, `live_turn`, `compile`
 - No nested event loop (`async_process_next_recipe_job` awaits directly)
 - Successful jobs: write `result_json`, increment `trial_count`, deposit `live_turn` alerts
 

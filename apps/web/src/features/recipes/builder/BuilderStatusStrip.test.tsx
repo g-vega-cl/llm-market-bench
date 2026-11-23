@@ -32,6 +32,13 @@ describe('BuilderStatusStrip', () => {
         expect(screen.getByTestId('builder-status-clock')).toHaveTextContent('14s');
     });
 
+    it('reports alignment state clearly so the user knows to pick options', () => {
+        render(<BuilderStatusStrip phase="align" />);
+
+        expect(screen.getByText('ALIGNING STRATEGY')).toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent(/build final bot/i);
+    });
+
     it('reports a failure with a way forward instead of staying blank', () => {
         render(<BuilderStatusStrip phase="error" />);
 

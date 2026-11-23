@@ -23,7 +23,7 @@ export const BUILDER_BURST_LIMIT = 5;
 export const BUILDER_BURST_WINDOW_MINUTES = 5;
 /** Single-flight per-user concurrency lock: 1 active compile at a time. */
 export const MAX_PENDING_COMPILES = 1;
-export const COMPILE_MAX_TOKENS = 1200;
+export const COMPILE_MAX_TOKENS = 1600;
 /** A queued job this old gets an honest "worker is busy" line in the strip. */
 export const QUEUE_SLOW_MS = 60_000;
 /** Past this the client gives up, cancels the row and offers Try again. */

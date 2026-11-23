@@ -82,11 +82,12 @@ describe('StageBuilder & PromptVisualizer', () => {
         expect(screen.getByText(/P\/E < 125/)).toBeInTheDocument();
     });
 
-    it('supports adding a new Prompt block and toggling tools', () => {
+    it('keeps prompt block pinned first (non-deletable) and toggles tools', () => {
         render(<ControlledStageHarness initialStage={STARTER_RECIPES[0].stages[0]} />);
 
-        fireEvent.click(screen.getByRole('button', { name: '+ Prompt' }));
-        expect(screen.getAllByText('PROMPT BLOCK').length).toBe(2);
+        expect(screen.getByRole('button', { name: '+ Prompt' })).toBeDisabled();
+        expect(screen.getByText('PINNED FIRST')).toBeInTheDocument();
+        expect(screen.getAllByText('PROMPT BLOCK').length).toBe(1);
 
         const initialCount = STARTER_RECIPES[0].stages[0].selected_tools.length;
         expect(screen.getByText(`${initialCount} / 11`)).toBeInTheDocument();

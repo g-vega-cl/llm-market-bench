@@ -257,11 +257,13 @@ def hydrate_stage_prompt(
     used_prev_placeholder = False
     portfolio_injected = False
 
-    # Render output_format blocks last so the schema lock is always the final
-    # instruction the model sees, regardless of block order in the stage.
-    ordered_blocks = [b for b in stage.blocks if not isinstance(b, OutputFormatBlock)] + [
-        b for b in stage.blocks if isinstance(b, OutputFormatBlock)
-    ]
+    # Render prompt blocks first and output_format blocks last so instructions
+    # lead the prompt and the schema lock is always final, regardless of block order.
+    ordered_blocks = (
+        [b for b in stage.blocks if isinstance(b, PromptBlock)]
+        + [b for b in stage.blocks if not isinstance(b, (PromptBlock, OutputFormatBlock))]
+        + [b for b in stage.blocks if isinstance(b, OutputFormatBlock)]
+    )
     for block in ordered_blocks:
         if isinstance(block, PromptBlock):
             rendered, used_prev = _render_prompt_block(block, prev_output)

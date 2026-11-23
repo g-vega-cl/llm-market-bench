@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import { BuilderChatPanel } from './BuilderChatPanel';
 
@@ -45,6 +45,30 @@ function renderWithQuery(ui: React.ReactElement) {
     return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
+beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        })),
+    });
+
+    if (typeof globalThis.ResizeObserver === 'undefined') {
+        globalThis.ResizeObserver = class ResizeObserver {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        };
+    }
+});
+
 beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockResolvedValue(undefined);
@@ -58,47 +82,54 @@ beforeEach(() => {
     } as never);
 });
 
-describe('BuilderChatPanel (GlobalBackground, Expansible Textarea & Voxel Pipeline)', () => {
-    it('renders transparently without diorama/starter chips and shows 16-question personality link', () => {
-        const { container } = renderWithQuery(<BuilderChatPanel userId="user-1" />);
+describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment Card)', () => {
+    it('renders on SceneStage with GardenBackdrop, starter chips, 3-step stepper, and sr-only h1', () => {
+        const { container } = renderWithQuery(
+            <BuilderChatPanel userId="user-1" initialAtmosphere="dusk" />,
+        );
 
-        expect(container.querySelector('section[data-slot="scene-stage"]')).toBeNull();
-        expect(screen.queryByTestId('garden-backdrop')).toBeNull();
-        expect(screen.queryByTestId('builder-starter-chips')).toBeNull();
+        const stage = container.querySelector('section[data-slot="scene-stage"]');
+        expect(stage).toBeInTheDocument();
+        expect(stage).toHaveAttribute('data-atmosphere', 'dusk');
+        expect(screen.getByTestId('garden-backdrop')).toBeInTheDocument();
+
+        const starterChips = screen.getByTestId('builder-starter-chips');
+        expect(starterChips).toBeInTheDocument();
+
+        const stepper = screen.getByTestId('builder-stepper');
+        expect(stepper.querySelector('[data-step-number="1"]')).toHaveAttribute(
+            'data-step-state',
+            'active',
+        );
 
         const pageHeading = screen.getByRole('heading', {
             level: 1,
             name: /build a trading bot from one sentence/i,
         });
         expect(pageHeading).toHaveClass('sr-only');
-        expect(screen.getByTestId('builder-stage-card')).toHaveClass('voxel-card');
-        expect(screen.getByTestId('builder-stage-card')).not.toHaveClass('scene-scrim');
+        expect(screen.getByTestId('builder-stage-card')).toHaveClass('voxel-card', 'scene-scrim');
 
-        const personalityLink = screen.getByRole('link', {
-            name: /16-question personality test/i,
-        });
-        expect(personalityLink).toHaveAttribute('href', '/personality');
+        // Clicking a starter chip fills the strategy textarea.
+        fireEvent.click(screen.getByRole('button', { name: 'AI Capex Chips' }));
+        expect(screen.getByLabelText('Describe your trading bot')).toHaveValue(
+            'Buy profitable semiconductor leaders on AI data-center capex news with RSI under 65 and positive MACD.',
+        );
     });
 
-    it('places the Build My Bot button above an expansible textarea and supports Ctrl/Cmd+Enter submit', async () => {
+    it('places the primary Continue to Alignment CTA below the textarea and supports Ctrl/Cmd+Enter submit', async () => {
         renderWithQuery(<BuilderChatPanel userId="user-1" />);
 
-        const submitButton = screen.getByRole('button', { name: /build my bot/i });
+        const submitButton = screen.getByRole('button', { name: /continue to alignment/i });
         const textarea = screen.getByLabelText('Describe your trading bot');
         expect(textarea.tagName).toBe('TEXTAREA');
         expect(textarea).toHaveAttribute('maxLength', '2000');
-        const describedBy = textarea.getAttribute('aria-describedby');
-        expect(describedBy).toBeTruthy();
-        expect(document.getElementById(describedBy as string)).toHaveTextContent(
-            /0 \/ 2000 · Ctrl\/⌘\+Enter to submit/,
-        );
+        expect(submitButton).toHaveClass('voxel-btn--hero');
 
-        // Button appears above the textarea in DOM order.
+        // Textarea sits above the primary CTA in DOM order.
         expect(
-            submitButton.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING,
+            textarea.compareDocumentPosition(submitButton) & Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
 
-        // Plain Enter does not submit; Ctrl+Enter submits when non-empty.
         fireEvent.change(textarea, { target: { value: 'Buy chipmakers on AI capex news' } });
         fireEvent.keyDown(textarea, { key: 'Enter' });
         expect(enqueueCompileFn).not.toHaveBeenCalled();
@@ -108,46 +139,105 @@ describe('BuilderChatPanel (GlobalBackground, Expansible Textarea & Voxel Pipeli
         expect(await screen.findByTestId('builder-compile-pipeline')).toBeInTheDocument();
     });
 
-    it('reflects real queued vs compiling pipeline states honestly and uses recessed troughs for chat messages', async () => {
-        vi.mocked(fetchCompileJobFn).mockResolvedValueOnce({
-            id: 'job-compile-1',
-            status: 'pending',
-            progress_pct: 0,
-            result_json: null,
-            error_message: null,
-        } as never);
+    it('walks through the 3-5 MCQ alignment round and compiles into CompiledBotWorkspace', async () => {
+        vi.mocked(fetchCompileJobFn)
+            .mockResolvedValueOnce({
+                id: 'job-compile-1',
+                status: 'completed',
+                progress_pct: 100,
+                result_json: {
+                    content: JSON.stringify({
+                        status: 'align',
+                        intro: 'Align on 3 quick choices.',
+                        questions: [
+                            {
+                                id: 'q1',
+                                question: 'Ticker focus?',
+                                options: ['NVDA/AMD', 'Broad semis'],
+                            },
+                            {
+                                id: 'q2',
+                                question: 'Entry filter?',
+                                options: ['RSI < 65', 'MACD > 0'],
+                            },
+                            {
+                                id: 'q3',
+                                question: 'Exit rule?',
+                                options: ['Thesis break', 'RSI > 80'],
+                            },
+                        ],
+                    }),
+                },
+                error_message: null,
+            } as never)
+            .mockResolvedValueOnce({
+                id: 'job-compile-2',
+                status: 'completed',
+                progress_pct: 100,
+                result_json: {
+                    content: JSON.stringify({
+                        status: 'ok',
+                        strategy: STARTER_RECIPES[0],
+                        summary: 'Compiled chip momentum bot.',
+                    }),
+                },
+                error_message: null,
+            } as never);
+
+        vi.mocked(enqueueCompileFn)
+            .mockResolvedValueOnce({ jobId: 'job-compile-1' } as never)
+            .mockResolvedValueOnce({ jobId: 'job-compile-2' } as never);
 
         renderWithQuery(<BuilderChatPanel userId="user-1" />);
 
-        const textarea = screen.getByLabelText('Describe your trading bot');
-        fireEvent.change(textarea, { target: { value: 'Buy chipmakers on AI capex news' } });
-        fireEvent.click(screen.getByRole('button', { name: /build my bot/i }));
+        fireEvent.change(screen.getByLabelText('Describe your trading bot'), {
+            target: { value: 'Buy chipmakers on AI capex news' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /continue to alignment/i }));
 
-        const pipeline = await screen.findByTestId('builder-compile-pipeline');
-        expect(pipeline).toBeInTheDocument();
-        expect(pipeline).toHaveTextContent(/1\. Queue/i);
-        expect(pipeline).toHaveTextContent(/2\. Model/i);
-        expect(pipeline).toHaveTextContent(/3\. Validate/i);
-        expect(pipeline.querySelectorAll('[data-step-state="active"]')).toHaveLength(1);
+        const alignCard = await screen.findByTestId('builder-alignment-card');
+        expect(alignCard).toBeInTheDocument();
+        expect(
+            screen.getByTestId('builder-stepper').querySelector('[data-step-number="2"]'),
+        ).toHaveAttribute('data-step-state', 'active');
 
-        // Conversation rows inside .voxel-card must use recessed .voxel-trough, zero nested .voxel-card
-        const stageCard = screen.getByTestId('builder-stage-card');
-        expect(stageCard.querySelectorAll('.voxel-card')).toHaveLength(0);
-        expect(stageCard.querySelector('[data-testid="builder-message-row"]')).toHaveClass(
-            'voxel-trough',
+        const buildFinalBtn = screen.getByRole('button', { name: /build final bot/i });
+        expect(buildFinalBtn).toBeDisabled();
+
+        fireEvent.click(screen.getByRole('button', { name: 'NVDA/AMD' }));
+        fireEvent.click(screen.getByRole('button', { name: 'RSI < 65' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Thesis break' }));
+
+        expect(buildFinalBtn).toBeEnabled();
+        fireEvent.click(buildFinalBtn);
+
+        const heroCard = await screen.findByTestId('compiled-bot-hero-card');
+        expect(heroCard).toHaveClass('voxel-card');
+        expect(heroCard).not.toHaveClass('scene-scrim');
+
+        await waitFor(() =>
+            expect(screen.getByRole('button', { name: /describe a different bot/i })).toBeEnabled(),
         );
+        fireEvent.click(screen.getByRole('button', { name: /describe a different bot/i }));
+        expect(screen.getByTestId('builder-stage-card')).toBeInTheDocument();
     });
 
-    it('transitions to CompiledBotWorkspace on compile completion and returns cleanly on Start Over', async () => {
-        vi.mocked(fetchCompileJobFn).mockResolvedValue({
-            id: 'job-compile-1',
+    it('keeps BuilderAlignmentCard mounted at Step 2 on failure and preserves custom text matching an option', async () => {
+        vi.mocked(enqueueCompileFn)
+            .mockResolvedValueOnce({ jobId: 'job-align-err-1' } as never)
+            .mockRejectedValueOnce(new Error('Worker busy') as never);
+        vi.mocked(fetchCompileJobFn).mockResolvedValueOnce({
+            id: 'job-align-err-1',
             status: 'completed',
             progress_pct: 100,
             result_json: {
                 content: JSON.stringify({
-                    status: 'ok',
-                    strategy: STARTER_RECIPES[0],
-                    summary: 'Compiled chip momentum bot.',
+                    status: 'align',
+                    questions: [
+                        { id: 'q1', question: 'Ticker focus?', options: ['NVDA', 'AMD'] },
+                        { id: 'q2', question: 'Entry filter?', options: ['RSI < 65', 'MACD > 0'] },
+                        { id: 'q3', question: 'Exit rule?', options: ['Thesis break', 'RSI > 80'] },
+                    ],
                 }),
             },
             error_message: null,
@@ -158,13 +248,22 @@ describe('BuilderChatPanel (GlobalBackground, Expansible Textarea & Voxel Pipeli
         fireEvent.change(screen.getByLabelText('Describe your trading bot'), {
             target: { value: 'Buy chipmakers on AI capex news' },
         });
-        fireEvent.click(screen.getByRole('button', { name: /build my bot/i }));
+        fireEvent.click(screen.getByRole('button', { name: /continue to alignment/i }));
 
-        const heroCard = await screen.findByTestId('compiled-bot-hero-card');
-        expect(heroCard).toHaveClass('voxel-card');
-        expect(heroCard).not.toHaveClass('scene-scrim');
+        await screen.findByTestId('builder-alignment-card');
+        const customInput = screen.getByLabelText('Custom answer for question 1');
+        fireEvent.change(customInput, { target: { value: 'NVDA' } });
+        expect(customInput).toHaveValue('NVDA');
 
-        fireEvent.click(screen.getByRole('button', { name: /describe a different bot/i }));
-        expect(screen.getByTestId('builder-stage-card')).toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'RSI < 65' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Thesis break' }));
+        fireEvent.click(screen.getByRole('button', { name: /build final bot/i }));
+
+        expect(await screen.findByRole('alert')).toHaveTextContent('Worker busy');
+        expect(screen.getByTestId('builder-alignment-card')).toBeInTheDocument();
+        expect(
+            screen.getByTestId('builder-stepper').querySelector('[data-step-number="2"]'),
+        ).toHaveAttribute('data-step-state', 'active');
+        expect(screen.getByLabelText('Custom answer for question 1')).toHaveValue('NVDA');
     });
 });

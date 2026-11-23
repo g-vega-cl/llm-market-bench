@@ -7,6 +7,7 @@ import type {
     StrategyStage,
     TechnicalsBlock,
 } from '../types';
+import { pinStageBlocks } from '../utils/stage-blocks';
 import {
     MemoriesBlockEditor,
     NewsBlockEditor,
@@ -45,20 +46,23 @@ function createBlock(type: StrategyBlock['type']): StrategyBlock {
 }
 
 export function StageBuilder({ stage, onChange }: StageBuilderProps) {
-    const hasOutputFormat = stage.blocks.some((block) => block.type === 'output_format');
+    const blocks = pinStageBlocks(stage.blocks);
+    const hasPrompt = blocks.some((block) => block.type === 'prompt');
+    const hasOutputFormat = blocks.some((block) => block.type === 'output_format');
 
-    const updateBlock = (blockId: string, updater: (b: StrategyBlock) => StrategyBlock) => {
+    const emitBlocks = (nextBlocks: StrategyBlock[]) => {
         onChange({
             ...stage,
-            blocks: stage.blocks.map((b) => (b.id === blockId ? updater(b) : b)),
+            blocks: pinStageBlocks(nextBlocks),
         });
     };
 
+    const updateBlock = (blockId: string, updater: (b: StrategyBlock) => StrategyBlock) => {
+        emitBlocks(blocks.map((b) => (b.id === blockId ? updater(b) : b)));
+    };
+
     const removeBlock = (blockId: string) => {
-        onChange({
-            ...stage,
-            blocks: stage.blocks.filter((b) => b.id !== blockId),
-        });
+        emitBlocks(blocks.filter((b) => b.id !== blockId));
     };
 
     return (
@@ -72,9 +76,8 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                         size="sm"
                         variant="outline"
                         colorScheme="neutral"
-                        onClick={() =>
-                            onChange({ ...stage, blocks: [...stage.blocks, createBlock('prompt')] })
-                        }
+                        disabled={hasPrompt}
+                        onClick={() => emitBlocks([...blocks, createBlock('prompt')])}
                     >
                         + Prompt
                     </Button>
@@ -82,9 +85,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                         size="sm"
                         variant="outline"
                         colorScheme="neutral"
-                        onClick={() =>
-                            onChange({ ...stage, blocks: [...stage.blocks, createBlock('news')] })
-                        }
+                        onClick={() => emitBlocks([...blocks, createBlock('news')])}
                     >
                         + News
                     </Button>
@@ -92,12 +93,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                         size="sm"
                         variant="outline"
                         colorScheme="neutral"
-                        onClick={() =>
-                            onChange({
-                                ...stage,
-                                blocks: [...stage.blocks, createBlock('memories')],
-                            })
-                        }
+                        onClick={() => emitBlocks([...blocks, createBlock('memories')])}
                     >
                         + Memories
                     </Button>
@@ -105,12 +101,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                         size="sm"
                         variant="outline"
                         colorScheme="neutral"
-                        onClick={() =>
-                            onChange({
-                                ...stage,
-                                blocks: [...stage.blocks, createBlock('technicals')],
-                            })
-                        }
+                        onClick={() => emitBlocks([...blocks, createBlock('technicals')])}
                     >
                         + Technicals
                     </Button>
@@ -119,12 +110,7 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                         variant="outline"
                         colorScheme="neutral"
                         disabled={hasOutputFormat}
-                        onClick={() =>
-                            onChange({
-                                ...stage,
-                                blocks: [...stage.blocks, createBlock('output_format')],
-                            })
-                        }
+                        onClick={() => emitBlocks([...blocks, createBlock('output_format')])}
                     >
                         + Output Format
                     </Button>
@@ -132,16 +118,23 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
             </div>
 
             <div className="flex flex-col gap-3">
-                {stage.blocks.map((block) => (
+                {blocks.map((block) => (
                     <div
                         key={block.id}
                         className="flex flex-col gap-2 border border-voxel-bevel-hi bg-voxel-canvas p-3 rounded-none"
                     >
                         <div className="flex flex-wrap items-center justify-between gap-2">
-                            <Badge variant="soft" size="sm">
-                                {block.type.toUpperCase()} BLOCK
-                            </Badge>
-                            {block.type === 'output_format' ? null : (
+                            <div className="flex flex-wrap items-center gap-2">
+                                <Badge variant="soft" size="sm">
+                                    {block.type.toUpperCase()} BLOCK
+                                </Badge>
+                                {block.type === 'prompt' ? (
+                                    <Badge variant="soft" size="sm" colorScheme="accent">
+                                        PINNED FIRST
+                                    </Badge>
+                                ) : null}
+                            </div>
+                            {block.type === 'output_format' || block.type === 'prompt' ? null : (
                                 <Button
                                     size="sm"
                                     variant="outline"
@@ -154,12 +147,23 @@ export function StageBuilder({ stage, onChange }: StageBuilderProps) {
                         </div>
 
                         {block.type === 'prompt' && (
-                            <PromptBlockEditor
-                                block={block}
-                                onUpdate={(text) =>
-                                    updateBlock(block.id, (b) => ({ ...(b as PromptBlock), text }))
-                                }
-                            />
+                            <>
+                                <PromptBlockEditor
+                                    block={block}
+                                    onUpdate={(text) =>
+                                        updateBlock(block.id, (b) => ({
+                                            ...(b as PromptBlock),
+                                            text,
+                                        }))
+                                    }
+                                />
+                                {!block.text.trim() ? (
+                                    <p className="text-xs font-normal text-danger">
+                                        Prompt block cannot be empty — write clear instructions for
+                                        what this bot should trade.
+                                    </p>
+                                ) : null}
+                            </>
                         )}
                         {block.type === 'news' && (
                             <NewsBlockEditor

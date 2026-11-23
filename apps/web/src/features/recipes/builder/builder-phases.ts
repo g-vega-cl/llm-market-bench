@@ -4,6 +4,7 @@ export type BuilderPhase =
     | 'signed-out'
     | 'queued'
     | 'compiling'
+    | 'align'
     | 'question'
     | 'declined'
     | 'ready'

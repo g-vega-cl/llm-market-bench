@@ -232,8 +232,8 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 - **Source Files**: [`apps/web/src/features/recipes/builder/builder-phases.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/builder/builder-phases.ts), [`apps/web/src/features/recipes/builder/use-builder-chat.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/builder/use-builder-chat.ts), [`apps/web/src/features/recipes/utils/use-latest-recipe-run.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/utils/use-latest-recipe-run.ts)
 - **Entity Page**: [[concepts/recipe-builder-compiler]]
 - **States**:
-  - `BuilderPhase = 'idle' | 'signed-out' | 'queued' | 'compiling' | 'question' | 'declined' | 'ready' | 'error'` — one derived value from `(error, job status, reply, userId)`, rendered by `BuilderStatusStrip`; no boolean fan-out for "loading"/"failed".
-  - Compile transport: `idle` $\\to$ `queued` (row pending) $\\to$ `compiling` (row processing) $\\to$ `question` (waits for the user) $\\to$ `queued` … $\\to$ `ready` | `declined` | `error`.
+  - `BuilderPhase = 'idle' | 'signed-out' | 'queued' | 'compiling' | 'align' | 'question' | 'declined' | 'ready' | 'error'` — one derived value from `(error, job status, reply, userId)`, rendered by `BuilderStatusStrip`; no boolean fan-out for "loading"/"failed".
+  - Compile transport: `idle` $\\to$ `queued` (row pending) $\\to$ `compiling` (row processing) $\\to$ `align` (or `question`, waits for the user) $\\to$ `queued` … $\\to$ `ready` | `declined` | `error`.
   - Backtest run poll: `no run` $\\to$ `pending` $\\to$ `processing` $\\to$ `completed` | `failed` | `cancelled`; only `pending`/`processing` is polled (`refetchInterval`), so a settled run costs one read.
 - **Invariants**:
   - A reply is accepted only when `isCompilerReply()` validates it (an `ok` strategy must pass `validateStrategy`); the transport resolves an envelope-less response to `undefined`, so the boundary asserts with `assertServerFnResult()` instead of dereferencing it.

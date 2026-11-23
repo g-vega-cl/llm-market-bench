@@ -25,7 +25,7 @@ SUPPORTED_JOB_MODES = ("backtest", "live_turn", "compile")
 # Nothing upstream caps this (the client polls), so give the model 60s.
 COMPILE_TIMEOUT_SECONDS = max(30, int(os.environ.get("RECIPE_COMPILE_TIMEOUT_SECONDS", "60")))
 BUILDER_DAILY_LIMIT = 25
-COMPILE_MAX_TOKENS = 1200
+COMPILE_MAX_TOKENS = 1600
 COMPILE_MAX_MESSAGES = 9  # 1 system + up to 8 conversation turns
 DEFAULT_COMPILE_PROXY_URL = "https://llm.clvg.uk/v1"
 # A compile nobody ever claimed (daemon down, or a burst the lane never reached)

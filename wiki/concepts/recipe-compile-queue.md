@@ -41,13 +41,13 @@ A second concurrent insert therefore fails with SQLSTATE `23505`, which `enqueue
 
 A queue row is data, not a trusted request. Both ends of the lane re-derive the model contract rather than trusting what was stored:
 
-- **Enqueue side (`buildCompilePayload`)** — emits `{ model: 'auto-go', temperature: 0.2, max_tokens: COMPILE_MAX_TOKENS (1200), response_format: { type: 'json_object' }, messages: buildConversation(...) }`. Model, token budget, and JSON mode are server-owned constants.
+- **Enqueue side (`buildCompilePayload`)** — emits `{ model: 'auto-go', temperature: 0.2, max_tokens: COMPILE_MAX_TOKENS (1600), response_format: { type: 'json_object' }, messages: buildConversation(...) }`. Model, token budget, and JSON mode are server-owned constants.
 - **Worker side (`_sanitize_compile_payload`)** — before the meter and before any provider call, the daemon validates and rewrites the stored payload:
   - `messages` must be a non-empty list of at most `COMPILE_MAX_MESSAGES` (9 = 1 system + up to 8 conversation turns);
   - the first message must be `system` or `user`, every later message must be `user` or `assistant` (an injected second `system` turn fails the job);
   - every `content` must be non-empty text, truncated to 8000 chars for `system` and 2200 chars otherwise;
   - the last message must be a `user` turn;
-  - `max_tokens` is clamped to `1..COMPILE_MAX_TOKENS` (1200) and defaults to 1200 for a non-int or bool; `temperature` is clamped to `0.0..0.5` and defaults to 0.2;
+  - `max_tokens` is clamped to `1..COMPILE_MAX_TOKENS` (1600) and defaults to 1600 for a non-int or bool; `temperature` is clamped to `0.0..0.5` and defaults to 0.2;
   - `model` is forced to `auto-go` and `response_format` to `{ "type": "json_object" }`.
 
 A payload that fails validation raises before `consume_builder_compile`, so a tampered row costs no meter and no provider tokens. See [[concepts/recipe-builder-compiler]] for the conversation-level validation (`validateBuilderMessages`) that runs on the way in.

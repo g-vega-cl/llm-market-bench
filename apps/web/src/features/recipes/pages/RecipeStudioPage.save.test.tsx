@@ -69,7 +69,7 @@ describe('RecipeStudioPage > draft and explicit save', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Save Recipe' }));
 
         // A block edited during the request must not be marked as saved.
-        fireEvent.click(screen.getByRole('button', { name: '+ Prompt' }));
+        fireEvent.click(screen.getByRole('button', { name: '+ News' }));
 
         resolveSave({
             id: 'rec-inflight-1',
@@ -136,7 +136,7 @@ describe('RecipeStudioPage > draft and explicit save', () => {
         // Each action manages its own pending state; backtest is not blocked by an in-flight save.
         expect(screen.getByRole('button', { name: /Backtest \(Random 2W\)/i })).toBeEnabled();
 
-        fireEvent.click(screen.getByRole('button', { name: '+ Prompt' }));
+        fireEvent.click(screen.getByRole('button', { name: '+ News' }));
 
         resolveFirst({
             id: 'rec-run-1',

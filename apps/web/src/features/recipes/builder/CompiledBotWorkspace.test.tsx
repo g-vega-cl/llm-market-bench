@@ -79,11 +79,21 @@ beforeEach(() => {
 describe('CompiledBotWorkspace', () => {
     const strategy = STARTER_RECIPES[0];
 
-    it('renders hero summary inside a voxel-card without SceneStage and defaults the lower workspace tab to Blocks & Tools', () => {
-        const { container } = renderWithQuery(<CompiledBotWorkspace initialStrategy={strategy} />);
+    it('renders hero summary with a single status badge, Step 3 stepper, and defaults lower tab to Blocks & Tools', () => {
+        const { container } = renderWithQuery(
+            <CompiledBotWorkspace initialStrategy={{ ...strategy, id: undefined }} />,
+        );
 
         expect(container.querySelector('section[data-slot="scene-stage"]')).toBeNull();
         expect(screen.queryByTestId('garden-backdrop')).toBeNull();
+
+        // Only ONE BOT READY badge is rendered (inside BuilderStatusStrip, never duplicated).
+        expect(screen.getAllByText('BOT READY')).toHaveLength(1);
+
+        // Step 3 is active in the stepper.
+        expect(
+            screen.getByTestId('builder-stepper').querySelector('[data-step-number="3"]'),
+        ).toHaveAttribute('data-step-state', 'active');
 
         // The compiled state is still the /build page: exactly one sr-only h1 carries the name
         const pageHeadings = screen.getAllByRole('heading', { level: 1 });
@@ -96,9 +106,12 @@ describe('CompiledBotWorkspace', () => {
         expect(heroCard).not.toHaveClass('scene-scrim');
         expect(heroCard.querySelectorAll('.voxel-card')).toHaveLength(0);
 
-        expect(
-            screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i }),
-        ).toBeInTheDocument();
+        const backtestBtn = screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i });
+        expect(backtestBtn).toBeInTheDocument();
+        expect(backtestBtn).toHaveClass('voxel-btn--hero');
+        expect(screen.getByTestId('compiled-bot-next-action')).toHaveTextContent(
+            /next best step: run a 2-week paper backtest/i,
+        );
 
         // Lower workspace renders Blocks & Tools flat by default inside an accessible tabpanel
         const blocksTab = screen.getByRole('tab', { name: /Blocks & Tools/i });
@@ -195,5 +208,15 @@ describe('CompiledBotWorkspace', () => {
                 params: { jobId: 'job-999' },
             });
         });
+    });
+
+    it('blocks saving or running when the prompt block is cleared to empty', () => {
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={strategy} />);
+
+        fireEvent.change(screen.getByLabelText('Prompt text'), { target: { value: '   ' } });
+
+        expect(screen.getByTestId('builder-status')).toHaveTextContent(/PROMPT NEEDED/i);
+        expect(screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeDisabled();
     });
 });

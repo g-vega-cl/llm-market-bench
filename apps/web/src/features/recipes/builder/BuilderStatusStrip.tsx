@@ -37,6 +37,12 @@ function describe(phase: BuilderPhase, elapsedMs: number, detail?: string): Stat
                 text: 'Your idea is parked in this browser until you sign in.',
                 tone: 'info',
             };
+        case 'align':
+            return {
+                label: 'ALIGNING STRATEGY',
+                text: 'Pick your preferences below, then click Build Final Bot.',
+                tone: 'accent',
+            };
         case 'question':
             return {
                 label: 'YOUR ANSWER NEEDED',
@@ -52,7 +58,7 @@ function describe(phase: BuilderPhase, elapsedMs: number, detail?: string): Stat
         case 'ready':
             return {
                 label: 'BOT READY',
-                text: detail ?? 'Compiled and editable — backtest it with paper cash.',
+                text: detail ?? 'Compiled and editable — run a paper backtest next.',
                 tone: 'success',
             };
         case 'error':

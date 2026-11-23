@@ -6,6 +6,7 @@ export type AnalyticsEvent =
     | 'recipe_forked'
     | 'run_queued'
     | 'builder_opened'
+    | 'builder_alignment_shown'
     | 'builder_compiled'
     | 'builder_failed'
     | 'builder_question_answered'

@@ -45,6 +45,8 @@ describe('capability manifest', () => {
         for (const block of ['prompt', 'news', 'memories', 'technicals', 'output_format']) {
             expect(manifest).toContain(`"type":"${block}"`);
         }
+        expect(manifest).toContain('prompt MUST be first');
+        expect(manifest).toContain('Price vs VWAP');
         expect(manifest).toContain('Long only');
         expect(manifest).toContain('Exactly one stage');
     });
@@ -61,6 +63,23 @@ describe('validateStrategy', () => {
         const broken = structuredClone(validStrategy);
         broken.stages.push(structuredClone(validStrategy.stages[0]));
         expect(() => validateStrategy(broken)).toThrow();
+    });
+
+    it('rejects a graph without a prompt block or with prompt out of order', () => {
+        const noPrompt = structuredClone(validStrategy);
+        noPrompt.stages[0].blocks = noPrompt.stages[0].blocks.filter(
+            (block) => block.type !== 'prompt',
+        );
+        expect(() => validateStrategy(noPrompt)).toThrow(/prompt block is required/);
+
+        const wrongOrder = structuredClone(validStrategy);
+        const [promptBlk, newsBlk, fmtBlk] = wrongOrder.stages[0].blocks;
+        wrongOrder.stages[0].blocks = [newsBlk, promptBlk, fmtBlk];
+        expect(() => validateStrategy(wrongOrder)).toThrow(/prompt block must be the first block/);
+
+        const emptyPrompt = structuredClone(validStrategy);
+        (emptyPrompt.stages[0].blocks[0] as { text: string }).text = '   ';
+        expect(() => validateStrategy(emptyPrompt)).toThrow(/prompt block cannot be empty/);
     });
 
     it('rejects a graph without an output_format block', () => {
@@ -102,6 +121,67 @@ describe('parseCompilerReply', () => {
         const reply = parseCompilerReply(raw);
         expect(reply.status).toBe('ok');
         if (reply.status === 'ok') expect(reply.strategy.name).toBe('Chip Momentum');
+    });
+
+    it('synthesizes a prompt block first when the model omits it and moves prompt first when out of order', () => {
+        const noPromptStrategy = structuredClone(validStrategy);
+        noPromptStrategy.stages[0].blocks = noPromptStrategy.stages[0].blocks.filter(
+            (b) => b.type !== 'prompt',
+        );
+        const synthesized = parseCompilerReply(
+            JSON.stringify({
+                status: 'ok',
+                summary: 'Chip momentum',
+                strategy: noPromptStrategy,
+            }),
+        );
+        expect(synthesized.status).toBe('ok');
+        if (synthesized.status === 'ok') {
+            const blocks = synthesized.strategy.stages[0].blocks;
+            expect(blocks[0].type).toBe('prompt');
+            expect((blocks[0] as { text: string }).text).toContain('Buys chipmakers');
+            expect(blocks[blocks.length - 1].type).toBe('output_format');
+        }
+
+        const outOfOrder = structuredClone(validStrategy);
+        const [promptBlk, newsBlk, fmtBlk] = outOfOrder.stages[0].blocks;
+        outOfOrder.stages[0].blocks = [newsBlk, fmtBlk, promptBlk];
+        const reordered = parseCompilerReply(
+            JSON.stringify({
+                status: 'ok',
+                summary: 'Chip momentum',
+                strategy: outOfOrder,
+            }),
+        );
+        expect(reordered.status).toBe('ok');
+        if (reordered.status === 'ok') {
+            const blocks = reordered.strategy.stages[0].blocks;
+            expect(blocks[0].type).toBe('prompt');
+            expect(blocks[blocks.length - 1].type).toBe('output_format');
+        }
+    });
+
+    it('parses an alignment round of 3-5 multiple-choice questions', () => {
+        const reply = parseCompilerReply(
+            JSON.stringify({
+                status: 'align',
+                intro: 'Let us align on a few details.',
+                questions: [
+                    { id: 'q1', question: 'Which sector?', options: ['Semis', 'Cloud'] },
+                    { id: 'q2', question: 'Entry trigger?', options: ['Earnings', 'RSI < 35'] },
+                    { id: 'q3', question: 'Exit rule?', options: ['Target hit', 'Thesis break'] },
+                ],
+            }),
+        );
+        expect(reply).toEqual({
+            status: 'align',
+            intro: 'Let us align on a few details.',
+            questions: [
+                { id: 'q1', question: 'Which sector?', options: ['Semis', 'Cloud'] },
+                { id: 'q2', question: 'Entry trigger?', options: ['Earnings', 'RSI < 35'] },
+                { id: 'q3', question: 'Exit rule?', options: ['Target hit', 'Thesis break'] },
+            ],
+        });
     });
 
     it('parses a clarifying question with options', () => {
@@ -281,11 +361,18 @@ describe('isCompilerReply', () => {
         expect(isCompilerReply({ status: 'ok', strategy: { stages: [{}] } })).toBe(false);
         expect(isCompilerReply({ status: 'question', question: '  ', options: [] })).toBe(false);
         expect(isCompilerReply({ status: 'question', question: 'Which?' })).toBe(false);
+        expect(isCompilerReply({ status: 'align', questions: [] })).toBe(false);
     });
 
-    it('accepts each of the three reply shapes', () => {
+    it('accepts each of the reply shapes', () => {
         expect(
             isCompilerReply({ status: 'ok', strategy: validStrategy, summary: 'Chip momentum' }),
+        ).toBe(true);
+        expect(
+            isCompilerReply({
+                status: 'align',
+                questions: [{ id: 'q1', question: 'Which tickers?', options: ['NVDA', 'AMD'] }],
+            }),
         ).toBe(true);
         expect(isCompilerReply({ status: 'question', question: 'Which?', options: [] })).toBe(true);
         expect(isCompilerReply({ status: 'declined', reason: 'no shorts' })).toBe(true);

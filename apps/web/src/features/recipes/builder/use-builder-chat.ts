@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { track } from '~/lib/analytics';
 import { assertServerFnResult } from '~/lib/server-fn';
 import { clearPendingIdea, loadPendingIdea, savePendingIdea } from '../utils/local-draft';
+import type { AlignmentAnswerEntry } from './BuilderAlignmentCard';
 import type { BuilderPhase } from './builder-phases';
 import {
     cancelCompileFn,
@@ -17,6 +18,8 @@ import {
     type CompilerReply,
     fallbackReply,
     isCompilerReply,
+    MAX_ASSISTANT_TURN_CHARS,
+    MAX_TURN_CHARS,
     parseCompilerReply,
 } from './compiler';
 
@@ -33,12 +36,18 @@ export interface UseBuilderChatArgs {
     onNeedSignIn: (idea: string) => Promise<void>;
 }
 
+export type AlignmentPromptReply = Extract<CompilerReply, { status: 'align' }>;
+
 export interface BuilderChat {
     messages: BuilderMessage[];
     messageIds: string[];
     draft: string;
     setDraft: (value: string) => void;
     reply: CompilerReply | null;
+    /** Preserved across alignment compile retries/errors so selections are never lost. */
+    activeAlignment: AlignmentPromptReply | null;
+    /** Incremented on every compiled bot result to guarantee fresh workspace mounts. */
+    compileNonce: number;
     isCompiling: boolean;
     error: string | null;
     pendingIdea: string | null;
@@ -47,18 +56,14 @@ export interface BuilderChat {
     /** Extra strip copy for a job that is sitting unclaimed; null until it matters. */
     statusDetail: string | null;
     send: (text: string) => Promise<void>;
+    submitAlignment: (answers: AlignmentAnswerEntry[]) => Promise<void>;
+    skipAlignment: () => Promise<void>;
     retry: () => void;
     /** Explicit escape hatch from a failed compile: drop in the closest template. */
     useTemplate: () => void;
     reset: () => void;
 }
 
-/**
- * The transport resolves to `undefined` (instead of throwing) when a server
- * function response is not a reply envelope — an edge 502, a cut-off request.
- * Reading `.status` off that used to surface a raw TypeError with no way
- * forward, so an unknown payload is now a legible, retryable message.
- */
 const NO_REPLY_MESSAGE =
     'The builder did not get an answer back — the request was cut off before it finished. Nothing was queued; try again.';
 const FAILED_MESSAGE = 'The builder failed to answer. Try again, or use the closest template.';
@@ -66,6 +71,47 @@ const UNUSABLE_REPLY =
     'The model replied with something the engine cannot run, so here is the closest working recipe. Edit it and run it.';
 const ABANDONED_MESSAGE =
     'The builder never picked this request up, so it was cancelled. Try again — nothing was spent on it.';
+
+function formatAlignmentTranscript(reply: AlignmentPromptReply): string {
+    const lines = [
+        reply.intro ? reply.intro : 'Alignment questions:',
+        ...reply.questions.map((q, idx) => `${idx + 1}. ${q.question}`),
+    ];
+    return lines.join('\n').slice(0, MAX_ASSISTANT_TURN_CHARS);
+}
+
+function formatAlignmentAnswersTurn(entries: AlignmentAnswerEntry[]): string {
+    const lines = entries.map(
+        ({ question, answer }) => `- ${question.slice(0, 120)}: ${answer.slice(0, 120)}`,
+    );
+    return [
+        'Alignment choices:',
+        ...lines,
+        'Compile the final bot now with a clear prompt block first.',
+    ]
+        .join('\n')
+        .slice(0, MAX_TURN_CHARS);
+}
+
+function resolveConversationBase(args: {
+    messages: BuilderMessage[];
+    messageIds: string[];
+    reply: CompilerReply | null;
+    activeAlignment: AlignmentPromptReply | null;
+}): { baseMessages: BuilderMessage[]; baseIds: string[] } {
+    if (args.reply?.status === 'declined') {
+        return { baseMessages: [], baseIds: [] };
+    }
+    const retryingAlignment =
+        Boolean(args.activeAlignment) && args.messages[args.messages.length - 1]?.role === 'user';
+    if (retryingAlignment) {
+        return {
+            baseMessages: args.messages.slice(0, -1),
+            baseIds: args.messageIds.slice(0, -1),
+        };
+    }
+    return { baseMessages: args.messages, baseIds: args.messageIds };
+}
 
 function isInFlight(status: string | undefined): boolean {
     return status === 'pending' || status === 'processing';
@@ -76,12 +122,14 @@ function derivePhase(args: {
     error: string | null;
     jobStatus: string | undefined;
     reply: CompilerReply | null;
+    activeAlignment: AlignmentPromptReply | null;
     userId?: string | null;
 }): BuilderPhase {
     if (args.error) return 'error';
     if (args.jobStatus === 'pending') return 'queued';
     if (args.jobStatus === 'processing') return 'compiling';
     if (args.reply) return args.reply.status === 'ok' ? 'ready' : args.reply.status;
+    if (args.activeAlignment) return 'align';
     return args.userId ? 'idle' : 'signed-out';
 }
 
@@ -98,6 +146,8 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     const [messageIds, setMessageIds] = useState<string[]>(() => (idea ? ['seed'] : []));
     const [draft, setDraft] = useState('');
     const [reply, setReply] = useState<CompilerReply | null>(null);
+    const [activeAlignment, setActiveAlignment] = useState<AlignmentPromptReply | null>(null);
+    const [compileNonce, setCompileNonce] = useState(0);
     const [error, setError] = useState<string | null>(null);
     const [jobId, setJobId] = useState<string | null>(null);
     const [elapsedMs, setElapsedMs] = useState(0);
@@ -106,6 +156,7 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     // Mirrors `elapsedMs` for the poll interval, which cannot read render state.
     const elapsedRef = useRef(0);
     elapsedRef.current = elapsedMs;
+    const hasAlignedRef = useRef(false);
 
     const pendingIdea = messages.length > 0 ? null : loadPendingIdea();
 
@@ -113,15 +164,11 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         queryKey: ['builder-compile', jobId],
         queryFn: async () => {
             const result = await fetchCompileJobFn({ data: { jobId: jobId as string } });
-            // An envelope-less reply resolves to `undefined`; throwing keeps the
-            // last known job state and lets the poll retry instead of crashing.
             return assertServerFnResult(result, 'The builder');
         },
         enabled: Boolean(jobId),
         refetchInterval: (q) => {
             if (!isInFlight(q.state.data?.status)) return false;
-            // Stop hammering the server once the client has given up; the abandon
-            // effect below then cancels the row and frees the per-user cap.
             if (isQueueAbandoned(elapsedRef.current)) return false;
             return 2000;
         },
@@ -140,18 +187,36 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
 
     const finish = useCallback(
         (next: CompilerReply) => {
-            setReply(next);
-            if (next.status === 'ok') {
+            // Guard against a second alignment round: at most one alignment round per session.
+            const resolved =
+                next.status === 'align' && hasAlignedRef.current
+                    ? fallbackReply(UNUSABLE_REPLY)
+                    : next;
+
+            setReply(resolved);
+            if (resolved.status === 'ok') {
+                setActiveAlignment(null);
+                setCompileNonce((n) => n + 1);
                 track(posthog, 'builder_compiled', {
-                    cadence: next.strategy.cadence,
-                    fallback: Boolean(next.fallback),
+                    cadence: resolved.strategy.cadence,
+                    fallback: Boolean(resolved.fallback),
                 });
                 clearPendingIdea();
-            } else if (next.status === 'question') {
+            } else if (resolved.status === 'align') {
+                hasAlignedRef.current = true;
+                setActiveAlignment(resolved);
+                track(posthog, 'builder_alignment_shown', {
+                    question_count: resolved.questions.length,
+                });
+                const transcript = formatAlignmentTranscript(resolved);
+                setMessages((prev) => [...prev, { role: 'assistant', content: transcript }]);
+                setMessageIds((ids) => [...ids, `a${ids.length}-${Date.now()}`]);
+            } else if (resolved.status === 'question') {
                 track(posthog, 'builder_question_answered');
-                setMessages((prev) => [...prev, { role: 'assistant', content: next.question }]);
+                setMessages((prev) => [...prev, { role: 'assistant', content: resolved.question }]);
                 setMessageIds((ids) => [...ids, `q${ids.length}-${Date.now()}`]);
             } else {
+                setActiveAlignment(null);
                 track(posthog, 'builder_declined');
             }
         },
@@ -165,8 +230,6 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
                 reason: message.slice(0, 120),
             });
             setError(message);
-            // A failed compile has no reply to act on; a stale one would leave question
-            // buttons alive beside a failure message.
             setReply(null);
         },
         [posthog],
@@ -192,15 +255,12 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
                 if (!isCompilerReply(parsed)) throw new Error('malformed reply');
                 finish(parsed);
             } catch {
-                // Degrade instead of dead-ending: the visitor still leaves with a bot.
                 finish(fallbackReply(UNUSABLE_REPLY));
             }
         },
         [fail, finish],
     );
 
-    // Settle exactly once, when the polled job reaches a terminal state, and on a
-    // failed poll itself.
     const settledJobId = useRef<string | null>(null);
     useEffect(() => {
         if (!jobId || !job.data || isInFlight(job.data.status)) return;
@@ -218,9 +278,6 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         setJobId(null);
     }, [job.error, fail]);
 
-    // Give up on a job no worker ever claimed: cancel the row so it stops holding
-    // the 2-pending cap, then tell the user instead of counting up forever. The
-    // daemon's stale sweep is the backstop for a tab that was closed instead.
     useEffect(() => {
         if (!jobId || !isQueueAbandoned(elapsedMs)) return;
         const abandoned = jobId;
@@ -252,24 +309,37 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         const trimmed = text.trim();
         if (!trimmed || inFlight.current) return;
 
-        // Anonymous visitors may type freely, but compiles spend tokens, so the
-        // conversation is parked locally and resumed after sign-in.
         if (!userId) {
             savePendingIdea(trimmed);
             await onNeedSignIn(trimmed);
             return;
         }
 
-        // After a decline, the previous user prompt did not add an assistant turn,
-        // so starting fresh keeps strict user/assistant alternation intact.
-        const baseMessages = reply?.status === 'declined' ? [] : messages;
-        const baseIds = reply?.status === 'declined' ? [] : messageIds;
+        // After a decline, start fresh; if re-submitting alignment after a failure,
+        // replace the failed trailing user turn so strict user/assistant alternation holds.
+        const { baseMessages, baseIds } = resolveConversationBase({
+            messages,
+            messageIds,
+            reply,
+            activeAlignment,
+        });
+
         const next: BuilderMessage[] = [...baseMessages, { role: 'user', content: trimmed }];
         setMessages(next);
         setMessageIds([...baseIds, `m${baseIds.length}-${Date.now()}`]);
         setReply(null);
         setDraft('');
         await requestCompile(next);
+    };
+
+    const submitAlignment = async (answers: AlignmentAnswerEntry[]) => {
+        await send(formatAlignmentAnswersTurn(answers));
+    };
+
+    const skipAlignment = async () => {
+        await send(
+            'Skip alignment and compile the final bot now with sensible defaults based on my instructions.',
+        );
     };
 
     /** Re-run the last turn without appending a duplicate message. */
@@ -289,6 +359,8 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         setMessageIds([]);
         setDraft('');
         setReply(null);
+        setActiveAlignment(null);
+        hasAlignedRef.current = false;
         setError(null);
         setJobId(null);
         inFlight.current = false;
@@ -300,13 +372,23 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         draft,
         setDraft,
         reply,
+        activeAlignment,
+        compileNonce,
         isCompiling: Boolean(jobId),
         error,
         pendingIdea,
-        phase: derivePhase({ error, jobStatus: job.data?.status, reply, userId }),
+        phase: derivePhase({
+            error,
+            jobStatus: job.data?.status,
+            reply,
+            activeAlignment,
+            userId,
+        }),
         elapsedMs,
         statusDetail: jobId && isInFlight(job.data?.status) ? queuedHint(elapsedMs) : null,
         send,
+        submitAlignment,
+        skipAlignment,
         retry,
         useTemplate,
         reset,

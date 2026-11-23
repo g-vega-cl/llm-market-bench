@@ -6,9 +6,17 @@ import {
 import { STARTER_RECIPES } from '../starter-templates';
 import type { PushStrategy, StrategyBlock } from '../types';
 import { CURATED_TOOLS } from '../types';
+import { coerceStageBlocks } from '../utils/stage-blocks';
+
+export interface AlignmentQuestion {
+    id: string;
+    question: string;
+    options: string[];
+}
 
 export type CompilerReply =
     | { status: 'ok'; strategy: PushStrategy; summary: string; fallback?: boolean }
+    | { status: 'align'; intro?: string; questions: AlignmentQuestion[] }
     | { status: 'question'; question: string; options: string[] }
     | { status: 'declined'; reason: string; closest?: string };
 
@@ -19,9 +27,10 @@ export interface BuilderMessage {
 
 const BLOCK_TYPES = new Set(['prompt', 'news', 'memories', 'technicals', 'output_format']);
 const MAX_OPTIONS = 4;
+const MAX_ALIGN_QUESTIONS = 5;
 export const MAX_CONVERSATION_MESSAGES = 8;
 export const MAX_TURN_CHARS = 2000;
-export const MAX_ASSISTANT_TURN_CHARS = 400;
+export const MAX_ASSISTANT_TURN_CHARS = 1200;
 export const MAX_QUESTION_CHARS = 240;
 export const MAX_OPTION_CHARS = 80;
 export const MAX_DECLINE_CHARS = 240;
@@ -40,13 +49,13 @@ export function capabilityManifest(): string {
         .map((tool) => `- ${tool.name}: ${tool.description}`)
         .join('\n');
     return [
-        'BLOCKS (pick any subset, order does not matter):',
-        '- prompt: {"type":"prompt","text":"<instructions>"}',
-        '- news: {"type":"news","contains":["keyword"],"recency_hours":24}',
-        '- memories: {"type":"memories","contains":["keyword"],"recency_hours":168,"category":"MACRO|POST_MORTEM|TECHNICAL|SENTIMENT","min_importance":1}',
-        '- technicals: {"type":"technicals","rules":[{"metric":"RSI","operator":"<","value":30}]}',
-        '  suggested metrics: RSI, MACD, VWAP_pct, P/E, FCF_yield, price_52w_pct, market_cap',
-        '- output_format: {"type":"output_format"}  (REQUIRED, and always rendered last)',
+        'BLOCKS (prompt MUST be first; output_format MUST be last; include relevant data blocks in between):',
+        '- prompt: {"id":"b1","type":"prompt","text":"<specific strategy instructions derived from user goal and alignment answers>"}  (REQUIRED, non-empty, ALWAYS FIRST)',
+        '- news: {"id":"b2","type":"news","contains":["keyword"],"recency_hours":24}',
+        '- memories: {"id":"b3","type":"memories","contains":["keyword"],"recency_hours":168,"category":"MACRO|POST_MORTEM|TECHNICAL|SENTIMENT","min_importance":1}',
+        '- technicals: {"id":"b4","type":"technicals","rules":[{"metric":"RSI","operator":"<","target":"30"}]}',
+        '  allowed metrics: RSI, MACD, RVOL, Price vs VWAP, price_52w_pct, P/E, FCF, ROE, market_cap, beta',
+        '- output_format: {"id":"b5","type":"output_format"}  (REQUIRED, ALWAYS LAST)',
         '',
         'TOOLS the recipe may call (selected_tools):',
         tools,
@@ -72,14 +81,15 @@ export function compilerSystemPrompt(): string {
         `- If the input is not a stock-trading strategy idea, reply immediately with: {"status":"declined","reason":"${REFUSAL_REASON}","closest":"${REFUSAL_CLOSEST}"}`,
         '',
         'Reply shapes:',
-        '{"status":"ok","summary":"<one sentence describing the bot>","strategy":{"version":"2.0-push","name":"<max 40 chars>","description":"<one line>","cadence":"3h","stages":[{"id":"s1","blocks":[...],"selected_tools":["get_stock_quote"]}]}}',
-        '{"status":"question","question":"<one short question>","options":["<choice>","<choice>"]}',
+        '{"status":"align","intro":"<one short sentence framing these quick alignment choices>","questions":[{"id":"q1","question":"<short tailored question>","options":["<choice>","<choice>","<choice>"]}]}',
+        '{"status":"ok","summary":"<one sentence describing the bot>","strategy":{"version":"2.0-push","name":"<max 40 chars>","description":"<one line>","cadence":"3h","stages":[{"id":"s1","blocks":[{"id":"b1","type":"prompt","text":"<clear step-by-step trading instructions>"},...,{"id":"bN","type":"output_format"}],"selected_tools":["get_stock_quote"]}]}}',
         '{"status":"declined","reason":"<why this cannot run here, one line>","closest":"<the nearest buildable version>"}',
         '',
-        'Ask at most ONE question per reply and at most two across the conversation. If the idea is',
-        'already specific enough, return status "ok" immediately. If the idea needs something the',
-        'engine cannot do (shorts, options, leverage, intraday triggers, live web search), return',
-        '"declined" and describe the closest buildable version in "closest".',
+        'CONVERSATION FLOW:',
+        '1. On the user’s first trading idea (no prior assistant turn and user did not ask to skip alignment), ask ONE round of 3 to 5 tailored multiple-choice alignment questions using status "align". Each question must have 2 to 4 concise options covering real design choices (universe/sectors, entry signal, confirmation filter, exit/profit rule, risk selectivity).',
+        '2. Once the user submits alignment answers or asks to skip alignment, return status "ok" immediately. NEVER ask a second round of questions.',
+        '3. Every "ok" strategy MUST have a detailed, non-empty "prompt" block as blocks[0] synthesized from the user’s instructions and choices, and "output_format" as the last block.',
+        '4. If the idea needs something the engine cannot do (shorts, options, leverage, intraday triggers, live web search), return "declined" and describe the closest buildable version in "closest".',
         '',
         capabilityManifest(),
     ].join('\n');
@@ -120,17 +130,63 @@ function assertEnvelope(raw: Record<string, unknown>): void {
 function assertBlockContract(blocks: StrategyBlock[]): void {
     const ids = blocks.map((block) => block.id);
     if (new Set(ids).size !== ids.length) throw new Error('block ids must be unique');
+    const promptBlocks = blocks.filter((block) => block.type === 'prompt');
+    if (promptBlocks.length === 0) {
+        throw new Error('prompt block is required');
+    }
+    if (promptBlocks.length > 1) {
+        throw new Error('strategy must have exactly one prompt block');
+    }
+    if (blocks[0]?.type !== 'prompt') {
+        throw new Error('prompt block must be the first block');
+    }
+    if (!blocks[0].text.trim()) {
+        throw new Error('prompt block cannot be empty');
+    }
+    if (blocks[0].text.length > 4000) {
+        throw new Error('prompt block is too long');
+    }
     if (!blocks.some((block) => block.type === 'output_format')) {
         throw new Error('output_format block is required');
     }
     if (blocks[blocks.length - 1]?.type !== 'output_format') {
         throw new Error('output_format must be the last block');
     }
-    for (const block of blocks) {
-        if (block.type === 'prompt' && block.text.length > 4000) {
-            throw new Error('prompt block is too long');
-        }
+}
+
+function normalizeCompiledCandidate(candidate: unknown, summaryHint: string): unknown {
+    if (!candidate || typeof candidate !== 'object') return candidate;
+    const raw = candidate as Record<string, unknown>;
+    if (!Array.isArray(raw.stages) || raw.stages.length !== 1) return candidate;
+    const stage = raw.stages[0];
+    if (
+        !stage ||
+        typeof stage !== 'object' ||
+        !Array.isArray((stage as Record<string, unknown>).blocks)
+    ) {
+        return candidate;
     }
+    const rawBlocks = (stage as Record<string, unknown>).blocks as unknown[];
+    const parsedBlocks = rawBlocks.map(asBlock);
+    if (parsedBlocks.some((block) => block === null)) {
+        return candidate;
+    }
+    const descriptionHint =
+        typeof raw.description === 'string' && raw.description.trim() ? raw.description.trim() : '';
+    const fallbackPrompt =
+        descriptionHint ||
+        summaryHint.trim() ||
+        'Evaluate the injected market context and technical criteria, verify signals with your tools, and output long-only BUY or EXIT decisions.';
+
+    return {
+        ...raw,
+        stages: [
+            {
+                ...(stage as Record<string, unknown>),
+                blocks: coerceStageBlocks(parsedBlocks as StrategyBlock[], fallbackPrompt),
+            },
+        ],
+    };
 }
 
 function assertTools(value: unknown): string[] {
@@ -193,6 +249,21 @@ export function isCompilerReply(value: unknown): value is CompilerReply {
             return false;
         }
     }
+    if (status === 'align') {
+        return (
+            Array.isArray(candidate.questions) &&
+            candidate.questions.length > 0 &&
+            candidate.questions.every(
+                (item) =>
+                    item &&
+                    typeof item === 'object' &&
+                    typeof (item as Record<string, unknown>).question === 'string' &&
+                    String((item as Record<string, unknown>).question).trim().length > 0 &&
+                    Array.isArray((item as Record<string, unknown>).options) &&
+                    ((item as Record<string, unknown>).options as unknown[]).length > 0,
+            )
+        );
+    }
     if (status === 'question') {
         return (
             typeof candidate.question === 'string' &&
@@ -201,6 +272,53 @@ export function isCompilerReply(value: unknown): value is CompilerReply {
         );
     }
     return status === 'declined';
+}
+
+function parseAlignReply(parsed: Record<string, unknown>): CompilerReply {
+    const rawQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
+    const usedIds = new Set<string>();
+    const questions: AlignmentQuestion[] = rawQuestions
+        .slice(0, MAX_ALIGN_QUESTIONS)
+        .map((item, idx) => {
+            const record =
+                item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+            const question = String(record.question || '')
+                .trim()
+                .slice(0, MAX_QUESTION_CHARS);
+            const options = Array.isArray(record.options)
+                ? Array.from(
+                      new Set(
+                          record.options
+                              .map((option) => String(option).trim().slice(0, MAX_OPTION_CHARS))
+                              .filter(Boolean),
+                      ),
+                  ).slice(0, MAX_OPTIONS)
+                : [];
+            const baseId =
+                typeof record.id === 'string' && record.id.trim()
+                    ? record.id.trim().slice(0, 24)
+                    : `q${idx + 1}`;
+            let id = baseId;
+            let suffix = 2;
+            while (usedIds.has(id)) {
+                id = `${baseId}-${suffix}`;
+                suffix += 1;
+            }
+            usedIds.add(id);
+            return { id, question, options };
+        })
+        .filter((q) => q.question.length > 0 && q.options.length > 0);
+
+    if (questions.length === 0) {
+        throw new Error('align reply without questions');
+    }
+
+    const intro =
+        typeof parsed.intro === 'string' && parsed.intro.trim()
+            ? parsed.intro.trim().slice(0, MAX_QUESTION_CHARS)
+            : undefined;
+
+    return intro ? { status: 'align', intro, questions } : { status: 'align', questions };
 }
 
 function parseQuestionReply(parsed: Record<string, unknown>): CompilerReply {
@@ -238,13 +356,15 @@ export function parseCompilerReply(raw: string): CompilerReply {
     const status = String(parsed.status || '');
 
     if (status === 'ok') {
-        const strategy = validateStrategy(parsed.strategy);
+        const summaryHint = String(parsed.summary || '').slice(0, 240);
+        const strategy = validateStrategy(normalizeCompiledCandidate(parsed.strategy, summaryHint));
         return {
             status: 'ok',
             strategy,
-            summary: String(parsed.summary || strategy.description || '').slice(0, 240),
+            summary: (summaryHint || strategy.description || '').slice(0, 240),
         };
     }
+    if (status === 'align') return parseAlignReply(parsed);
     if (status === 'question') return parseQuestionReply(parsed);
     if (status === 'declined') return parseDeclinedReply(parsed);
     throw new Error(`unknown compiler status: ${status || '<empty>'}`);

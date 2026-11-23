@@ -599,7 +599,7 @@ def test_compile_job_enforces_locked_model_tokens_and_json_mode():
     assert len(post_events) == 1
     sent_payload = post_events[0][2]
     assert sent_payload["model"] == "auto-go"
-    assert sent_payload["max_tokens"] == 1200
+    assert sent_payload["max_tokens"] == 1600
     assert sent_payload["temperature"] == 0.5
     assert sent_payload["response_format"] == {"type": "json_object"}
 

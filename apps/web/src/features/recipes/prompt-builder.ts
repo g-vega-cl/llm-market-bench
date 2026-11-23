@@ -6,6 +6,7 @@ import type {
     StrategyStage,
     TechnicalsBlock,
 } from './types';
+import { pinStageBlocks } from './utils/stage-blocks';
 
 function formatNewsPreview(block: NewsBlock, hydrated?: string): string {
     if (hydrated) return hydrated;
@@ -55,7 +56,7 @@ export function buildStagePromptPreview(
     stage: StrategyStage,
     hydratedByBlockId: Record<string, string> = {},
 ): string {
-    const sections = stage.blocks
+    const sections = pinStageBlocks(stage.blocks)
         .map((block) => formatBlockPreview(block, hydratedByBlockId))
         .filter((text) => text.length > 0);
 

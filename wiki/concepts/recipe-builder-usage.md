@@ -37,7 +37,7 @@ Both guards are pre-checks only: they never spend the meter, and a job that is r
 
 ## Server-Locked Request
 
-The row a user enqueues cannot become an arbitrary LLM proxy call. `buildCompilePayload()` fixes `model: 'auto-go'`, `max_tokens: COMPILE_MAX_TOKENS` (1200), `temperature: 0.2`, and `response_format: { type: 'json_object' }`, and the worker re-locks all four through `_sanitize_compile_payload` before spending the meter — so a tampered `payload_json` fails the job without a provider call. See [[concepts/recipe-compile-queue]].
+The row a user enqueues cannot become an arbitrary LLM proxy call. `buildCompilePayload()` fixes `model: 'auto-go'`, `max_tokens: COMPILE_MAX_TOKENS` (1600), `temperature: 0.2`, and `response_format: { type: 'json_object' }`, and the worker re-locks all four through `_sanitize_compile_payload` before spending the meter — so a tampered `payload_json` fails the job without a provider call. See [[concepts/recipe-compile-queue]].
 
 ## No Public API Surface
 

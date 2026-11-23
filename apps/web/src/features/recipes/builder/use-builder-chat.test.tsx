@@ -367,4 +367,183 @@ describe('useBuilderChat (queued compiles)', () => {
             data: { messages: [{ role: 'user', content: 'long chipmakers only' }] },
         });
     });
+
+    it('lands an alignment round and submits formatted answers to compile the final bot', async () => {
+        vi.mocked(enqueueCompileFn)
+            .mockResolvedValueOnce({ jobId: 'job-align-1' } as never)
+            .mockResolvedValueOnce({ jobId: 'job-align-2' } as never);
+        vi.mocked(fetchCompileJobFn)
+            .mockResolvedValueOnce(
+                job({
+                    result_json: {
+                        content: JSON.stringify({
+                            status: 'align',
+                            intro: 'Let us align on 3 quick choices.',
+                            questions: [
+                                { id: 'q1', question: 'Sector?', options: ['Semis', 'Software'] },
+                                { id: 'q2', question: 'Entry?', options: ['News', 'RSI < 35'] },
+                                { id: 'q3', question: 'Exit?', options: ['Target', 'Trail'] },
+                            ],
+                        }),
+                    },
+                }) as never,
+            )
+            .mockResolvedValueOnce(
+                job({
+                    result_json: {
+                        content: JSON.stringify({
+                            status: 'ok',
+                            summary: 'Compiled aligned chip bot.',
+                            strategy: STARTER_RECIPES[0],
+                        }),
+                    },
+                }) as never,
+            );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+        await waitFor(() => expect(result.current.phase).toBe('align'));
+        expect(result.current.messages).toHaveLength(2);
+        expect(result.current.messages[1].content).toContain('1. Sector?');
+
+        await act(async () => {
+            await result.current.submitAlignment([
+                { question: 'Sector?', answer: 'Semis' },
+                { question: 'Entry?', answer: 'News' },
+                { question: 'Exit?', answer: 'Target' },
+            ]);
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('ready'));
+        expect(enqueueCompileFn).toHaveBeenLastCalledWith({
+            data: {
+                messages: [
+                    { role: 'user', content: 'buy chipmakers' },
+                    {
+                        role: 'assistant',
+                        content: expect.stringContaining('1. Sector?'),
+                    },
+                    {
+                        role: 'user',
+                        content: expect.stringContaining('- Sector?: Semis'),
+                    },
+                ],
+            },
+        });
+    });
+
+    it('preserves activeAlignment on compile failure and replaces failed trailing user turn on resubmit', async () => {
+        vi.mocked(enqueueCompileFn)
+            .mockResolvedValueOnce({ jobId: 'job-a1' } as never)
+            .mockRejectedValueOnce(new Error('provider busy') as never)
+            .mockResolvedValueOnce({ jobId: 'job-a2' } as never);
+        vi.mocked(fetchCompileJobFn)
+            .mockResolvedValueOnce(
+                job({
+                    result_json: {
+                        content: JSON.stringify({
+                            status: 'align',
+                            questions: [
+                                { id: 'q1', question: 'Sector?', options: ['Semis', 'Cloud'] },
+                                { id: 'q2', question: 'Entry?', options: ['News', 'RSI < 35'] },
+                                { id: 'q3', question: 'Exit?', options: ['Target', 'Trail'] },
+                            ],
+                        }),
+                    },
+                }) as never,
+            )
+            .mockResolvedValueOnce(
+                job({
+                    result_json: {
+                        content: JSON.stringify({
+                            status: 'ok',
+                            summary: 'Compiled aligned bot.',
+                            strategy: STARTER_RECIPES[0],
+                        }),
+                    },
+                }) as never,
+            );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+        await waitFor(() => expect(result.current.phase).toBe('align'));
+
+        await act(async () => {
+            await result.current.submitAlignment([
+                { question: 'Sector?', answer: 'Semis' },
+                { question: 'Entry?', answer: 'News' },
+                { question: 'Exit?', answer: 'Target' },
+            ]);
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('error'));
+        expect(result.current.activeAlignment?.questions).toHaveLength(3);
+
+        await act(async () => {
+            await result.current.submitAlignment([
+                { question: 'Sector?', answer: 'Cloud' },
+                { question: 'Entry?', answer: 'RSI < 35' },
+                { question: 'Exit?', answer: 'Trail' },
+            ]);
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('ready'));
+        expect(result.current.activeAlignment).toBeNull();
+        expect(enqueueCompileFn).toHaveBeenLastCalledWith({
+            data: {
+                messages: [
+                    { role: 'user', content: 'buy chipmakers' },
+                    { role: 'assistant', content: expect.stringContaining('1. Sector?') },
+                    { role: 'user', content: expect.stringContaining('- Sector?: Cloud') },
+                ],
+            },
+        });
+    });
+
+    it('guards against a second alignment round by degrading to a runnable template', async () => {
+        const alignContent = JSON.stringify({
+            status: 'align',
+            questions: [
+                { id: 'q1', question: 'Sector?', options: ['Semis', 'Cloud'] },
+                { id: 'q2', question: 'Entry?', options: ['News', 'RSI < 35'] },
+                { id: 'q3', question: 'Exit?', options: ['Target', 'Trail'] },
+            ],
+        });
+        vi.mocked(enqueueCompileFn)
+            .mockResolvedValueOnce({ jobId: 'job-loop-1' } as never)
+            .mockResolvedValueOnce({ jobId: 'job-loop-2' } as never);
+        vi.mocked(fetchCompileJobFn).mockResolvedValue(
+            job({ result_json: { content: alignContent } }) as never,
+        );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('buy chipmakers');
+        });
+        await waitFor(() => expect(result.current.phase).toBe('align'));
+
+        await act(async () => {
+            await result.current.submitAlignment([
+                { question: 'Sector?', answer: 'Semis' },
+                { question: 'Entry?', answer: 'News' },
+                { question: 'Exit?', answer: 'Target' },
+            ]);
+        });
+
+        await waitFor(() => expect(result.current.phase).toBe('ready'));
+        expect(result.current.reply?.status).toBe('ok');
+    });
 });

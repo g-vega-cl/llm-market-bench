@@ -1,4 +1,4 @@
-import { Button } from '@llm-market-bench/ui-design-system';
+import { Button, PageLayout } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -28,6 +28,7 @@ import { useLatestRecipeRun } from '../utils/use-latest-recipe-run';
 import { useLiveScheduleControl } from '../utils/use-live-schedule-control';
 import { RecipeSaveError, useRecipeDraft } from '../utils/use-recipe-draft';
 import { BuilderStatusStrip } from './BuilderStatusStrip';
+import { BuilderStepper } from './BuilderStepper';
 import type { StatusTone } from './builder-phases';
 import { CompiledBotBlueprintSection, type WorkspaceTab } from './CompiledBotBlueprintSection';
 import { CompiledBotSummaryCard } from './CompiledBotSummaryCard';
@@ -92,10 +93,24 @@ function describeRun(run: RecipeJobRecord | null): RunView | null {
 function resolveStatusTone(
     runInFlight: boolean,
     runView: RunView | null,
+    fallback: boolean,
     isDirty: boolean,
 ): StatusTone {
     if (runInFlight && runView) return runView.tone;
+    if (fallback) return 'warning';
     return isDirty ? 'neutral' : 'success';
+}
+
+function resolveStatusLabel(
+    runInFlight: boolean,
+    runView: RunView | null,
+    fallback: boolean,
+    strategyId?: string,
+): string | undefined {
+    if (runInFlight) return runView?.label;
+    if (fallback) return 'CLOSEST WORKING TEMPLATE';
+    if (strategyId) return 'SAVED BOT';
+    return undefined;
 }
 
 /**
@@ -162,6 +177,8 @@ export function CompiledBotWorkspace({
     });
 
     const isBusy = draft.isSaving || isRunningBacktest || liveControl.isBusy;
+    const promptBlock = stage.blocks.find((block) => block.type === 'prompt');
+    const hasEmptyPrompt = !promptBlock?.text.trim();
 
     const persistActiveStrategy = async (
         options: { restore?: boolean } = {},
@@ -177,7 +194,7 @@ export function CompiledBotWorkspace({
     };
 
     const handleSaveRecipe = async () => {
-        if (isBusy || !draft.isDirty) return;
+        if (isBusy || !draft.isDirty || hasEmptyPrompt) return;
         try {
             await persistActiveStrategy({ restore: true });
         } catch {
@@ -186,7 +203,7 @@ export function CompiledBotWorkspace({
     };
 
     const handleBacktest = async () => {
-        if (isBusy) return;
+        if (isBusy || hasEmptyPrompt) return;
         setIsRunningBacktest(true);
         liveControl.setScheduleError(null);
         let queuedBacktestJobId: string | undefined;
@@ -218,7 +235,7 @@ export function CompiledBotWorkspace({
     };
 
     const handleToggleScheduledLive = () => {
-        if (isBusy) return;
+        if (isBusy || hasEmptyPrompt) return;
         setBacktestError(null);
         const target: RecipeSummaryItem = currentSavedRecord ?? {
             id: strategy.id ?? '',
@@ -256,104 +273,135 @@ export function CompiledBotWorkspace({
     };
 
     return (
-        <div className="flex flex-col gap-6 min-w-0">
-            <h1 className="sr-only">Build a trading bot from one sentence</h1>
-            <div
-                data-testid="compiled-bot-hero-card"
-                className="voxel-card mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-none p-6 min-w-0"
-            >
-                <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-3 min-w-0">
-                    {onStartOver ? (
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            colorScheme="neutral"
-                            onClick={onStartOver}
-                        >
-                            ← Describe a different bot
-                        </Button>
-                    ) : (
-                        <Link
-                            to="/recipes"
-                            className="text-xs font-normal text-voxel-muted hover:text-voxel-ink underline underline-offset-4"
-                        >
-                            ← My Bots
-                        </Link>
-                    )}
-                    <span className="text-xs font-normal uppercase tracking-wider text-accent whitespace-nowrap">
-                        Compiled Bot Studio
-                    </span>
-                </div>
+        <div className="min-h-screen text-voxel-ink">
+            <PageLayout maxWidth="xl" className="flex flex-col gap-6">
+                <div className="flex flex-col gap-6 min-w-0">
+                    <h1 className="sr-only">Build a trading bot from one sentence</h1>
+                    <div
+                        data-testid="compiled-bot-hero-card"
+                        className="voxel-card mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-none p-6 min-w-0"
+                    >
+                        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-3 min-w-0">
+                            {onStartOver ? (
+                                <Button
+                                    size="sm"
+                                    variant="outline"
+                                    colorScheme="neutral"
+                                    disabled={isBusy}
+                                    onClick={onStartOver}
+                                >
+                                    ← Describe a different bot
+                                </Button>
+                            ) : (
+                                <Link
+                                    to="/recipes"
+                                    className="text-xs font-normal text-voxel-muted hover:text-voxel-ink underline underline-offset-4"
+                                >
+                                    ← My Bots
+                                </Link>
+                            )}
+                            <span className="text-xs font-normal uppercase tracking-wider text-accent whitespace-nowrap">
+                                Compiled Bot Studio
+                            </span>
+                        </div>
 
-                <BuilderStatusStrip
-                    phase="ready"
-                    label={runInFlight ? runView?.label : undefined}
-                    tone={resolveStatusTone(runInFlight, runView, draft.isDirty)}
-                    detail={statusDetail}
-                    action={
-                        run ? (
-                            <Link
-                                to="/recipes/backtest/$jobId"
-                                params={{ jobId: run.id }}
-                                className="text-xs font-normal text-accent underline underline-offset-4 hover:text-accent-hover"
-                            >
-                                Open run →
-                            </Link>
-                        ) : undefined
-                    }
-                />
+                        <BuilderStepper activeStep={3} />
 
-                {liveControl.state.kind === 'confirming' ? (
-                    <LiveSwitchConfirmation
-                        conflictingRecipe={liveControl.state.conflicting}
-                        targetRecipeName={strategy.name}
-                        isSwitching={false}
-                        onConfirm={() =>
-                            void liveControl.confirmSwitch(() => persistActiveStrategy())
-                        }
-                        onCancel={liveControl.cancelSwitch}
+                        <BuilderStatusStrip
+                            phase="ready"
+                            label={
+                                hasEmptyPrompt
+                                    ? 'PROMPT NEEDED'
+                                    : resolveStatusLabel(
+                                          runInFlight,
+                                          runView,
+                                          fallback,
+                                          strategy.id,
+                                      )
+                            }
+                            tone={
+                                hasEmptyPrompt
+                                    ? 'warning'
+                                    : resolveStatusTone(
+                                          runInFlight,
+                                          runView,
+                                          fallback,
+                                          draft.isDirty,
+                                      )
+                            }
+                            detail={
+                                hasEmptyPrompt
+                                    ? 'Prompt block cannot be empty — add strategy instructions in Blocks & Tools.'
+                                    : statusDetail
+                            }
+                            action={
+                                run ? (
+                                    <Link
+                                        to="/recipes/backtest/$jobId"
+                                        params={{ jobId: run.id }}
+                                        className="text-xs font-normal text-accent underline underline-offset-4 hover:text-accent-hover"
+                                    >
+                                        Open run →
+                                    </Link>
+                                ) : undefined
+                            }
+                        />
+
+                        {liveControl.state.kind === 'confirming' ? (
+                            <LiveSwitchConfirmation
+                                conflictingRecipe={liveControl.state.conflicting}
+                                targetRecipeName={strategy.name}
+                                isSwitching={false}
+                                onConfirm={() =>
+                                    void liveControl.confirmSwitch(() => persistActiveStrategy())
+                                }
+                                onCancel={liveControl.cancelSwitch}
+                            />
+                        ) : null}
+
+                        <StudioAlertSlot
+                            backtestError={backtestError}
+                            scheduleError={liveControl.scheduleError}
+                            onRequestCapacity={() => setShowPledgeModal(true)}
+                        />
+
+                        <CompiledBotSummaryCard
+                            strategy={strategy}
+                            summary={summary}
+                            isDirty={draft.isDirty}
+                            isBusy={isBusy || hasEmptyPrompt}
+                            saveState={draft.saveState}
+                            saveError={draft.saveError}
+                            isRunningBacktest={isRunningBacktest}
+                            isTogglingLive={liveControl.isBusy}
+                            isCurrentlyScheduledLive={isCurrentlyScheduledLive}
+                            backtestButtonLabel={resolveBacktestButtonLabel(
+                                isRunningBacktest,
+                                quotaStatus,
+                            )}
+                            onNameChange={draft.setName}
+                            onSave={handleSaveRecipe}
+                            onBacktest={handleBacktest}
+                            onToggleLive={handleToggleScheduledLive}
+                        />
+                    </div>
+
+                    <CompiledBotBlueprintSection
+                        activeTab={activeTab}
+                        onSelectTab={setActiveTab}
+                        stage={stage}
+                        preview={preview}
+                        onStageChange={handleStageChange}
+                        onPreviewLiveData={handlePreviewLiveData}
                     />
-                ) : null}
 
-                <StudioAlertSlot
-                    backtestError={backtestError}
-                    scheduleError={liveControl.scheduleError}
-                    onRequestCapacity={() => setShowPledgeModal(true)}
-                />
-
-                <CompiledBotSummaryCard
-                    strategy={strategy}
-                    summary={summary}
-                    fallback={fallback}
-                    isDirty={draft.isDirty}
-                    isBusy={isBusy}
-                    saveState={draft.saveState}
-                    saveError={draft.saveError}
-                    isRunningBacktest={isRunningBacktest}
-                    isTogglingLive={liveControl.isBusy}
-                    isCurrentlyScheduledLive={isCurrentlyScheduledLive}
-                    backtestButtonLabel={resolveBacktestButtonLabel(isRunningBacktest, quotaStatus)}
-                    onNameChange={draft.setName}
-                    onSave={handleSaveRecipe}
-                    onBacktest={handleBacktest}
-                    onToggleLive={handleToggleScheduledLive}
-                />
-            </div>
-
-            <CompiledBotBlueprintSection
-                activeTab={activeTab}
-                onSelectTab={setActiveTab}
-                stage={stage}
-                preview={preview}
-                onStageChange={handleStageChange}
-                onPreviewLiveData={handlePreviewLiveData}
-            />
-
-            <WaitlistPledgeModal
-                isOpen={showPledgeModal}
-                onClose={() => setShowPledgeModal(false)}
-                onSubmit={handlePledgeSubmit}
-            />
+                    <WaitlistPledgeModal
+                        isOpen={showPledgeModal}
+                        onClose={() => setShowPledgeModal(false)}
+                        onSubmit={handlePledgeSubmit}
+                    />
+                </div>
+            </PageLayout>
         </div>
     );
 }

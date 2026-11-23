@@ -1,4 +1,4 @@
-import { PageLayout } from '@llm-market-bench/ui-design-system';
+import { resolveAtmospherePhase } from '@llm-market-bench/ui-design-system';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchRecipeByIdFn } from '~/features/recipes/api/recipes-api';
 import {
@@ -20,8 +20,10 @@ export const Route = createFileRoute('/build')({
     }),
     loaderDeps: ({ search }) => ({ recipeId: search.recipeId }),
     loader: async ({ deps, context }) => {
+        const initialAtmosphere = resolveAtmospherePhase(new Date(), 'market-et');
         if (!context?.user?.id) {
             return {
+                initialAtmosphere,
                 initialStrategy: null,
                 initialQuota: null,
                 initialUserRecipes: [],
@@ -35,6 +37,7 @@ export const Route = createFileRoute('/build')({
             fetchUserRecipesFn().catch(() => []),
         ]);
         return {
+            initialAtmosphere,
             initialStrategy,
             initialQuota,
             initialUserRecipes,
@@ -45,7 +48,7 @@ export const Route = createFileRoute('/build')({
             ...seo({
                 title: 'Build a trading bot from one sentence | Benchify',
                 description:
-                    'Describe the bot you want. The builder asks one or two questions, then compiles a runnable point-in-time recipe you can edit and backtest.',
+                    'Describe the bot you want. The builder asks one quick alignment round, then compiles a runnable point-in-time recipe you can edit and backtest.',
             }),
         ],
     }),
@@ -54,28 +57,24 @@ export const Route = createFileRoute('/build')({
 
 export function RouteComponent() {
     const { idea } = Route.useSearch();
-    const { initialStrategy, initialQuota, initialUserRecipes } = Route.useLoaderData();
+    const { initialAtmosphere, initialStrategy, initialQuota, initialUserRecipes } =
+        Route.useLoaderData();
     const { user } = Route.useRouteContext();
-    return (
-        <div className="min-h-screen text-voxel-ink">
-            <PageLayout maxWidth="xl" className="flex flex-col gap-6">
-                {initialStrategy ? (
-                    <CompiledBotWorkspace
-                        key={initialStrategy.id ?? initialStrategy.name}
-                        initialStrategy={initialStrategy}
-                        initialQuota={initialQuota}
-                        initialUserRecipes={initialUserRecipes}
-                    />
-                ) : (
-                    <BuilderChatPanel
-                        idea={idea}
-                        redirectTo="/build"
-                        userId={user?.id ?? null}
-                        initialQuota={initialQuota}
-                        initialUserRecipes={initialUserRecipes}
-                    />
-                )}
-            </PageLayout>
-        </div>
+    return initialStrategy ? (
+        <CompiledBotWorkspace
+            key={initialStrategy.id ?? initialStrategy.name}
+            initialStrategy={initialStrategy}
+            initialQuota={initialQuota}
+            initialUserRecipes={initialUserRecipes}
+        />
+    ) : (
+        <BuilderChatPanel
+            idea={idea}
+            redirectTo="/build"
+            userId={user?.id ?? null}
+            initialAtmosphere={initialAtmosphere}
+            initialQuota={initialQuota}
+            initialUserRecipes={initialUserRecipes}
+        />
     );
 }

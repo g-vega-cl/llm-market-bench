@@ -430,7 +430,10 @@ async def run_market_data_loop(
     lock = strategy_lock or asyncio.Lock()
     sb_client = get_supabase_client()
     mdm = MarketDataManager()
-    last_history_at = 0.0
+    # `None` means "never refreshed this process". Seeding with 0.0 compares the
+    # interval against seconds-since-boot, so a freshly booted host (CI runner)
+    # would skip the first history refresh for up to history_interval_seconds.
+    last_history_at: float | None = None
     logger.info(f"Starting market data loop (marks={interval_seconds}s, history={history_interval_seconds}s)")
     while True:
         try:
@@ -438,7 +441,7 @@ async def run_market_data_loop(
             if _is_price_refresh_window(now_et):
                 async with lock:
                     await refresh_portfolio_marks(sb_client, mdm)
-                if (time.monotonic() - last_history_at) >= history_interval_seconds:
+                if last_history_at is None or (time.monotonic() - last_history_at) >= history_interval_seconds:
                     await fetch_benchmark_history(mdm)
                     last_history_at = time.monotonic()
         except Exception:

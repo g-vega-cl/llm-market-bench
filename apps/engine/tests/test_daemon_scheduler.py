@@ -80,6 +80,29 @@ async def test_market_data_loop_marks_and_refreshes_history():
 
 
 @pytest.mark.asyncio
+async def test_market_data_loop_refreshes_history_on_first_tick_regardless_of_uptime():
+    """The first tick must refresh history even on a freshly booted host.
+
+    `time.monotonic()` is seconds since boot, not wall-clock time. Seeding the
+    history cursor with 0.0 makes the first refresh depend on host uptime: it
+    fires on a long-running workstation but is skipped on a fresh CI runner
+    whose monotonic clock is still below the interval.
+    """
+    with (
+        patch("trading.runner._is_price_refresh_window", return_value=True),
+        patch("trading.runner.get_supabase_client", return_value=MagicMock()),
+        patch("execution.market_data.MarketDataManager", return_value=MagicMock()),
+        patch("scripts.update_prices.refresh_portfolio_marks", new_callable=AsyncMock),
+        patch("scripts.update_prices.fetch_benchmark_history", new_callable=AsyncMock) as history,
+        patch("trading.runner.asyncio.sleep", new=_stop_after_first_tick),
+    ):
+        with pytest.raises(asyncio.CancelledError):
+            await run_market_data_loop(interval_seconds=900, history_interval_seconds=10**9)
+
+    history.assert_awaited_once()
+
+
+@pytest.mark.asyncio
 async def test_market_data_loop_skips_outside_window():
     with (
         patch("trading.runner._is_price_refresh_window", return_value=False),

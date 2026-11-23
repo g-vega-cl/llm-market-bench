@@ -289,6 +289,7 @@ export function BuilderChatPanel({
                 initialUserRecipes={initialUserRecipes}
                 summary={compiledReply.summary}
                 fallback={compiledReply.fallback}
+                warning={compiledReply.warning}
                 onStartOver={() => chat.reset()}
             />
         );

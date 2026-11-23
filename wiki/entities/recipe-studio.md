@@ -55,12 +55,12 @@ The **Recipe Studio** is now a two-surface experience:
   - No visible headline block — the page name comes from the route `<title>` plus exactly one `sr-only` `<h1>` ("Build a trading bot from one sentence"), rendered by `BuilderChatPanel` for Steps 1–2 and by `CompiledBotWorkspace` for Step 3; a single `.voxel-card` with recessed `.voxel-trough` slots (zero nested `.voxel-card`)
   - Starter idea chips (`builder-starter-chips`) sit above an auto-expansible `<textarea>` (`maxLength={2000}`, `Enter` for newline, `Ctrl/Cmd+Enter` to submit), with the primary hero CTA (`Continue to Alignment →`) below the textarea
   - Compiles via `enqueueCompileFn` / `fetchCompileJobFn` (25/day quota, `auto-go` model)
-- **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions (clickable pills + optional custom input, `Skip & build with defaults`, and `Build Final Bot →` hero CTA) before compiling the final bot (`status: 'ok'`)
-  - On `status: 'declined'`, shows nearest buildable template
+- **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions (clickable pills + optional custom input, `Skip & build with defaults`, and `Build Final Bot →` hero CTA) before compiling the final bot (`status: 'ok'`).
+  - Only non-trading inputs stay `declined`; trading ideas with offline limits compile to `status: 'ok'` with a `warning` advising Live execution (and any stray trading `declined` reply is promoted automatically via `promoteDeclinedToBot()`)
   - Guidance links: `"Take our 16-question personality test"` (`/personality`, derived from `PERSONALITY_QUESTIONS.length`) and `"talk to our AI advisor"` (`/chat`)
 
 - **Step 3 (Backtest & Go Live)**: **Compiled Bot Workspace** (`CompiledBotWorkspace` + `CompiledBotSummaryCard` + `CompiledBotBlueprintSection`) inside `PageLayout` over `GlobalBackground`
-  - Centered `.voxel-card` summary holding `BuilderStepper` (Step 3 active), single `BuilderStatusStrip` (owning the single `BOT READY` / `SAVED BOT` / `CLOSEST WORKING TEMPLATE` / `PROMPT NEEDED` / active backtest badge), bot name (`RecipeNameField`), summary, block/tool badges, and a recessed `compiled-bot-next-action` trough highlighting the primary hero CTA ("▶ Backtest (Random 2W)") alongside the recessed live toggle ("Enable Live (30m)" / "Live: ON (30m)" with `LiveSwitchConfirmation`)
+  - Centered `.voxel-card` summary holding `BuilderStepper` (Step 3 active), single `BuilderStatusStrip` (owning the single `BOT READY` / `SAVED BOT` / `LIVE RECOMMENDED` / `CLOSEST WORKING TEMPLATE` / `PROMPT NEEDED` / active backtest badge), an in-flow `compiled-bot-live-warning` `.voxel-trough` banner whenever a compile `warning` or `liveOnly` tool (`LIVE_ONLY_TOOL_NAMES`) is active, bot name (`RecipeNameField`), summary, block/tool badges, and a recessed `compiled-bot-next-action` trough highlighting the primary hero CTA ("▶ Backtest (Random 2W)" by default, or "Enable Live (30m)" when `preferLive` is true — keeping Backtest enabled) alongside `LiveSwitchConfirmation`
   - Empty-prompt guard: a blank `prompt` block renders `PROMPT NEEDED` and disables Save, Backtest, and the live toggle
   - Calm lower workspace (`CompiledBotBlueprintSection`) below the summary card with a WAI-ARIA segmented `.voxel-trough` tab bar (`Blocks & Tools` default via `StageBuilder` pinning the single editable `prompt` block first | `Prompt Preview` via `PromptVisualizer`), keyboard-navigable with ArrowLeft/ArrowRight/Home/End
   - "← Describe a different bot" or "← My Bots" link back to dashboard
@@ -139,6 +139,7 @@ The **Recipe Studio** is now a two-surface experience:
 ### LLM Endpoint Failover (`llm_caller.py`)
 - Ordered chain: OpenRouter (if key) → Strata → Free Proxy (`auto-go`)
 - `filter_recipe_tool_names` drops `web_search`, non-canonical, and non-PIT tools in backtests
+- `_sanitize_recipe_tool_args` clamps every LLM-supplied tool argument before dispatch: `get_market_moving_news` is forced to `force_refresh: false` (a prompt cannot bypass the 15m cache and trigger 10 Jev LLM calls per turn), and any numeric `limit` is clamped to `1.._MAX_RECIPE_TOOL_LIMIT` (25), bounding Recipe Studio query and LLM blast radius
 - `run_tool_loop`: 5 tool rounds + forced final synthesis
 - Both lanes resolve `auto-go` (no Strata contention)
 

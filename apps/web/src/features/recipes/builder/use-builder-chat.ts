@@ -18,9 +18,11 @@ import {
     type CompilerReply,
     fallbackReply,
     isCompilerReply,
+    isNonTradingRefusal,
     MAX_ASSISTANT_TURN_CHARS,
     MAX_TURN_CHARS,
     parseCompilerReply,
+    promoteDeclinedToBot,
 } from './compiler';
 
 /**
@@ -188,10 +190,14 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     const finish = useCallback(
         (next: CompilerReply) => {
             // Guard against a second alignment round: at most one alignment round per session.
-            const resolved =
-                next.status === 'align' && hasAlignedRef.current
-                    ? fallbackReply(UNUSABLE_REPLY)
-                    : next;
+            // Trading ideas that came back as `declined` (e.g. offline toolset gaps) are
+            // promoted to a runnable bot with a warning advising Live execution instead of blocking.
+            let resolved: CompilerReply = next;
+            if (next.status === 'align' && hasAlignedRef.current) {
+                resolved = fallbackReply(UNUSABLE_REPLY);
+            } else if (next.status === 'declined' && !isNonTradingRefusal(next)) {
+                resolved = promoteDeclinedToBot(next);
+            }
 
             setReply(resolved);
             if (resolved.status === 'ok') {

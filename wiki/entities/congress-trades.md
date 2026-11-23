@@ -49,6 +49,8 @@ RLS policies allow public `SELECT`, and full access only to `service_role`.
 
 The tool accepts optional filters: `ticker` (symbol), `chamber` (senate/house), `days` (lookback window, default 45), `transaction_type` (purchase/sale), and `limit` (max records, default 20). It returns a formatted Markdown table with estimated total bought/sold volume at the top.
 
+The database fetch (`fetch_congress_trades_from_db`) clamps `limit` to `1..50`, so a larger requested limit is bounded to 50 rows.
+
 ## Pipeline Script
 
 `apps/engine/scripts/update_congress_trades.py` provides a CLI entrypoint for ad-hoc or cron-driven batch updates. It fetches both Senate and House disclosures for all (or a specific) symbols and upserts them.

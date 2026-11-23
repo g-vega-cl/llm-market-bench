@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
+import { REFUSAL_REASON } from './compiler';
 import { useBuilderChat } from './use-builder-chat';
 
 const posthogCapture = vi.fn();
@@ -325,15 +326,45 @@ describe('useBuilderChat (queued compiles)', () => {
         expect(result.current.phase).toBe('signed-out');
     });
 
-    it('starts a clean user-led conversation when refining after a declined reply', async () => {
+    it('promotes a trading declined reply into a runnable bot with a live-run warning instead of blocking', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValueOnce(
+            job({
+                result_json: {
+                    content: JSON.stringify({
+                        status: 'declined',
+                        reason: 'Benchify cannot access congressional trading disclosures or super PAC donation data in its offline toolset.',
+                        closest:
+                            'A long-only stock bot that buys large-cap stocks using recent news and technicals.',
+                    }),
+                },
+            }) as never,
+        );
+
+        const { result } = renderHook(() => useBuilderChat({ userId: 'user-1', onNeedSignIn }), {
+            wrapper,
+        });
+
+        await act(async () => {
+            await result.current.send('Follow congressional trades and super PAC donations');
+        });
+        await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+        expect(result.current.reply?.status).toBe('ok');
+        if (result.current.reply?.status === 'ok') {
+            expect(result.current.reply.warning).toContain('congressional trading disclosures');
+            expect(result.current.reply.warning?.toLowerCase()).toContain('live');
+        }
+    });
+
+    it('starts a clean user-led conversation when refining after a non-trading refusal reply', async () => {
         vi.mocked(fetchCompileJobFn)
             .mockResolvedValueOnce(
                 job({
                     result_json: {
                         content: JSON.stringify({
                             status: 'declined',
-                            reason: 'Shorting is not supported.',
-                            closest: 'Long-only chipmaker rotation.',
+                            reason: REFUSAL_REASON,
+                            closest: 'Describe a long-only stock trading strategy.',
                         }),
                     },
                 }) as never,
@@ -355,7 +386,7 @@ describe('useBuilderChat (queued compiles)', () => {
         });
 
         await act(async () => {
-            await result.current.send('short chipmakers');
+            await result.current.send('write my Python homework');
         });
         await waitFor(() => expect(result.current.phase).toBe('declined'));
 

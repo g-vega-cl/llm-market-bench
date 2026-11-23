@@ -1,4 +1,4 @@
-import { Button, PageLayout } from '@llm-market-bench/ui-design-system';
+import { Badge, Button, PageLayout } from '@llm-market-bench/ui-design-system';
 import { usePostHog } from '@posthog/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -12,16 +12,17 @@ import {
     StudioAlertSlot,
 } from '../components/RecipeGuideAndQuotaBlock';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
-import type {
-    BacktestError,
-    BacktestResultData,
-    PreviewState,
-    PushStrategy,
-    RecipeJobRecord,
-    RecipeSummaryItem,
-    RecipeUserQuotaStatus,
-    StrategyRecipeRecord,
-    StrategyStage,
+import {
+    type BacktestError,
+    type BacktestResultData,
+    LIVE_ONLY_TOOL_NAMES,
+    type PreviewState,
+    type PushStrategy,
+    type RecipeJobRecord,
+    type RecipeSummaryItem,
+    type RecipeUserQuotaStatus,
+    type StrategyRecipeRecord,
+    type StrategyStage,
 } from '../types';
 import { buildBacktestError, upsertSavedRecipeSummary } from '../utils/live-studio-helpers';
 import { useLatestRecipeRun } from '../utils/use-latest-recipe-run';
@@ -39,6 +40,7 @@ export interface CompiledBotWorkspaceProps {
     initialUserRecipes?: RecipeSummaryItem[];
     summary?: string;
     fallback?: boolean;
+    warning?: string;
     onStartOver?: () => void;
 }
 
@@ -90,27 +92,187 @@ function describeRun(run: RecipeJobRecord | null): RunView | null {
     }
 }
 
-function resolveStatusTone(
-    runInFlight: boolean,
-    runView: RunView | null,
-    fallback: boolean,
-    isDirty: boolean,
-): StatusTone {
-    if (runInFlight && runView) return runView.tone;
-    if (fallback) return 'warning';
-    return isDirty ? 'neutral' : 'success';
+type WorkspaceStatus =
+    | {
+          kind: 'prompt_needed';
+          label: 'PROMPT NEEDED';
+          tone: 'warning';
+          detail: string;
+          showLiveWarning: false;
+          preferLive: false;
+      }
+    | {
+          kind: 'run_in_flight';
+          label: string | undefined;
+          tone: StatusTone;
+          detail: string;
+          showLiveWarning: boolean;
+          preferLive: boolean;
+      }
+    | {
+          kind: 'live_active';
+          label: 'LIVE ACTIVE';
+          tone: 'success';
+          detail: string;
+          showLiveWarning: false;
+          preferLive: false;
+      }
+    | {
+          kind: 'fallback_template';
+          label: 'CLOSEST WORKING TEMPLATE';
+          tone: 'warning';
+          detail: string;
+          showLiveWarning: boolean;
+          preferLive: boolean;
+      }
+    | {
+          kind: 'live_recommended';
+          label: 'LIVE RECOMMENDED';
+          tone: 'warning';
+          detail: string;
+          showLiveWarning: true;
+          preferLive: true;
+      }
+    | {
+          kind: 'saved';
+          label: 'SAVED BOT';
+          tone: StatusTone;
+          detail: string;
+          showLiveWarning: false;
+          preferLive: false;
+      }
+    | {
+          kind: 'ready';
+          label: undefined;
+          tone: StatusTone;
+          detail: string;
+          showLiveWarning: false;
+          preferLive: false;
+      };
+
+function resolveLiveWarningMessage(
+    warning: string | undefined,
+    selectedTools: string[],
+): string | null {
+    const liveOnlyTools = selectedTools.filter((tool) => LIVE_ONLY_TOOL_NAMES.has(tool));
+    const toolNote =
+        liveOnlyTools.length > 0
+            ? `Selected live-only tools (${liveOnlyTools.join(', ')}) are skipped in offline point-in-time backtests.`
+            : null;
+    const parts = [
+        warning?.trim() || null,
+        toolNote && !(warning && liveOnlyTools.every((t) => warning.includes(t))) ? toolNote : null,
+    ].filter(Boolean);
+    return parts.length > 0 ? parts.join(' ') : null;
 }
 
-function resolveStatusLabel(
-    runInFlight: boolean,
-    runView: RunView | null,
-    fallback: boolean,
-    strategyId?: string,
-): string | undefined {
-    if (runInFlight) return runView?.label;
-    if (fallback) return 'CLOSEST WORKING TEMPLATE';
-    if (strategyId) return 'SAVED BOT';
-    return undefined;
+function deriveWorkspaceStatus(args: {
+    hasEmptyPrompt: boolean;
+    runInFlight: boolean;
+    runView: RunView | null;
+    isCurrentlyScheduledLive: boolean;
+    fallback: boolean;
+    hasLiveWarning: boolean;
+    strategyId?: string;
+    isDirty: boolean;
+    statusDetail: string;
+}): WorkspaceStatus {
+    if (args.hasEmptyPrompt) {
+        return {
+            kind: 'prompt_needed',
+            label: 'PROMPT NEEDED',
+            tone: 'warning',
+            detail: 'Prompt block cannot be empty — add strategy instructions in Blocks & Tools.',
+            showLiveWarning: false,
+            preferLive: false,
+        };
+    }
+    if (args.runInFlight && args.runView) {
+        const adviseLive = args.hasLiveWarning && !args.isCurrentlyScheduledLive;
+        return {
+            kind: 'run_in_flight',
+            label: args.runView.label,
+            tone: args.runView.tone,
+            detail: args.statusDetail,
+            showLiveWarning: adviseLive,
+            preferLive: adviseLive,
+        };
+    }
+    if (args.isCurrentlyScheduledLive) {
+        return {
+            kind: 'live_active',
+            label: 'LIVE ACTIVE',
+            tone: 'success',
+            detail: args.statusDetail,
+            showLiveWarning: false,
+            preferLive: false,
+        };
+    }
+    if (args.fallback) {
+        return {
+            kind: 'fallback_template',
+            label: 'CLOSEST WORKING TEMPLATE',
+            tone: 'warning',
+            detail: args.statusDetail,
+            showLiveWarning: args.hasLiveWarning,
+            preferLive: args.hasLiveWarning,
+        };
+    }
+    if (args.hasLiveWarning) {
+        return {
+            kind: 'live_recommended',
+            label: 'LIVE RECOMMENDED',
+            tone: 'warning',
+            detail: args.statusDetail,
+            showLiveWarning: true,
+            preferLive: true,
+        };
+    }
+    if (args.strategyId) {
+        return {
+            kind: 'saved',
+            label: 'SAVED BOT',
+            tone: args.isDirty ? 'neutral' : 'success',
+            detail: args.statusDetail,
+            showLiveWarning: false,
+            preferLive: false,
+        };
+    }
+    return {
+        kind: 'ready',
+        label: undefined,
+        tone: args.isDirty ? 'neutral' : 'success',
+        detail: args.statusDetail,
+        showLiveWarning: false,
+        preferLive: false,
+    };
+}
+
+function LiveWarningBanner({ show, message }: { show: boolean; message: string | null }) {
+    if (!show || !message) return null;
+    return (
+        <div
+            role="status"
+            data-testid="compiled-bot-live-warning"
+            className="voxel-trough bg-voxel-trough border border-warning/60 rounded-none p-3 flex flex-col gap-2 min-w-0"
+        >
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <Badge colorScheme="warning" variant="soft" size="sm">
+                    WARNING — RUN LIVE
+                </Badge>
+                <span className="text-xs font-normal text-voxel-muted">
+                    Offline backtests only use point-in-time historical data.
+                </span>
+            </div>
+            <p className="text-xs font-normal text-voxel-ink leading-relaxed break-words">
+                {message}
+            </p>
+            <p className="text-xs font-normal text-voxel-muted break-words">
+                Enable Live (30m) below to run this bot on live market data, or adjust its blocks
+                and tools.
+            </p>
+        </div>
+    );
 }
 
 /**
@@ -125,6 +287,7 @@ export function CompiledBotWorkspace({
     initialUserRecipes = [],
     summary,
     fallback = false,
+    warning,
     onStartOver,
 }: CompiledBotWorkspaceProps) {
     const navigate = useNavigate();
@@ -179,6 +342,18 @@ export function CompiledBotWorkspace({
     const isBusy = draft.isSaving || isRunningBacktest || liveControl.isBusy;
     const promptBlock = stage.blocks.find((block) => block.type === 'prompt');
     const hasEmptyPrompt = !promptBlock?.text.trim();
+    const liveWarningMessage = resolveLiveWarningMessage(warning, stage.selected_tools);
+    const workspaceStatus = deriveWorkspaceStatus({
+        hasEmptyPrompt,
+        runInFlight,
+        runView,
+        isCurrentlyScheduledLive,
+        fallback,
+        hasLiveWarning: Boolean(liveWarningMessage),
+        strategyId: strategy.id,
+        isDirty: draft.isDirty,
+        statusDetail,
+    });
 
     const persistActiveStrategy = async (
         options: { restore?: boolean } = {},
@@ -309,31 +484,9 @@ export function CompiledBotWorkspace({
 
                         <BuilderStatusStrip
                             phase="ready"
-                            label={
-                                hasEmptyPrompt
-                                    ? 'PROMPT NEEDED'
-                                    : resolveStatusLabel(
-                                          runInFlight,
-                                          runView,
-                                          fallback,
-                                          strategy.id,
-                                      )
-                            }
-                            tone={
-                                hasEmptyPrompt
-                                    ? 'warning'
-                                    : resolveStatusTone(
-                                          runInFlight,
-                                          runView,
-                                          fallback,
-                                          draft.isDirty,
-                                      )
-                            }
-                            detail={
-                                hasEmptyPrompt
-                                    ? 'Prompt block cannot be empty — add strategy instructions in Blocks & Tools.'
-                                    : statusDetail
-                            }
+                            label={workspaceStatus.label}
+                            tone={workspaceStatus.tone}
+                            detail={workspaceStatus.detail}
                             action={
                                 run ? (
                                     <Link
@@ -345,6 +498,11 @@ export function CompiledBotWorkspace({
                                     </Link>
                                 ) : undefined
                             }
+                        />
+
+                        <LiveWarningBanner
+                            show={workspaceStatus.showLiveWarning}
+                            message={liveWarningMessage}
                         />
 
                         {liveControl.state.kind === 'confirming' ? (
@@ -368,6 +526,7 @@ export function CompiledBotWorkspace({
                         <CompiledBotSummaryCard
                             strategy={strategy}
                             summary={summary}
+                            preferLive={workspaceStatus.preferLive}
                             isDirty={draft.isDirty}
                             isBusy={isBusy || hasEmptyPrompt}
                             saveState={draft.saveState}

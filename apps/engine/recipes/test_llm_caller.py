@@ -199,3 +199,33 @@ def test_llm_endpoints_routes_proxy_aliases_to_free_proxy_and_skips_raw_strata_f
     bt_endpoints = llm_endpoints(None, "strata-auto-go")
     assert bt_endpoints[0] == ("https://llm.clvg.uk/v1", "test-key", "strata-auto-go")
     assert bt_endpoints[1] == ("http://primary-workstation:3001/strata/v1", "test-key", "strata")
+
+
+@pytest.mark.asyncio
+async def test_run_tool_loop_sanitizes_force_refresh_and_clamps_limit():
+    from recipes.llm_caller import run_tool_loop
+
+    responses = [
+        _make_completion(
+            content="",
+            tool_calls=[
+                ("tc-news", "get_market_moving_news", '{"force_refresh": true, "limit": 999}'),
+                ("tc-congress", "get_congress_trades", '{"limit": 5000}'),
+            ],
+        ),
+        _make_completion(content="[]", tool_calls=[]),
+    ]
+    mock_client = MagicMock()
+    mock_client.chat.completions.create = AsyncMock(side_effect=responses)
+    mock_execute = AsyncMock(return_value="OK")
+
+    schemas = [
+        {"type": "function", "function": {"name": "get_market_moving_news"}},
+        {"type": "function", "function": {"name": "get_congress_trades"}},
+    ]
+    with patch("recipes.llm_caller.execute_tool", new=mock_execute):
+        await run_tool_loop(mock_client, "auto-go", "Check catalysts", schemas, cutoff_date=None)
+
+    assert mock_execute.await_count == 2
+    assert mock_execute.await_args_list[0].args[1] == {"force_refresh": False, "limit": 25}
+    assert mock_execute.await_args_list[1].args[1] == {"limit": 25}

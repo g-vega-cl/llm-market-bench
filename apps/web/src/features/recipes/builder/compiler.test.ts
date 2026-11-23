@@ -5,12 +5,16 @@ import {
     compilerSystemPrompt,
     fallbackReply,
     isCompilerReply,
+    isNonTradingRefusal,
     MAX_ASSISTANT_TURN_CHARS,
     MAX_DECLINE_CHARS,
     MAX_OPTION_CHARS,
     MAX_QUESTION_CHARS,
     MAX_TURN_CHARS,
+    MAX_WARNING_CHARS,
     parseCompilerReply,
+    promoteDeclinedToBot,
+    REFUSAL_REASON,
     sanitizeCompileResult,
     validateBuilderMessages,
     validateStrategy,
@@ -40,7 +44,7 @@ describe('capability manifest', () => {
         expect(capabilityManifest()).toContain('Never use web_search');
     });
 
-    it('lists the five blocks and the hard constraints', () => {
+    it('lists the five blocks, live-only tools, and the hard constraints', () => {
         const manifest = capabilityManifest();
         for (const block of ['prompt', 'news', 'memories', 'technicals', 'output_format']) {
             expect(manifest).toContain(`"type":"${block}"`);
@@ -49,6 +53,10 @@ describe('capability manifest', () => {
         expect(manifest).toContain('Price vs VWAP');
         expect(manifest).toContain('Long only');
         expect(manifest).toContain('Exactly one stage');
+        expect(manifest).toContain('get_congress_trades');
+        expect(manifest).toContain('[LIVE ONLY');
+        expect(compilerSystemPrompt()).toContain('NEVER return "declined" for a trading strategy');
+        expect(compilerSystemPrompt().length).toBeLessThanOrEqual(8000);
     });
 });
 
@@ -210,6 +218,48 @@ describe('parseCompilerReply', () => {
         expect(reply.status).toBe('declined');
     });
 
+    it('parses an ok reply with an optional live-execution warning', () => {
+        const reply = parseCompilerReply(
+            JSON.stringify({
+                status: 'ok',
+                summary: 'Congressional trade tracker',
+                warning: '  Super PAC donations are unavailable offline; run this bot live.  ',
+                strategy: validStrategy,
+            }),
+        );
+        expect(reply.status).toBe('ok');
+        if (reply.status === 'ok') {
+            expect(reply.warning).toBe(
+                'Super PAC donations are unavailable offline; run this bot live.',
+            );
+        }
+    });
+
+    it('promotes a trading decline into a runnable bot with a live-run warning while preserving non-trading refusals', () => {
+        const refusal = { status: 'declined' as const, reason: REFUSAL_REASON };
+        expect(isNonTradingRefusal(refusal)).toBe(true);
+        expect(
+            isNonTradingRefusal({
+                status: 'declined',
+                reason: 'I can only compile Benchify trading-bot recipes',
+            }),
+        ).toBe(true);
+
+        const tradingDecline = {
+            status: 'declined' as const,
+            reason: 'Benchify cannot access congressional trading disclosures or super PAC donation data in its offline toolset.',
+            closest: 'A long-only stock bot that buys large-cap stocks using news and RSI.',
+        };
+        expect(isNonTradingRefusal(tradingDecline)).toBe(false);
+
+        const promoted = promoteDeclinedToBot(tradingDecline);
+        expect(promoted.status).toBe('ok');
+        expect(promoted.fallback).toBe(true);
+        expect(promoted.summary).toContain('Closest template');
+        expect(promoted.warning).toContain('congressional trading disclosures');
+        expect(promoted.warning?.toLowerCase()).toContain('live');
+    });
+
     it('throws on prose instead of JSON so the caller can retry', () => {
         expect(() => parseCompilerReply('Sure! Here is a strategy:')).toThrow();
     });
@@ -325,19 +375,47 @@ describe('sanitizeCompileResult', () => {
             options: ['o'.repeat(MAX_OPTION_CHARS), 'NVDA'],
         });
 
-        const declined = sanitizeCompileResult(
+        const refusalDeclined = sanitizeCompileResult(
             JSON.stringify({
                 status: 'declined',
-                reason: 'r'.repeat(MAX_DECLINE_CHARS + 30),
+                reason: REFUSAL_REASON,
                 closest: 'c'.repeat(MAX_DECLINE_CHARS + 30),
                 extra: 'nope',
             }),
         );
-        expect(declined).toEqual({
+        expect(refusalDeclined).toEqual({
             status: 'declined',
-            reason: 'r'.repeat(MAX_DECLINE_CHARS),
+            reason: REFUSAL_REASON,
             closest: 'c'.repeat(MAX_DECLINE_CHARS),
         });
+
+        const tradingDeclinedPromoted = sanitizeCompileResult(
+            JSON.stringify({
+                status: 'declined',
+                reason: 'Benchify cannot access super PAC donations offline.',
+                closest: 'Long-only momentum strategy.',
+            }),
+        );
+        expect(tradingDeclinedPromoted.status).toBe('ok');
+        if (tradingDeclinedPromoted.status === 'ok') {
+            expect(tradingDeclinedPromoted.fallback).toBe(true);
+            expect(tradingDeclinedPromoted.warning).toContain('super PAC donations');
+        }
+
+        const okWithLongWarning = sanitizeCompileResult(
+            JSON.stringify({
+                status: 'ok',
+                summary: 'Chip momentum',
+                warning: 'w'.repeat(MAX_WARNING_CHARS + 50),
+                extra: 'strip-me',
+                strategy: validStrategy,
+            }),
+        );
+        expect(okWithLongWarning.status).toBe('ok');
+        if (okWithLongWarning.status === 'ok') {
+            expect(okWithLongWarning.warning).toBe('w'.repeat(MAX_WARNING_CHARS));
+            expect('extra' in okWithLongWarning).toBe(false);
+        }
     });
 
     it('never leaks raw unvalidated prose from the model', () => {
@@ -362,6 +440,15 @@ describe('isCompilerReply', () => {
         expect(isCompilerReply({ status: 'question', question: '  ', options: [] })).toBe(false);
         expect(isCompilerReply({ status: 'question', question: 'Which?' })).toBe(false);
         expect(isCompilerReply({ status: 'align', questions: [] })).toBe(false);
+        expect(isCompilerReply({ status: 'declined', reason: '   ' })).toBe(false);
+        expect(
+            isCompilerReply({
+                status: 'ok',
+                strategy: validStrategy,
+                summary: 'ok',
+                warning: 123,
+            }),
+        ).toBe(false);
     });
 
     it('accepts each of the reply shapes', () => {

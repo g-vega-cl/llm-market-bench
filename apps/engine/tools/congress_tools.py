@@ -199,7 +199,8 @@ async def fetch_congress_trades_from_db(
         if transaction_type:
             query = query.eq("transaction_type", transaction_type.lower())
 
-        query = query.order("disclosure_date", desc=True).limit(limit)
+        clamped_limit = max(1, min(int(limit), 50))
+        query = query.order("disclosure_date", desc=True).limit(clamped_limit)
         resp = query.execute()
         return resp.data or []
     except Exception as e:

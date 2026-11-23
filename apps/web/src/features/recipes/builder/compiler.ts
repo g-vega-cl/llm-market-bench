@@ -15,7 +15,13 @@ export interface AlignmentQuestion {
 }
 
 export type CompilerReply =
-    | { status: 'ok'; strategy: PushStrategy; summary: string; fallback?: boolean }
+    | {
+          status: 'ok';
+          strategy: PushStrategy;
+          summary: string;
+          fallback?: boolean;
+          warning?: string;
+      }
     | { status: 'align'; intro?: string; questions: AlignmentQuestion[] }
     | { status: 'question'; question: string; options: string[] }
     | { status: 'declined'; reason: string; closest?: string };
@@ -34,8 +40,9 @@ export const MAX_ASSISTANT_TURN_CHARS = 1200;
 export const MAX_QUESTION_CHARS = 240;
 export const MAX_OPTION_CHARS = 80;
 export const MAX_DECLINE_CHARS = 240;
+export const MAX_WARNING_CHARS = 320;
 const USER_INPUT_TAG_RE = /<\/?user_input>/gi;
-const REFUSAL_REASON = 'I can only compile Benchify trading bot recipes.';
+export const REFUSAL_REASON = 'I can only compile Benchify trading bot recipes.';
 const REFUSAL_CLOSEST =
     'Describe a long-only stock trading strategy using news, technicals, or market data.';
 
@@ -46,7 +53,10 @@ const REFUSAL_CLOSEST =
  */
 export function capabilityManifest(): string {
     const tools = CURATED_TOOLS.filter((tool) => tool.name !== 'web_search')
-        .map((tool) => `- ${tool.name}: ${tool.description}`)
+        .map(
+            (tool) =>
+                `- ${tool.name}${tool.liveOnly ? ' [LIVE ONLY — skipped in offline backtests]' : ''}: ${tool.description}`,
+        )
         .join('\n');
     return [
         'BLOCKS (prompt MUST be first; output_format MUST be last; include relevant data blocks in between):',
@@ -64,7 +74,7 @@ export function capabilityManifest(): string {
         '- Long only. BUY or EXIT a held ticker, or [] to hold. No shorts, no options, no intraday triggers.',
         '- Exactly one stage. One LLM call per run.',
         '- cadence is "3h" (the scheduler runs 09:30, 12:30, 15:30 ET); 5m and 1d are accepted but not honoured.',
-        '- Never use web_search. Every run is point-in-time and offline.',
+        '- Never use web_search. Offline backtests are point-in-time and skip [LIVE ONLY] tools; Live mode (30m) runs on current market data and supports [LIVE ONLY] tools.',
         '- Every block needs a unique short string id (b1, b2, ...), the stage needs an id (s1).',
     ].join('\n');
 }
@@ -82,14 +92,14 @@ export function compilerSystemPrompt(): string {
         '',
         'Reply shapes:',
         '{"status":"align","intro":"<one short sentence framing these quick alignment choices>","questions":[{"id":"q1","question":"<short tailored question>","options":["<choice>","<choice>","<choice>"]}]}',
-        '{"status":"ok","summary":"<one sentence describing the bot>","strategy":{"version":"2.0-push","name":"<max 40 chars>","description":"<one line>","cadence":"3h","stages":[{"id":"s1","blocks":[{"id":"b1","type":"prompt","text":"<clear step-by-step trading instructions>"},...,{"id":"bN","type":"output_format"}],"selected_tools":["get_stock_quote"]}]}}',
-        '{"status":"declined","reason":"<why this cannot run here, one line>","closest":"<the nearest buildable version>"}',
+        '{"status":"ok","summary":"<one sentence describing the bot>","warning":"<optional 1-2 sentence warning if requested data needs Live mode or was adapted>","strategy":{"version":"2.0-push","name":"<max 40 chars>","description":"<one line>","cadence":"3h","stages":[{"id":"s1","blocks":[{"id":"b1","type":"prompt","text":"<clear step-by-step trading instructions>"},...,{"id":"bN","type":"output_format"}],"selected_tools":["get_stock_quote"]}]}}',
+        `{"status":"declined","reason":"${REFUSAL_REASON}","closest":"${REFUSAL_CLOSEST}"}`,
         '',
         'CONVERSATION FLOW:',
         '1. On the user’s first trading idea (no prior assistant turn and user did not ask to skip alignment), ask ONE round of 3 to 5 tailored multiple-choice alignment questions using status "align". Each question must have 2 to 4 concise options covering real design choices (universe/sectors, entry signal, confirmation filter, exit/profit rule, risk selectivity).',
         '2. Once the user submits alignment answers or asks to skip alignment, return status "ok" immediately. NEVER ask a second round of questions.',
         '3. Every "ok" strategy MUST have a detailed, non-empty "prompt" block as blocks[0] synthesized from the user’s instructions and choices, and "output_format" as the last block.',
-        '4. If the idea needs something the engine cannot do (shorts, options, leverage, intraday triggers, live web search), return "declined" and describe the closest buildable version in "closest".',
+        '4. NEVER return "declined" for a trading strategy idea. If the idea needs [LIVE ONLY] tools (such as get_congress_trades, get_insider_trades, get_whale_holdings, get_government_fiscal_and_spending, get_market_moving_news, run_stock_screener), select them and set "warning" noting those tools are skipped in offline backtests and require Live (30m) mode. If the idea asks for unsupported mechanics (shorts, options, leverage, intraday triggers) or unavailable data (super PAC donations, web_search), build the closest long-only Push v2 recipe using available tools and set "warning" honestly explaining what was adapted or omitted while noting that Live (30m) runs on current market data. Reserve "declined" strictly for non-trading inputs per SECURITY & SCOPE BOUNDARIES.',
         '',
         capabilityManifest(),
     ].join('\n');
@@ -231,6 +241,28 @@ export function validateStrategy(candidate: unknown): PushStrategy {
     return strategy;
 }
 
+function isOkCandidate(candidate: Record<string, unknown>): boolean {
+    if (candidate.summary !== undefined && typeof candidate.summary !== 'string') return false;
+    if (candidate.warning !== undefined && typeof candidate.warning !== 'string') return false;
+    try {
+        validateStrategy(candidate.strategy);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function isAlignmentQuestionItem(item: unknown): boolean {
+    if (!item || typeof item !== 'object') return false;
+    const record = item as Record<string, unknown>;
+    return (
+        typeof record.question === 'string' &&
+        record.question.trim().length > 0 &&
+        Array.isArray(record.options) &&
+        record.options.length > 0
+    );
+}
+
 /**
  * True only for a value that is really one of the three reply shapes. The server
  * function transport hands back `undefined` for an envelope-less response, and a
@@ -241,27 +273,12 @@ export function isCompilerReply(value: unknown): value is CompilerReply {
     if (!value || typeof value !== 'object') return false;
     const candidate = value as Record<string, unknown>;
     const status = String(candidate.status ?? '');
-    if (status === 'ok') {
-        try {
-            validateStrategy(candidate.strategy);
-            return true;
-        } catch {
-            return false;
-        }
-    }
+    if (status === 'ok') return isOkCandidate(candidate);
     if (status === 'align') {
         return (
             Array.isArray(candidate.questions) &&
             candidate.questions.length > 0 &&
-            candidate.questions.every(
-                (item) =>
-                    item &&
-                    typeof item === 'object' &&
-                    typeof (item as Record<string, unknown>).question === 'string' &&
-                    String((item as Record<string, unknown>).question).trim().length > 0 &&
-                    Array.isArray((item as Record<string, unknown>).options) &&
-                    ((item as Record<string, unknown>).options as unknown[]).length > 0,
-            )
+            candidate.questions.every(isAlignmentQuestionItem)
         );
     }
     if (status === 'question') {
@@ -271,7 +288,11 @@ export function isCompilerReply(value: unknown): value is CompilerReply {
             Array.isArray(candidate.options)
         );
     }
-    return status === 'declined';
+    return (
+        status === 'declined' &&
+        typeof candidate.reason === 'string' &&
+        candidate.reason.trim().length > 0
+    );
 }
 
 function parseAlignReply(parsed: Record<string, unknown>): CompilerReply {
@@ -358,16 +379,80 @@ export function parseCompilerReply(raw: string): CompilerReply {
     if (status === 'ok') {
         const summaryHint = String(parsed.summary || '').slice(0, 240);
         const strategy = validateStrategy(normalizeCompiledCandidate(parsed.strategy, summaryHint));
+        const warning =
+            typeof parsed.warning === 'string' && parsed.warning.trim()
+                ? parsed.warning.trim().slice(0, MAX_WARNING_CHARS)
+                : undefined;
         return {
             status: 'ok',
             strategy,
             summary: (summaryHint || strategy.description || '').slice(0, 240),
+            ...(warning ? { warning } : {}),
         };
     }
     if (status === 'align') return parseAlignReply(parsed);
     if (status === 'question') return parseQuestionReply(parsed);
     if (status === 'declined') return parseDeclinedReply(parsed);
     throw new Error(`unknown compiler status: ${status || '<empty>'}`);
+}
+
+const NON_TRADING_REFUSAL_PATTERNS = [
+    /^i can only compile\b.*\btrading[- ]?bot recipes/,
+    /^(sorry\s+)?i (can only|only) (help with|compile)\b.*\btrading/,
+    /^(this|your|the) (input|request|prompt) is not a (stock[- ]?)?trading strategy/,
+];
+
+function normalizeRefusalText(text: string): string {
+    return text
+        .toLowerCase()
+        .replace(/[^\w\s-]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+function clampAtWordBoundary(text: string, maxChars: number): string {
+    if (text.length <= maxChars) return text;
+    const sliced = text.slice(0, maxChars).trimEnd();
+    const lastSpace = sliced.lastIndexOf(' ');
+    return (lastSpace > Math.floor(maxChars * 0.5) ? sliced.slice(0, lastSpace) : sliced).trim();
+}
+
+/**
+ * Only non-trading / off-topic security refusals should remain declined.
+ * Trading ideas with offline limitations are promoted to a runnable bot with a warning.
+ */
+export function isNonTradingRefusal(reply: CompilerReply): boolean {
+    if (reply.status !== 'declined') return false;
+    const normalized = normalizeRefusalText(reply.reason);
+    if (!normalized) return false;
+    if (normalized === normalizeRefusalText(REFUSAL_REASON)) return true;
+    return NON_TRADING_REFUSAL_PATTERNS.some((pattern) => pattern.test(normalized));
+}
+
+/**
+ * Promote a trading `declined` reply (e.g. offline toolset gap) into a runnable
+ * starter template carrying the limitation as a warning and advising Live execution.
+ */
+export function promoteDeclinedToBot(
+    reply: Extract<CompilerReply, { status: 'declined' }>,
+): Extract<CompilerReply, { status: 'ok' }> {
+    const template = STARTER_RECIPES[0];
+    const liveAdvice =
+        'Loaded closest working template — edit blocks/tools below or run live (Enable Live 30m).';
+    const detailBudget = Math.max(0, MAX_WARNING_CHARS - liveAdvice.length - 1);
+    const rawDetail = [reply.reason, reply.closest ? `Closest version: ${reply.closest}` : null]
+        .filter(Boolean)
+        .join(' ');
+    const detail = clampAtWordBoundary(rawDetail, detailBudget);
+    const warning = detail ? `${detail} ${liveAdvice}` : liveAdvice;
+    const summaryBase = reply.closest || reply.reason;
+    return {
+        status: 'ok',
+        strategy: validateStrategy(structuredClone(template)),
+        summary: `Closest template (${template.name}): ${summaryBase}`.slice(0, 240),
+        fallback: true,
+        warning,
+    };
 }
 
 /**
@@ -389,7 +474,8 @@ const DEFAULT_SANITIZED_FALLBACK_REASON =
 
 /**
  * Validate and strip an untrusted LLM reply on the server so raw prose, extra
- * keys, or off-schema outputs never reach the browser.
+ * keys, or off-schema outputs never reach the browser. Trading `declined` replies
+ * are promoted server-side so no consumer sees a dead-end trading refusal.
  */
 export function sanitizeCompileResult(
     rawContent: string,
@@ -398,6 +484,9 @@ export function sanitizeCompileResult(
     try {
         const parsed = parseCompilerReply(rawContent);
         if (isCompilerReply(parsed)) {
+            if (parsed.status === 'declined' && !isNonTradingRefusal(parsed)) {
+                return promoteDeclinedToBot(parsed);
+            }
             return parsed;
         }
     } catch {

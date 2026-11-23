@@ -103,6 +103,36 @@ export const CURATED_TOOLS: CuratedToolOption[] = [
         liveOnly: true,
     },
     {
+        name: 'get_congress_trades',
+        label: 'Congress Trades',
+        description: 'US Senate & House STOCK Act trading disclosures',
+        liveOnly: true,
+    },
+    {
+        name: 'get_insider_trades',
+        label: 'Insider Trades',
+        description: 'SEC Form 4 executive and director stock filings',
+        liveOnly: true,
+    },
+    {
+        name: 'get_whale_holdings',
+        label: 'Whale Holdings',
+        description: '13F & 13D/13G institutional fund ownership filings',
+        liveOnly: true,
+    },
+    {
+        name: 'get_government_fiscal_and_spending',
+        label: 'Fiscal & Contracts',
+        description: 'Federal budgets, deficit flows, and contract awards',
+        liveOnly: true,
+    },
+    {
+        name: 'get_market_moving_news',
+        label: 'Market Catalysts',
+        description: 'Real-time breaking intraday catalysts & macro prints',
+        liveOnly: true,
+    },
+    {
         name: 'get_todays_news_menu',
         label: 'Newsletters Menu',
         description: 'Latest Substack/financial newsletter headlines',
@@ -133,6 +163,10 @@ export const CURATED_TOOLS: CuratedToolOption[] = [
         description: 'Historical EPS beats, misses, and surprises',
     },
 ];
+
+export const LIVE_ONLY_TOOL_NAMES = new Set(
+    CURATED_TOOLS.filter((tool) => tool.liveOnly).map((tool) => tool.name),
+);
 
 export interface StrategyRecipeRecord {
     id: string;

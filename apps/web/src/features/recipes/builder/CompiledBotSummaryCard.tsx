@@ -6,6 +6,7 @@ import type { PushStrategy } from '../types';
 export interface CompiledBotSummaryCardProps {
     strategy: PushStrategy;
     summary?: string;
+    preferLive?: boolean;
     isDirty: boolean;
     isBusy: boolean;
     saveState: RecipeSaveState;
@@ -20,6 +21,131 @@ export interface CompiledBotSummaryCardProps {
     onToggleLive: () => void;
 }
 
+function resolveNextActionCopy(isCurrentlyScheduledLive: boolean, preferLive: boolean) {
+    if (isCurrentlyScheduledLive) {
+        return {
+            title: 'Live every 30m during market hours',
+            subtitle: 'Inspect live signals or run another backtest below.',
+        };
+    }
+    if (preferLive) {
+        return {
+            title: 'Recommended next step: run the bot live (30m)',
+            subtitle:
+                'Some signals need live execution — enable Live (30m) or backtest the offline-compatible logic.',
+        };
+    }
+    return {
+        title: 'Next best step: run a 2-week paper backtest',
+        subtitle: 'Verify your prompt and blocks on historical news before going live.',
+    };
+}
+
+function resolveLiveButtonStyle(emphasizeLive: boolean, isCurrentlyScheduledLive: boolean) {
+    if (emphasizeLive) {
+        return {
+            size: 'md' as const,
+            variant: 'solid' as const,
+            colorScheme: 'accent' as const,
+            className: 'voxel-btn--hero',
+            label: 'Enable Live (30m)',
+        };
+    }
+    if (isCurrentlyScheduledLive) {
+        return {
+            size: 'sm' as const,
+            variant: 'solid' as const,
+            colorScheme: 'success' as const,
+            className: undefined,
+            label: 'Live: ON (30m)',
+        };
+    }
+    return {
+        size: 'sm' as const,
+        variant: 'outline' as const,
+        colorScheme: 'neutral' as const,
+        className: undefined,
+        label: 'Enable Live (30m)',
+    };
+}
+
+function NextActionCtas({
+    strategyId,
+    preferLive,
+    isCurrentlyScheduledLive,
+    isBusy,
+    isRunningBacktest,
+    isTogglingLive,
+    backtestButtonLabel,
+    onBacktest,
+    onToggleLive,
+}: {
+    strategyId?: string;
+    preferLive: boolean;
+    isCurrentlyScheduledLive: boolean;
+    isBusy: boolean;
+    isRunningBacktest: boolean;
+    isTogglingLive: boolean;
+    backtestButtonLabel: string;
+    onBacktest: () => void;
+    onToggleLive: () => void;
+}) {
+    const emphasizeLive = preferLive && !isCurrentlyScheduledLive;
+    const liveStyle = resolveLiveButtonStyle(emphasizeLive, isCurrentlyScheduledLive);
+    const backtestBtn = (
+        <Button
+            size={emphasizeLive ? 'sm' : 'md'}
+            variant={emphasizeLive ? 'outline' : 'solid'}
+            colorScheme={emphasizeLive ? 'neutral' : 'accent'}
+            className={!emphasizeLive && !isCurrentlyScheduledLive ? 'voxel-btn--hero' : undefined}
+            onClick={onBacktest}
+            disabled={isBusy}
+            isLoading={isRunningBacktest}
+        >
+            {backtestButtonLabel}
+        </Button>
+    );
+    const liveBtn = (
+        <Button
+            size={liveStyle.size}
+            variant={liveStyle.variant}
+            colorScheme={liveStyle.colorScheme}
+            className={liveStyle.className}
+            onClick={onToggleLive}
+            disabled={isBusy}
+            isLoading={isTogglingLive}
+        >
+            {liveStyle.label}
+        </Button>
+    );
+
+    return (
+        <div className="flex flex-wrap items-center gap-4 min-w-0">
+            {emphasizeLive ? (
+                <>
+                    {liveBtn}
+                    {backtestBtn}
+                </>
+            ) : (
+                <>
+                    {backtestBtn}
+                    {liveBtn}
+                </>
+            )}
+
+            {isCurrentlyScheduledLive && strategyId ? (
+                <Link
+                    to="/recipes/live/$recipeId"
+                    params={{ recipeId: strategyId }}
+                    className="text-sm font-bold text-success hover:underline underline-offset-4"
+                >
+                    Live Status →
+                </Link>
+            ) : null}
+        </div>
+    );
+}
+
 /**
  * Focused bot identity, metadata, and unambiguous primary CTA hierarchy inside
  * CompiledBotWorkspace's `.voxel-card` hero container (zero nested cards, zero
@@ -28,6 +154,7 @@ export interface CompiledBotSummaryCardProps {
 export function CompiledBotSummaryCard({
     strategy,
     summary,
+    preferLive = false,
     isDirty,
     isBusy,
     saveState,
@@ -44,6 +171,7 @@ export function CompiledBotSummaryCard({
     const stage = strategy.stages[0];
     const activeBlockTypes = Array.from(new Set(stage.blocks.map((b) => b.type)));
     const descriptionText = summary || strategy.description;
+    const nextAction = resolveNextActionCopy(isCurrentlyScheduledLive, preferLive);
 
     return (
         <div className="flex flex-col gap-4 min-w-0">
@@ -82,52 +210,23 @@ export function CompiledBotSummaryCard({
                 className="voxel-trough bg-voxel-trough rounded-none p-4 flex flex-col gap-3 min-w-0"
             >
                 <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-                    <span className="text-sm font-bold text-voxel-ink">
-                        {isCurrentlyScheduledLive
-                            ? 'Live every 30m during market hours'
-                            : 'Next best step: run a 2-week paper backtest'}
-                    </span>
+                    <span className="text-sm font-bold text-voxel-ink">{nextAction.title}</span>
                     <span className="text-xs font-normal text-voxel-muted">
-                        {isCurrentlyScheduledLive
-                            ? 'Inspect live signals or run another backtest below.'
-                            : 'Verify your prompt and blocks on historical news before going live.'}
+                        {nextAction.subtitle}
                     </span>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 min-w-0">
-                    <Button
-                        size="md"
-                        variant="solid"
-                        colorScheme="accent"
-                        className={isCurrentlyScheduledLive ? undefined : 'voxel-btn--hero'}
-                        onClick={onBacktest}
-                        disabled={isBusy}
-                        isLoading={isRunningBacktest}
-                    >
-                        {backtestButtonLabel}
-                    </Button>
-
-                    <Button
-                        size="sm"
-                        variant={isCurrentlyScheduledLive ? 'solid' : 'outline'}
-                        colorScheme={isCurrentlyScheduledLive ? 'success' : 'neutral'}
-                        onClick={onToggleLive}
-                        disabled={isBusy}
-                        isLoading={isTogglingLive}
-                    >
-                        {isCurrentlyScheduledLive ? 'Live: ON (30m)' : 'Enable Live (30m)'}
-                    </Button>
-
-                    {isCurrentlyScheduledLive && strategy.id ? (
-                        <Link
-                            to="/recipes/live/$recipeId"
-                            params={{ recipeId: strategy.id }}
-                            className="text-sm font-bold text-success hover:underline underline-offset-4"
-                        >
-                            Live Status →
-                        </Link>
-                    ) : null}
-                </div>
+                <NextActionCtas
+                    strategyId={strategy.id}
+                    preferLive={preferLive}
+                    isCurrentlyScheduledLive={isCurrentlyScheduledLive}
+                    isBusy={isBusy}
+                    isRunningBacktest={isRunningBacktest}
+                    isTogglingLive={isTogglingLive}
+                    backtestButtonLabel={backtestButtonLabel}
+                    onBacktest={onBacktest}
+                    onToggleLive={onToggleLive}
+                />
             </div>
         </div>
     );

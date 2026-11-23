@@ -266,4 +266,36 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
         ).toHaveAttribute('data-step-state', 'active');
         expect(screen.getByLabelText('Custom answer for question 1')).toHaveValue('NVDA');
     });
+
+    it('opens CompiledBotWorkspace with a live-execution warning instead of blocking on offline limitations', async () => {
+        vi.mocked(fetchCompileJobFn).mockResolvedValueOnce({
+            id: 'job-compile-1',
+            status: 'completed',
+            progress_pct: 100,
+            result_json: {
+                content: JSON.stringify({
+                    status: 'declined',
+                    reason: 'Benchify cannot access congressional trading disclosures or super PAC donation data in its offline toolset.',
+                    closest:
+                        'A long-only stock bot that buys large-cap stocks using recent news and technicals.',
+                }),
+            },
+            error_message: null,
+        } as never);
+
+        renderWithQuery(<BuilderChatPanel userId="user-1" />);
+
+        fireEvent.change(screen.getByLabelText('Describe your trading bot'), {
+            target: { value: 'Follow congressional trades and super PAC donations' },
+        });
+        fireEvent.click(screen.getByRole('button', { name: /continue to alignment/i }));
+
+        expect(await screen.findByTestId('compiled-bot-hero-card')).toBeInTheDocument();
+        expect(screen.getByTestId('compiled-bot-live-warning')).toHaveTextContent(
+            /congressional trading disclosures/i,
+        );
+        expect(screen.getByTestId('builder-status')).toHaveTextContent(/CLOSEST WORKING TEMPLATE/i);
+        expect(screen.getByRole('button', { name: /Enable Live \(30m\)/i })).toBeEnabled();
+        expect(screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i })).toBeEnabled();
+    });
 });

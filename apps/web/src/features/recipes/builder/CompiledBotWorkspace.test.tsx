@@ -219,4 +219,84 @@ describe('CompiledBotWorkspace', () => {
         expect(screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeDisabled();
     });
+
+    it('renders a live-run warning banner and elevates Enable Live when warning is passed while keeping Backtest enabled', () => {
+        renderWithQuery(
+            <CompiledBotWorkspace
+                initialStrategy={strategy}
+                warning="Super PAC data is unavailable offline; run this bot live."
+            />,
+        );
+
+        expect(screen.getByTestId('builder-status')).toHaveTextContent(/LIVE RECOMMENDED/i);
+        const warningBox = screen.getByTestId('compiled-bot-live-warning');
+        expect(warningBox).toHaveTextContent(/Super PAC data is unavailable offline/i);
+        expect(warningBox).toHaveTextContent(/Enable Live \(30m\)/i);
+
+        expect(screen.getByTestId('compiled-bot-next-action')).toHaveTextContent(
+            /recommended next step: run the bot live/i,
+        );
+        const liveBtn = screen.getByRole('button', { name: /Enable Live \(30m\)/i });
+        const backtestBtn = screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i });
+        expect(liveBtn).toHaveClass('voxel-btn--hero');
+        expect(backtestBtn).not.toHaveClass('voxel-btn--hero');
+        expect(backtestBtn).toBeEnabled();
+    });
+
+    it('shows the live-run warning automatically when a liveOnly tool is toggled on in ToolPicker', () => {
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={strategy} />);
+
+        expect(screen.queryByTestId('compiled-bot-live-warning')).not.toBeInTheDocument();
+
+        fireEvent.click(screen.getByLabelText('Congress Trades'));
+
+        const warningBox = screen.getByTestId('compiled-bot-live-warning');
+        expect(warningBox).toHaveTextContent(/get_congress_trades/i);
+        expect(warningBox).toHaveTextContent(/Enable Live \(30m\)/i);
+        expect(screen.getByTestId('builder-status')).toHaveTextContent(/LIVE RECOMMENDED/i);
+        expect(screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i })).toBeEnabled();
+    });
+
+    it('suppresses the Enable Live warning banner when the bot is already scheduled live or prompt is empty', () => {
+        const liveStrategy = {
+            ...strategy,
+            id: 'live-123',
+            stages: [
+                {
+                    ...strategy.stages[0],
+                    selected_tools: ['get_congress_trades'],
+                },
+            ] as typeof strategy.stages,
+        };
+        const { unmount } = renderWithQuery(
+            <CompiledBotWorkspace
+                initialStrategy={liveStrategy}
+                initialUserRecipes={[
+                    {
+                        id: 'live-123',
+                        name: liveStrategy.name,
+                        cadence: '3h',
+                        is_live: true,
+                        trial_count: 1,
+                        updated_at: '2026-11-23T00:00:00Z',
+                    },
+                ]}
+            />,
+        );
+
+        expect(screen.getByTestId('builder-status')).toHaveTextContent(/LIVE ACTIVE/i);
+        expect(screen.queryByTestId('compiled-bot-live-warning')).not.toBeInTheDocument();
+        unmount();
+
+        renderWithQuery(
+            <CompiledBotWorkspace
+                initialStrategy={strategy}
+                warning="Super PAC data is unavailable offline."
+            />,
+        );
+        expect(screen.getByTestId('compiled-bot-live-warning')).toBeInTheDocument();
+        fireEvent.change(screen.getByLabelText('Prompt text'), { target: { value: '  ' } });
+        expect(screen.getByTestId('builder-status')).toHaveTextContent(/PROMPT NEEDED/i);
+        expect(screen.queryByTestId('compiled-bot-live-warning')).not.toBeInTheDocument();
+    });
 });

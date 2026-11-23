@@ -2,7 +2,12 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
-import type { BacktestResultData, RecipeAlert, StrategyStage } from '../types';
+import {
+    type BacktestResultData,
+    CURATED_TOOLS,
+    type RecipeAlert,
+    type StrategyStage,
+} from '../types';
 import { PromptVisualizer } from './PromptVisualizer';
 import { RecipeAlertsInbox } from './RecipeAlertsInbox';
 import { RecipeBacktestResults } from './RecipeBacktestResults';
@@ -90,14 +95,16 @@ describe('StageBuilder & PromptVisualizer', () => {
         expect(screen.getAllByText('PROMPT BLOCK').length).toBe(1);
 
         const initialCount = STARTER_RECIPES[0].stages[0].selected_tools.length;
-        expect(screen.getByText(`${initialCount} / 11`)).toBeInTheDocument();
+        expect(screen.getByText(`${initialCount} / ${CURATED_TOOLS.length}`)).toBeInTheDocument();
 
         const techCheckbox = screen.getByRole('checkbox', { name: 'Technical Indicators' });
         fireEvent.click(techCheckbox);
-        expect(screen.getByText(`${initialCount - 1} / 11`)).toBeInTheDocument();
+        expect(
+            screen.getByText(`${initialCount - 1} / ${CURATED_TOOLS.length}`),
+        ).toBeInTheDocument();
 
         fireEvent.click(techCheckbox);
-        expect(screen.getByText(`${initialCount} / 11`)).toBeInTheDocument();
+        expect(screen.getByText(`${initialCount} / ${CURATED_TOOLS.length}`)).toBeInTheDocument();
     });
 });
 

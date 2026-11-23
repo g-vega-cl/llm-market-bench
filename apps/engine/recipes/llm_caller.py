@@ -21,7 +21,23 @@ LLMCaller = Callable[[str, list[str], str | None], Awaitable[dict[str, Any]]]
 RECIPE_DISABLED_TOOLS: frozenset[str] = frozenset({"web_search"})
 MAX_TOOL_ROUNDS = 5
 _TOOL_RESULT_TRACE_LIMIT = 4000
+_MAX_RECIPE_TOOL_LIMIT = 25
 _THINK_BLOCK_RE = re.compile(r"<think>([\s\S]*?)</think>", re.IGNORECASE)
+
+
+def _sanitize_recipe_tool_args(fn_name: str, args: dict[str, Any]) -> dict[str, Any]:
+    """Clamp LLM-supplied tool arguments to bound Recipe Studio query and LLM blast radius."""
+    sanitized = dict(args)
+    if fn_name == "get_market_moving_news":
+        # Never allow user prompts to bypass the 15m cache and trigger 10 Jev LLM calls per turn.
+        sanitized["force_refresh"] = False
+    if (
+        "limit" in sanitized
+        and isinstance(sanitized["limit"], (int, float))
+        and not isinstance(sanitized["limit"], bool)
+    ):
+        sanitized["limit"] = max(1, min(int(sanitized["limit"]), _MAX_RECIPE_TOOL_LIMIT))
+    return sanitized
 
 
 def filter_recipe_tool_names(selected_tools: list[str], *, pit_mode: bool) -> list[str]:
@@ -120,8 +136,8 @@ async def _execute_round_tools(
             parsed = json.loads(tc.function.arguments or "{}")
         except json.JSONDecodeError:
             parsed = {}
-        args: dict[str, Any] = parsed if isinstance(parsed, dict) else {}
         fn_name = str(getattr(tc.function, "name", "") or "")
+        args: dict[str, Any] = _sanitize_recipe_tool_args(fn_name, parsed) if isinstance(parsed, dict) else {}
         tool_traces.append(f"{fn_name}({json.dumps(args)})")
 
         if fn_name in RECIPE_DISABLED_TOOLS or (allowed_tools and fn_name not in allowed_tools):

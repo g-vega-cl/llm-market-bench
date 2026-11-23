@@ -11,6 +11,8 @@ A **16-question** investing-personality diagnostic, played in four acts of four,
 
 The route lives at `apps/web/src/routes/personality.tsx` and renders `PersonalityQuizPage` (`apps/web/src/features/personality/PersonalityQuizPage.tsx`) on a design-system `SceneStage` (`variant="hero"`, `motionRole="reactive"`) backed by the panoramic **Cedar Sanctuary** [[concepts/living-scene-backdrops]] diorama and an SSR-resolved `initialAtmosphere` from the route `loader` to eliminate SSR/CSR visual flashes ([[concepts/cumulative-layout-shift]]).
 
+The page carries **no visible headline block** — no eyebrow, page title or description precedes the first question, because that copy pushed Act 1 down ~143 px and made the page read as a landing page instead of a test. The first question card starts directly under the scene's top padding (110 px card top at 1600×1000), and the accessible name comes from the route `<title>` plus an `sr-only` `<h1>` ("Investing style diagnostic: discover your best trading bot").
+
 ## Route & Search Params
 
 `validateSearch` accepts a single optional `archetype` key and normalizes anything unrecognized to `undefined`:
@@ -131,7 +133,7 @@ Selecting the last option calls `scorePersonalityQuiz`, updates the `?archetype=
 
 ## Components
 
-- `PersonalityQuizPage.tsx` — non-destructive `'quiz_match' | 'inspect'` state machine, router-synced search params, race-guarded clipboard handling, and `Cedar Sanctuary` stage composition (`text-lg font-bold` `h1`, `text-xs font-normal`).
+- `PersonalityQuizPage.tsx` — non-destructive `'quiz_match' | 'inspect'` state machine, router-synced search params, race-guarded clipboard handling, and `Cedar Sanctuary` stage composition (`text-sm font-bold` + `text-xs font-normal`, no visible `h1` — an `sr-only` heading carries the page name).
 - `PersonalityQuizStep.tsx` — single-question card (`data-testid="personality-quiz-card"`) with an `Act N of 4` badge, the act title, a four-pip act track (`data-testid="quiz-act-track"`), the `Question NN / 16` counter with its scenario label, `quiz-live-world-hint`, an accessible `role="progressbar"`, four full-width option buttons inheriting `text-voxel-trough` contrast on `bg-accent` selection, `Previous question`, and `Browse all 16 types`.
 - `PersonalityResultPanel.tsx` — the result plaque: 4x4 `TypeCodeGrid` at the top, code/title/summary header, 4-axis readout annotated with each letter, one matched bot card, and the **one-letter-away neighbour** trough (`data-testid="neighbour-type"`) that replaces the old distance-based runner-up.
 - `apps/web/src/components/ui/TypeCodeGrid.tsx` — shared 4x4 code grid (16 cells, row/column headers, `aria-pressed` active cell, in-flow description). Used by the result panel and by `TemplatePickerBar`, so the recipe studio's template picker shows codes instead of sixteen full-name buttons.
@@ -143,7 +145,7 @@ Selecting the last option calls `scorePersonalityQuiz`, updates the `?archetype=
 - `personality-questions.ts` — stable import path that re-exports the per-act question bank in `apps/web/src/features/personality/questions/`.
 - `personality-archetypes-long.ts` / `personality-archetypes-quick.ts` — the 16 archetype records, split by horizon row so neither catalogue crosses the 400-LOC ceiling.
 
-Each file stays within at most two typography combinations (`text-sm font-bold` + `text-xs font-normal`, or `text-lg font-bold` + `text-xs font-normal` on the page hero) and `border-2` borders.
+Each file stays within at most two typography combinations (`text-sm font-bold` + `text-xs font-normal`) and `border-2` borders; the page hero deliberately carries no `text-lg font-bold` title.
 
 ## Tests
 

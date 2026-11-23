@@ -101,8 +101,10 @@ function readDraft(): QuizDraft | null {
 
 /**
  * Interactive 16-question Investing Personality Test & starter bot matcher on
- * SceneStage with panoramic Cedar Sanctuary backdrop. Typography stays inside the
- * page's two combinations: a large bold hero heading and small normal body copy.
+ * SceneStage with panoramic Cedar Sanctuary backdrop. The page opens straight
+ * into Act 1 with no visible headline block — the route title and an sr-only h1
+ * carry the name — so the first question sits as close to the fold as the scene
+ * allows.
  */
 export function PersonalityQuizPage({
     initialArchetype,
@@ -434,19 +436,9 @@ export function PersonalityQuizPage({
             }
         >
             <div className="flex flex-1 flex-col items-center justify-start gap-6 pb-16">
-                <header className="flex flex-col items-center gap-2 text-center">
-                    <p className="home-hero-copy text-xs font-normal tracking-wider uppercase text-accent">
-                        Benchify Investing Diagnostic
-                    </p>
-                    <h1 className="home-hero-heading text-lg font-bold text-voxel-ink">
-                        Discover your investing style &amp; best trading bot.
-                    </h1>
-                    <p className="home-hero-copy max-w-prose text-xs font-normal leading-relaxed text-voxel-ink">
-                        Sixteen market scenarios across four acts score your Horizon, Signal Anchor,
-                        Crowd Stance, and Execution Tempo — pairing you with your matched starter
-                        trading recipe.
-                    </p>
-                </header>
+                <h1 className="sr-only">
+                    Investing style diagnostic: discover your best trading bot
+                </h1>
 
                 {showResume && draft ? (
                     <div

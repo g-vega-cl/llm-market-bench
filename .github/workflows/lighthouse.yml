@@ -2,11 +2,17 @@ name: Post-Deployment Lighthouse Audits
 
 on:
   deployment_status:
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: "Live URL to audit"
+        required: true
+        default: "https://www.benchify.dev"
 
 jobs:
   lighthouse-audit:
-    # Trigger only when Netlify successfully deploys a staging preview or production deployment
-    if: github.event.deployment_status.state == 'success'
+    # Trigger on manual dispatch or successful Netlify deployment_status
+    if: github.event_name == 'workflow_dispatch' || github.event.deployment_status.state == 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
@@ -22,7 +28,7 @@ jobs:
 
       - name: Run Lighthouse Audits
         run: |
-          DEPLOY_URL="${{ github.event.deployment_status.target_url }}"
+          DEPLOY_URL="${{ inputs.target_url || github.event.deployment_status.target_url || 'https://www.benchify.dev' }}"
           echo "Auditing live deployed URL: $DEPLOY_URL"
           
           # Clean trailing slash if present to avoid double-slashes

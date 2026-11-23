@@ -20,6 +20,7 @@ describe('withShowcaseCacheHeaders', () => {
         expect(res.headers.get('cache-control')).toBe(
             'public, max-age=0, s-maxage=259200, must-revalidate',
         );
+        expect(res.headers.get('cloudflare-cdn-cache-control')).toBe('public, s-maxage=259200');
         expect(res.headers.get('netlify-cdn-cache-control')).toBe('public, s-maxage=259200');
         // Unrelated headers survive the rewrite.
         expect(res.headers.get('content-type')).toBe('text/html; charset=utf-8');
@@ -29,6 +30,7 @@ describe('withShowcaseCacheHeaders', () => {
         const res = withShowcaseCacheHeaders(SHOWCASE_PATH, htmlResponse(), false);
 
         expect(res.headers.get('cache-control')).toBe('no-store');
+        expect(res.headers.get('cloudflare-cdn-cache-control')).toBeNull();
         expect(res.headers.get('netlify-cdn-cache-control')).toBeNull();
     });
 
@@ -36,6 +38,7 @@ describe('withShowcaseCacheHeaders', () => {
         const res = withShowcaseCacheHeaders(SHOWCASE_PATH, htmlResponse(500), true);
 
         expect(res.headers.get('cache-control')).toBeNull();
+        expect(res.headers.get('cloudflare-cdn-cache-control')).toBeNull();
         expect(res.headers.get('netlify-cdn-cache-control')).toBeNull();
     });
 
@@ -44,6 +47,7 @@ describe('withShowcaseCacheHeaders', () => {
         const res = withShowcaseCacheHeaders('/lab', original, true);
 
         expect(res).toBe(original);
+        expect(res.headers.get('cloudflare-cdn-cache-control')).toBeNull();
         expect(res.headers.get('netlify-cdn-cache-control')).toBeNull();
     });
 });

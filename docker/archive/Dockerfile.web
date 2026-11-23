@@ -1,0 +1,74 @@
+# syntax=docker/dockerfile:1
+
+FROM node:24-slim AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PATH"
+RUN corepack enable && corepack prepare pnpm@10.15.0 --activate
+WORKDIR /app
+
+FROM base AS prod-deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/ui-design-system/package.json packages/ui-design-system/package.json
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts --filter web...
+
+FROM base AS builder
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/package.json
+COPY packages/config/package.json packages/config/package.json
+COPY packages/database/package.json packages/database/package.json
+COPY packages/ui-design-system/package.json packages/ui-design-system/package.json
+RUN pnpm install --frozen-lockfile --filter web...
+
+COPY .gitignore .gitignore
+COPY packages/config packages/config
+COPY packages/database packages/database
+COPY packages/ui-design-system packages/ui-design-system
+COPY apps/web apps/web
+RUN mkdir -p .git
+
+# Public client-side variables baked into the Vite client bundle at build time.
+ARG VITE_ARCHIVE_DB_URL=https://benchify-archive-db.clvg.uk
+ARG VITE_ARCHIVE_DB_ANON_KEY=
+ARG VITE_SUPABASE_AUTH_URL=
+ARG VITE_SUPABASE_AUTH_ANON_KEY=
+ARG VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=
+ARG VITE_PUBLIC_POSTHOG_HOST=
+ARG VITE_TURNSTILE_SITE_KEY=
+
+ENV VITE_ARCHIVE_DB_URL=$VITE_ARCHIVE_DB_URL
+ENV VITE_ARCHIVE_DB_ANON_KEY=$VITE_ARCHIVE_DB_ANON_KEY
+ENV VITE_SUPABASE_AUTH_URL=$VITE_SUPABASE_AUTH_URL
+ENV VITE_SUPABASE_AUTH_ANON_KEY=$VITE_SUPABASE_AUTH_ANON_KEY
+ENV VITE_PUBLIC_POSTHOG_PROJECT_TOKEN=$VITE_PUBLIC_POSTHOG_PROJECT_TOKEN
+ENV VITE_PUBLIC_POSTHOG_HOST=$VITE_PUBLIC_POSTHOG_HOST
+ENV VITE_TURNSTILE_SITE_KEY=$VITE_TURNSTILE_SITE_KEY
+
+RUN pnpm build:web && \
+    CSS_ASSET="$(grep -oE '/assets/app-[A-Za-z0-9_-]+\.css' apps/web/dist/server/assets/router-*.js | head -n 1)" && \
+    test -n "$CSS_ASSET" && test -f "apps/web/dist/client${CSS_ASSET}"
+
+FROM node:24-slim AS runtime
+WORKDIR /app
+
+COPY --from=prod-deps /app/node_modules /app/node_modules
+COPY --from=prod-deps /app/apps/web/node_modules /app/apps/web/node_modules
+COPY --from=prod-deps /app/packages /app/packages
+COPY --from=builder /app/apps/web/package.json /app/apps/web/package.json
+COPY --from=builder /app/apps/web/dist /app/apps/web/dist
+COPY --from=builder /app/apps/web/public /app/apps/web/public
+
+WORKDIR /app/apps/web
+
+ENV NODE_ENV=production
+ENV HOST=0.0.0.0
+ENV PORT=3000
+
+EXPOSE 3000
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["node", "-e", "fetch('http://127.0.0.1:3000/').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+
+CMD ["./node_modules/.bin/srvx", "--prod", "-s", "../client", "dist/server/server.js"]

@@ -115,6 +115,48 @@ services:
         limits:
           memory: 512M
 
+  web-app:
+    build:
+      context: ../..
+      dockerfile: docker/archive/Dockerfile.web
+      args:
+        VITE_ARCHIVE_DB_URL: ${VITE_ARCHIVE_DB_URL:-https://benchify-archive-db.clvg.uk}
+        VITE_ARCHIVE_DB_ANON_KEY: ${VITE_ARCHIVE_DB_ANON_KEY:-}
+        VITE_SUPABASE_AUTH_URL: ${VITE_SUPABASE_AUTH_URL:-}
+        VITE_SUPABASE_AUTH_ANON_KEY: ${VITE_SUPABASE_AUTH_ANON_KEY:-}
+        VITE_PUBLIC_POSTHOG_PROJECT_TOKEN: ${VITE_PUBLIC_POSTHOG_PROJECT_TOKEN:-}
+        VITE_PUBLIC_POSTHOG_HOST: ${VITE_PUBLIC_POSTHOG_HOST:-}
+        VITE_TURNSTILE_SITE_KEY: ${VITE_TURNSTILE_SITE_KEY:-}
+    container_name: market-bench-web-app-secondary
+    restart: unless-stopped
+    depends_on:
+      - archive-proxy
+    env_file:
+      - ../../apps/web/.env
+    environment:
+      ARCHIVE_DB_URL: http://archive-proxy:80
+      NODE_ENV: production
+      PORT: "3000"
+      HOST: 0.0.0.0
+    expose:
+      - "3000"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+
+  web-proxy:
+    image: nginx:alpine
+    container_name: market-bench-web-proxy-secondary
+    restart: unless-stopped
+    depends_on:
+      - web-app
+      - archive-proxy
+    ports:
+      - "${WEB_BIND_ADDRESS:-0.0.0.0}:3005:80"
+    volumes:
+      - ./nginx.web.conf:/etc/nginx/nginx.conf:ro
+
 volumes:
   archive_pgdata_replica:
     name: archive_pgdata_replica

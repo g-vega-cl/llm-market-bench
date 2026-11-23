@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/self-hosted-web-deployment]] — Docker image, Nginx front door, compose services, and deploy script for the self-hosted TanStack Start web app
 - [[entities/personality-quiz]] — 16-question investing style diagnostic matching visitors to 16 archetypes and starter recipes
 - [[entities/recipe-playground]] — **reverted** 2026-11-21; kept as a tombstone pointing to the alignment lesson
 - [[entities/agent-pre-tool-gate]] — deterministic PreToolUse hook blocking blanket git staging, multiline python -c, and raw .env dumps

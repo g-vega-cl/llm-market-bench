@@ -62,7 +62,7 @@ graph TD
 
 ### Post-Deployment Lighthouse CI Workflow
 
-The pipeline utilizes `@lhci/cli` triggered automatically on deployment successes in `.github/workflows/lighthouse.yml`. Threshold budgets are managed dynamically inside `lighthouserc.json`.
+The pipeline utilizes `@lhci/cli` in `.github/workflows/lighthouse.yml`. It runs automatically on successful Netlify deployments and can also be triggered manually via `workflow_dispatch` against any live URL. Threshold budgets are managed dynamically inside `lighthouserc.json`.
 
 #### lighthouserc.json Configuration:
 ```json
@@ -88,6 +88,7 @@ The pipeline utilizes `@lhci/cli` triggered automatically on deployment successe
 
 ### Key Mechanisms:
 - **Deployment Status Trigger**: The workflow listens to the `deployment_status` event and launches as soon as Netlify marks a deploy state as `success`.
+- **Manual Dispatch Trigger**: The workflow also exposes a `workflow_dispatch` trigger with a required `target_url` input (default `https://www.benchify.dev`), so an operator can audit any live URL on demand without waiting for a deployment. The job's `if` guard admits either `github.event_name == 'workflow_dispatch'` or a successful `deployment_status`, and the audited URL resolves as `inputs.target_url || github.event.deployment_status.target_url || 'https://www.benchify.dev'`.
 - **Comprehensive Public Audits**: We audit all 12 public routes dynamically against the live deployment target URL:
   - `/` (Root homepage)
   - `/how-it-works` (How it works timeline)
@@ -269,3 +270,4 @@ If a deployment is absolutely critical and blocked by a minor score variance or 
 - [[sources/web-deployment-source]]
 - [[concepts/rendering-strategies]]
 - [[entities/design-system]]
+- [[entities/self-hosted-web-deployment]] — the self-hosted Docker stack whose `/health` and asset caching the manual audit exercises

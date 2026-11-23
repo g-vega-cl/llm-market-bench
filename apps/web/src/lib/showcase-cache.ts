@@ -33,9 +33,11 @@ export function withShowcaseCacheHeaders(
     const headers = new Headers(response.headers);
     if (hasPin) {
         headers.set('cache-control', SHARED_CACHE_CONTROL);
+        headers.set('cloudflare-cdn-cache-control', CDN_CACHE_CONTROL);
         headers.set('netlify-cdn-cache-control', CDN_CACHE_CONTROL);
     } else {
         headers.set('cache-control', 'no-store');
+        headers.delete('cloudflare-cdn-cache-control');
         headers.delete('netlify-cdn-cache-control');
     }
 

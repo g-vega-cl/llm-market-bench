@@ -232,7 +232,7 @@ export function fallbackReply(reason: string): CompilerReply {
     };
 }
 
-const MAX_TURN_CHARS = 2000;
+export const MAX_TURN_CHARS = 2000;
 
 /**
  * Client-supplied roles are sanitised: only user/assistant turns reach the model,

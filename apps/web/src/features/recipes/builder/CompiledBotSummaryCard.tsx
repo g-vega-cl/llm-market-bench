@@ -29,7 +29,7 @@ function resolveStatusBadge(strategyId?: string, fallback?: boolean): string {
 
 /**
  * Focused bot identity, status badges, and primary CTAs rendered inside
- * CompiledBotWorkspace's `.scene-scrim .voxel-card` hero container (zero nested cards).
+ * CompiledBotWorkspace's `.voxel-card` hero container (zero nested cards).
  */
 export function CompiledBotSummaryCard({
     strategy,

@@ -24,6 +24,7 @@ import {
     TYPE_GRID,
     TYPE_LETTERS,
 } from './personality-data';
+import { PERSONALITY_ARCHETYPE_COUNT, PERSONALITY_QUESTION_COUNT } from './personality-type-grid';
 
 /** Deterministic xorshift32 so the distribution gate is stable in CI. */
 function makeRng(seed: number): () => number {
@@ -94,6 +95,8 @@ function expectLettersMatchProbes(answers: Record<string, string>): void {
 
 describe('personality-data (16-question 4-axis diagnostic, 16-cell type grid)', () => {
     it('defines 16 questions across 4 acts of 4 with 1:1 archetype-recipe integrity', () => {
+        expect(PERSONALITY_QUESTIONS).toHaveLength(PERSONALITY_QUESTION_COUNT);
+        expect(ARCHETYPE_IDS).toHaveLength(PERSONALITY_ARCHETYPE_COUNT);
         expect(PERSONALITY_QUESTIONS).toHaveLength(16);
         expect(QUIZ_ACTS).toHaveLength(4);
 

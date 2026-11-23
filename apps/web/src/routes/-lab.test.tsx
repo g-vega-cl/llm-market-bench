@@ -50,5 +50,7 @@ describe('LabDirectoryView (/lab)', () => {
         const link = screen.getByText('Retired Agents').closest('a');
         expect(link).toHaveAttribute('href', '/retired-agents');
         expect(screen.queryByText('Retired Agent Archive')).not.toBeInTheDocument();
+        expect(screen.getByText(/16-question personality test matching/i)).toBeInTheDocument();
+        expect(screen.getByText(/16 investing archetypes/i)).toBeInTheDocument();
     });
 });

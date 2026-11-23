@@ -1,5 +1,9 @@
 import { Badge, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { createFileRoute, Link } from '@tanstack/react-router';
+import {
+    PERSONALITY_ARCHETYPE_COUNT,
+    PERSONALITY_QUESTION_COUNT,
+} from '~/features/personality/personality-type-grid';
 import { seo } from '~/lib/seo';
 
 export interface LabLinkItem {
@@ -30,8 +34,7 @@ export const LAB_CATEGORIES: LabCategory[] = [
             {
                 to: '/personality',
                 label: 'Investing Style Diagnostic',
-                description:
-                    '10-question personality test matching your trading temperament to five investing archetypes and starter bot recipes.',
+                description: `${String(PERSONALITY_QUESTION_COUNT)}-question personality test matching your trading temperament to ${String(PERSONALITY_ARCHETYPE_COUNT)} investing archetypes and starter bot recipes.`,
             },
             {
                 to: '/recipes-demo',

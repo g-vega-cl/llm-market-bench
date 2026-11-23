@@ -44,6 +44,10 @@ export const TYPE_CODES: readonly TypeCode[] = [
     'QNMR',
 ];
 
+/** Canonical diagnostic counts (pinned to the bank and grid in personality-data.test.ts). */
+export const PERSONALITY_QUESTION_COUNT = 16;
+export const PERSONALITY_ARCHETYPE_COUNT = TYPE_CODES.length;
+
 /** Grid corner centroid. The 16-cell grid deliberately has no middle. */
 export const CENTROID_HIGH = 88;
 export const CENTROID_LOW = 12;

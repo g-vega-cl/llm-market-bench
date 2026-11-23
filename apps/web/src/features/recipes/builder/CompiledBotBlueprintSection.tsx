@@ -52,7 +52,7 @@ export function CompiledBotBlueprintSection({
     return (
         <section
             data-testid="compiled-bot-workspace-section"
-            className="mx-auto w-full max-w-7xl px-6 py-6 flex flex-col gap-4 min-w-0"
+            className="mx-auto w-full max-w-7xl flex flex-col gap-4 min-w-0"
         >
             <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">
                 <SectionHeading className="text-sm">Strategy blueprint</SectionHeading>

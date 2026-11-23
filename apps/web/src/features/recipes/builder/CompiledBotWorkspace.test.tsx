@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CEDAR_WORLD_ID } from '../../home/backdrop/voxel-world';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import type { RecipeJobRecord } from '../types';
 import { CompiledBotWorkspace } from './CompiledBotWorkspace';
@@ -71,30 +70,6 @@ const runningJob: RecipeJobRecord = {
     error_message: null,
 };
 
-beforeAll(() => {
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            matches: true,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-        })),
-    });
-
-    if (typeof globalThis.ResizeObserver === 'undefined') {
-        globalThis.ResizeObserver = class ResizeObserver {
-            observe() {}
-            unobserve() {}
-            disconnect() {}
-        };
-    }
-});
-
 beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockResolvedValue(undefined);
@@ -104,18 +79,15 @@ beforeEach(() => {
 describe('CompiledBotWorkspace', () => {
     const strategy = STARTER_RECIPES[0];
 
-    it('renders hero summary inside a bounded SceneStage and defaults the lower workspace tab to Blocks & Tools', () => {
-        const { container } = renderWithQuery(
-            <CompiledBotWorkspace initialStrategy={strategy} initialAtmosphere="dusk" />,
-        );
+    it('renders hero summary inside a voxel-card without SceneStage and defaults the lower workspace tab to Blocks & Tools', () => {
+        const { container } = renderWithQuery(<CompiledBotWorkspace initialStrategy={strategy} />);
 
-        const stage = container.querySelector('section[data-slot="scene-stage"]');
-        expect(stage).not.toBeNull();
-        expect(stage).toHaveAttribute('data-atmosphere', 'dusk');
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', CEDAR_WORLD_ID);
+        expect(container.querySelector('section[data-slot="scene-stage"]')).toBeNull();
+        expect(screen.queryByTestId('garden-backdrop')).toBeNull();
 
         const heroCard = screen.getByTestId('compiled-bot-hero-card');
-        expect(heroCard).toHaveClass('scene-scrim', 'voxel-card');
+        expect(heroCard).toHaveClass('voxel-card');
+        expect(heroCard).not.toHaveClass('scene-scrim');
         expect(heroCard.querySelectorAll('.voxel-card')).toHaveLength(0);
 
         expect(

@@ -1,7 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CEDAR_WORLD_ID } from '../../home/backdrop/voxel-world';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import { BuilderChatPanel } from './BuilderChatPanel';
 
@@ -46,30 +45,6 @@ function renderWithQuery(ui: React.ReactElement) {
     return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
 
-beforeAll(() => {
-    Object.defineProperty(window, 'matchMedia', {
-        writable: true,
-        value: vi.fn().mockImplementation((query: string) => ({
-            matches: false,
-            media: query,
-            onchange: null,
-            addListener: vi.fn(),
-            removeListener: vi.fn(),
-            addEventListener: vi.fn(),
-            removeEventListener: vi.fn(),
-            dispatchEvent: vi.fn(),
-        })),
-    });
-
-    if (typeof globalThis.ResizeObserver === 'undefined') {
-        globalThis.ResizeObserver = class ResizeObserver {
-            observe() {}
-            unobserve() {}
-            disconnect() {}
-        };
-    }
-});
-
 beforeEach(() => {
     vi.clearAllMocks();
     mockNavigate.mockResolvedValue(undefined);
@@ -83,44 +58,52 @@ beforeEach(() => {
     } as never);
 });
 
-describe('BuilderChatPanel (Cedar Sanctuary SceneStage & Voxel Pipeline)', () => {
-    it('renders on SceneStage with reactive motion role, SSR atmosphere parity, and open-sky header', () => {
-        const { container } = renderWithQuery(
-            <BuilderChatPanel userId="user-1" initialAtmosphere="after-hours" />,
-        );
+describe('BuilderChatPanel (GlobalBackground, Expansible Textarea & Voxel Pipeline)', () => {
+    it('renders transparently without diorama/starter chips and shows 16-question personality link', () => {
+        const { container } = renderWithQuery(<BuilderChatPanel userId="user-1" />);
 
-        const stage = container.querySelector('section[data-slot="scene-stage"]');
-        expect(stage).not.toBeNull();
-        expect(stage).toHaveAttribute('data-stage-variant', 'hero');
-        expect(stage).toHaveAttribute('data-motion-role', 'reactive');
-        expect(stage).toHaveAttribute('data-atmosphere', 'after-hours');
-        expect(stage?.className).toContain('scene-atmosphere-after-hours');
-
-        const canvas = screen.getByTestId('garden-backdrop');
-        expect(canvas).toHaveAttribute('data-world', CEDAR_WORLD_ID);
-        expect(canvas).toHaveAttribute('data-atmosphere', 'after-hours');
+        expect(container.querySelector('section[data-slot="scene-stage"]')).toBeNull();
+        expect(screen.queryByTestId('garden-backdrop')).toBeNull();
+        expect(screen.queryByTestId('builder-starter-chips')).toBeNull();
 
         expect(
             screen.getByRole('heading', { name: /build your trading bot/i }),
         ).toBeInTheDocument();
-        expect(screen.getByTestId('builder-stage-card')).toHaveClass('scene-scrim', 'voxel-card');
-        expect(screen.getByTestId('atmosphere-switcher')).toHaveTextContent('Sky: After-Hours');
+        expect(screen.getByTestId('builder-stage-card')).toHaveClass('voxel-card');
+        expect(screen.getByTestId('builder-stage-card')).not.toHaveClass('scene-scrim');
+
+        const personalityLink = screen.getByRole('link', {
+            name: /16-question personality test/i,
+        });
+        expect(personalityLink).toHaveAttribute('href', '/personality');
     });
 
-    it('populates the prompt input when clicking a starter-idea chip without auto-submitting', () => {
-        renderWithQuery(<BuilderChatPanel userId={null} initialAtmosphere="dusk" />);
+    it('places the Build My Bot button above an expansible textarea and supports Ctrl/Cmd+Enter submit', async () => {
+        renderWithQuery(<BuilderChatPanel userId="user-1" />);
 
-        const chips = screen.getByTestId('builder-starter-chips');
-        expect(chips).toBeInTheDocument();
+        const submitButton = screen.getByRole('button', { name: /build my bot/i });
+        const textarea = screen.getByLabelText('Describe your trading bot');
+        expect(textarea.tagName).toBe('TEXTAREA');
+        expect(textarea).toHaveAttribute('maxLength', '2000');
+        const describedBy = textarea.getAttribute('aria-describedby');
+        expect(describedBy).toBeTruthy();
+        expect(document.getElementById(describedBy as string)).toHaveTextContent(
+            /0 \/ 2000 · Ctrl\/⌘\+Enter to submit/,
+        );
 
-        const firstChip = chips.querySelector('button');
-        expect(firstChip).not.toBeNull();
-        fireEvent.click(firstChip as HTMLButtonElement);
+        // Button appears above the textarea in DOM order.
+        expect(
+            submitButton.compareDocumentPosition(textarea) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
 
-        const input = screen.getByLabelText('Describe your trading bot') as HTMLInputElement;
-        expect(input.value.trim().length).toBeGreaterThan(10);
+        // Plain Enter does not submit; Ctrl+Enter submits when non-empty.
+        fireEvent.change(textarea, { target: { value: 'Buy chipmakers on AI capex news' } });
+        fireEvent.keyDown(textarea, { key: 'Enter' });
         expect(enqueueCompileFn).not.toHaveBeenCalled();
-        expect(mockNavigate).not.toHaveBeenCalled();
+
+        fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
+        expect(enqueueCompileFn).toHaveBeenCalledTimes(1);
+        expect(await screen.findByTestId('builder-compile-pipeline')).toBeInTheDocument();
     });
 
     it('reflects real queued vs compiling pipeline states honestly and uses recessed troughs for chat messages', async () => {
@@ -132,10 +115,10 @@ describe('BuilderChatPanel (Cedar Sanctuary SceneStage & Voxel Pipeline)', () =>
             error_message: null,
         } as never);
 
-        renderWithQuery(<BuilderChatPanel userId="user-1" initialAtmosphere="daylight" />);
+        renderWithQuery(<BuilderChatPanel userId="user-1" />);
 
-        const input = screen.getByLabelText('Describe your trading bot');
-        fireEvent.change(input, { target: { value: 'Buy chipmakers on AI capex news' } });
+        const textarea = screen.getByLabelText('Describe your trading bot');
+        fireEvent.change(textarea, { target: { value: 'Buy chipmakers on AI capex news' } });
         fireEvent.click(screen.getByRole('button', { name: /build my bot/i }));
 
         const pipeline = await screen.findByTestId('builder-compile-pipeline');
@@ -145,7 +128,7 @@ describe('BuilderChatPanel (Cedar Sanctuary SceneStage & Voxel Pipeline)', () =>
         expect(pipeline).toHaveTextContent(/3\. Validate/i);
         expect(pipeline.querySelectorAll('[data-step-state="active"]')).toHaveLength(1);
 
-        // Conversation rows inside .scene-scrim .voxel-card must use recessed .voxel-trough, zero nested .voxel-card
+        // Conversation rows inside .voxel-card must use recessed .voxel-trough, zero nested .voxel-card
         const stageCard = screen.getByTestId('builder-stage-card');
         expect(stageCard.querySelectorAll('.voxel-card')).toHaveLength(0);
         expect(stageCard.querySelector('[data-testid="builder-message-row"]')).toHaveClass(
@@ -153,7 +136,7 @@ describe('BuilderChatPanel (Cedar Sanctuary SceneStage & Voxel Pipeline)', () =>
         );
     });
 
-    it('preserves user atmosphere and paused HUD state across Step 1 -> Step 2 and Start Over', async () => {
+    it('transitions to CompiledBotWorkspace on compile completion and returns cleanly on Start Over', async () => {
         vi.mocked(fetchCompileJobFn).mockResolvedValue({
             id: 'job-compile-1',
             status: 'completed',
@@ -168,13 +151,7 @@ describe('BuilderChatPanel (Cedar Sanctuary SceneStage & Voxel Pipeline)', () =>
             error_message: null,
         } as never);
 
-        renderWithQuery(<BuilderChatPanel userId="user-1" initialAtmosphere="dawn" />);
-
-        // Cycle sky dawn -> daylight and pause motion in Step 1
-        fireEvent.click(screen.getByTestId('atmosphere-switcher'));
-        expect(screen.getByTestId('atmosphere-switcher')).toHaveTextContent('Sky: Daylight');
-        fireEvent.click(screen.getByRole('button', { name: /pause motion/i }));
-        expect(screen.getByRole('button', { name: /play motion/i })).toBeInTheDocument();
+        renderWithQuery(<BuilderChatPanel userId="user-1" />);
 
         fireEvent.change(screen.getByLabelText('Describe your trading bot'), {
             target: { value: 'Buy chipmakers on AI capex news' },
@@ -182,19 +159,10 @@ describe('BuilderChatPanel (Cedar Sanctuary SceneStage & Voxel Pipeline)', () =>
         fireEvent.click(screen.getByRole('button', { name: /build my bot/i }));
 
         const heroCard = await screen.findByTestId('compiled-bot-hero-card');
-        expect(heroCard).toHaveClass('scene-scrim', 'voxel-card');
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute(
-            'data-atmosphere',
-            'daylight',
-        );
-        expect(screen.getByRole('button', { name: /play motion/i })).toBeInTheDocument();
+        expect(heroCard).toHaveClass('voxel-card');
+        expect(heroCard).not.toHaveClass('scene-scrim');
 
-        // Cycle sky daylight -> dusk in Step 2, then click Describe a different bot
-        fireEvent.click(screen.getByTestId('atmosphere-switcher'));
-        expect(screen.getByTestId('atmosphere-switcher')).toHaveTextContent('Sky: Dusk');
         fireEvent.click(screen.getByRole('button', { name: /describe a different bot/i }));
-
         expect(screen.getByTestId('builder-stage-card')).toBeInTheDocument();
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-atmosphere', 'dusk');
     });
 });

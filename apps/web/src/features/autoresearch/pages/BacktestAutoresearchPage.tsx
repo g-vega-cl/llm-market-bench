@@ -61,7 +61,7 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
                 </PageLayout>
             </div>
 
-            <PageLayout className="py-12 space-y-12">
+            <PageLayout className="px-6 md:px-12 py-12 space-y-12" withPadding={false}>
                 {/* Score Formula Reference Card */}
                 <div className="bg-voxel-surface border border-voxel-bevel-hi rounded-none p-6">
                     <ScoreCalculation />

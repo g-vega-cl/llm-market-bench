@@ -60,6 +60,24 @@ describe('TodayPage UI stability & TDD performance checks', () => {
         vi.clearAllMocks();
     });
 
+    it('owns its vertical rhythm by opting out of PageLayout padding', () => {
+        const { container } = render(
+            <QueryClientProvider client={queryClient}>
+                <TodayPage
+                    initialData={emptyTodayData}
+                    fetchFn={vi.fn().mockResolvedValue(emptyTodayData)}
+                />
+            </QueryClientProvider>,
+        );
+
+        const shell = container.querySelector('.mx-auto.w-full');
+        expect(shell).not.toBeNull();
+        // py-6 wins because the base py-8/md:py-12 pair is never emitted.
+        expect(shell).toHaveClass('px-6', 'md:px-12', 'py-6');
+        expect(shell?.className).not.toContain('py-8');
+        expect(shell?.className).not.toContain('md:py-12');
+    });
+
     it('renders a professional static empty state description instead of dynamic jokes', () => {
         render(
             <QueryClientProvider client={queryClient}>

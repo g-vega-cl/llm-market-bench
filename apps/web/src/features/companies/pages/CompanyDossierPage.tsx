@@ -207,7 +207,7 @@ export function CompanyDossierPage({ initialData }: CompanyDossierPageProps) {
 
     if (!activeReport) {
         return (
-            <PageLayout className="py-8" maxWidth="xl">
+            <PageLayout maxWidth="xl">
                 <div className="flex flex-col gap-6">
                     <Link
                         to="/companies"
@@ -225,7 +225,7 @@ export function CompanyDossierPage({ initialData }: CompanyDossierPageProps) {
     }
 
     return (
-        <PageLayout className="py-8" maxWidth="xl">
+        <PageLayout maxWidth="xl">
             <div className="flex flex-col gap-6">
                 <DossierHeader report={activeReport} mentionCount={mentionCount} />
                 <MoatAndValuationGrid report={activeReport} />

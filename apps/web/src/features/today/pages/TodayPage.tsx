@@ -57,7 +57,7 @@ export function TodayPage({ initialData, fetchFn }: TodayPageProps) {
             <TodayStatusBar data={data} />
 
             {/* Dashboard body — no opaque bg so the dotted GlobalBackground shows through */}
-            <PageLayout className="py-6 space-y-6" maxWidth="xl">
+            <PageLayout className="px-6 md:px-12 py-6 space-y-6" maxWidth="xl" withPadding={false}>
                 {/* Row 1: Global Macro Stats — full width */}
                 <Suspense fallback={null}>
                     <GlobalMacroStats

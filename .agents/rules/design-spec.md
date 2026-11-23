@@ -67,6 +67,7 @@ Components must respond to the space allocated by their parent container rather 
 3. **Flex edge anchors as the sole margin exception**:
    - `mt-auto`: Used inside cards to pin action buttons or metric footers to the bottom.
    - `ml-auto`: Used inside flex toolbars to push controls or status badges to the right edge.
+4. **PageLayout rhythm is opted out, never overridden**: with `withPadding` (default) it emits `px-6 md:px-12 py-8 md:py-12`. A page with its own rhythm passes `withPadding={false}` and writes its complete horizontal and vertical padding itself (as `/renko` and `PortfolioDetailPage` already did). Never pass `p-*`/`px-*`/`py-*`/`pt-*`/`pb-*` via `className` while `withPadding` is true: `cn` is bare clsx, both survive, and stylesheet order wins (`.py-8` follows `.py-6`). Enforced by `page-surface-conventions.test.tsx`.
 
 ---
 
@@ -76,7 +77,7 @@ The entire interface standardizes on at most 3 font size and boldness combinatio
 
 | Tier | Tokens & CSS Classes | Usage Scope |
 | :--- | :--- | :--- |
-| **Tier 1 (Display & Primary Values)** | `text-lg font-bold`, `.type-heading` (18px Bold) | Page titles (`h1`), `h2`, `SectionHeading`, and primary hero metric values (`font-mono tabular-nums`). |
+| **Tier 1 (Display & Primary Values)** | `text-lg font-bold`, `.type-heading` (18px Bold) | Page titles on **browse surfaces** (see §4a), `h2`, `SectionHeading`, and primary hero metric values (`font-mono tabular-nums`). |
 | **Tier 2 (Controls, Titles & Headers)** | `text-sm font-bold`, `.type-control` (14px Bold) | Buttons, card titles, `SubHeading`, `Label`, `Input`, `Select`, table headers (`TableHead`), and `Badge`. |
 | **Tier 3 (Body & Telemetry)** | `text-xs font-normal`, `.type-body` (12px Normal) | Body copy, descriptions, table cells (`TableCell`), timestamps, and thought traces. |
 
@@ -85,6 +86,15 @@ The entire interface standardizes on at most 3 font size and boldness combinatio
 - Prohibit `text-base` (use Tier 2 `text-sm` or Tier 1 `text-lg`).
 - Prohibit arbitrary escapes like `text-[9px]` or `text-[10px]`.
 - Prohibit font weights `font-black`, `font-extrabold`, `font-semibold`, or `font-medium` (use strictly `font-bold` for Tiers 1–2 and `font-normal` for Tier 3).
+
+### 4a. Page titles
+
+A page's job decides its title:
+
+- **Action surfaces** (`/personality`, `/build`, `/chat`) carry no page-level title block — no eyebrow, no title, no description above the first control. They keep the page name via exactly one `sr-only` `<h1>` matching the route `<title>`, in every render branch the route can reach (a panel that swaps components, or a route that mounts one straight from loader data, needs its own). Section headings below the fold may keep their one-line subtitles.
+- **Browse surfaces** keep a visible title — an `h1` or a `SectionHeading` — plus at most one description line.
+
+Enforced by `apps/web/src/test/page-surface-conventions.test.tsx`; edit that test and this section together.
 
 ---
 

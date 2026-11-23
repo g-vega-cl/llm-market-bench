@@ -37,7 +37,7 @@ export function CompaniesPage({ initialCompanies }: CompaniesPageProps) {
     }, [initialCompanies, searchQuery, verdictFilter]);
 
     return (
-        <PageLayout className="py-8" maxWidth="xl">
+        <PageLayout maxWidth="xl">
             <div className="flex flex-col gap-6">
                 {/* Header */}
                 <div className="flex flex-col gap-2 border-b border-zinc-800 pb-6">

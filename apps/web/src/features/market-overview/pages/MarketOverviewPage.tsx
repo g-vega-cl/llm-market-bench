@@ -79,7 +79,7 @@ export function MarketOverviewPage({ initialData, fetchFn }: MarketOverviewPageP
         <div className="min-h-screen bg-voxel-canvas">
             <MarketOverviewHero marketFeeling={data.marketFeeling} />
 
-            <PageLayout className="space-y-16 pb-24">
+            <PageLayout className="px-6 md:px-12 pt-8 pb-24 space-y-16" withPadding={false}>
                 {/* Modern Premium Sub-Navigation Tabs */}
                 <div className="flex justify-center animate-slide-up">
                     <div className="flex gap-1.5 p-1.5 bg-voxel-surface rounded-none border border-voxel-bevel-hi shadow-md">

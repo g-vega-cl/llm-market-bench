@@ -45,7 +45,7 @@ export function GeneratedNewslettersPage({ initialNewsletters }: GeneratedNewsle
     }, [activeNewsletter]);
 
     return (
-        <PageLayout className="py-8 space-y-8" maxWidth="xl">
+        <PageLayout className="space-y-8" maxWidth="xl">
             {/* Header section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-6">
                 <div className="space-y-1">

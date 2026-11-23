@@ -113,7 +113,11 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
         <div className="min-h-screen">
             {/* Header */}
             <div className="border-b border-voxel-bevel-hi bg-voxel-surface">
-                <PageLayout maxWidth="md" className="py-6 flex flex-col gap-4">
+                <PageLayout
+                    maxWidth="md"
+                    className="px-6 md:px-12 py-6 flex flex-col gap-4"
+                    withPadding={false}
+                >
                     <div className="flex items-center gap-3">
                         <Link
                             to="/memories"
@@ -155,7 +159,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
             </div>
 
             {/* Main Content Area */}
-            <PageLayout maxWidth="md" className="py-8 flex flex-col gap-6">
+            <PageLayout maxWidth="md" className="flex flex-col gap-6">
                 {/* Chain Switcher Bar */}
                 <Card variant="default" padding="sm">
                     <ChainMemorySwitcher currentMemoryId={memoryId} searchFn={searchMemories} />

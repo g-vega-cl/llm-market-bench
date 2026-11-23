@@ -359,7 +359,7 @@ export function MemoriesPage({
         <div className="min-h-screen">
             {/* Header */}
             <div className="border-b border-voxel-bevel-hi">
-                <PageLayout maxWidth="md" className="py-8 flex flex-col gap-2">
+                <PageLayout maxWidth="md" className="flex flex-col gap-2">
                     <SectionHeading>AI Memories</SectionHeading>
                     <p className="text-voxel-muted text-sm font-normal m-0">
                         Market insights, strategic decisions, and post-trade analysis from AI
@@ -369,7 +369,7 @@ export function MemoriesPage({
             </div>
 
             {/* Main Content */}
-            <PageLayout maxWidth="md" className="py-8">
+            <PageLayout maxWidth="md">
                 {/* Search Bar */}
                 <form onSubmit={handleSearchSubmit} className="mb-6 flex gap-2">
                     <div className="relative flex-1">

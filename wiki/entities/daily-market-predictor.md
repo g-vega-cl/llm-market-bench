@@ -45,7 +45,8 @@ The daily bond predictor (`apps/engine/tasks/bond_predictor.py`) implements a pu
 - **Prompt Structure**: Initial prompt injects only lean temporal context (date, session, pre-market quote/overnight gap), omitting bulky context tables.
 - **Autonomous Tool Loop**: Reasoning models (`gpt-6-luna`, `deepseek-flash`) pull data dynamically from a curated fixed-income toolbox (`get_treasury_yield_curve`, `get_today_economic_releases`, `get_yield_curve_regime`, `get_macro_options_sentiment`, `get_calendar_scenario_analysis`).
 - **Jev Integration**: Single-turn Decisions API receives an automated lean tool bundle pre-compiled from the yield curve and economic calendar.
-- **Portfolios**: Feeds into systematic close-exit portfolios (`sys-daily-tlt-close-{model}`) executed via `apps/engine/execution/daily_bond_trading.py`.
+- **Portfolios**: Feeds into systematic close-exit portfolios (`sys-daily-tlt-close-{model}`) executed via `apps/engine/execution/daily_bond_trading.py`, whose session timestamps are derived from `America/New_York` (09:30 entry, 16:00 exit) instead of hardcoded UTC offsets.
+- **Bond Autoresearch** (`apps/engine/tasks/bond_autoresearch.py`): a weekly `BOND_PREDICTOR_PROMPT` ratchet with one track per tool-loop model (`gpt-6-luna`, `deepseek-flash`). The frozen header/footer live in `apps/engine/core/llm/bond_predictor_prompts.py` and only the mutable strategy block is rewritten. Scoring reuses `calculate_daily_ratchet_metrics` over evaluated TLT predictions, and the baseline candidate goes through `select_baseline_candidate` (sample floor + shrinkage), so one lucky week cannot set an unreachable ceiling. It runs inside the existing `daily-autoresearch` command on the Sunday 22:00 UTC cron. Jev's bond path has no system prompt (compiled context only) and is intentionally uncovered.
 
 ## Scoring & Metrics Surface
 

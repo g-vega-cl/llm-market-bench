@@ -113,6 +113,10 @@ Baseline seeding is an idempotent `upsert` on `variant_tag` (writing `week_start
 * **Prompt Section Splitting**: Frozen headers and JSON schema footers are strictly preserved via `split_stock_picker_prompt`, mutating only the analytical strategy body.
 * **Promotion & Memory**: Variants that beat the baseline are promoted to `status = 'baseline'`, demoting prior active variants to `saved`. High-conviction takeaways are stored in `memories` with `memory_type = 'AUTORESEARCH_INSIGHT'`.
 
+### Failure Semantics
+
+`run_stock_picker_autoresearch` counts per-track failures and raises `RuntimeError` when **every** track in `TARGET_TRACK_MODELS` fails, so a total provider outage exits non-zero instead of logging-and-continuing. A partial failure (some tracks succeed) still logs and continues. The mutation client is closed with its provider name (`close_client(ds_client, "deepseek")`); a missing provider argument raises `TypeError` inside the `finally` block after the mutation was generated and before the insert, which would silently discard the variant every run.
+
 ## 6. Pipeline Scheduling & Workflow Piggybacking
 
 Enforcing Principle 14 (Workflow Consolidation):

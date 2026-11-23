@@ -37,6 +37,14 @@ The OpenAI structured extraction uses `reasoning_effort="none"` because the
 reasoning models reject the request with a 400 error when a non-`none` effort is
 supplied alongside the instructor structured-output call.
 
+## Per-Model Prompt Resolution
+
+`resolve_bond_system_prompt(client, model_name)` returns the active per-model bond prompt from `prompt_experiments` (prompt name `BOND_PREDICTOR_PROMPT`, `track_id = model_name`), preferring `status = 'active'` and falling back to `status = 'baseline'`, ordered by `created_at` descending. When no row exists or the query raises, it returns the frozen `BOND_SYSTEM_PROMPT` (the code-owned `BOND_PREDICTOR_CONSTRAINTS_HEADER`).
+
+The resolver is **read-only** — it seeds nothing, so the pre-market predictor can never fail on a missing prompt row. Baseline seeding belongs to the weekly bond autoresearch loop (`tasks/bond_autoresearch.py`, see [[entities/daily-market-predictor]]). `run_daily_bond_prediction` passes the resolved prompt into `predict_bond_with_reasoning_model(..., system_prompt=...)` for the tool-loop models (`gpt-6-luna`, `deepseek-flash`); Jev's single-turn path has no system prompt (compiled context only).
+
+The frozen header / mutable strategy / frozen footer split lives in `apps/engine/core/llm/bond_predictor_prompts.py` (`split_bond_prompt`), so only the mutable strategy block is rewritten by the ratchet. See [[concepts/prompt-section-splitting]].
+
 ## Persistence
 
 `run_daily_bond_prediction` writes each model's prediction to the
@@ -54,3 +62,4 @@ current day), satisfying the `prediction_date` NOT NULL constraint on the table.
 - [[concepts/daily-tlt-live-trading]]
 - [[entities/daily-market-predictor]]
 - [[entities/database]]
+- [[concepts/prompt-section-splitting]]

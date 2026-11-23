@@ -8,10 +8,12 @@ import pytest
 
 from tasks.bond_predictor import (
     BOND_PREDICTOR_MODELS,
+    BOND_SYSTEM_PROMPT,
     BOND_TOOLBOX,
     compile_jev_bond_context,
     construct_lean_bond_prompt,
     predict_bond_with_reasoning_model,
+    resolve_bond_system_prompt,
     run_daily_bond_prediction,
 )
 
@@ -178,3 +180,76 @@ def test_bond_predictor_trend_summary_injection():
     assert "Trend & Multi-Day Momentum:" in prompt
     assert "5-Day Return: -1.20%" in prompt
     assert "20-Day Simple Moving Average (SMA20): $94.10" in prompt
+
+
+def test_resolve_bond_system_prompt_prefers_active_track_variant():
+    """The predictor must run the active per-model bond prompt when one exists."""
+    client = MagicMock()
+    client.table().select().eq().eq().eq().order().limit().execute.return_value = MagicMock(
+        data=[{"prompt_content": "ACTIVE BOND PROMPT FOR LUNA"}]
+    )
+
+    prompt = resolve_bond_system_prompt(client, "gpt-6-luna")
+    assert prompt == "ACTIVE BOND PROMPT FOR LUNA"
+
+
+def test_resolve_bond_system_prompt_falls_back_to_frozen_prompt():
+    """No active/baseline row or a query error must never break the pre-market run."""
+    client = MagicMock()
+    client.table().select().eq().eq().eq().order().limit().execute.return_value = MagicMock(data=[])
+
+    prompt = resolve_bond_system_prompt(client, "gpt-6-luna")
+    assert prompt == BOND_SYSTEM_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_run_daily_bond_prediction_passes_resolved_system_prompt():
+    """The tool-loop models must receive the resolved per-model prompt."""
+    mock_supabase = MagicMock()
+    mock_table = MagicMock()
+    mock_supabase.table.return_value = mock_table
+    mock_select = MagicMock()
+    mock_select.eq.return_value = mock_select
+    mock_select.execute.return_value = MagicMock(data=[])
+    mock_table.select.return_value = mock_select
+    mock_table.upsert.return_value.execute.return_value = MagicMock(data=[{"id": "pred-1"}])
+
+    mock_quote = {"price": 92.45, "change": -0.35, "change_pct": -0.38, "previous_close": 92.80}
+
+    with (
+        patch("tasks.bond_predictor.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.bond_predictor.resolve_bond_system_prompt", return_value="RESOLVED BOND PROMPT"),
+        patch(
+            "execution.market_data.MarketDataManager.get_premarket_quote",
+            new_callable=AsyncMock,
+            return_value=mock_quote,
+        ),
+        patch("execution.market_data.MarketDataManager.is_trading_day", new_callable=AsyncMock, return_value=True),
+        patch("tasks.bond_predictor.predict_bond_with_reasoning_model", new_callable=AsyncMock) as mock_reasoning,
+        patch("tasks.bond_predictor.compile_jev_bond_context", new_callable=AsyncMock, return_value="ctx"),
+        patch(
+            "tasks.bond_predictor.predict_daily_with_jev",
+            new_callable=AsyncMock,
+            return_value={
+                "predicted_direction": "UP",
+                "confidence": 60.0,
+                "expected_return_pct": 0.0,
+                "rationale": "r",
+                "catalysts": [],
+            },
+        ),
+        patch(
+            "tasks.bond_predictor.get_ny_now",
+            return_value=datetime(2026, 11, 23, 8, 30, tzinfo=ZoneInfo("America/New_York")),
+        ),
+    ):
+        mock_reasoning.return_value = {
+            "predicted_direction": "UP",
+            "confidence": 60.0,
+            "expected_return_pct": 0.2,
+            "rationale": "r",
+            "catalysts": [],
+        }
+        await run_daily_bond_prediction(ticker="TLT", force=False)
+
+    assert mock_reasoning.call_args.kwargs.get("system_prompt") == "RESOLVED BOND PROMPT"

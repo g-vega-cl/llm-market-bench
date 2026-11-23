@@ -21,6 +21,7 @@ from core.db import get_async_supabase_client
 from .evaluator import evaluate_week
 from .prompt_store import (
     get_active_variant,
+    get_all_time_baseline,
     get_baseline_metrics,
     revert_to_baseline,
     revert_to_previous,
@@ -33,6 +34,7 @@ from .window import get_week_window
 logger = logging.getLogger("engine")
 
 SAFETY_MIN_TRADES = 2
+SAFETY_MIN_DECISIONS = 2
 
 
 def roll_cold_start_dice(sides: int = 6) -> bool:
@@ -50,14 +52,38 @@ def should_trigger_cold_start(current_cycle: int, target_cycle: int) -> bool:
     return current_cycle >= target_cycle
 
 
+async def _count_track_decisions(sb_client, owner_list: list[str], week_start: date, week_end: date) -> int:
+    """Count decisions the track's agents produced during the evaluated week."""
+    res = await (
+        sb_client.table("decisions")
+        .select("id")
+        .in_("model_name", owner_list)
+        .gte("created_at", week_start.isoformat())
+        .lte("created_at", f"{week_end.isoformat()}T23:59:59")
+        .execute()
+    )
+    return len(res.data or [])
+
+
+def _resolve_cold_start(is_cold_start: bool, baseline_variant: dict | None) -> bool:
+    """A track is never rewritten from zero before it has a scored variant."""
+    if not is_cold_start:
+        return False
+    if baseline_variant is None:
+        logger.warning("COLD START suppressed: no scored baseline exists for this track yet.")
+        return False
+    return True
+
+
 async def _check_safety(
     week_start: date, week_end: date, owner_list: list[str] | None = None, track_id: str | None = None
 ) -> tuple[bool, str]:
     """Check if the current active prompt caused a crash.
 
-    A "crash" is: fewer than SAFETY_MIN_TRADES executed trades across all
-    experiment agents over the evaluation week. We query the trades table
-    (not decisions) because a decision marked EXECUTED may fail at settlement.
+    A "crash" is a dead agent, not a flat book: fewer than SAFETY_MIN_TRADES
+    executed trades AND fewer than SAFETY_MIN_DECISIONS decisions during the
+    evaluated week. An agent that answered with valid HOLD decisions is alive
+    (its week is still scored by the evaluator), so it must not be reverted.
 
     Returns (is_crash, reason).
     """
@@ -81,10 +107,21 @@ async def _check_safety(
     trades = trade_res.data or []
     executed_count = len(trades)
 
-    if executed_count < SAFETY_MIN_TRADES:
-        return True, f"Only {executed_count} executed trades (minimum is {SAFETY_MIN_TRADES})"
+    if executed_count >= SAFETY_MIN_TRADES:
+        return False, ""
 
-    return False, ""
+    decision_count = await _count_track_decisions(sb_client, owner_list, week_start, week_end)
+    if decision_count >= SAFETY_MIN_DECISIONS:
+        return (
+            False,
+            f"Flat week: {executed_count} executed trades but {decision_count} decisions (agent alive)",
+        )
+
+    return (
+        True,
+        f"Dead agent: {executed_count} executed trades and {decision_count} decisions "
+        f"(minimum {SAFETY_MIN_TRADES} trades or {SAFETY_MIN_DECISIONS} decisions)",
+    )
 
 
 async def _handle_crash_check(week_start: date, week_end: date, track_id: str, dry_run: bool) -> bool:
@@ -321,6 +358,17 @@ async def run(
                     If None (default), automatically roll 1-in-6 stochastic dice.
     """
     is_cold_start = roll_cold_start_dice() if cold_start is None else cold_start
+    if is_cold_start and cold_start is None:
+        # Automatic dice rolls are gated on a scored baseline; an explicit
+        # operator --cold-start remains a deliberate override.
+        try:
+            baseline_variant = await get_all_time_baseline(track_id=track_id)
+        except TypeError:
+            baseline_variant = await get_all_time_baseline()
+        except Exception:
+            logger.exception("Cold-start guard could not resolve a scored baseline; suppressing cold start.")
+            baseline_variant = None
+        is_cold_start = _resolve_cold_start(True, baseline_variant)
     if is_cold_start:
         logger.info("COLD START: Stochastic reset triggered for %s (generating prompt from 0)", track_id)
 

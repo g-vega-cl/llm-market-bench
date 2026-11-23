@@ -89,6 +89,11 @@ async def test_runner_cold_start_preserves_frozen_sections():
         patch("autoresearch.runner.run_research", new_callable=AsyncMock) as mock_research,
         patch("autoresearch.runner.save_variant", new_callable=AsyncMock) as mock_save_var,
         patch("autoresearch.runner.roll_cold_start_dice", return_value=True),
+        patch(
+            "autoresearch.runner.get_all_time_baseline",
+            new_callable=AsyncMock,
+            return_value={"variant_tag": "v_base_999", "metrics": {"score": 2.0}},
+        ),
         patch("memory.store.add_memory", return_value="mem_123"),
     ):
         mock_safety.return_value = (False, "")

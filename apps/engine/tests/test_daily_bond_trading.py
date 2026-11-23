@@ -7,6 +7,7 @@ import pytest
 from execution.daily_bond_trading import (
     DEFAULT_BOND_CLOSE_SLIPPAGE_BPS,
     SYS_DAILY_TLT_CLOSE_OWNER_PREFIX,
+    _et_session_stamp,
     execute_daily_bond_moo_entries,
     execute_system_daily_bond_close_trade,
 )
@@ -136,3 +137,13 @@ async def test_execute_system_daily_bond_close_trade():
         # 92.80 vs 92.00 open on 100 shares -> positive PnL
         assert res["execution"]["realized_pnl"] > 0
         assert res["new_equity"] > 10000.0
+
+
+def test_et_session_stamp_is_dst_aware():
+    """Session timestamps must map 09:30/16:00 America/New_York to UTC, not a fixed offset."""
+    # EST (UTC-5): 9:30 ET = 14:30Z, 16:00 ET = 21:00Z
+    assert _et_session_stamp("2026-11-23", 9, 30) == "2026-11-23T14:30:00Z"
+    assert _et_session_stamp("2026-11-23", 16, 0) == "2026-11-23T21:00:00Z"
+    # EDT (UTC-4): 9:30 ET = 13:30Z, 16:00 ET = 20:00Z
+    assert _et_session_stamp("2026-07-15", 9, 30) == "2026-07-15T13:30:00Z"
+    assert _et_session_stamp("2026-07-15", 16, 0) == "2026-07-15T20:00:00Z"

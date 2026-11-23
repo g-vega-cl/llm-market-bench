@@ -330,6 +330,7 @@ async def run_monthly_meta_autoresearch(
     experiments = exp_resp.data if (exp_resp and isinstance(exp_resp.data, list)) else []
     yield_metrics = compute_monthly_mutation_yield(experiments)
     if yield_metrics["total_evaluated"] == 0:
+        logger.info("META AUTORESEARCH: no evaluated mutations in the lookback window; skipping.")
         return None
 
     leaderboard_md = format_empirical_meta_leaderboard(compute_block_and_type_leaderboard(experiments))
@@ -392,6 +393,7 @@ async def run_monthly_meta_autoresearch(
         resp = await call if asyncio.iscoroutine(call) or hasattr(call, "__await__") else call
     except Exception:
         logger.exception("Monthly meta-autoresearch LLM call failed.")
+        logger.error("AUTORESEARCH_RESULT: META_FAILED | reason=llm_call")
         return None
     finally:
         if owns_llm:

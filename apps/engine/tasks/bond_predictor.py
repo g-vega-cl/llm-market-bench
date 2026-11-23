@@ -19,6 +19,7 @@ from core.config import (
     logger,
 )
 from core.db import get_supabase_client
+from core.llm.bond_predictor_prompts import BOND_PREDICTOR_CONSTRAINTS_HEADER, BOND_PREDICTOR_PROMPT_NAME
 from core.llm.clients import close_client, get_deepseek_client, get_openai_client
 from core.llm.daily_predictor_prompts import (
     DailyPredictionOutput,
@@ -46,14 +47,34 @@ BOND_PREDICTOR_MODELS: list[dict[str, str]] = [
     {"name": JEV_MODEL, "provider": "openrouter", "type": "jev"},
 ]
 
-BOND_SYSTEM_PROMPT = """You are an elite fixed-income quantitative strategist predicting open-to-close price direction for the 20+ Year Treasury Bond ETF (TLT).
+# Frozen fallback prompt; the weekly bond autoresearch can supply a per-model variant.
+BOND_SYSTEM_PROMPT = BOND_PREDICTOR_CONSTRAINTS_HEADER
 
-Fixed Income Mechanics:
-- Bond prices move inversely to Treasury yields. Falling yields = TLT UP; Rising yields = TLT DOWN.
-- High duration (~17 years) makes TLT sensitive to morning economic prints (CPI, PPI, Jobs, NFP), Fed expectations, and Treasury auction tails.
-- Use your callable tools autonomously to inspect the Treasury yield curve, today's scheduled economic releases, options sentiment, and calendar triggers.
-- Formulate an objective, unbiased conviction on whether TLT will close HIGHER (UP) or LOWER (DOWN) at 4:00 PM ET compared to 9:30 AM ET open.
-"""
+
+def resolve_bond_system_prompt(client: Any, model_name: str) -> str:
+    """Return the active per-model bond prompt, falling back to the frozen header.
+
+    Read-only: seeds nothing, so the pre-market predictor can never fail on a
+    missing prompt row. Baseline seeding belongs to the autoresearch loop.
+    """
+    for status in ("active", "baseline"):
+        try:
+            res = (
+                client.table("prompt_experiments")
+                .select("prompt_content")
+                .eq("prompt_name", BOND_PREDICTOR_PROMPT_NAME)
+                .eq("track_id", model_name)
+                .eq("status", status)
+                .order("created_at", desc=True)
+                .limit(1)
+                .execute()
+            )
+        except Exception as exc:  # noqa: BLE001 - fall back to the frozen prompt
+            logger.warning(f"Could not load bond prompt for {model_name} ({status}): {exc}")
+            continue
+        if res and res.data and res.data[0].get("prompt_content"):
+            return str(res.data[0]["prompt_content"])
+    return BOND_SYSTEM_PROMPT
 
 
 def get_ny_now() -> datetime:
@@ -136,11 +157,12 @@ async def predict_bond_with_reasoning_model(
     provider: str,
     user_prompt: str,
     tool_names: list[str] = BOND_TOOLBOX,
+    system_prompt: str = BOND_SYSTEM_PROMPT,
 ) -> dict[str, Any]:
     """Executes multi-turn autonomous tool loop followed by structured prediction extraction."""
     override_tools = [CANONICAL_TOOLS_REGISTRY[t] for t in tool_names if t in CANONICAL_TOOLS_REGISTRY]
     messages: list[dict[str, Any]] = [
-        {"role": "system", "content": BOND_SYSTEM_PROMPT},
+        {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_prompt},
     ]
 
@@ -264,6 +286,7 @@ async def run_daily_bond_prediction(ticker: str = "TLT", force: bool = False) ->
                     provider=provider,
                     user_prompt=lean_prompt,
                     tool_names=BOND_TOOLBOX,
+                    system_prompt=resolve_bond_system_prompt(client, model_name),
                 )
             else:  # Jev single-turn
                 jev_context = await compile_jev_bond_context(

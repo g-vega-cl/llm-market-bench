@@ -12,6 +12,8 @@ Karpathy-style autonomous prompt improvement loop that runs weekly (Sunday 6:00 
 The core portfolio auto-research pipeline is located in `apps/engine/autoresearch/`:
 
 - **Runner** (`apps/engine/autoresearch/runner.py`): Top-level orchestrator that checks trade execution safety, invokes evaluation, manages baseline ratchet comparisons, rolls stochastic cold-start dice, and triggers the monthly meta-autoresearch check on the first weekend of each calendar month.
+  - **Flat-week safety semantics**: a "crash" is a *dead agent*, not a flat book. The runner queries the week's executed trades and, when that count is below `SAFETY_MIN_TRADES`, the track's decisions; `SAFETY_MIN_DECISIONS` or more decisions means the agent answered (it chose HOLD), so the week is still evaluated, scored and persisted instead of being reverted. Below both floors the variant is marked `crashed` and reverted.
+  - **Cold-start guard**: an automatic dice-rolled cold start is suppressed unless the track already has a scored baseline (`get_all_time_baseline`), so a brand-new track is never rewritten from zero before its first score. An explicit operator `--cold-start` remains a deliberate override.
 - **Evaluator** (`apps/engine/autoresearch/evaluator.py`): Gathers weekly trade executions, computes benchmark-relative returns, and formats structured evaluation reports.
 - **Metrics** (`apps/engine/autoresearch/metrics.py`): Implements the canonical evaluation math via `compute_score()`.
 - **Researcher** (`apps/engine/autoresearch/researcher.py`): Meta-researcher LLM interface that synthesizes prompt mutations and manages cognitive tool selection.
@@ -21,7 +23,7 @@ The core portfolio auto-research pipeline is located in `apps/engine/autoresearc
   - **24-Hour TTL Cache**: `get_active_meta_directives_sync()` memoizes the active directives plus empirical leaderboard in a process-level cache (`_META_DIRECTIVES_CACHE`, `ttl_seconds = 86400.0`), avoiding repeated DB round-trips on every weekly run. `clear_meta_directives_cache()` busts the cache explicitly after a new `META_AUTORESEARCH_PROGRAM` variant is inserted.
 
 > [!NOTE]
-> Portfolio Autoresearch optimizes the core trading prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`). It is decoupled from the Daily Market Predictor autoresearch loop (`apps/engine/tasks/daily_autoresearch.py`, see [[entities/daily-market-predictor]]) and the Sector Predictor loop (`apps/engine/tasks/predictor_autoresearch.py`, see [[entities/sector-predictor-arena]]).
+> Portfolio Autoresearch optimizes the core trading prompt (`CORE_ANALYSIS_SYSTEM_PROMPT`). It is decoupled from the Daily Market Predictor autoresearch loop (`apps/engine/tasks/daily_autoresearch.py`, see [[entities/daily-market-predictor]]), the TLT bond loop (`apps/engine/tasks/bond_autoresearch.py`), and the Sector Predictor loop (`apps/engine/tasks/predictor_autoresearch.py`, see [[entities/sector-predictor-arena]]).
 
 ### Weekly Loop Execution Flow:
 1. Fetches executions and portfolio performance across the 7-day evaluation window for each model track.
@@ -37,6 +39,7 @@ The core portfolio auto-research pipeline is located in `apps/engine/autoresearc
 
 - **Strict Track Isolation**: Each model and track maintains independent prompt lineages and memory records:
   - Daily Predictor: `deepseek-flash`, `MiniMax-M3.1-Flash`, `~typesafe/jev-latest`.
+  - Bond Predictor (`BOND_PREDICTOR_PROMPT`): `gpt-6-luna`, `deepseek-flash`.
   - Sector Predictor: `deepseek-flash`, `MiniMax-M3.1-Flash`, `gemini-3.5-flash-lite`, `gpt-6-luna`.
   - Portfolio Trading: `track_default`, `track_claude`, `track_openai`.
 - No cross-track fallback or cross-pollination: prompt queries and memory lookups are always scoped strictly by `track_id` and `scope` (see [[concepts/multi-track-autoresearch]]).

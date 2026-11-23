@@ -9,6 +9,7 @@ Executes systematic daily trades on TLT (20+ Year Treasury Bond ETF) based on da
 from datetime import UTC, date, datetime
 from typing import Any
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 from core.config import logger
 from core.db import get_supabase_client
@@ -22,6 +23,19 @@ from execution.daily_trading import (
 
 SYS_DAILY_TLT_CLOSE_OWNER_PREFIX = "sys-daily-tlt-close-"
 DEFAULT_BOND_CLOSE_SLIPPAGE_BPS = 2.0  # 2 bps = 0.02% for liquid TLT ETF
+
+_ET = ZoneInfo("America/New_York")
+
+
+def _et_session_stamp(target_date_str: str, hour: int, minute: int) -> str:
+    """Convert an ET session time on the target date into a UTC ISO timestamp.
+
+    The old hardcoded `T13:30:00Z` / `T20:00:00Z` values were EDT-only and an
+    hour early once the US switches to EST.
+    """
+    day = date.fromisoformat(target_date_str)
+    et = datetime(day.year, day.month, day.day, hour, minute, tzinfo=_ET)
+    return et.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 async def execute_daily_bond_moo_entries(
@@ -97,7 +111,7 @@ async def execute_daily_bond_moo_entries(
             "quantity": shares,
             "price": session_open,
             "total_cost": shares * session_open,
-            "executed_at": f"{target_date_str}T13:30:00Z",
+            "executed_at": _et_session_stamp(target_date_str, 9, 30),
         }
 
         if not dry_run:
@@ -221,7 +235,7 @@ async def execute_system_daily_bond_close_trade(
         "quantity": shares,
         "price": execution["entry_price"],
         "total_cost": shares * execution["entry_price"],
-        "executed_at": f"{target_date_str}T13:30:00Z",
+        "executed_at": _et_session_stamp(target_date_str, 9, 30),
     }
     if direction == "DOWN":
         entry_payload["realized_pnl"] = execution["realized_pnl"]
@@ -238,7 +252,7 @@ async def execute_system_daily_bond_close_trade(
         "total_cost": shares * execution["exit_price"],
         "realized_pnl": execution["realized_pnl"],
         "realized_pnl_pct": execution["realized_pnl_pct"],
-        "executed_at": f"{target_date_str}T20:00:00Z",
+        "executed_at": _et_session_stamp(target_date_str, 16, 0),
     }
     client.table("trades").insert(exit_payload).execute()
 

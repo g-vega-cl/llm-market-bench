@@ -321,11 +321,15 @@ def test_handle_bootstrap_autoresearch_dispatches():
 
 
 def test_handle_daily_autoresearch_dispatches():
-    """Verify handle_daily_autoresearch invokes run_daily_autoresearch."""
-    with patch("tasks.daily_autoresearch.run_daily_autoresearch", new_callable=AsyncMock) as mock_run:
+    """Verify handle_daily_autoresearch invokes the daily and bond autoresearch loops."""
+    with (
+        patch("tasks.daily_autoresearch.run_daily_autoresearch", new_callable=AsyncMock) as mock_run,
+        patch("tasks.bond_autoresearch.run_bond_autoresearch", new_callable=AsyncMock) as mock_bond,
+    ):
         args = argparse.Namespace(dry_run=True, cold_start=True)
         handle_daily_autoresearch(args)
         mock_run.assert_awaited_once_with(dry_run=True, cold_start=True)
+        mock_bond.assert_awaited_once_with(dry_run=True, cold_start=True)
 
 
 def test_handle_backtest_daily_autoresearch_dispatches():

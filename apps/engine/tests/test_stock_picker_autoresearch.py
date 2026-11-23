@@ -201,3 +201,64 @@ async def test_run_stock_picker_autoresearch_ratchet_reversion_on_baseline_miss(
         assert variant_insert["parent_tag"] == "base-winner-v1"
         assert "=== LONG/SHORT RELATIVE SELECTION STRATEGY ===" in variant_insert["prompt_content"]
         assert variant_insert["research_output"]["hypothesis"] is None
+
+
+@pytest.mark.asyncio
+async def test_stock_picker_autoresearch_closes_client_with_provider():
+    """The mutation client must be closed with its provider name.
+
+    A missing provider raises TypeError inside the finally block, after the
+    mutation was generated and before the insert, so the variant is silently
+    discarded every run.
+    """
+    mock_supabase = MagicMock()
+
+    mock_baskets = [
+        {"id": "b-1", "target_date": "2026-11-20", "directional_hit_rate": 50.0, "ls_spread_alpha_pct": 0.5}
+    ]
+    mock_picks = [{"confidence": 60.0, "is_hit": True}]
+
+    mock_supabase.table().select().eq().eq().gte().execute.return_value = MagicMock(data=mock_baskets)
+    mock_supabase.table().select().in_().eq().execute.return_value = MagicMock(data=mock_picks)
+
+    active_prompt = STOCK_PICKER_CONSTRAINTS_HEADER + STOCK_PICKER_MUTABLE_STRATEGIES + STOCK_PICKER_CONSTRAINTS_FOOTER
+    mock_supabase.table().select().eq().eq().eq().order().limit().execute.return_value = MagicMock(
+        data=[{"variant_tag": "active-v1", "prompt_content": active_prompt}]
+    )
+    mock_supabase.table().select().eq().eq().execute.return_value = MagicMock(
+        data=[{"variant_tag": "active-v1", "status": "baseline", "metrics": {"hurdle_score": 40.0}}]
+    )
+
+    mock_meta_response = StockPickerMetaPromptResponse(
+        new_strategy="Refined strategy.",
+        research_insight="Durable insight.",
+    )
+    mock_ds_client = MagicMock()
+    mock_ds_client.chat.completions.create = AsyncMock(return_value=mock_meta_response)
+    mock_close = AsyncMock()
+
+    with (
+        patch("tasks.stock_picker_autoresearch.get_supabase_client", return_value=mock_supabase),
+        patch("tasks.stock_picker_autoresearch.get_deepseek_client", return_value=mock_ds_client),
+        patch("tasks.stock_picker_autoresearch.close_client", mock_close),
+        patch("tasks.stock_picker_autoresearch.TARGET_TRACK_MODELS", ["deepseek-flash"]),
+    ):
+        await run_stock_picker_autoresearch(days=7, dry_run=False, cold_start=False)
+
+    mock_close.assert_awaited_once_with(mock_ds_client, "deepseek")
+
+
+@pytest.mark.asyncio
+async def test_stock_picker_autoresearch_raises_when_every_track_fails():
+    """A loop where every track fails must exit non-zero, not log-and-continue."""
+
+    async def _boom(*args, **kwargs):
+        raise RuntimeError("deepseek unavailable")
+
+    with (
+        patch("tasks.stock_picker_autoresearch.get_supabase_client", return_value=MagicMock()),
+        patch("tasks.stock_picker_autoresearch._optimize_stock_track", _boom),
+        patch("tasks.stock_picker_autoresearch.TARGET_TRACK_MODELS", ["a", "b"]),
+    ):
+        with pytest.raises(RuntimeError):
+            await run_stock_picker_autoresearch(days=7, dry_run=False, cold_start=False)

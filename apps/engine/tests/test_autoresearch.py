@@ -2355,3 +2355,102 @@ class TestTradeRejectionAnalysis:
             confidence=80,
         )
         assert "get_verifier_rejections" in res.selected_tools
+
+
+# ---------------------------------------------------------------------------
+# Flat-week safety semantics + cold-start guard.
+# ---------------------------------------------------------------------------
+
+
+class TestFlatWeekSafety:
+    """A track that answered but chose HOLD is alive; a silent track is crashed."""
+
+    def _client(self, trades, decisions):
+        client = MagicMock()
+
+        def table(name):
+            return _AsyncQueryRecorder(data=trades if name == "trades" else decisions)
+
+        client.table.side_effect = table
+        return client
+
+    def test_flat_hold_week_is_not_a_crash(self, monkeypatch):
+        from autoresearch import runner
+
+        client = self._client([], [{"id": f"d{i}"} for i in range(6)])
+
+        async def fake_client():
+            return client
+
+        monkeypatch.setattr(runner, "get_async_supabase_client", fake_client)
+
+        is_crash, reason = asyncio.run(
+            runner._check_safety(date(2026, 11, 16), date(2026, 11, 22), track_id="track_openai")
+        )
+        assert not is_crash, f"6 validated decisions with 0 fills must not crash: {reason}"
+
+    def test_zero_decisions_is_a_crash(self, monkeypatch):
+        from autoresearch import runner
+
+        client = self._client([], [])
+
+        async def fake_client():
+            return client
+
+        monkeypatch.setattr(runner, "get_async_supabase_client", fake_client)
+
+        is_crash, reason = asyncio.run(
+            runner._check_safety(date(2026, 11, 16), date(2026, 11, 22), track_id="track_openai")
+        )
+        assert is_crash
+        assert "decisions" in reason.lower()
+
+
+class TestColdStartGuard:
+    """A track with no scored variant must not be rewritten from zero."""
+
+    def test_cold_start_suppressed_without_scored_baseline(self, monkeypatch):
+        from autoresearch import runner
+
+        monkeypatch.setattr(runner, "roll_cold_start_dice", lambda: True)
+
+        async def no_baseline(*args, **kwargs):
+            return None
+
+        monkeypatch.setattr(runner, "get_all_time_baseline", no_baseline, raising=False)
+
+        async def fake_check(ws, we, track_id=None):
+            return (False, "")
+
+        async def fake_evaluate(*args, **kwargs):
+            return ("# report", {"score": 2.0}, "v-baseline")
+
+        async def fake_active_variant(*args, **kwargs):
+            return {"variant_tag": "v-active", "status": "active", "prompt_name": "CORE_ANALYSIS_SYSTEM_PROMPT"}
+
+        async def fake_baseline_metrics(*args, **kwargs):
+            return {"score": 1.0}
+
+        async def fake_update(tag, metrics):
+            return None
+
+        async def fake_resolve_mutable(track_id, active_variant):
+            return (None, None)
+
+        captured = {}
+
+        async def fake_research(report, current, cold, baseline_mutable, track):
+            captured["cold"] = cold
+            return None
+
+        monkeypatch.setattr(runner, "_check_safety", fake_check)
+        monkeypatch.setattr(runner, "evaluate_week", fake_evaluate)
+        monkeypatch.setattr(runner, "get_active_variant", fake_active_variant)
+        monkeypatch.setattr(runner, "get_baseline_metrics", fake_baseline_metrics)
+        monkeypatch.setattr(runner, "update_variant_metrics", fake_update)
+        monkeypatch.setattr(runner, "_resolve_mutable_prompts", fake_resolve_mutable)
+        monkeypatch.setattr(runner, "_call_run_research_compat", fake_research)
+
+        asyncio.run(runner.run(track_id="bond-test-track", cold_start=None))
+
+        assert captured["cold"] is False

@@ -47,6 +47,16 @@ The Daily Stock Picker Arena (3 UP / 3 DOWN) uses the same three-band sandwich, 
 
 Because the model may return its mutation wrapped in a markdown code fence or without the header, the engine normalizes it through `sanitize_mutated_stock_strategy` (`apps/engine/tasks/stock_picker_autoresearch.py`) before wrapping: fences are stripped, and if the header is present the mutable section is re-extracted via `split_stock_picker_prompt`, otherwise the header is prepended. A stored stock-picker prompt therefore always splits cleanly.
 
+### Bond Predictor Split (`split_bond_prompt`)
+
+The TLT bond predictor (`apps/engine/tasks/bond_predictor.py`) uses the same three-band sandwich, keyed on its own markers in `apps/engine/core/llm/bond_predictor_prompts.py`:
+
+- **Header (Frozen)**: `BOND_PREDICTOR_CONSTRAINTS_HEADER` — the fixed-income strategist identity and mechanics (inverse yield relationship, duration sensitivity, tool autonomy, UP/DOWN framing).
+- **Mutable Strategy (Evolvable)**: everything between the header and footer. The seed is `BOND_PREDICTOR_MUTABLE_STRATEGIES` (baseline bond strategy), but it is ordinary strategy text the weekly bond autoresearch loop (`tasks/bond_autoresearch.py`) may rewrite.
+- **Footer (Frozen)**: `BOND_PREDICTOR_CONSTRAINTS_FOOTER` — the `=== REQUIRED OUTPUT ===` contract (`predicted_direction`, `confidence`, `expected_return_pct`, `rationale`, `catalysts`).
+
+`split_bond_prompt(prompt_text)` returns `(header, mutable, footer)`. It falls back to the code-owned header/footer when the stored prompt does not carry the expected sections, so a malformed variant cannot drop the frozen constraints. The bond autoresearch loop mutates only the middle band and re-wraps it with the frozen header/footer before persisting the new variant.
+
 ### Fallback Behavior
 
 If the standard section markers are not found (e.g., for custom or legacy prompts), the utility gracefully falls back to displaying the entire prompt as a single, un-split block.
@@ -69,4 +79,5 @@ The `ExperimentDetails` component in the autoresearch arena uses this utility to
 - [[entities/autoresearch-arena]]
 - [[entities/autoresearch]]
 - [[entities/daily-stock-picker]]
+- [[entities/bond-predictor]]
 - [[concepts/auto-research-prompt-improver]]

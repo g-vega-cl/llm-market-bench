@@ -24,10 +24,12 @@ def handle_bootstrap_autoresearch(args: argparse.Namespace) -> None:
 
 def handle_daily_autoresearch(args: argparse.Namespace) -> None:
     """Run daily autoresearch session."""
+    from tasks.bond_autoresearch import run_bond_autoresearch
     from tasks.daily_autoresearch import run_daily_autoresearch
 
     forced_cold = True if args.cold_start else None
     asyncio.run(run_daily_autoresearch(dry_run=args.dry_run, cold_start=forced_cold))
+    asyncio.run(run_bond_autoresearch(dry_run=args.dry_run, cold_start=forced_cold))
 
 
 def handle_backtest_daily_autoresearch(args: argparse.Namespace) -> None:

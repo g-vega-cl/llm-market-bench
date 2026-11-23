@@ -283,7 +283,7 @@ async def _optimize_stock_track(
             temperature=0.3,
         )
     finally:
-        await close_client(ds_client)
+        await close_client(ds_client, "deepseek")
 
     clean_strategy = sanitize_mutated_stock_strategy(meta_res.new_strategy)
     new_full_prompt = header + clean_strategy + footer
@@ -355,6 +355,7 @@ async def run_stock_picker_autoresearch(
     """Entry point for Sunday weekly stock picker autoresearch loop across all model tracks."""
     client = get_supabase_client()
     logger.info("=== Starting Weekly Stock Picker Autoresearch Loop ===")
+    failures = 0
     for model_name in TARGET_TRACK_MODELS:
         try:
             await _optimize_stock_track(
@@ -365,5 +366,9 @@ async def run_stock_picker_autoresearch(
                 force_cold_start=cold_start,
             )
         except Exception as e:
+            failures += 1
             logger.error(f"Error optimizing stock picker track {model_name}: {e}", exc_info=e)
+    if TARGET_TRACK_MODELS and failures == len(TARGET_TRACK_MODELS):
+        logger.error("AUTORESEARCH_RESULT: FAILED_ALL_TRACKS | scope=stock_picker")
+        raise RuntimeError(f"Stock picker autoresearch failed for all {failures} tracks")
     logger.info("=== Weekly Stock Picker Autoresearch Loop Completed ===")

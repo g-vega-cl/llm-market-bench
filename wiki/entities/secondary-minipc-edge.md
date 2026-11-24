@@ -47,13 +47,14 @@ The secondary MiniPC server (`cv-minipc@minipc`) acts as a 24/7 dedicated edge g
    - Reads (`GET`, `HEAD`, `OPTIONS`) route immediately to the local PostgREST replica without network latency.
    - Writes (`POST`, `PUT`, `PATCH`, `DELETE`) route upstream over Tailscale to the Primary Workstation.
    - If the Primary Workstation is unreachable, writes fail gracefully with an HTTP 503 JSON payload (`{"error": "Primary write node unavailable; read-replica is active"}`), while 100% of the web app's read dashboards remain operational.
+   - **Enlarged response-header buffers**: `proxy_buffer_size 128k`, `proxy_buffers 4 256k`, `proxy_busy_buffers_size 256k`, and `large_client_header_buffers 4 32k` sit in the `http {}` block (mirrored in `docker/archive/nginx.conf` and `docker/archive/nginx.web.conf`). PostgREST/JWT responses and SSR pages exceed nginx's 4k/8k defaults, which otherwise surfaces as `upstream sent too big header` and a **502 for authenticated clients only** — anonymous traffic keeps getting 200. A replica whose `archive-proxy` container predates this block is the classic stale-inode symptom documented under [[entities/self-hosted-web-deployment]].
    - **Intraday Tape SSE Route**: `location /api/tape/` proxies to the `live-spy-trader` container on port 8090 with `proxy_http_version 1.1`, `proxy_buffering off`, `proxy_cache off`, `chunked_transfer_encoding off`, and `proxy_read_timeout 3600s` so Server-Sent Events stream unbuffered through the edge gateway and Cloudflare tunnel. On the MiniPC the upstream is resolved dynamically via `resolver 127.0.0.11 valid=10s ipv6=off;` (Docker's embedded DNS) with a variable `set $tape_backend http://live-spy-trader:8090;` and `proxy_pass $tape_backend$request_uri;`, so Nginx re-resolves the container IP every 10 seconds instead of caching a stale address at startup (which would 502 after a container rebuild). In the primary `docker/archive/nginx.conf`, the same route uses a static upstream `proxy_pass http://minipc:8090;` — the `minipc` hostname is resolved through the `archive-proxy` service's `extra_hosts` entry (`${MINIPC_IP:-100.119.63.53}`) over Tailscale — so both Cloudflare Anycast ingress connectors stream identical live tape.
 
 3. **Replication & Lifecycle Automation**:
    - `docker/archive/setup_primary_replication.sh`: Idempotently provisions the `replicator` role, reserves `minipc_standby_slot`, and configures `pg_hba.conf` on the primary.
    - `docker/archive/bootstrap_replica.sh`: Streams initial `pg_basebackup` with `-R` (standby mode) into `archive_pgdata_replica` on the MiniPC.
-   - `docker/archive/promote_to_primary.sh`: Fast manual 1-command promotion script that triggers `pg_ctl promote`, polls `pg_is_in_recovery` until the server is genuinely read-write (no fixed sleep), rewrites `nginx.secondary.conf` to route every method to the local replica, rebinds the proxy through `ensure_proxy_config.sh` (validate → recreate → md5 assertion, because the single-file bind mount ignores `nginx -s reload`), writes the `.promoted` sentinel, and only then prints `Failover Complete!`. Any failed step exits non-zero, so a half-finished failover is never reported as success.
-   - `docker/archive/deploy_secondary.sh`: Host-to-host synchronization and automated deployment script using `rsync` and SSH. Deploys compose stacks, the trader engine (`apps/engine/`, excluding `.venv`, `tests`, `market`, caches), `packages/config/`, `Dockerfile.trader`, `ensure_proxy_config.sh`, and environment files (`docker/archive/.env`, `apps/engine/.env`, `apps/free_llm_proxy/.env`) to `cv-minipc@minipc`. Routing config is synced **only while the MiniPC is not promoted**: when `docker/archive/.promoted` exists, step 3 skips `nginx.secondary.conf` and prints a warning, so a routine deploy cannot silently revert a live failover to standby routing. Immediately after synchronization, step 5 rebuilds and launches containers (`docker compose -f docker-compose.secondary.yml up -d --build`), rebinds `archive-proxy` through `ensure_proxy_config.sh`, restarts `archive-postgrest` (`docker compose -f docker-compose.secondary.yml restart archive-postgrest`) to force-reload the PostgREST schema cache (necessary because physical PostgreSQL replication does not propagate `NOTIFY` events), and step 6 verifies local read health (`curl http://localhost:3001/rest/v1/`).
+   - `docker/archive/promote_to_primary.sh`: Fast manual 1-command promotion script that triggers `pg_ctl promote`, polls `pg_is_in_recovery` until the server is genuinely read-write (no fixed sleep), rewrites `nginx.secondary.conf` to route every method to the local replica, rebinds the proxy through `ensure_proxy_config.sh` (validate → recreate → assert, because the single-file bind mount ignores `nginx -s reload`), writes the `.promoted` sentinel, and only then prints `Failover Complete!`. **Every gate fails closed.** The standby check uses `docker inspect --format '{{.State.Running}}'` rather than a name grep, and the recovery state is a `case` over `t`/`f`/anything-else — an unreadable value aborts instead of being treated as "already primary". The routing rewrite is asserted after the `sed`s: `grep -q 'default local_read_backend'` must succeed and at most one `primary_write_backend` reference may remain (the now-unused `upstream` block), otherwise the script exits before the sentinel/rebind and tells the operator to fix `nginx.secondary.conf` by hand. The sentinel is written *before* the rebind so even a failed rebind cannot be reverted by a later deploy, and the rebind failure message names the sentinel explicitly. Any failed step exits non-zero, so a half-finished failover is never reported as success.
+   - `docker/archive/deploy_secondary.sh`: Host-to-host synchronization and automated deployment script using `rsync` and SSH, printing six numbered steps (`[1/6]` SSH reachability → `[6/6]` read-health verification). It deploys compose stacks, the trader engine (`apps/engine/`, excluding `.venv`, `tests`, `market`, caches), `packages/config/`, `Dockerfile.trader`, `ensure_proxy_config.sh`, and environment files (`docker/archive/.env`, `apps/engine/.env`, `apps/free_llm_proxy/.env`) to `cv-minipc@minipc`. Routing config is synced **only while the MiniPC is not promoted**, and that check fails closed: when `test -f .promoted` returns non-1 (ssh 255, DNS or Tailscale blip) the script prints `cannot determine failover state ... refusing to sync nginx.secondary.conf` and exits 1, because a blind sync could revert a live failover. When the sentinel exists it prints a warning and skips `nginx.secondary.conf`, so a routine deploy cannot silently revert a live failover to standby routing. Immediately after synchronization, step 5 runs `ensure_proxy_config.sh --validate-only` **before** `docker compose up -d --build` (so compose's own recreate can never be the first consumer of an unparsed config), then the full `ensure_proxy_config.sh` rebind guard on `archive-proxy`, then restarts `archive-postgrest` to force-reload the PostgREST schema cache (necessary because physical PostgreSQL replication does not propagate `NOTIFY` events). Step 6 verifies local read health (`curl http://localhost:3001/rest/v1/`) and **aborts the deploy with exit 1** on failure — the replica being up but not serving reads is not a warning, it is a failed deploy.
 
 ## Intraday Tape Streaming Service
 
@@ -95,16 +96,27 @@ ssh cv-minipc@minipc
 cd ~/llm-market-bench/docker/archive && ./promote_to_primary.sh
 ```
 
-The script exits 0 only when all four checks hold: the standby reports `pg_is_in_recovery = false`, `nginx.secondary.conf` was rewritten to `default local_read_backend`, the running `archive-proxy` container is verified to serve that rewritten file, and — as a warning — the old primary was probed on `http://primary-workstation:3001/rest/v1/`. Promotion leaves `docker/archive/.promoted` behind (git-ignored); that sentinel is what makes the state survive the next `deploy_secondary.sh`.
+The script exits 0 only when three gates pass: the standby reports `pg_is_in_recovery = false`, the routing rewrite verifiably landed (`default local_read_backend` present, at most one `primary_write_backend` reference left, i.e. the now-unused upstream block), and the running `archive-proxy` container is verified to serve that rewritten file. An unreadable recovery state aborts rather than being treated as "already primary", and a crash-looping proxy is refused rather than recreated blind. The split-brain probe is advisory only — it resolves `primary-workstation` **inside the proxy container** with `getent hosts` (the name is an `extra_hosts` alias, not a host-level name) and then curls the resolved IP from the host on `:3001`, warning if the workstation still answers. If the name does not resolve at all it prints a `NOTE ... split-brain check skipped`; either way it never changes the exit code. Promotion leaves `docker/archive/.promoted` behind (git-ignored); that sentinel is what makes the state survive the next `deploy_secondary.sh`.
 
-**Demotion is manual and one-way by design.** From the workstation, once it is healthy again:
+**Demotion is manual and one-way by design.** Once the workstation is healthy again, run these four steps in order — the order matters, because steps 1-2 are the ones that stop you having two writable primaries:
 
 ```bash
-ssh cv-minipc@minipc 'rm -f ~/llm-market-bench/docker/archive/.promoted'
-./docker/archive/deploy_secondary.sh cv-minipc@minipc     # re-syncs standby routing + rebinds the proxy
+# 1. stop the MiniPC write surface
+docker compose -f docker-compose.secondary.yml stop archive-postgrest
+
+# 2. demote + re-sync the data (both discard failover-era writes — export first)
+#    either pg_rewind against the recovered primary, or bootstrap_replica.sh, which
+#    wipes /var/lib/postgresql/data inside the volume before pg_basebackup
+./bootstrap_replica.sh
+
+# 3. clear the failover sentinel so deploys may sync routing again
+rm -f ~/llm-market-bench/docker/archive/.promoted
+
+# 4. from the workstation: restore standby routing + rebind the proxy
+./docker/archive/deploy_secondary.sh cv-minipc@minipc
 ```
 
-Then demote the MiniPC database (`pg_rewind` or a fresh reclone) and re-attach streaming replication from the workstation. No `demote.sh` exists yet.
+No `demote.sh` exists yet; the sequence is deliberately operator-run.
 
 ## Related
 
@@ -113,4 +125,5 @@ Then demote the MiniPC database (`pg_rewind` or a fresh reclone) and re-attach s
 - [[entities/live-agent-trader]]
 - [[entities/recipe-studio]]
 - [[entities/rotate-secrets]]
+- [[entities/self-hosted-web-deployment]]
 - [[concepts/hybrid-database-archival]]

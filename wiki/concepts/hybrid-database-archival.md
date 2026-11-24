@@ -82,6 +82,19 @@ The platform operates on a unified self-hosted PostgreSQL database with pgvector
    - Target: `http://localhost:3001`
    - Provides TLS termination and global ingress without opening router ports or exposing IP addresses.
 
+### Proxy Header Buffers
+
+Every archive proxy config (`docker/archive/nginx.conf`, `docker/archive/nginx.secondary.conf`, and `docker/archive/nginx.web.conf`) carries the same enlarged header-buffer block in `http {}`:
+
+```nginx
+proxy_buffer_size 128k;
+proxy_buffers 4 256k;
+proxy_busy_buffers_size 256k;
+large_client_header_buffers 4 32k;
+```
+
+PostgREST responses carrying JWT/`Prefer`/`Range` headers, and SSR pages carrying Supabase auth cookies, exceed nginx's 4k/8k defaults. Without the block the failure is asymmetric and easy to misdiagnose: anonymous requests return 200 while authenticated requests return **502**, and the proxy error log shows `upstream sent too big header while reading response header from upstream`. Because the config reaches the container as a single-file bind mount, an existing container that predates the block keeps serving the old bytes until it is recreated — which is exactly what `docker/archive/ensure_proxy_config.sh` enforces (see [[entities/self-hosted-web-deployment]]).
+
 ## Auth Decoupling (Supabase Cloud + Local Data)
 
 The archive stack serves the **Data API only** — it does not run an Auth (GoTrue) service. Authentication remains on Supabase Cloud. The web app therefore uses two separate client families (see [[concepts/auth-db-client-separation]]):
@@ -135,6 +148,12 @@ ssh cv-minipc@minipc \
   'docker exec market-bench-archive-db-replica psql -U postgres -d market_bench_archive -c "SELECT pg_is_in_recovery();"'
 ```
 
+### Validate-First Deployment
+
+Both deployers parse a changed proxy config inside the live container *before* anything is recreated, via `docker/archive/ensure_proxy_config.sh --validate-only <compose-file> <service> <container> <config>`. `deploy_secondary.sh` and `deploy_web.sh` call it as a pre-flight immediately before `docker compose up -d --build`, so a spec/image drift that makes compose recreate the proxy can never be the first thing to consume an unvalidated `nginx.conf`. The same helper then performs the real rebind (md5 compare → in-container `nginx -t` → `--no-deps --force-recreate` → md5 plus `running/restart-count 0` assertion) and refuses to recreate a container that exists but is not running, since a crash loop is a diagnosable failure rather than something to overwrite. Full semantics: [[entities/self-hosted-web-deployment]].
+
+`deploy_secondary.sh` also fails closed on failover state: if the `.promoted` sentinel probe returns any status other than 0 (present) or 1 (absent) — ssh 255, DNS or Tailscale blip — it aborts instead of syncing standby routing blind, and its final read-health probe exits non-zero so a replica that is up but not answering is never reported as a completed deploy.
+
 ## Schema Parity & `search_path`
 
 Migrations are applied manually to the primary; the standby receives DDL through WAL. Two failure modes recur because pgvector was relocated to the `extensions` schema:
@@ -148,6 +167,7 @@ After applying DDL, run `NOTIFY pgrst, 'reload schema';` on the primary. Because
 
 - [[entities/database]] — Schema definitions, table roles, and migration history
 - [[entities/secondary-minipc-edge]] — MiniPC streaming replica, method-based routing, and failover runbooks
+- [[entities/self-hosted-web-deployment]] — proxy rebind guard, header-buffer staleness, and the self-hosted web stack
 - [[entities/rotate-secrets]] — secret generation including replication credentials
 - [[concepts/env-based-secrets]] — env-var injection rules for the archive stack
 - [[concepts/auth-db-client-separation]] — Auth (cloud) vs DB (archive) client split

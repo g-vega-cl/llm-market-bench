@@ -10,7 +10,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 TARGET_HOST="${1:-cv-minipc@minipc}"
 REMOTE_DIR="~/llm-market-bench"
 
-echo "=== [1/4] Testing SSH reachability to ${TARGET_HOST} ==="
+echo "=== [1/6] Testing SSH reachability to ${TARGET_HOST} ==="
 if ! ssh -o ConnectTimeout=5 "${TARGET_HOST}" "echo 'SSH connection successful.'" >/dev/null 2>&1; then
     echo "ERROR: Unable to connect via SSH to ${TARGET_HOST}."
     echo "Please verify that Tailscale is running and key authentication is configured."
@@ -18,10 +18,10 @@ if ! ssh -o ConnectTimeout=5 "${TARGET_HOST}" "echo 'SSH connection successful.'
 fi
 echo "SSH connection verified."
 
-echo "=== [2/4] Ensuring remote workspace directories exist ==="
+echo "=== [2/6] Ensuring remote workspace directories exist ==="
 ssh "${TARGET_HOST}" "mkdir -p ${REMOTE_DIR}/docker/archive ${REMOTE_DIR}/apps/free_llm_proxy ${REMOTE_DIR}/apps/engine ${REMOTE_DIR}/packages/config"
 
-echo "=== [3/4] Syncing configurations, trader engine, and Docker files via rsync ==="
+echo "=== [3/6] Syncing configurations, trader engine, and Docker files via rsync ==="
 rsync -avz --delete \
     --exclude '__pycache__' \
     --exclude '*.pyc' \
@@ -34,11 +34,19 @@ rsync -avz --delete \
     "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/"
 
 # Routing config is failover state, not code: a promotion rewrites nginx.secondary.conf in place and
-# leaves .promoted behind, so a routine deploy must not rsync standby routing back over it.
+# leaves .promoted behind, so a routine deploy must not rsync standby routing back over it. Distinguish
+# "sentinel absent" (rc 1) from "cannot tell" (ssh 255, DNS/Tailscale blip) and abort on the latter:
+# failing open here would silently revert a live failover.
 if ssh "${TARGET_HOST}" "test -f ${REMOTE_DIR}/docker/archive/.promoted"; then
     echo "WARNING: ${TARGET_HOST} is in promoted (local-write) failover state; keeping its nginx.secondary.conf."
     echo "         Clear with: ssh ${TARGET_HOST} 'rm -f ${REMOTE_DIR}/docker/archive/.promoted' once the workstation is primary again."
 else
+    sentinel_rc=$?
+    if [[ "${sentinel_rc}" -ne 1 ]]; then
+        echo "ERROR: cannot determine failover state on ${TARGET_HOST} (ssh/test exited ${sentinel_rc})." >&2
+        echo "       Refusing to sync nginx.secondary.conf: a blind sync could revert a live failover." >&2
+        exit 1
+    fi
     rsync -avz "${SCRIPT_DIR}/nginx.secondary.conf" "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/"
 fi
 
@@ -79,17 +87,19 @@ if [[ -f "${REPO_ROOT}/apps/free_llm_proxy/.env" ]]; then
     rsync -avz "${REPO_ROOT}/apps/free_llm_proxy/.env" "${TARGET_HOST}:${REMOTE_DIR}/apps/free_llm_proxy/.env"
 fi
 
-echo "=== [4/5] Setting execution permissions on remote helper scripts ==="
+echo "=== [4/6] Setting execution permissions on remote helper scripts ==="
 ssh "${TARGET_HOST}" "chmod +x ${REMOTE_DIR}/docker/archive/*.sh"
 
-echo "=== [5/5] Rebuilding, launching Docker containers, and reloading PostgREST schema cache on ${TARGET_HOST} ==="
-ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build && bash ensure_proxy_config.sh docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && docker compose -f docker-compose.secondary.yml restart archive-postgrest && docker compose -f docker-compose.secondary.yml ps"
+echo "=== [5/6] Rebuilding, launching Docker containers, and reloading PostgREST schema cache on ${TARGET_HOST} ==="
+ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && bash ensure_proxy_config.sh --validate-only docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && docker compose -f docker-compose.secondary.yml up -d --build && bash ensure_proxy_config.sh docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && docker compose -f docker-compose.secondary.yml restart archive-postgrest && docker compose -f docker-compose.secondary.yml ps"
 
-echo "=== [6/5] Verifying local read replica endpoint health on ${TARGET_HOST} ==="
+echo "=== [6/6] Verifying local read replica endpoint health on ${TARGET_HOST} ==="
 if ! ssh "${TARGET_HOST}" "curl -s -f -o /dev/null http://localhost:3001/rest/v1/"; then
-    echo "WARNING: Local PostgREST read endpoint on ${TARGET_HOST} did not return 200 OK. Inspect PostgREST logs."
-else
-    echo "PostgREST read endpoint on ${TARGET_HOST} is healthy and schema cache reloaded."
+    echo "ERROR: Local PostgREST read endpoint on ${TARGET_HOST} did not return 200 OK." >&2
+    echo "       The replica is up but not serving reads; do not treat this deploy as complete. Inspect the archive-postgrest logs." >&2
+    exit 1
 fi
+echo "PostgREST read endpoint on ${TARGET_HOST} is healthy and schema cache reloaded."
+
 
 echo "=== Deployment to ${TARGET_HOST} complete and services started! ==="

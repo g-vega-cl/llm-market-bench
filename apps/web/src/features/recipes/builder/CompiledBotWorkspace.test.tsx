@@ -90,10 +90,12 @@ describe('CompiledBotWorkspace', () => {
         // Only ONE BOT READY badge is rendered (inside BuilderStatusStrip, never duplicated).
         expect(screen.getAllByText('BOT READY')).toHaveLength(1);
 
-        // Step 3 is active in the stepper.
-        expect(
-            screen.getByTestId('builder-stepper').querySelector('[data-step-number="3"]'),
-        ).toHaveAttribute('data-step-state', 'active');
+        // Step 3 is active in the stepper, and the stepper sits below the primary CTA card.
+        const stepper = screen.getByTestId('builder-stepper');
+        expect(stepper.querySelector('[data-step-number="3"]')).toHaveAttribute(
+            'data-step-state',
+            'active',
+        );
 
         // The compiled state is still the /build page: exactly one sr-only h1 carries the name
         const pageHeadings = screen.getAllByRole('heading', { level: 1 });
@@ -109,6 +111,9 @@ describe('CompiledBotWorkspace', () => {
         const backtestBtn = screen.getByRole('button', { name: /▶ Backtest \(Random 2W\)/i });
         expect(backtestBtn).toBeInTheDocument();
         expect(backtestBtn).toHaveClass('voxel-btn--hero');
+        expect(
+            backtestBtn.compareDocumentPosition(stepper) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
         expect(screen.getByTestId('compiled-bot-next-action')).toHaveTextContent(
             /next best step: run a 2-week paper backtest/i,
         );

@@ -1,14 +1,22 @@
 import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import type { BuilderMessage, CompilerReply } from './compiler';
 
-export interface BuilderConversationProps {
+export interface BuilderActivePromptProps {
     messages: BuilderMessage[];
-    messageIds: string[];
     reply: CompilerReply | null;
     pendingIdea: string | null;
     isSignedIn: boolean;
     isCompiling?: boolean;
+    hasError?: boolean;
     onSend: (text: string) => void;
+}
+
+export interface BuilderMessageHistoryProps {
+    messages: BuilderMessage[];
+    messageIds: string[];
+    reply: CompilerReply | null;
+    isCompiling?: boolean;
+    hasError?: boolean;
 }
 
 function MessageRow({ message }: { message: BuilderMessage }) {
@@ -48,7 +56,13 @@ function PendingIdeaCard({
             </span>
             <p className="text-xs font-normal text-voxel-ink break-words">{idea}</p>
             <div>
-                <Button variant="solid" size="sm" disabled={disabled} onClick={() => onSend(idea)}>
+                <Button
+                    variant="solid"
+                    size="sm"
+                    colorScheme="accent"
+                    disabled={disabled}
+                    onClick={() => onSend(idea)}
+                >
                     {isSignedIn ? 'Continue' : 'Sign in to continue'}
                 </Button>
             </div>
@@ -111,26 +125,54 @@ function DeclinedCard({ reply }: { reply: CompilerReply }) {
     );
 }
 
-export function BuilderConversation({
+function resolveLatestQuestionIndex(
+    messages: BuilderMessage[],
+    reply: CompilerReply | null,
+    isActiveTurn: boolean,
+): number {
+    if (messages.length === 0) return -1;
+    const lastIndex = messages.length - 1;
+    if (reply?.status === 'question') {
+        return messages[lastIndex]?.role === 'assistant' ? lastIndex : -1;
+    }
+    if (
+        isActiveTurn &&
+        messages.length >= 2 &&
+        messages[lastIndex]?.role === 'user' &&
+        messages[lastIndex - 1]?.role === 'assistant'
+    ) {
+        return lastIndex - 1;
+    }
+    return -1;
+}
+
+/**
+ * Active prompt slot rendered above the input/CTA so the user always sees what
+ * action is needed right now (parked browser idea, current clarifying question
+ * + quick picks, or declined-scope explanation) without scrolling.
+ */
+export function BuilderActivePrompt({
     messages,
-    messageIds,
     reply,
     pendingIdea,
     isSignedIn,
     isCompiling = false,
+    hasError = false,
     onSend,
-}: BuilderConversationProps) {
-    const hasContent = messages.length > 0 || Boolean(pendingIdea) || Boolean(reply);
+}: BuilderActivePromptProps) {
+    const activeQuestionIndex = resolveLatestQuestionIndex(
+        messages,
+        reply,
+        isCompiling || hasError,
+    );
+    const activeQuestion = activeQuestionIndex >= 0 ? messages[activeQuestionIndex] : null;
+    const hasContent = Boolean(pendingIdea) || Boolean(activeQuestion) || Boolean(reply);
 
     return (
         <section
             className={hasContent ? 'flex flex-col gap-2 min-w-0' : 'sr-only'}
             aria-live="polite"
         >
-            {messages.map((message, index) => (
-                <MessageRow key={messageIds[index] ?? `m-${index}`} message={message} />
-            ))}
-
             {pendingIdea ? (
                 <PendingIdeaCard
                     idea={pendingIdea}
@@ -140,10 +182,47 @@ export function BuilderConversation({
                 />
             ) : null}
 
+            {activeQuestion ? <MessageRow message={activeQuestion} /> : null}
+
             {reply ? (
                 <QuestionOptions reply={reply} disabled={isCompiling} onSend={onSend} />
             ) : null}
             {reply ? <DeclinedCard reply={reply} /> : null}
+        </section>
+    );
+}
+
+/**
+ * Prior conversation turns rendered below the active input/CTA so historical
+ * context stays accessible without pushing the primary action off-screen.
+ */
+export function BuilderMessageHistory({
+    messages,
+    messageIds,
+    reply,
+    isCompiling = false,
+    hasError = false,
+}: BuilderMessageHistoryProps) {
+    const activeQuestionIndex = resolveLatestQuestionIndex(
+        messages,
+        reply,
+        isCompiling || hasError,
+    );
+    const historyEntries = messages
+        .map((message, index) => ({
+            message,
+            id: messageIds[index] ?? `m-${index}`,
+            index,
+        }))
+        .filter((entry) => entry.index !== activeQuestionIndex);
+
+    if (historyEntries.length === 0) return null;
+
+    return (
+        <section aria-label="Earlier messages" className="flex flex-col gap-2 min-w-0">
+            {historyEntries.map((entry) => (
+                <MessageRow key={entry.id} message={entry.message} />
+            ))}
         </section>
     );
 }

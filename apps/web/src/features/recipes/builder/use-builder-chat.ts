@@ -53,6 +53,7 @@ export interface BuilderChat {
     isCompiling: boolean;
     error: string | null;
     pendingIdea: string | null;
+    restoredFromBrowser: boolean;
     phase: BuilderPhase;
     elapsedMs: number;
     /** Extra strip copy for a job that is sitting unclaimed; null until it matters. */
@@ -126,13 +127,15 @@ function derivePhase(args: {
     reply: CompilerReply | null;
     activeAlignment: AlignmentPromptReply | null;
     userId?: string | null;
+    hasPendingIdea: boolean;
 }): BuilderPhase {
     if (args.error) return 'error';
     if (args.jobStatus === 'pending') return 'queued';
     if (args.jobStatus === 'processing') return 'compiling';
     if (args.reply) return args.reply.status === 'ok' ? 'ready' : args.reply.status;
     if (args.activeAlignment) return 'align';
-    return args.userId ? 'idle' : 'signed-out';
+    if (!args.userId && args.hasPendingIdea) return 'signed-out';
+    return 'idle';
 }
 
 /**
@@ -153,6 +156,8 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     const [error, setError] = useState<string | null>(null);
     const [jobId, setJobId] = useState<string | null>(null);
     const [elapsedMs, setElapsedMs] = useState(0);
+    const [parkedIdea, setParkedIdea] = useState<string | null>(null);
+    const [restoredFromBrowser, setRestoredFromBrowser] = useState(false);
     // A latch, not state: two clicks in one tick must not enqueue two compiles.
     const inFlight = useRef(false);
     // Mirrors `elapsedMs` for the poll interval, which cannot read render state.
@@ -160,7 +165,38 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
     elapsedRef.current = elapsedMs;
     const hasAlignedRef = useRef(false);
 
-    const pendingIdea = messages.length > 0 ? null : loadPendingIdea();
+    // Hydrate after mount so SSR and initial client paint stay identical.
+    // Signed-in users get their saved idea pre-filled into the main textarea
+    // (one input + one CTA); signed-out visitors keep the parked sign-in card.
+    useEffect(() => {
+        const saved = loadPendingIdea();
+        if (!saved) {
+            setParkedIdea(null);
+            setRestoredFromBrowser(false);
+            return;
+        }
+        if (userId) {
+            setParkedIdea(null);
+            if (!idea) {
+                setDraft((prev) => (prev ? prev : saved));
+                setRestoredFromBrowser(true);
+            }
+            return;
+        }
+        setParkedIdea(saved);
+        setRestoredFromBrowser(false);
+    }, [userId, idea]);
+
+    const pendingIdea = messages.length > 0 || userId ? null : parkedIdea;
+
+    const updateDraft = useCallback((value: string) => {
+        setDraft(value);
+        if (!value) {
+            setRestoredFromBrowser(false);
+            clearPendingIdea();
+            setParkedIdea(null);
+        }
+    }, []);
 
     const job = useQuery({
         queryKey: ['builder-compile', jobId],
@@ -208,6 +244,7 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
                     fallback: Boolean(resolved.fallback),
                 });
                 clearPendingIdea();
+                setParkedIdea(null);
             } else if (resolved.status === 'align') {
                 hasAlignedRef.current = true;
                 setActiveAlignment(resolved);
@@ -317,6 +354,7 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
 
         if (!userId) {
             savePendingIdea(trimmed);
+            setParkedIdea(trimmed);
             await onNeedSignIn(trimmed);
             return;
         }
@@ -335,6 +373,7 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         setMessageIds([...baseIds, `m${baseIds.length}-${Date.now()}`]);
         setReply(null);
         setDraft('');
+        setRestoredFromBrowser(false);
         await requestCompile(next);
     };
 
@@ -370,25 +409,30 @@ export function useBuilderChat({ idea, userId, onNeedSignIn }: UseBuilderChatArg
         setError(null);
         setJobId(null);
         inFlight.current = false;
+        clearPendingIdea();
+        setParkedIdea(null);
+        setRestoredFromBrowser(false);
     };
 
     return {
         messages,
         messageIds,
         draft,
-        setDraft,
+        setDraft: updateDraft,
         reply,
         activeAlignment,
         compileNonce,
         isCompiling: Boolean(jobId),
         error,
         pendingIdea,
+        restoredFromBrowser,
         phase: derivePhase({
             error,
             jobStatus: job.data?.status,
             reply,
             activeAlignment,
             userId,
+            hasPendingIdea: Boolean(pendingIdea),
         }),
         elapsedMs,
         statusDetail: jobId && isInFlight(job.data?.status) ? queuedHint(elapsedMs) : null,

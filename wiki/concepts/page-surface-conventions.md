@@ -40,6 +40,16 @@ A page's job decides whether it carries a visible title block.
 - **Action surfaces** (`/personality`, `/build`, `/chat`) carry **no page-level title block** — no eyebrow, no title, no description above the first control. The page name survives as exactly one `sr-only` `<h1>` matching the route `<title>`, in **every render branch** the route can reach (a panel that swaps components, or a route that mounts one straight from loader data, needs its own). Section headings below the fold may keep their one-line subtitles.
 - **Browse surfaces** keep a visible title — an `h1` or a `SectionHeading` — plus at most one description line.
 
+## Primary action front & center
+
+Putting no visible title on an action surface only works if the user's primary task actually sits at the top. On mobile (`360px`), stacking a multi-card stepper, status banner, or template catalog above a text input pushes the input and primary CTA below the fold.
+
+Section 4b of `.agents/rules/design-spec.md` therefore establishes **action-first ordering**:
+
+1. **Top slot = active task & primary CTA**: Place only a compact status strip (`BuilderStatusStrip`) and any immediate blocker/prompt (`BuilderErrorBanner`, parked browser draft, or active clarifying question + options) above the primary input or action card.
+2. **Supporting scaffolding below**: Place multi-step roadmaps (`BuilderStepper`), starter template chips (`BuilderStarterChips`), earlier conversation turns (`BuilderMessageHistory`), signed-out parking notices, and secondary links **below** the primary input/CTA.
+3. **Every step & sub-state**: In `/build`, Step 1 (`BuilderChatPanel` describe + clarifying/parked sub-states), Step 2 (`BuilderAlignmentCard`), and Step 3 (`CompiledBotWorkspace`) all keep the next required user action above `BuilderStepper`. `/personality` follows the same rule by opening straight into Act 1 Q1 above the fold.
+
 ### Action-surface files
 
 `ACTION_SURFACE_FILES` in the test is a deliberate literal list; adding an action surface means editing the test and the spec section in the same change:

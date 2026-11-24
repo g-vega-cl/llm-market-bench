@@ -52,7 +52,7 @@ function describe(phase: BuilderPhase, elapsedMs: number, detail?: string): Stat
         case 'declined':
             return {
                 label: 'CANNOT RUN AS DESCRIBED',
-                text: 'The nearest buildable version is shown above.',
+                text: 'The nearest buildable version is shown below.',
                 tone: 'warning',
             };
         case 'ready':

@@ -14,18 +14,9 @@ This is the canonical source of truth for all web UI design, layout, typography,
 
 Modern CSS Grid and Flexbox are vastly superior to JavaScript-driven layout math. Layout, responsive wrapping, and visual state belongs strictly to the browser's CSS layout engine.
 
-1. **CSS Grid & Flexbox over JS**:
-   - Use declarative CSS utilities (`grid`, `flex`, `flex-wrap`, `items-stretch`, `justify-between`) for all 1D and 2D layouts.
-   - Never use JavaScript (`window.innerWidth`, `matchMedia`, or `ResizeObserver`) to calculate column counts, element dimensions, or responsive stacking modes. (Exception: pixel-buffer rendering for HTML5 `<canvas>` or WebGL where coordinate buffers require numeric dimensions).
-2. **Zero inline `style={{ ... }}` for layout, typography, or colors**:
-   - Never pass layout attributes (`display`, `flex*`, `gridTemplateColumns`, `width`, `height`, `margin`, `padding`, `gap`), typography (`fontSize`, `fontWeight`, `lineHeight`), borders, or color values via React inline `style` objects.
-   - Express responsive grids declaratively via Tailwind utilities (e.g. `grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]`).
-   - Express colors using design system semantic tokens (`text-success`, `text-danger`, `text-voxel-muted`, `bg-voxel-trough`).
-   - The *only* permitted `style` usage is continuous dynamic data percentages (such as progress bar fills: `style={{ width: `${percent}%` }}`).
-3. **CSS pseudo-classes over JS interaction listeners**:
-   - Visual states must use CSS `:hover`, `:active`, `:focus-within`, `group` / `group-hover:`, and `.voxel-btn:active`.
-   - Never attach `onMouseEnter` / `onMouseLeave` handlers paired with `useState` simply to swap background colors, borders, or opacity.
-   - Never calculate per-element JS loops for `animationDelay` or inline styles.
+1. **CSS Grid & Flexbox over JS**: Use declarative CSS utilities (`grid`, `flex`, `flex-wrap`, `items-stretch`, `justify-between`) for all 1D/2D layouts. Never use JS (`window.innerWidth`, `matchMedia`, `ResizeObserver`) for column counts, dimensions, or stacking modes (except HTML5 `<canvas>`/WebGL pixel buffers).
+2. **Zero inline `style={{ ... }}` for layout, typography, or colors**: Never pass layout, typography, border, or color values via React `style` objects. Express grids with Tailwind (`grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]`) and colors with design tokens (`text-success`, `text-danger`, `text-voxel-muted`, `bg-voxel-trough`). Only continuous dynamic percentages (e.g. `style={{ width: `${percent}%` }}`) are permitted.
+3. **CSS pseudo-classes over JS listeners**: Use `:hover`, `:active`, `:focus-within`, `group-hover:`, and `.voxel-btn:active` instead of `onMouseEnter`/`onMouseLeave` + `useState` or JS `animationDelay` loops.
 
 ---
 
@@ -95,6 +86,14 @@ A page's job decides its title:
 - **Browse surfaces** keep a visible title — an `h1` or a `SectionHeading` — plus at most one description line.
 
 Enforced by `apps/web/src/test/page-surface-conventions.test.tsx`; edit that test and this section together.
+
+### 4b. Primary Action Front & Center
+
+Put the primary input, active prompt, and main CTA at the top so mobile (360px) users immediately see *"this is what I need to do next"* without scrolling:
+
+1. **Top slot = active task + CTA**: Only a compact status indicator or active prompt/error banner may precede the primary input or CTA.
+2. **Supporting context below**: Multi-step roadmaps/steppers, starter chips, prior history, signed-out notices, and secondary links sit **below** the primary input/CTA.
+3. **All sub-states**: Follow-up questions, parked drafts, alignment rounds, and compiled workspaces keep the active action above history and roadmaps.
 
 ---
 

@@ -8,6 +8,7 @@ import type {
     RecipeUserQuotaStatus,
 } from '../types';
 import { canActivateTurboEt, getEtDateString } from '../utils/market-hours';
+import { invalidatePublicRecipeCache } from './recipes-studio-api';
 import { assertNoPrevOutputPlaceholder, assertSingleLlmStage } from './recipes-validators';
 
 export const BETA_STARTER_LIMITS = {
@@ -248,6 +249,7 @@ export async function toggleLiveSchedule(
         }
     }
 
+    invalidatePublicRecipeCache(recipeId);
     return updated as { id: string; is_live: boolean };
 }
 
@@ -302,6 +304,8 @@ export async function switchLiveSchedule(
         throw new Error('Failed switching live schedule: empty response');
     }
 
+    invalidatePublicRecipeCache(String(row.paused_id));
+    invalidatePublicRecipeCache(String(row.enabled_id));
     return {
         pausedId: String(row.paused_id),
         enabledId: String(row.enabled_id),
@@ -336,6 +340,7 @@ export async function activateRecipeTurbo(
         throw new Error('Failed activating Turbo mode: empty response');
     }
 
+    invalidatePublicRecipeCache(String(row.recipe_id));
     return {
         recipeId: String(row.recipe_id),
         turboExpiresAt: String(row.turbo_expires_at),

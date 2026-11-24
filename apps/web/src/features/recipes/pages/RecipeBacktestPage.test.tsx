@@ -10,14 +10,22 @@ vi.mock('@tanstack/react-router', () => ({
     Link: ({
         children,
         to,
+        params,
         search,
     }: {
         children: React.ReactNode;
         to: string;
+        params?: Record<string, string>;
         search?: Record<string, string>;
     }) => {
+        let href = to;
+        if (params) {
+            for (const [k, v] of Object.entries(params)) {
+                href = href.replace(`$${k}`, v);
+            }
+        }
         const qs = search?.recipeId ? `?recipeId=${search.recipeId}` : '';
-        return <a href={`${to}${qs}`}>{children}</a>;
+        return <a href={`${href}${qs}`}>{children}</a>;
     },
     useNavigate: () => mockNavigate,
 }));
@@ -163,9 +171,15 @@ describe('RecipeBacktestPage', () => {
         expect(screen.getByText('Executed Trades (1)')).toBeInTheDocument();
         expect(screen.getAllByText('BUY NVDA').length).toBeGreaterThanOrEqual(1);
 
-        // Edit Bot link preserves recipeId and points to /build
-        const editLink = screen.getByRole('link', { name: /Edit Bot/i });
-        expect(editLink).toHaveAttribute('href', '/build?recipeId=rec-456');
+        // Bot Overview & Edit Blueprint links preserve recipeId
+        expect(screen.getByRole('link', { name: /Bot Overview/i })).toHaveAttribute(
+            'href',
+            '/recipes/rec-456',
+        );
+        expect(screen.getByRole('link', { name: /Edit Blueprint/i })).toHaveAttribute(
+            'href',
+            '/recipes/rec-456/edit',
+        );
     });
 
     it('renders Current Portfolio & Open Positions panel with cash, mark price, and unrealized P&L', () => {

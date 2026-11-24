@@ -41,11 +41,13 @@ Because the pause, the queue cancellation, and the enable commit together, there
 - calls `db.rpc('switch_live_schedule', { p_user_id, p_pause_recipe_id, p_enable_recipe_id })` and throws `error.message` on failure;
 - normalizes the `TABLE` result (array or single object) and throws `Failed switching live schedule: empty response` when `paused_id` / `enabled_id` are missing, returning `{ pausedId, enabledId, is_live }`.
 
+After a successful switch it calls `invalidatePublicRecipeCache(pausedId)` and `invalidatePublicRecipeCache(enabledId)` so the public Bot Overview and Live Runs read caches (see [[entities/recipe-studio]] §7) never serve a stale `is_live` / `turbo_expires_at` for either recipe. `toggleLiveSchedule` and `activateRecipeTurbo` invalidate the same cache for their recipe id, and `saveRecipe` / `archiveRecipe` invalidate it too, so every mutation that changes what a public bot exposes drops its cached read.
+
 `switchLiveScheduleFn` is the auth-gated `createServerFn({ method: 'POST' })` wrapper: it resolves the caller from `getAuthServerClient().auth.getUser()`, throws `Unauthorized: please sign in to manage live schedules` when there is no session, and passes the caller's `user.id` as `p_user_id` — the client never supplies its own identity.
 
 ## Client State Machine (`useLiveScheduleControl`)
 
-`apps/web/src/features/recipes/utils/use-live-schedule-control.ts` is the single implementation shared by the studio (`/recipes`), the compiled bot workspace (`/build` Step 3), and the dashboard (`/recipes` bot cards).
+`apps/web/src/features/recipes/utils/use-live-schedule-control.ts` is the single implementation shared by the studio (`/recipes`), the compiled bot workspace (`/build` Step 3), the Bot Overview (`/recipes/$recipeId`), the Blueprint editor (`/recipes/$recipeId/edit`), and the live page (`/recipes/live/$recipeId`) via `useBotHeaderActions`.
 
 ```ts
 type LiveScheduleState =
@@ -58,7 +60,7 @@ type LiveScheduleState =
 - **`toggle(target, persistFirst?)`** — a plain pause or enable. When enabling and `userRecipes.filter(r => r.is_live && r.id !== target.id).length >= maxLiveRecipes`, it parks in `confirming` instead of calling the API. Otherwise it persists the target first (`persistFirst`), resolves the recipe id (`saved?.id ?? target.id`, throwing `Could not determine strategy ID to enable/pause live schedule.` when neither exists), calls `toggleLiveScheduleFn`, patches `userRecipes` through `upsertSavedRecipeSummary` (or an in-place `is_live` / `turbo_expires_at` patch when nothing was saved), and navigates to `/recipes/live/$recipeId` only when the recipe was just enabled.
 - **`confirmSwitch(persistFirst?)`** — moves `confirming` → `switching` (carrying both `target` and `conflicting`), persists the target, then calls `switchLiveScheduleFn({ pauseRecipeId: conflicting.id, enableRecipeId })`. On success it clears the old row's `is_live` and `turbo_expires_at`, upserts the saved target, returns to `idle`, and navigates to the new live page. On failure it sets `scheduleError` and returns to `idle` — never back to `confirming`.
 - **`cancelSwitch()`** — `confirming`/`switching` → `idle`.
-- **`isBusy`** — `toggling` or `switching`; the single mutual-exclusion latch the studio also uses to block Backtest, Save, and Turbo.
+- **`isBusy`** — `toggling` or `switching`; the single mutual-exclusion latch the studio and `useBotHeaderActions` also use to block Backtest, Save, and Turbo.
 
 ### Save-before-switch ordering
 
@@ -66,11 +68,11 @@ The target is always persisted **before** the switch RPC. A failed save therefor
 
 ### Envelope guarding and single-alert discipline
 
-Every server-function result on this path goes through `assertServerFnResult()` (`~/lib/server-fn`) — `saveRecipeFn`, `enqueueRecipeJobFn`, `toggleLiveScheduleFn`, `switchLiveScheduleFn`, and `activateRecipeTurboFn` — so an envelope-less edge response becomes a legible error instead of a `TypeError` on `undefined`. The `RecipeSaveError` special-casing was removed: `applyScheduleError` now logs quota refusals at `warn` and everything else at `error`, and the studio/workspace suppress the inline `RecipeNameField` save error whenever a backtest or schedule error is present (`saveError={backtestError || scheduleError ? null : draft.saveError}`), so exactly one alert renders.
+Every server-function result on this path goes through `assertServerFnResult()` (`~/lib/server-fn`) — `saveRecipeFn`, `enqueueRecipeJobFn`, `toggleLiveScheduleFn`, `switchLiveScheduleFn`, and `activateRecipeTurboFn` — so an envelope-less edge response becomes a legible error instead of a `TypeError` on `undefined`. `applyScheduleError` logs quota refusals at `warn` and everything else at `error`, and the studio/workspace/Bot-Stage header suppress the inline `RecipeNameField` save error whenever a backtest or schedule error is present, so exactly one alert renders.
 
 ## Presentation
 
-`LiveSwitchConfirmation` renders for **both** `confirming` and `switching`, with `isSwitching={state.kind === 'switching'}` disabling the `Switch to This` button and setting `aria-busy="true"` while the RPC is in flight. In `CompiledBotWorkspace` the trough now sits **below** the summary card (next to `StudioAlertSlot`) rather than above it, so the primary CTA stays at the top of the card per [[concepts/page-surface-conventions]] §4b. The live toggle button itself reports in-flight state through its label — `Enabling Live...` / `Pausing Live...` — instead of only dimming.
+`LiveSwitchConfirmation` renders for **both** `confirming` and `switching`, with `isSwitching={state.kind === 'switching'}` disabling the `Switch to This` button and setting `aria-busy="true"` while the RPC is in flight. In `BotStageHeader` the confirmation trough sits below the title/action row and above the sub-nav, so the primary CTA stays at the top of the card per [[concepts/page-surface-conventions]] §4b. The live toggle button reports in-flight state through its label — `Enabling Live...` / `Pausing Live...`.
 
 ## Tests
 
@@ -80,9 +82,9 @@ Every server-function result on this path goes through `assertServerFnResult()` 
 
 ## Related
 
-- [[entities/recipe-studio]] — the studio and `/build` workspace that host the switch
+- [[entities/recipe-studio]] — the studio, Bot Overview, Blueprint, and `/build` workspace that host the switch
 - [[entities/recipe-live-status]] — the live page the switch navigates to
 - [[concepts/recipe-turbo-mode]] — the Turbo window cleared by the pause half of the switch
 - [[concepts/state-machines]] — `LiveScheduleState` registry entry
-- [[concepts/page-surface-conventions]] — primary-action ordering that moved the confirmation trough below the summary card
+- [[concepts/page-surface-conventions]] — primary-action ordering that keeps the confirmation trough below the summary card
 - [[entities/database]] — `strategy_recipes`, `recipe_execution_queue`, `recipe_user_quotas`

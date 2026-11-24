@@ -3,6 +3,7 @@ import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient, getDbServerClient } from '~/lib/db';
 import type { PushStrategy, StrategyRecipeRecord, StrategyStage } from '../types';
 import { assertQuotaAllowsJob } from './recipes-quota-api';
+import { invalidatePublicRecipeCache } from './recipes-studio-api';
 import {
     assertNoPrevOutputPlaceholder,
     assertSingleLlmStage,
@@ -130,6 +131,7 @@ export async function saveRecipe(
             .single();
 
         if (error) throw new Error(error.message);
+        invalidatePublicRecipeCache(recipe.id);
         return data as StrategyRecipeRecord;
     }
 

@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient } from '~/lib/db';
+import { invalidatePublicRecipeCache } from './recipes-studio-api';
 
 /**
  * Soft-hide a strategy: remove it from My Strategies without deleting it.
@@ -67,6 +68,7 @@ export async function archiveRecipe(
         cancelledJobs = cancelled.length;
     }
 
+    invalidatePublicRecipeCache(recipeId);
     return {
         id: String((data as { id: string }).id),
         archived_at: String((data as { archived_at: string }).archived_at),

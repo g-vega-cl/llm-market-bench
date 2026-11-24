@@ -141,12 +141,28 @@ describe('CompiledBotWorkspace', () => {
         expect(screen.queryByText('LLM Call')).not.toBeInTheDocument();
     });
 
-    it('marks an unsaved compiled bot as dirty so Save Recipe is enabled immediately', () => {
+    it('marks an unsaved compiled bot as dirty and navigates to /recipes/$recipeId after Save Recipe', async () => {
         const unsaved = { ...strategy, id: undefined };
+        vi.mocked(saveRecipeFn).mockResolvedValue({
+            ...strategy,
+            id: 'new-saved-99',
+        } as never);
+
         renderWithQuery(<CompiledBotWorkspace initialStrategy={unsaved} />);
 
-        expect(screen.getByRole('button', { name: 'Save Recipe' })).toBeEnabled();
+        const saveBtn = screen.getByRole('button', { name: 'Save Recipe' });
+        expect(saveBtn).toBeEnabled();
         expect(screen.getByTestId('builder-status')).toHaveTextContent(/draft not saved yet/i);
+
+        fireEvent.click(saveBtn);
+
+        await waitFor(() => {
+            expect(saveRecipeFn).toHaveBeenCalledTimes(1);
+            expect(mockNavigate).toHaveBeenCalledWith({
+                to: '/recipes/$recipeId',
+                params: { recipeId: 'new-saved-99' },
+            });
+        });
     });
 
     it('shows a running backtest for this recipe so background work is visible', async () => {

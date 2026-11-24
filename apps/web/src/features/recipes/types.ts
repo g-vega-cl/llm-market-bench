@@ -378,8 +378,12 @@ export interface LivePortfolioSnapshot {
 
 export interface LiveStatusMeta {
     recipeName: string;
+    description?: string;
+    cadence?: RecipeCadence;
     isLive: boolean;
     isOwner: boolean;
+    isPublic?: boolean;
+    isTemplate?: boolean;
     turboExpiresAt: string | null;
     turboUsedToday: boolean;
 }
@@ -388,6 +392,20 @@ export interface LivePortfolioAndRuns {
     portfolio: LivePortfolioSnapshot;
     recentLiveRuns: RecipeJobRecord[];
     liveMeta?: LiveStatusMeta;
+}
+
+export interface RecipeOverviewData {
+    recipeId: string;
+    strategy: PushStrategy;
+    isOwner: boolean;
+    isPublic: boolean;
+    isTemplate: boolean;
+    isLive: boolean;
+    turboExpiresAt: string | null;
+    turboUsedToday: boolean;
+    portfolio: LivePortfolioSnapshot;
+    recentLiveRuns: RecipeJobRecord[];
+    recentBacktests: RecipeJobRecord[];
 }
 
 /**

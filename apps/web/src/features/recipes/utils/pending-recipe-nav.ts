@@ -2,8 +2,8 @@
  * Which saved recipe the router is currently navigating to, and through which
  * bot-card affordance, if any.
  *
- * `/recipes` links to two destinations per bot card — `/build?recipeId=<id>`
- * (the recipe workspace) and `/recipes/live/<id>` (the live page). While the
+ * `/recipes` links to two destinations per bot card — `/recipes/<id>`
+ * (the bot overview) and `/recipes/live/<id>` (the live runs page). While the
  * destination's loader is resolving, TanStack Router exposes that in-flight
  * location as `router.state.location` with `status === 'pending'`, so the card
  * pending state is derived from the router instead of being latched in local
@@ -26,6 +26,10 @@ export function pendingRecipeTarget(
     const liveMatch = /^\/recipes\/live\/([^/?#]+)/.exec(pathname);
     const liveId = liveMatch ? normaliseId(safeDecode(liveMatch[1])) : null;
     if (liveId) return { recipeId: liveId, destination: 'live' };
+
+    const overviewMatch = /^\/recipes\/(?!live\/|backtest\/)([^/?#]+)(?:\/edit)?/.exec(pathname);
+    const overviewId = overviewMatch ? normaliseId(safeDecode(overviewMatch[1])) : null;
+    if (overviewId) return { recipeId: overviewId, destination: 'workspace' };
 
     const workspaceId = readRecipeIdFromSearch(location.search);
     return workspaceId ? { recipeId: workspaceId, destination: 'workspace' } : null;

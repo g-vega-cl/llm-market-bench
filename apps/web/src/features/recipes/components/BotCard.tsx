@@ -86,8 +86,8 @@ export function BotCard({
         >
             <div className="flex items-start justify-between gap-2 min-w-0">
                 <Link
-                    to="/build"
-                    search={{ recipeId: item.id }}
+                    to="/recipes/$recipeId"
+                    params={{ recipeId: item.id }}
                     disabled={isActionDisabled}
                     aria-disabled={isActionDisabled || undefined}
                     aria-label={`${item.name} (open recipe workspace)`}

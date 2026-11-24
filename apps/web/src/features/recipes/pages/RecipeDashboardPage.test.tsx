@@ -108,7 +108,7 @@ describe('RecipeDashboardPage', () => {
         expect(screen.queryByText(/How 2-Week PIT Backtests Work/i)).not.toBeInTheDocument();
     });
 
-    it('shows minimal bot cards linking to /build?recipeId=<id> and a single + Build New Bot CTA', () => {
+    it('shows minimal bot cards linking to /recipes/$recipeId and a single + Build New Bot CTA', () => {
         render(<RecipeDashboardPage initialUserRecipes={sampleBots} />);
 
         expect(screen.getByRole('link', { name: /\+ Build New Bot/i })).toHaveAttribute(
@@ -117,10 +117,10 @@ describe('RecipeDashboardPage', () => {
         );
         expect(
             screen.getByRole('link', { name: /AI Capex Momentum \(open recipe workspace\)/ }),
-        ).toHaveAttribute('href', '/build?recipeId=bot-1');
+        ).toHaveAttribute('href', '/recipes/bot-1');
         expect(
             screen.getByRole('link', { name: /Value Compounder \(open recipe workspace\)/ }),
-        ).toHaveAttribute('href', '/build?recipeId=bot-2');
+        ).toHaveAttribute('href', '/recipes/bot-2');
         expect(screen.getByRole('link', { name: 'LIVE 30m' })).toHaveAttribute(
             'href',
             '/recipes/live/bot-1',
@@ -129,7 +129,7 @@ describe('RecipeDashboardPage', () => {
 
     it('shows the in-flight state on the card being opened, and disables every card action', () => {
         routerState.status = 'pending';
-        routerState.location = { pathname: '/build', search: { recipeId: 'bot-2' } };
+        routerState.location = { pathname: '/recipes/bot-2', search: {} };
         render(<RecipeDashboardPage initialUserRecipes={sampleBots} />);
 
         expect(screen.getByTestId('bot-actions-bot-2')).toHaveAttribute('aria-busy', 'true');
@@ -139,10 +139,7 @@ describe('RecipeDashboardPage', () => {
 
         // The other card is untouched: only the card being opened goes busy.
         expect(screen.getByTestId('bot-actions-bot-1')).not.toHaveAttribute('aria-busy');
-        expect(screen.getByTestId('bot-open-bot-1')).toHaveAttribute(
-            'href',
-            '/build?recipeId=bot-1',
-        );
+        expect(screen.getByTestId('bot-open-bot-1')).toHaveAttribute('href', '/recipes/bot-1');
 
         expect(screen.getByRole('button', { name: 'Pause Live' })).toBeEnabled();
         expect(screen.getByRole('button', { name: 'Enable Live (30m)' })).toBeDisabled();

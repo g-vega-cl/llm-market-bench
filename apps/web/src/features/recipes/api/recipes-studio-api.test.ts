@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import {
+    clearPublicRecipeReadCaches,
     fetchLivePortfolioAndRuns,
     fetchRecipeAlerts,
+    fetchRecipeOverview,
     markAlertRead,
     previewStrategyPrompt,
     submitWaitlistPledge,
@@ -46,6 +48,7 @@ function makeDbChain(dataByTable: Record<string, unknown[]>) {
 describe('recipes-studio-api', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        clearPublicRecipeReadCaches();
         mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } });
     });
 
@@ -170,8 +173,12 @@ describe('recipes-studio-api', () => {
         expect(liveState.recentLiveRuns).toHaveLength(1);
         expect(liveState.liveMeta).toEqual({
             recipeName: '',
+            description: '',
+            cadence: '3h',
             isLive: true,
             isOwner: true,
+            isPublic: false,
+            isTemplate: false,
             turboExpiresAt: null,
             turboUsedToday: false,
         });
@@ -269,5 +276,52 @@ describe('recipes-studio-api', () => {
         expect(res.portfolio.cash + (res.portfolio.open_positions[0]?.market_value ?? 0)).toBe(
             res.portfolio.total_equity,
         );
+    });
+
+    it('loads public overview for logged-out visitors without leaking owner id, and rejects private recipes', async () => {
+        const makeOverviewDb = (isPublic: boolean) => ({
+            from(_table: string) {
+                const chain = {
+                    select: () => chain,
+                    eq: () => chain,
+                    in: () => chain,
+                    order: () => chain,
+                    limit: () => Promise.resolve({ data: [], error: null }),
+                    single: () =>
+                        Promise.resolve({
+                            data: {
+                                id: 'rec-overview',
+                                user_id: 'author-1',
+                                name: 'Shared Catalyst Bot',
+                                description: 'Public showcase bot',
+                                cadence: '3h',
+                                is_public: isPublic,
+                                is_template: false,
+                                is_live: true,
+                                turbo_expires_at: null,
+                                archived_at: null,
+                                graph_json: STARTER_RECIPES[0],
+                                paper_cash: 10000,
+                                paper_positions: [],
+                                paper_trades: [],
+                                paper_equity_curve: [],
+                            },
+                            error: null,
+                        }),
+                };
+                return chain;
+            },
+        });
+
+        mockServerDb = makeOverviewDb(true);
+        const pub = await fetchRecipeOverview('rec-overview', null);
+        expect(pub.isOwner).toBe(false);
+        expect(pub.isPublic).toBe(true);
+        expect(pub.strategy.id).toBeUndefined();
+        expect(pub.strategy.name).toBe('Shared Catalyst Bot');
+
+        clearPublicRecipeReadCaches();
+        mockServerDb = makeOverviewDb(false);
+        await expect(fetchRecipeOverview('rec-overview', null)).rejects.toThrow('Unauthorized');
     });
 });

@@ -5,20 +5,37 @@ category: entity
 
 # Recipe Studio
 
-The **Recipe Studio** is now a two-surface experience:
+The **Recipe Studio** is a multi-surface experience built around a shared living-diorama header (`BotStageHeader`):
 
 1. **`/build` — The Chat Builder** (primary entry point)
-   - Steps 1–2 render on the design-system `SceneStage` (`variant="hero"`, `motionRole="reactive"`) over the panoramic `GardenBackdrop` Cedar Sanctuary diorama with `SceneHudControls`, inside a `.scene-scrim .voxel-card` (no opaque `bg-voxel-canvas` or `GlobalBackground`)
-   - Action-first ordering (§4b): visitors immediately see the compact `STEP 1 · NOW` status strip and auto-expansible `<textarea>` + `Continue to Alignment →` CTA at the top, with one-tap starter chips and `BuilderStepper` (`1. Describe` → `2. Align` → `3. Backtest & Go Live`) below
-   - Compiles into a validated Push v2 recipe (one LLM call, point-in-time news, paper cash) with a real-phase `BuilderCompilePipeline` (`1. Queue` / `2. Model` / `3. Validate`)
+   - Steps 1–2 render on the design-system `SceneStage` (`variant="hero"`, `motionRole="reactive"`) over the canvas-free `CedarRidgeBackdrop` (six SVG/CSS planes, pointer-and-scroll drift, patrolling lantern-bot and fox) with `SceneHudControls`, inside a `.scene-scrim .voxel-card`
+   - Action-first ordering (§4b): visitors immediately see the compact `STEP 1 · NOW` status strip and auto-expansible `<textarea>` + `Continue to Alignment →` CTA at the top, with one-tap starter chips (an intrinsic `repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr))` grid) and `BuilderStepper` (`1. Describe` → `2. Align` → `3. Backtest & Go Live`) below
+   - Compiles into a validated Push v2 recipe (one LLM call, point-in-time news, paper cash) with a real-phase `BuilderCompilePipeline`
    - Step 2 presents one round of 3–5 tailored multiple-choice alignment questions (`BuilderAlignmentCard`) before compiling the final bot
    - On success, shows a **Compiled Bot Workspace** summary `.voxel-card` inside `PageLayout` over `GlobalBackground`, with a single primary CTA: "▶ Backtest (Random 2W)" and a calm lower workspace switching between `Blocks & Tools` and `Prompt Preview`
+   - **`/build` is always a fresh describe flow**: a `/build?recipeId=<id>` request now `beforeLoad`-redirects to `/recipes/$recipeId` (the Bot Overview). After saving an unsaved compiled bot, `CompiledBotWorkspace` navigates to `/recipes/$recipeId`.
    - Accessible from `/lab` directory and the homepage CTA
 
-2. **`/recipes` — My Bots Dashboard** (signed-in users only)
+2. **`/recipes/$recipeId` — Bot Overview** (public-capable for `is_public`/`is_template` bots)
+   - Uses `BotStageHeader` (`SceneStage` + `GardenBackdrop` + `Overview | Live Runs | Blueprint` sub-nav) above three Matcha & Voxel blocks:
+     - **Performance & Equity** (`PerformanceOverviewBlock` + `PerformanceChart` + benchmark selector)
+     - **Behaviors & Insights** (`BotBehaviorsBlock` powered by `recipe-insights.ts` over up to 50 slimmed live turns or latest backtest)
+     - **Open Positions + Recent 5 Closed Trades** (`ClosedTradesSection` with in-flow trough inspection) + **Recent Backtests & Strategy DNA** (`OverviewBottomSection`)
+   - Loads via `fetchRecipeOverviewFn` (30s bounded public cache)
+   - Non-owners receive a read-only view with a `Fork to My Bots` action; owner actions (Backtest, live toggle, Turbo, Blueprint) are gated on `isOwner`
+
+3. **`/recipes/$recipeId/edit` — Blueprint Editor** (owner-only)
+   - `RecipeEditPage` shares `BotStageHeader` (Blueprint tab active) and renders `RecipeNameField` + `CompiledBotBlueprintSection` (Blocks & Tools / Prompt Preview)
+   - Reached only by the owner; a non-owner renders an `ErrorCard`
+
+4. **`/recipes/live/$recipeId` — Live Runs & Traces** (public-capable for `is_public`/`is_template` bots)
+   - `BotStageHeader` (`TurboButton` for owners) above paginated `Live Run Traces` (`RunPaginator` + `TraceInspectorBlock`), embedded `Live Paper Portfolio`, and `All Closed Live Trades`
+   - Moved from `/_authed/recipes/live/$recipeId` to root-level `/recipes/live/$recipeId`; non-owners may read public/template recipes
+
+5. **`/recipes` — My Bots Dashboard** (signed-in users only)
    - Lists the user's saved strategies with minimal per-bot cards
    - Primary CTA: "+ Build New Bot" → `/build`
-   - Each bot links to `/build?recipeId=<id>` for editing and `/recipes/live/$recipeId` for live monitoring
+   - Each bot links to `/recipes/$recipeId` (Bot Overview), `/recipes/$recipeId/edit` (Blueprint Editor), and `/recipes/live/$recipeId` (Live Runs & Traces)
    - Live schedule toggles, Turbo boost, backtest history, and alerts inbox
    - Anonymous visitors see the **Recipe Gallery** (read-only template catalogue with a single "Start Building Your Bot →" CTA to `/build`)
 
@@ -37,7 +54,7 @@ The **Recipe Studio** is now a two-surface experience:
 
 ### 2. Engine Processing (`apps/engine/recipes/`) — unchanged core
 - `push_schema.py`: Pydantic models for Push v2 (`PushStrategy`, `StrategyStage`, blocks). Exactly one stage enforced.
-- `push_hydrator.py`: Point-in-time filtering and stage prompt hydration. Renders `prompt` blocks first, data blocks in the middle, and `output_format` blocks last so instructions lead the prompt and the schema lock is always final, regardless of block order in the stage.
+- `push_hydrator.py`: Point-in-time filtering and stage prompt hydration. Renders `prompt` blocks first, data blocks in the middle, and `output_format` blocks last.
 - `portfolio_engine.py`: Shared Long-Only simulator (`PortfolioState`, `apply_portfolio_step`), whole-share sizing, Alpaca mirror
 - `intraday_bars.py`: 3x/day ET slot expansion for backtests, live slot capture
 - `pit_tools.py`: Strict point-in-time tool dispatcher for backtests
@@ -48,121 +65,120 @@ The **Recipe Studio** is now a two-surface experience:
 - `public_stats.py`: Rebuilds materialised board tables after each lane drain
 - `news_corpus.py`: Live news sync from market wires + newsletter snapshots
 
-### 3. Presentation — Two Surfaces
+### 3. Presentation — Shared Header & Surfaces
+
+#### Shared `BotStageHeader` + `BotStageSubNav`
+`apps/web/src/features/recipes/components/BotStageHeader.tsx` is the single living-diorama hero shared by Overview, Live Runs, and Blueprint. It renders a `SceneStage` (`variant="hero"`, `motionRole="reactive"`, `scrim="panel"`) over `GardenBackdrop` with `SceneHudControls`, and contains:
+- a `← My Bots` link and the live-state badge — `Live: PAUSED` (neutral), `Turbo: <N>m left (5m)` (solid accent, `suppressHydrationWarning`), or `Live: ON (30m)` (solid success);
+- the recipe name/description, a `Live: 30m • Backtest: <cadence> • 1 LLM call` line, and a `Next run:` label (`Paused`, `within 5m (Turbo)`, or `getNextLiveSlotLabel(now)`);
+- owner action buttons — Backtest (`resolveBacktestButtonLabel`), the live toggle (`Enabling Live...` / `Pausing Live...` in-flight labels), and `TurboButton` (only on the live tab while live);
+- `LiveSwitchConfirmation` (the 3-live-cap switch), `StudioAlertSlot`, and fork/extra-error alerts;
+- `BotStageSubNav` (`BotStageSubNav.tsx`) — `Overview` / `Live Runs` / `Blueprint` links (`aria-current="page"` on the active tab; Blueprint only for owners).
+
+All owner actions route through `useBotHeaderActions` (`apps/web/src/features/recipes/utils/use-bot-header-actions.ts`), which wraps `useLiveScheduleControl` and the backtest/fork/pledge server functions.
 
 #### `/build` — 3-Step Chat Builder (`BuilderChatPanel` → `BuilderAlignmentCard` → `CompiledBotWorkspace`)
-- **Step 1 (Describe)**: Conversational builder (`BuilderChatPanel` + `BuilderDescribeStep` + `BuilderStatusStrip` + `BuilderCompilePipeline` + `BuilderActivePrompt` + `BuilderMessageHistory` + `BuilderStepper`) inside `SceneStage` (`GardenBackdrop` + `.scene-scrim .voxel-card`)
-  - No visible headline block — the page name comes from the route `<title>` plus exactly one `sr-only` `<h1>` ("Build a trading bot from one sentence"), rendered by `BuilderChatPanel` for Steps 1–2 and by `CompiledBotWorkspace` for Step 3; a single `.voxel-card` with recessed `.voxel-trough` slots (zero nested `.voxel-card`)
-  - Primary input & CTA front and center: `BuilderStatusStrip` (`STEP 1 · NOW`), any active prompt/error (`BuilderActivePrompt` / `BuilderErrorBanner`), and the auto-expansible `<textarea>` (`maxLength={2000}`, `Enter` for newline, `Ctrl/Cmd+Enter` to submit) + `Continue to Alignment →` hero CTA sit at the top; starter idea chips (`builder-starter-chips`), earlier message history, guidance links, and `BuilderStepper` sit below
-  - Compiles via `enqueueCompileFn` / `fetchCompileJobFn` (25/day quota, `auto-go` model)
-- **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions (clickable pills + optional custom input, `Skip & build with defaults`, and `Build Final Bot →` hero CTA) above `BuilderStepper` before compiling the final bot (`status: 'ok'`).
-  - Only non-trading inputs stay `declined`; trading ideas with offline limits compile to `status: 'ok'` with a `warning` advising Live execution (and any stray trading `declined` reply is promoted automatically via `promoteDeclinedToBot()`)
-  - Guidance links: `"Take our 16-question personality test"` (`/personality`, derived from `PERSONALITY_QUESTIONS.length`) and `"talk to our AI advisor"` (`/chat`)
-
-- **Step 3 (Backtest & Go Live)**: **Compiled Bot Workspace** (`CompiledBotWorkspace` + `BuilderBotLiveStatus` + `CompiledBotSummaryCard` + `CompiledBotBlueprintSection`) inside `PageLayout` over `GlobalBackground`
-  - Centered `.voxel-card` whose **first block is `BuilderBotLiveStatus`** (`data-testid="bot-live-status"`, above the "← My Bots" / "Compiled Bot Studio" row and rendered for any saved bot): one `.voxel-trough` `<section aria-label="Live status">` carrying the tri-state schedule badge (`LIVE ON (30m)` / `PAUSED` / `SCHEDULE UNKNOWN` when neither the owned snapshot nor the capped My Bots window answered; the badge is the block's only polite live region, so a toggle is announced once — the Turbo countdown lives in the next-run line outside it), the next ET slot from `getNextLiveSlotLabel(now)` (or `Next run Paused` / `Next run unknown` / `Next run within 5m (Turbo) · <n>m left`), the last live turn (`Last turn Nov 24 • 2:00 PM ET · completed|failed|running|queued|cancelled` (or the raw status when this build does not know it), `No live turns yet` only when the read succeeded, `Live history not loaded` when the snapshot read failed) and the paper ledger as stored (`Equity $10,412.49 · Cash $4,120.00` — no return percentage, because no column records the bot's starting balance) plus a single `Open live status →` link and an `as of <read time>` stamp on the ledger. Its payload is a narrow `RecipeLiveSummary` built by `toLiveSummary()` from the loader's `fetchLivePortfolioAndRunsFn` read (trades, equity curve and older runs stripped) and refreshed by `useRecipeLiveSummary` on window focus once it is older than a minute; the block is absent for an unsaved draft, which has no live state yet
-  - `BuilderStatusStrip` sits directly under it and owns only the **work** axis (`BOT READY` / `SAVED BOT` / `LIVE RECOMMENDED` / `CLOSEST WORKING TEMPLATE` / `PROMPT NEEDED` / active backtest badge) — a scheduled bot no longer re-labels the strip `LIVE ACTIVE`, and an unsaved draft stays visible on a live bot because the two axes render separately
-  - Below that: an in-flow `compiled-bot-live-warning` `.voxel-trough` banner whenever a compile `warning` or `liveOnly` tool (`LIVE_ONLY_TOOL_NAMES`) is active, `CompiledBotSummaryCard` (bot name `RecipeNameField`, summary, block/tool badges, and recessed `compiled-bot-next-action` trough highlighting `"▶ Backtest (Random 2W)"` or `"Enable Live (30m)"` alongside `LiveSwitchConfirmation`), and `BuilderStepper` (Step 3 active) below the summary CTAs
-  - Empty-prompt guard: a blank `prompt` block renders `PROMPT NEEDED` and disables Save, Backtest, and the live toggle
-  - Calm lower workspace (`CompiledBotBlueprintSection`) below the summary card with a WAI-ARIA segmented `.voxel-trough` tab bar (`Blocks & Tools` default via `StageBuilder` pinning the single editable `prompt` block first | `Prompt Preview` via `PromptVisualizer`), keyboard-navigable with ArrowLeft/ArrowRight/Home/End
-  - "← Describe a different bot" or "← My Bots" link back to dashboard
+- **Step 1 (Describe)**: `BuilderChatPanel` + `BuilderDescribeStep` + `BuilderStatusStrip` + `BuilderCompilePipeline` + `BuilderActivePrompt` + `BuilderMessageHistory` + `BuilderStepper` inside `SceneStage` (`CedarRidgeBackdrop` + `.scene-scrim .voxel-card`). No visible headline block — an `sr-only` `<h1>` carries the page name. The stage uses `build-stage-viewport` sizing and fluid `clamp()` gaps so the ridge band stays on screen below the card on a phone.
+- **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions before compiling the final bot (`status: 'ok'`). Trading ideas with offline limits compile to `ok` with a `warning`; non-trading inputs stay `declined`.
+- **Step 3 (Backtest & Go Live)**: `CompiledBotWorkspace` inside `PageLayout` over `GlobalBackground`. Its first block is `BuilderBotLiveStatus` for any saved bot, followed by `BuilderStatusStrip` (work axis), an in-flow `compiled-bot-live-warning` banner, `CompiledBotSummaryCard` (with recessed `compiled-bot-next-action` trough highlighting the primary CTA), and `BuilderStepper` (Step 3 active). **Save-then-navigate**: `handleSaveRecipe` persists an unsaved bot and then `navigate({ to: '/recipes/$recipeId', params: { recipeId: saved.id } })`; an already-saved bot stays put. Empty-prompt guard disables Save/Backtest/live.
+- Calm lower workspace (`CompiledBotBlueprintSection`) with a WAI-ARIA segmented tab bar (`Blocks & Tools` | `Prompt Preview`).
 
 #### `/recipes` — My Bots Dashboard (`RecipeDashboardPage`)
-- **Empty state**: Hero card with "Build Your First Bot →" linking to `/build`
-- **Bot cards** (`BotCard`, fluid grid, `minmax(min(100%,20rem),1fr)`):
-  - Bot name → `/build?recipeId=<id>`, followed by an always-visible chevron that turns gold and nudges right on hover (`group/open`), plus a gold underline on hover/focus — the name alone read as static text on touch, where no hover state exists; the link carries `aria-label="<name> (open recipe workspace)"` so the affordance is not visual-only
-  - In-flight state: the card derives the pending destination from the router (`useRouterState` + `pendingRecipeTarget(state.status, state.location)`, which reports `workspace` or `live`) rather than latching a local flag, then dims the name, swaps the chevron for the pulsing pending pixel in a fixed `w-4 h-4` slot, renders a `role="status"` line naming the destination ("Opening bot…" / "Opening live view…"), sets `aria-busy` on the actions row only (never on an ancestor of the live region), and drops both links' `href` plus disables both actions. A same-frame second click is prevented by reading `router.state.status` synchronously inside the click handler — no private latch to strand — and modified/aux clicks are never swallowed. Only the card being opened goes busy; siblings stay interactive. See [[concepts/state-machines]] §2.12
-  - The two buttons — and the header "Build New Bot" link — stay locked for the duration of a live-toggle or removal mutation, so navigating away cannot discard that request's in-flow success or error message
-  - Live badge ("LIVE 30m" success / "TURBO 5m" accent) → `/recipes/live/$recipeId` (goes inert with the rest of the card while opening)
-  - "Enable Live (30m)" / "Pause Live" button (shared `useLiveScheduleControl` state machine)
-  - "Remove" button (soft-hide via `archived_at`, never `DELETE`)
-- **Quota strip** (`RecipeQuotaStrip`): Compact 1-line summary (backtests left, live bots, global queue)
-- **Recent backtests strip** (`RecentBacktestsStrip`): Up to 5 `voxel-btn` links to `/recipes/backtest/$jobId`
-- **Alerts inbox** (`RecipeAlertsInbox`): In-app trade alerts with "Mark Read"
-- **Waitlist pledge modal** for capacity requests
+- **Bot cards** (`BotCard`, fluid grid): the name link targets `/recipes/$recipeId` (Bot Overview) with an always-visible chevron; the live badge links to `/recipes/live/$recipeId`; owner actions (Enable/Pause Live, Remove) plus a `+ Build New Bot` CTA to `/build`.
+- **In-flight state**: the card derives the pending destination from the router via `pendingRecipeTarget(state.status, state.location)`, which now reports `workspace` for `/recipes/<id>` and `/recipes/<id>/edit` and `live` for `/recipes/live/<id>`. See [[concepts/state-machines]] §2.12.
+- **Quota strip**, **Recent backtests strip**, **Alerts inbox**, **Waitlist pledge modal**.
 
-#### `/recipes/live/$recipeId` — Live Status Page (`RecipeLivePage`)
-- SSR via `fetchLivePortfolioAndRunsFn`
-- Header: "← Edit Bot" → `/build?recipeId=<id>`, live badge, next run label, Turbo button
-- Live paper portfolio (`RecipePortfolioBlock` with mark prices)
-- Live run traces (`RunPaginator` + `TraceInspectorBlock`)
+#### `/recipes/$recipeId`, `/recipes/$recipeId/edit`, & `/recipes/live/$recipeId` — Split Bot Surfaces
+- **`/recipes/$recipeId` (`RecipeOverviewPage`)**: Public-capable for `is_public`/`is_template` bots; `BotStageHeader` above 3 Matcha & Voxel blocks (Performance & Equity, Behaviors & Insights, Positions/Trades/Strategy DNA). Loads via `fetchRecipeOverviewFn` (30s bounded public cache).
+- **`/recipes/$recipeId/edit` (`RecipeEditPage`)**: Owner-only Blueprint & Prompt Editor. Reached only by the owner; a non-owner renders an `ErrorCard`.
+- **`/recipes/live/$recipeId` (`RecipeLivePage`)**: Public-capable; `BotStageHeader` (`TurboButton` for owners) above paginated `Live Run Traces`, embedded `Live Paper Portfolio`, and `All Closed Live Trades`.
 
 #### `/recipes/backtest/$jobId` — Live Backtest View (`RecipeBacktestPage`)
 - Polls `fetchRecipeRunDetailFn` every 1.5s
-- Timeline (`BacktestTimelineBlock`), telemetry (`BacktestTelemetryBlock`), portfolio, trades, session trace
-- "Edit Bot" link → `/build?recipeId=<id>`
+- Timeline, telemetry, portfolio, trades, session trace
+- Header links: `← Bot Overview` → `/recipes/$recipeId` and `Edit Blueprint` → `/recipes/$recipeId/edit` (a `live_turn` job opened here links to `/recipes/live/$recipeId`)
 
 #### `/recipes-demo` — Public Showcase
 - Pinned backtest via `recipe_showcase` table (CLI `publish_showcase`)
 - Read-only `RecipeBacktestPage` with `readOnlyShowcase` mode
 - "Sign In Free to Build & Run" → `/build`
 
-### 5-Block Push-Based Model (`version: "2.0-push"`)
+## 4. Behavioral Insights & Overview Metrics
+
+The Bot Overview surface renders deterministic behavioral telemetry computed server-side from the recipe's live runs and closed trades:
+
+- **`computeBotBehaviors`** (`apps/web/src/features/recipes/utils/recipe-insights.ts`): Aggregates action mix (BUY/EXIT/SELL/HOLD counts, hold selectivity), ticker focus (signal count, closed count, wins, net PnL), exit reasons, tool footprint, and the latest decision snapshot. Source is `live` when completed live turns exist, `backtest` when only backtest data is available, or `none` when neither exists.
+- **`deriveOverviewMetrics`** (`apps/web/src/features/recipes/utils/overview-metrics.ts`): Computes top-level KPIs (total equity, cash, net return %, win rate, open positions) prioritizing live paper state and falling back to the latest completed backtest before live turns begin.
+- **`BotBehaviorsBlock`**: Four equal-height recessed `.voxel-trough` panels (Action Mix & Selectivity, Ticker Focus & Exits, Tool Footprint, Latest Decision Snapshot) inside one `.voxel-card`.
+- **`PerformanceOverviewBlock`**: KPI strip (Total Equity, Net Return, Cash Available, Win Rate, Open Positions) plus a `PerformanceChart` with benchmark overlay, bounded to the active portfolio date range.
+- **`ClosedTradesSection`**: Closed trades ledger with in-flow `.voxel-trough` catalyst & confidence inspection (zero floating tooltips, full keyboard accessibility).
+
+## 5. 5-Block Push-Based Model (`version: "2.0-push"`)
 - Single LLM call per run (enforced at Studio UI, engine schema, scheduler, save API, fork API, builder compiler, DB constraint)
 - Blocks: `output_format` (immutable, rendered last), `prompt` (required, rendered first), `news`, `memories`, `technicals`
-- Starter templates in `packages/config/starter-recipes.json` (5 templates, all `cadence: "3h"`)
+- Starter templates in `packages/config/starter-recipes.json`
 
-### My Strategies: Soft-Hide (Never Delete)
-- Removal = `archived_at` stamp + `is_live: false` + `turbo_expires_at: null` + cancel pending queue rows
+## 6. My Strategies: Soft-Hide (Never Delete)
+- Removal = `archived_at` stamp + `is_live: false` + `turbo_expires_at: null` + cancel pending queue rows; `invalidatePublicRecipeCache(recipeId)` drops the public read caches
 - `fetchUserRecipes` filters `.is('archived_at', null)`
-- Restore only via explicit `saveRecipe({ restore: true })` from header "Save Recipe" button
+- Restore only via explicit `saveRecipe({ restore: true })`
 - Forking archived recipe refused
 
-### Pausing Live Schedule
-- `toggleLiveSchedule` clears `turbo_expires_at` and cancels pending `live_turn` rows
+## 7. Public Read Caching & Invalidation
+
+`fetchLivePortfolioAndRuns` and `fetchRecipeOverview` accept a nullable `userId`. Non-owner reads of public/template recipes are served from bounded 30-second in-memory caches (`publicLiveCache`, `publicOverviewCache`, max 50 entries, oldest-evicted); owner reads are never cached. `clearPublicRecipeReadCaches()` clears both (test/ops hook), and `invalidatePublicRecipeCache(recipeId)` drops a single recipe's entries on every save, archive, live toggle, live switch, and Turbo activation. `assertReadableRecipeRow` enforces that a non-owner can only read `is_public`/`is_template` rows and never an archived one, and `fetchRecipeOverview` strips the row `id` from the returned `strategy` for non-owners so the owner's `user_id` is never leaked.
+
+## 8. Pausing Live Schedule
+- `toggleLiveSchedule` clears `turbo_expires_at` and cancels pending `live_turn` rows; `invalidatePublicRecipeCache(recipeId)` drops the public read caches
 - `strategy_recipes_turbo_requires_live` CHECK backstops
 
-### Fork (Copy Into Your Account)
+## 9. Fork (Copy Into Your Account)
 - `forkRecipe` copies public/template/own recipe → new row owned by caller
 - Strips live scheduling, publication, Turbo window
 - Resets paper ledger to $10,000 cash
 
-### Draft & Explicit Save (`useRecipeDraft`)
+## 10. Draft & Explicit Save (`useRecipeDraft`)
 - `RecipeSaveState`: `idle` → `saving` → `saved` | `error`
 - Revision guard (`draftRev`), flight-scoped `isSaving`, generation guard
 - Save failures → inline `RecipeNameField` alert (not top slot)
 
-### 30-Minute Market-Hours Runner Daemon
+## 11. 30-Minute Market-Hours Runner Daemon
 - `due_trading_slot` aligns to 14 half-hour ET slots (Mon–Fri, excl. US holidays + Good Friday)
 - `enqueue_live_recipes_with_stats` pages live recipes, skips recent-Turbo, validates single-stage
 - `run_live_lane_tick`: due slot → Turbo enqueuer (throttled 30s) → always drain `live_turn`
 - `drain_lane`: serial by default, `LIVE_TURN_CONCURRENCY=10` for live, `RECIPE_BACKTEST_CONCURRENCY=3` for backtest
-- `run_hourly_cycle`: news sync → public stats → enqueue → drain
 
-### Live News Sync
+## 12. Live News Sync
 - `sync_live_news_to_corpus`: market wires (Alpaca/Polygon/FMP) + newsletter snapshots
-- Idempotent upsert on `article_id` (`source_id_hash` for wires, `nl_<clean>_<date>` for newsletters)
+- Idempotent upsert on `article_id`
 - Throttled to 300s on Turbo ticks, unconditional on scheduled slots
 
-### Point-in-Time Backtesting
+## 13. Point-in-Time Backtesting
 - Random 10-trading-day window, 3x/day ET slots (30 sessions)
 - Strict PIT context via `fetch_push_context_batch` + `execute_pit_tool`
 - Intraday pricing from `recipe_intraday_bars` → FMP → Alpaca → `price_history`
 - Long-Only portfolio accounting with whole-share sizing
 
-### LLM Endpoint Failover (`llm_caller.py`)
+## 14. LLM Endpoint Failover (`llm_caller.py`)
 - Ordered chain: OpenRouter (if key) → Strata → Free Proxy (`auto-go`)
 - `filter_recipe_tool_names` drops `web_search`, non-canonical, and non-PIT tools in backtests
-- `_sanitize_recipe_tool_args` clamps every LLM-supplied tool argument before dispatch: `get_market_moving_news` is forced to `force_refresh: false` (a prompt cannot bypass the 15m cache and trigger 10 Jev LLM calls per turn), and any numeric `limit` is clamped to `1.._MAX_RECIPE_TOOL_LIMIT` (25), bounding Recipe Studio query and LLM blast radius
+- `_sanitize_recipe_tool_args` clamps every LLM-supplied tool argument before dispatch
 - `run_tool_loop`: 5 tool rounds + forced final synthesis
-- Both lanes resolve `auto-go` (no Strata contention)
 
-### Worker Modes & Safety
+## 15. Worker Modes & Safety
 - `JobOutcome`: `EMPTY` | `COMPLETED` | `FAILED`
 - `SUPPORTED_JOB_MODES`: `backtest`, `live_turn`, `compile`
 - No nested event loop (`async_process_next_recipe_job` awaits directly)
-- Successful jobs: write `result_json`, increment `trial_count`, deposit `live_turn` alerts
 
-### Stale Compile Guard (Claim-Time Refusal)
-Compile jobs are protected against aging out between the sweep and the pop poll. The sweep (`fail_stale_compile_jobs`) marks unclaimed `pending` compile rows failed once they exceed `STALE_COMPILE_SECONDS` (600s) and releases the per-user cap, but the pop poll runs every 5s while the sweep runs only once a minute — so a row that aged past the window could still be claimed first.
+## 16. Stale Compile Guard (Claim-Time Refusal)
+Compile jobs are protected against aging out between the sweep and the pop poll. `_execute_compile_job` re-reads `created_at` and raises `RuntimeError(STALE_COMPILE_MESSAGE)` when `(now − created_at) > STALE_COMPILE_SECONDS` (600s), **before** `consume_builder_compile` and before any provider call.
 
-`_execute_compile_job` therefore re-reads the row's `created_at` (selected alongside `payload_json, user_id`), parses it with `_parse_iso_utc` (tolerant of `Z` suffixes and naive timestamps, which are assumed UTC), and raises `RuntimeError(STALE_COMPILE_MESSAGE)` when `(now − created_at) > STALE_COMPILE_SECONDS`. The refusal happens **before** `consume_builder_compile` is called and before any provider tokens are spent, so a user is never charged for a stale row. The job is marked `failed` with `error_message = STALE_COMPILE_MESSAGE` ("The worker never picked this compile up. Try again."). Pinned by `test_compile_job_refuses_a_row_that_aged_past_the_window`, which asserts only `pop_next_recipe_job` is called (no meter RPC, no provider POST) and the row is failed with the stale message.
-
-### Public Recipe Surface
-- `/` = Home CTA page (headline + "Start building" → `/lab`)
-- `/lab` = 3-block directory (My Bots, Investing Style, Research Engines, Audits)
-- `/build` = Primary builder entry (chat → workspace)
+## 17. Public Recipe Surface
+- `/` = Home CTA page
+- `/lab` = 3-block directory
+- `/build` = Primary builder entry (chat → workspace; `?recipeId=` redirects to `/recipes/$recipeId`)
 - `/recipes` = Gallery (anonymous) / Dashboard (signed-in)
+- `/recipes/$recipeId` = public-capable Bot Overview; `/recipes/$recipeId/edit` = owner Blueprint; `/recipes/live/$recipeId` = public-capable Live Runs
 - `/recipes-demo` = Pinned showcase backtest
 - Materialised stats only (zero frontend compute)
 
@@ -177,6 +193,7 @@ Compile jobs are protected against aging out between the sweep and the pop poll.
 - [[concepts/recipe-ops-telemetry]] — durable scheduler telemetry
 - [[concepts/recipe-builder-usage]] — per-user daily compile metering
 - [[concepts/recipe-builder-compiler]] — plain-English → Push v2 compiler behind `/build`
+- [[concepts/atomic-live-schedule-switch]] — the live switch and public-cache invalidation
 - [[entities/free-llm-proxy]]
 - [[entities/design-system]]
 - [[concepts/zero-frontend-compute]]

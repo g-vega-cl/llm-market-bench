@@ -82,10 +82,26 @@ function BacktestHeaderLink({
             </Link>
         );
     }
+    if (!recipeId) {
+        return (
+            <Link to="/recipes" className={className}>
+                ← My Bots
+            </Link>
+        );
+    }
     return (
-        <Link to="/build" search={recipeId ? { recipeId } : undefined} className={className}>
-            Edit Bot
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+            <Link to="/recipes/$recipeId" params={{ recipeId }} className={className}>
+                ← Bot Overview
+            </Link>
+            <Link
+                to="/recipes/$recipeId/edit"
+                params={{ recipeId }}
+                className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated rounded-none whitespace-nowrap"
+            >
+                Edit Blueprint
+            </Link>
+        </div>
     );
 }
 
@@ -243,17 +259,22 @@ function renderUnavailableBacktestState(
                         message="This execution job is a Live Turn run rather than a 2-week backtest."
                     />
                     <div>
-                        <Link
-                            to="/build"
-                            search={
-                                detail.job.recipe_id
-                                    ? { recipeId: detail.job.recipe_id }
-                                    : undefined
-                            }
-                            className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border-2 border-accent text-accent"
-                        >
-                            Edit Bot
-                        </Link>
+                        {detail.job.recipe_id ? (
+                            <Link
+                                to="/recipes/live/$recipeId"
+                                params={{ recipeId: detail.job.recipe_id }}
+                                className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border-2 border-accent text-accent"
+                            >
+                                Open Live Runs →
+                            </Link>
+                        ) : (
+                            <Link
+                                to="/recipes"
+                                className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border-2 border-accent text-accent"
+                            >
+                                ← Back to My Bots
+                            </Link>
+                        )}
                     </div>
                 </PageLayout>
             </div>

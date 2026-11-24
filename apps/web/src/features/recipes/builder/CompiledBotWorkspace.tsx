@@ -159,8 +159,12 @@ export function CompiledBotWorkspace({
 
     const handleSaveRecipe = async () => {
         if (isBusy || !draft.isDirty || hasEmptyPrompt) return;
+        const wasUnsaved = !strategy.id;
         try {
-            await persistActiveStrategy({ restore: true });
+            const saved = await persistActiveStrategy({ restore: true });
+            if (wasUnsaved && saved.id) {
+                await navigate({ to: '/recipes/$recipeId', params: { recipeId: saved.id } });
+            }
         } catch {
             // Inline error handled by RecipeNameField
         }

@@ -51,7 +51,7 @@ export function BuilderStepper({ activeStep }: BuilderStepperProps) {
         <nav
             aria-label="Bot builder progress"
             data-testid="builder-stepper"
-            className="voxel-trough bg-voxel-trough rounded-none p-3 grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-2 items-stretch min-w-0"
+            className="build-stepper voxel-trough bg-voxel-trough rounded-none p-2 grid grid-cols-[repeat(3,minmax(0,1fr))] gap-1.5 items-stretch min-w-0"
         >
             {STEPS.map((step) => {
                 const state = resolveStepState(step.num, activeStep);
@@ -63,12 +63,10 @@ export function BuilderStepper({ activeStep }: BuilderStepperProps) {
                         data-step-number={step.num}
                         data-step-state={state}
                         aria-current={state === 'active' ? 'step' : undefined}
-                        className={`border bg-voxel-surface rounded-none p-2 flex flex-col justify-between gap-2 min-w-0 ${view.borderClass}`}
+                        className={`border bg-voxel-surface rounded-none p-1.5 flex flex-col justify-between gap-1 min-w-0 ${view.borderClass}`}
                     >
                         <div className="flex flex-wrap items-center justify-between gap-2 min-w-0">
-                            <span className="text-sm font-bold text-voxel-ink whitespace-nowrap">
-                                {step.title}
-                            </span>
+                            <span className="text-sm font-bold text-voxel-ink">{step.title}</span>
                             <Badge
                                 variant="soft"
                                 size="xs"
@@ -78,7 +76,7 @@ export function BuilderStepper({ activeStep }: BuilderStepperProps) {
                                 {view.badgeLabel}
                             </Badge>
                         </div>
-                        <span className="text-xs font-normal text-voxel-muted break-words">
+                        <span className="build-step-subtitle text-xs font-normal text-voxel-muted break-words">
                             {step.subtitle}
                         </span>
                     </div>

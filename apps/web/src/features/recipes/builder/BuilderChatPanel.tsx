@@ -2,7 +2,7 @@ import { type AtmospherePhase, SceneStage } from '@llm-market-bench/ui-design-sy
 import { usePostHog } from '@posthog/react';
 import { Link, useRouter } from '@tanstack/react-router';
 import { useEffect, useId, useRef } from 'react';
-import { GardenBackdrop } from '~/features/home/backdrop/GardenBackdrop';
+import { CedarRidgeBackdrop } from '~/features/home/backdrop/CedarRidgeBackdrop';
 import { SceneHudControls } from '~/features/home/backdrop/SceneHudControls';
 import { useDioramaStage } from '~/features/home/backdrop/useDioramaStage';
 import { PERSONALITY_QUESTION_COUNT } from '~/features/personality/personality-type-grid';
@@ -75,7 +75,7 @@ export function BuilderChatPanel({
     const posthog = usePostHog();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const hintId = useId();
-    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } =
+    const { atmosphere, paused, cycleAtmosphere, toggleMotion } =
         useDioramaStage(initialAtmosphere);
 
     const chat = useBuilderChat({
@@ -142,13 +142,11 @@ export function BuilderChatPanel({
             variant="hero"
             atmosphere={atmosphere}
             motionRole="reactive"
-            className="min-h-[calc(100dvh-3.875rem)] flex w-full flex-col text-voxel-ink"
+            className="build-stage-viewport flex w-full flex-col text-voxel-ink"
             backdrop={
-                <GardenBackdrop
+                <CedarRidgeBackdrop
                     atmosphere={atmosphere}
                     paused={paused}
-                    onPausedChange={setPaused}
-                    showControls={false}
                     className="h-full w-full"
                 />
             }
@@ -161,12 +159,12 @@ export function BuilderChatPanel({
                 />
             }
         >
-            <div className="flex flex-1 flex-col items-center justify-start gap-6 pb-16">
+            <div className="flex flex-1 flex-col items-center justify-start gap-[clamp(1rem,2.4vw,1.5rem)] pb-[clamp(0.75rem,4vw,4rem)]">
                 <h1 className="sr-only">Build a trading bot from one sentence</h1>
 
                 <div
                     data-testid="builder-stage-card"
-                    className="scene-scrim voxel-card flex w-full max-w-3xl flex-col gap-4 rounded-none p-6 min-w-0"
+                    className="scene-scrim voxel-card flex w-full max-w-3xl flex-col gap-[clamp(0.75rem,1.4vw,1rem)] rounded-none p-[clamp(1rem,2.2vw,1.5rem)] min-w-0"
                 >
                     <div
                         aria-hidden="true"

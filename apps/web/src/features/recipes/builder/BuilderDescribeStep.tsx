@@ -79,7 +79,7 @@ function BuilderStarterChips({
             <span className="text-xs font-normal text-voxel-muted">
                 Start with a template idea or write your own above:
             </span>
-            <div className="flex flex-wrap gap-2 min-w-0">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7.5rem),1fr))] gap-2 min-w-0">
                 {STARTER_IDEA_CHIPS.map((chip) => (
                     <Button
                         key={chip.label}
@@ -171,7 +171,7 @@ export function BuilderDescribeStep({
                             onKeyDown={handleTextareaKeyDown}
                             onFocus={onFocusTextarea}
                             maxLength={MAX_TURN_CHARS}
-                            className="w-full min-h-[4.5rem] max-h-60 resize-none overflow-y-auto bg-transparent text-xs font-normal leading-relaxed text-voxel-ink placeholder:text-voxel-muted focus:outline-none disabled:opacity-50"
+                            className="w-full min-h-[clamp(3.5rem,7vw,4.5rem)] max-h-60 resize-none overflow-y-auto bg-transparent text-xs font-normal leading-relaxed text-voxel-ink placeholder:text-voxel-muted focus:outline-none disabled:opacity-50"
                         />
                     </div>
                     <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">

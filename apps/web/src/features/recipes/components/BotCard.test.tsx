@@ -73,11 +73,11 @@ describe('BotCard', () => {
         routerMock.state.status = 'idle';
     });
 
-    it('shows a visible open affordance beside the bot name that links to the recipe workspace', () => {
+    it('shows a visible open affordance beside the bot name that links to the bot overview', () => {
         renderCard();
 
         const openLink = screen.getByTestId('bot-open-bot-1');
-        expect(openLink).toHaveAttribute('href', '/build?recipeId=bot-1');
+        expect(openLink).toHaveAttribute('href', '/recipes/bot-1');
         expect(openLink).toHaveTextContent('AI Capex Momentum');
         expect(
             screen.getByRole('link', { name: /AI Capex Momentum \(open recipe workspace\)/ }),

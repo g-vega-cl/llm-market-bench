@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { activateRecipeTurboFn } from '../api/recipes-quota-api';
 import type { LivePortfolioAndRuns } from '../types';
 import { RecipeLivePage } from './RecipeLivePage';
+
+const mockNavigate = vi.fn();
 
 function render(ui: React.ReactElement) {
     const queryClient = new QueryClient({
@@ -14,21 +16,78 @@ function render(ui: React.ReactElement) {
 
 vi.mock('../api/recipes-quota-api', () => ({
     activateRecipeTurboFn: vi.fn(),
+    fetchRecipeQuotaStatusFn: vi.fn(),
+    toggleLiveScheduleFn: vi.fn(),
+    switchLiveScheduleFn: vi.fn(),
+}));
+
+vi.mock('../api/recipes-api', () => ({
+    enqueueRecipeJobFn: vi.fn(),
+}));
+
+vi.mock('../api/recipes-studio-api', () => ({
+    submitWaitlistPledgeFn: vi.fn(),
+}));
+
+vi.mock('../api/fork-recipe', () => ({
+    forkRecipeFn: vi.fn(),
 }));
 
 vi.mock('@tanstack/react-router', () => ({
+    useNavigate: () => mockNavigate,
     Link: ({
         children,
         to,
+        params,
         search,
+        ...rest
     }: {
         children: React.ReactNode;
         to: string;
         params?: Record<string, string>;
         search?: Record<string, string>;
         className?: string;
-    }) => <a href={search?.recipeId ? `${to}?recipeId=${search.recipeId}` : to}>{children}</a>,
+    }) => {
+        let href = to;
+        if (params) {
+            for (const [k, v] of Object.entries(params)) {
+                href = href.replace(`$${k}`, v);
+            }
+        }
+        if (search?.recipeId) {
+            href = `${href}?recipeId=${search.recipeId}`;
+        }
+        return (
+            <a href={href} {...rest}>
+                {children}
+            </a>
+        );
+    },
 }));
+
+beforeAll(() => {
+    Object.defineProperty(window, 'matchMedia', {
+        writable: true,
+        value: vi.fn().mockImplementation((query: string) => ({
+            matches: true,
+            media: query,
+            onchange: null,
+            addListener: vi.fn(),
+            removeListener: vi.fn(),
+            addEventListener: vi.fn(),
+            removeEventListener: vi.fn(),
+            dispatchEvent: vi.fn(),
+        })),
+    });
+
+    if (typeof globalThis.ResizeObserver === 'undefined') {
+        globalThis.ResizeObserver = class ResizeObserver {
+            observe() {}
+            unobserve() {}
+            disconnect() {}
+        };
+    }
+});
 
 const initialData: LivePortfolioAndRuns = {
     portfolio: {
@@ -50,7 +109,6 @@ const initialData: LivePortfolioAndRuns = {
         trades: [],
     },
     recentLiveRuns: [
-        // Newest first, exactly as the loader orders them (created_at desc).
         {
             id: 'job-1',
             recipe_id: 'rec-1',
@@ -121,33 +179,38 @@ const initialData: LivePortfolioAndRuns = {
             completed_at: '2026-04-06T09:32:05Z',
         },
     ],
+    liveMeta: {
+        recipeName: 'Momentum Alpha',
+        isLive: true,
+        isOwner: true,
+        turboExpiresAt: null,
+        turboUsedToday: false,
+    },
 };
 
 describe('RecipeLivePage', () => {
-    it('renders empty state when no live state is available', () => {
-        render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+    it('renders empty state inside the living SceneStage header when no live state is available', () => {
+        const { container } = render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
 
-        expect(screen.getByRole('heading', { name: /Live Status/i })).toBeInTheDocument();
-        expect(screen.getByText(/Recipe ID: rec-1/i)).toBeInTheDocument();
+        expect(container.querySelector('section[data-slot="scene-stage"]')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Live Runs · rec-1/i);
         expect(screen.getByText(/No live runs yet/i)).toBeInTheDocument();
         expect(screen.queryByText(/Live Paper Portfolio/i)).not.toBeInTheDocument();
     });
 
-    it('renders live paper portfolio and the trace of the run being viewed', () => {
+    it('renders live paper portfolio, closed trades section, and the trace of the run being viewed', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        expect(screen.getByRole('heading', { name: /Live Status/i })).toBeInTheDocument();
+        expect(screen.getByRole('heading', { name: 'Momentum Alpha' })).toBeInTheDocument();
         expect(screen.getByText(/Live Paper Portfolio/i)).toBeInTheDocument();
-        expect(screen.getByText(/Cash Available/i)).toBeInTheDocument();
-        expect(screen.getByText(/Total Equity/i)).toBeInTheDocument();
+        expect(screen.getByText(/All Closed Live Trades/i)).toBeInTheDocument();
         expect(screen.getAllByText(/NVDA/i).length).toBeGreaterThan(0);
         expect(screen.getByText(/Live Run Traces/i)).toBeInTheDocument();
 
-        // Page 1 is the newest run, which is still queued; the trace lives on the older pages.
         fireEvent.click(screen.getByRole('button', { name: 'Older' }));
         fireEvent.click(screen.getByRole('button', { name: 'Older' }));
 
-        expect(screen.getByText(/LLM Call/i)).toBeInTheDocument();
+        expect(screen.getByText('LLM Call')).toBeInTheDocument();
         expect(screen.getByText(/Analyze NVDA at slot 1/i)).toBeInTheDocument();
         expect(screen.getAllByText(/BUY NVDA/i).length).toBeGreaterThan(0);
     });
@@ -155,13 +218,11 @@ describe('RecipeLivePage', () => {
     it('lands on the newest run and swaps the mounted trace when paging older', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        // The pill strip and its label are gone; the paginator names the page.
         expect(screen.queryByText(/Recent Live Turns/i)).not.toBeInTheDocument();
         expect(screen.getByRole('status')).toHaveTextContent('1 of 3');
 
-        // Page 1 is the newest job by created_at, and it has not produced a trace yet.
-        expect(screen.getByText('Apr 6 • 11:32 AM ET')).toBeInTheDocument();
-        expect(screen.getByText(/queued — no trace output yet/i)).toBeInTheDocument();
+        expect(screen.getByText(/Apr 6 • 11:32 AM ET/)).toBeInTheDocument();
+        expect(screen.getByText(/no trace output yet/i)).toBeInTheDocument();
         expect(screen.queryByText(/Analyze MSFT at slot 2/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/Analyze NVDA at slot 1/i)).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Newer' })).toHaveAttribute(
@@ -172,11 +233,9 @@ describe('RecipeLivePage', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Older' }));
 
         expect(screen.getByRole('status')).toHaveTextContent('2 of 3');
-        expect(screen.getByText('Apr 6 • 8:32 AM ET')).toBeInTheDocument();
+        expect(screen.getByText(/Apr 6 • 8:00 AM ET/)).toBeInTheDocument();
         expect(screen.getByText(/Analyze MSFT at slot 2/i)).toBeInTheDocument();
-        // The previous page's content is unmounted, not merely hidden.
-        expect(screen.queryByText(/queued — no trace output yet/i)).not.toBeInTheDocument();
-        expect(screen.queryByText('Apr 6 • 11:32 AM ET')).not.toBeInTheDocument();
+        expect(screen.queryByText(/no trace output yet/i)).not.toBeInTheDocument();
     });
 
     it('walks to the oldest run, names it in the trace header, and stops at the end', () => {
@@ -186,13 +245,11 @@ describe('RecipeLivePage', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Older' }));
 
         expect(screen.getByRole('status')).toHaveTextContent('3 of 3');
-        expect(screen.getByText('Apr 6 • 5:32 AM ET')).toBeInTheDocument();
-        // The daemon's raw slot label never reaches the DOM.
+        expect(screen.getByText(/Apr 6 • 5:30 AM ET/)).toBeInTheDocument();
         expect(screen.queryByText(/SLOT-LABEL-RAW/)).not.toBeInTheDocument();
         expect(screen.getByText(/Analyze NVDA at slot 1/i)).toBeInTheDocument();
         expect(screen.queryByText(/Analyze MSFT at slot 2/i)).not.toBeInTheDocument();
 
-        // Older is inert on the last page but stays focusable.
         const older = screen.getByRole('button', { name: 'Older' });
         expect(older).toHaveAttribute('aria-disabled', 'true');
         expect(older).not.toBeDisabled();
@@ -225,12 +282,20 @@ describe('RecipeLivePage', () => {
         expect(screen.getByText('LLM timeout')).toBeInTheDocument();
     });
 
-    it('links back to the builder with the active recipeId', () => {
+    it('links to Overview and Blueprint in the shared BotStageHeader sub-nav', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        expect(screen.getByRole('link', { name: /Edit Bot/i })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute(
             'href',
-            '/build?recipeId=rec-1',
+            '/recipes/rec-1',
+        );
+        expect(screen.getByRole('link', { name: 'Live Runs' })).toHaveAttribute(
+            'aria-current',
+            'page',
+        );
+        expect(screen.getByRole('link', { name: 'Blueprint' })).toHaveAttribute(
+            'href',
+            '/recipes/rec-1/edit',
         );
     });
 
@@ -293,21 +358,7 @@ describe('RecipeLivePage', () => {
                 enqueuedJobId: 'job-turbo-1',
             });
 
-            render(
-                <RecipeLivePage
-                    recipeId="rec-1"
-                    initialData={{
-                        ...initialData,
-                        liveMeta: {
-                            recipeName: 'Momentum',
-                            isLive: true,
-                            isOwner: true,
-                            turboExpiresAt: null,
-                            turboUsedToday: false,
-                        },
-                    }}
-                />,
-            );
+            render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
             fireEvent.click(screen.getByRole('button', { name: /Turbo \(5m x 1h\)/i }));
 
@@ -337,7 +388,7 @@ describe('RecipeLivePage', () => {
             );
 
             expect(screen.getByText('Live: PAUSED')).toBeInTheDocument();
-            expect(screen.getByText('Next run: Paused')).toBeInTheDocument();
+            expect(screen.getByText(/Next run: Paused/)).toBeInTheDocument();
             expect(screen.queryByText(/Live: ON/i)).not.toBeInTheDocument();
         });
 
@@ -345,124 +396,9 @@ describe('RecipeLivePage', () => {
             vi.useFakeTimers();
             vi.setSystemTime(new Date('2026-11-21T11:00:00-05:00'));
 
-            render(
-                <RecipeLivePage
-                    recipeId="rec-1"
-                    initialData={{
-                        ...initialData,
-                        liveMeta: {
-                            recipeName: 'Momentum',
-                            isLive: true,
-                            isOwner: true,
-                            turboExpiresAt: null,
-                            turboUsedToday: false,
-                        },
-                    }}
-                />,
-            );
-
-            expect(screen.getByRole('button', { name: /Turbo \(Market Closed\)/i })).toBeDisabled();
-        });
-    });
-
-    describe('Portfolio Equity & Benchmark Chart', () => {
-        const dataWithCurve: LivePortfolioAndRuns = {
-            ...initialData,
-            portfolio: {
-                ...initialData.portfolio,
-                equity_curve: [
-                    { time: '2026-11-14 09:30 ET', equity: 10000 },
-                    { time: '2026-11-18 15:30 ET', equity: 10500 },
-                ],
-            },
-        };
-
-        it('shows empty equity history message when equity_curve is empty', () => {
             render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-            expect(screen.getByText(/Portfolio Equity & Benchmark/i)).toBeInTheDocument();
-            expect(screen.getByText(/No equity history available yet/i)).toBeInTheDocument();
-        });
-
-        it('defaults to SPY benchmark comparison and allows switching to other benchmarks or None', async () => {
-            const benchmarkFetchFn = vi.fn(
-                async (
-                    tickers: string[],
-                ): Promise<Record<string, { date: string; price: number }[]>> => {
-                    if (tickers[0] === 'SPY') {
-                        return {
-                            SPY: [
-                                { date: '2026-11-14', price: 500 },
-                                { date: '2026-11-18', price: 510 },
-                            ],
-                        };
-                    }
-                    if (tickers[0] === 'QQQ') {
-                        return {
-                            QQQ: [
-                                { date: '2026-11-14', price: 400 },
-                                { date: '2026-11-18', price: 416 },
-                            ],
-                        };
-                    }
-                    return {};
-                },
-            );
-
-            render(
-                <RecipeLivePage
-                    recipeId="rec-1"
-                    initialData={dataWithCurve}
-                    benchmarkFetchFn={benchmarkFetchFn}
-                />,
-            );
-
-            await waitFor(() => {
-                expect(benchmarkFetchFn).toHaveBeenCalledWith(['SPY'], '2026-11-14', '2026-11-18');
-                expect(screen.getByText(/Performance vs Benchmark/i)).toBeInTheDocument();
-            });
-            expect(screen.getByText(/S&P 500:/i)).toBeInTheDocument();
-            expect(screen.getByText(/\+3\.00% outperformance/i)).toBeInTheDocument();
-
-            const select = screen.getByLabelText(/Benchmark/i);
-            fireEvent.change(select, { target: { value: 'QQQ' } });
-
-            await waitFor(() => {
-                expect(benchmarkFetchFn).toHaveBeenCalledWith(['QQQ'], '2026-11-14', '2026-11-18');
-                expect(screen.getByText(/Nasdaq 100:/i)).toBeInTheDocument();
-            });
-
-            fireEvent.change(select, { target: { value: '' } });
-            await waitFor(() => {
-                expect(screen.getByText(/Equity Curve/i)).toBeInTheDocument();
-                expect(screen.getByText('$10,500.00')).toBeInTheDocument();
-            });
-        });
-
-        it('shows Day 1 benchmark notice and skips benchmark fetch for single-day curves', () => {
-            const benchmarkFetchFn = vi.fn();
-            const singleDayData: LivePortfolioAndRuns = {
-                ...initialData,
-                portfolio: {
-                    ...initialData.portfolio,
-                    equity_curve: [
-                        { time: '2026-11-24 09:30 ET', equity: 10000 },
-                        { time: '2026-11-24 14:30 ET', equity: 10150 },
-                    ],
-                },
-            };
-
-            render(
-                <RecipeLivePage
-                    recipeId="rec-1"
-                    initialData={singleDayData}
-                    benchmarkFetchFn={benchmarkFetchFn}
-                />,
-            );
-
-            expect(screen.getByText(/Benchmark comparison begins on Day 2/i)).toBeInTheDocument();
-            expect(benchmarkFetchFn).not.toHaveBeenCalled();
-            expect(screen.getByText('$10,150.00')).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: /Turbo \(Market Closed\)/i })).toBeDisabled();
         });
     });
 });

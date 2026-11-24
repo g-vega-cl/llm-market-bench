@@ -1,29 +1,30 @@
-import { Badge, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { Link } from '@tanstack/react-router';
-import { useEffect, useMemo, useState } from 'react';
 import {
-    type BenchmarkDataPoint,
-    BenchmarkSelector,
-    getBenchmarkHistoryFn,
-    PerformanceChart,
-    usePortfolioBenchmark,
-} from '~/features/portfolios';
+    type AtmospherePhase,
+    Badge,
+    Card,
+    PageLayout,
+    SectionHeading,
+} from '@llm-market-bench/ui-design-system';
+import { useState } from 'react';
+import { formatEasternDateTime } from '~/utils/date';
 import { activateRecipeTurboFn } from '../api/recipes-quota-api';
-import { LiveRunTracesCard } from '../components/LiveRunTracesCard';
+import { BotStageHeader } from '../components/BotStageHeader';
+import { ClosedTradesSection } from '../components/ClosedTradesSection';
 import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
-import { TurboButton } from '../components/TurboButton';
-import type { LivePortfolioSnapshot, LiveStatusMeta, RecipeJobRecord } from '../types';
-import { toLiveEquitySnapshots } from '../utils/live-studio-helpers';
-import { formatTurboRemainingLabel, getNextLiveSlotLabel } from '../utils/market-hours';
-
-type BenchmarkFetchFn = (
-    tickers: string[],
-    startDate: string,
-    endDate: string,
-) => Promise<Record<string, BenchmarkDataPoint[]>>;
-
-const defaultBenchmarkFetchFn: BenchmarkFetchFn = (tickers, startDate, endDate) =>
-    getBenchmarkHistoryFn({ data: { tickers, startDate, endDate } });
+import { RunPaginator } from '../components/RunPaginator';
+import { TraceInspectorBlock } from '../components/TraceInspectorBlock';
+import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
+import type {
+    LivePortfolioSnapshot,
+    LiveRunResult,
+    LiveStatusMeta,
+    RecipeCadence,
+    RecipeJobRecord,
+    RecipeSummaryItem,
+    RecipeUserQuotaStatus,
+} from '../types';
+import { extractLiveRunResult } from '../utils/recipe-insights';
+import { useBotHeaderActions } from '../utils/use-bot-header-actions';
 
 interface RecipeLivePageProps {
     recipeId: string;
@@ -32,155 +33,135 @@ interface RecipeLivePageProps {
         recentLiveRuns: RecipeJobRecord[];
         liveMeta?: LiveStatusMeta;
     } | null;
-    benchmarkFetchFn?: BenchmarkFetchFn;
+    cadence?: RecipeCadence;
+    initialAtmosphere?: AtmospherePhase;
+    initialQuota?: RecipeUserQuotaStatus | null;
+    initialUserRecipes?: RecipeSummaryItem[];
 }
 
-interface LiveStatusHeaderProps {
-    recipeId: string;
-    isLiveEnabled: boolean;
-    turboRemaining: string | null;
-    nextSlotLabel: string;
-    liveMeta?: LiveStatusMeta;
-    turboExpiresAt: string | null;
-    turboUsedToday: boolean;
-    isActivatingTurbo: boolean;
-    now: Date;
-    onActivateTurbo: () => void;
+/**
+ * Eastern-time stamp that names a run. The daemon's slot label is already in ET,
+ * but it reads as a raw ISO slice, so every surface formats `as_of_utc` instead
+ * and falls back to the job's `created_at` when a run never produced a result.
+ */
+function runStampLabel(job: RecipeJobRecord | undefined, run: LiveRunResult | null): string {
+    const iso = run?.as_of_utc ?? job?.created_at;
+    const stamp = formatEasternDateTime(iso);
+    if (stamp && stamp !== 'Unknown') return stamp;
+    return job?.id.slice(0, 8) ?? 'Unknown';
 }
 
-function LiveStatusHeader({
-    recipeId,
-    isLiveEnabled,
-    turboRemaining,
-    nextSlotLabel,
-    liveMeta,
-    turboExpiresAt,
-    turboUsedToday,
-    isActivatingTurbo,
-    now,
-    onActivateTurbo,
-}: LiveStatusHeaderProps) {
-    return (
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-4">
-            <div className="flex items-center gap-3">
-                <Link
-                    to="/build"
-                    search={{ recipeId }}
-                    className="voxel-btn inline-flex items-center gap-2 px-3 py-1.5 text-sm font-bold border border-voxel-bevel-hi bg-voxel-surface text-voxel-ink hover:bg-voxel-elevated rounded-none"
-                >
-                    ← Edit Bot
-                </Link>
-                <div>
-                    <h1 className="type-heading text-voxel-ink">Live Status</h1>
-                    <span className="type-body text-voxel-muted">
-                        Recipe ID: {recipeId.slice(0, 8)}
+function LiveRunTracesSection({
+    recentLiveRuns,
+    runPage,
+    onChangePage,
+}: {
+    recentLiveRuns: RecipeJobRecord[];
+    runPage: number;
+    onChangePage: (next: number) => void;
+}) {
+    if (recentLiveRuns.length === 0) {
+        return (
+            <Card padding="md" className="flex flex-col gap-2">
+                <SectionHeading>Live Run Traces</SectionHeading>
+                <div className="voxel-trough bg-voxel-trough p-4">
+                    <span className="text-xs font-normal text-voxel-muted">
+                        No live runs yet. The first scheduled run will execute at the next 30-minute
+                        market-hours ET slot (09:30–16:00 ET).
                     </span>
                 </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-                {!isLiveEnabled ? (
-                    <Badge variant="soft" colorScheme="neutral" size="sm">
-                        Live: PAUSED
-                    </Badge>
-                ) : turboRemaining ? (
-                    <Badge variant="solid" colorScheme="accent" size="sm" suppressHydrationWarning>
-                        Turbo: {turboRemaining} (5m)
-                    </Badge>
-                ) : (
-                    <Badge variant="soft" colorScheme="success" size="sm">
-                        Live: ON (30m)
-                    </Badge>
-                )}
-                <span className="type-body text-voxel-muted" suppressHydrationWarning>
-                    {!isLiveEnabled
-                        ? 'Next run: Paused'
-                        : `Next run: ${turboRemaining ? 'within 5m (Turbo)' : nextSlotLabel}`}
-                </span>
-                {liveMeta?.isOwner && liveMeta?.isLive && (
-                    <TurboButton
-                        turboExpiresAt={turboExpiresAt}
-                        turboUsedToday={turboUsedToday}
-                        isActivating={isActivatingTurbo}
-                        now={now}
-                        onActivate={onActivateTurbo}
-                    />
-                )}
-            </div>
-        </div>
-    );
-}
+            </Card>
+        );
+    }
 
-interface LiveEquityBenchmarkSectionProps {
-    equityCurve: { time: string; equity: number }[] | undefined;
-    benchmarkFetchFn: BenchmarkFetchFn;
-}
-
-function LiveEquityBenchmarkSection({
-    equityCurve,
-    benchmarkFetchFn,
-}: LiveEquityBenchmarkSectionProps) {
-    const equitySnapshots = useMemo(() => toLiveEquitySnapshots(equityCurve), [equityCurve]);
-    const rawStartDate = equitySnapshots[0]?.date.slice(0, 10) ?? '';
-    const rawEndDate = equitySnapshots[equitySnapshots.length - 1]?.date.slice(0, 10) ?? '';
-    const hasMultiDayHistory = Boolean(rawStartDate && rawEndDate && rawStartDate !== rawEndDate);
-
-    const {
-        selectedBenchmark,
-        onBenchmarkChange,
-        benchmarkData,
-        settledBenchmark,
-        pendingBenchmark,
-        benchmarkError,
-    } = usePortfolioBenchmark({
-        startDate: hasMultiDayHistory ? rawStartDate : '',
-        endDate: hasMultiDayHistory ? rawEndDate : '',
-        benchmarkFetchFn,
-        initialBenchmark: 'SPY',
-    });
+    const totalRuns = recentLiveRuns.length;
+    const runPageIndex = Math.min(runPage, totalRuns - 1);
+    const activeJob = recentLiveRuns[runPageIndex];
+    const activeRun = extractLiveRunResult(activeJob);
+    const activeStamp = runStampLabel(activeJob, activeRun);
 
     return (
-        <section className="flex flex-col gap-4 min-w-0">
-            <div className="flex flex-wrap items-center justify-between gap-4 w-full">
-                <SectionHeading>Portfolio Equity &amp; Benchmark</SectionHeading>
-                {hasMultiDayHistory && (
-                    <BenchmarkSelector selected={selectedBenchmark} onChange={onBenchmarkChange} />
-                )}
+        <Card padding="md" className="flex flex-col gap-4 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
+                <div className="flex flex-col gap-1 min-w-0">
+                    <SectionHeading>Live Run Traces</SectionHeading>
+                    <span className="text-xs font-normal text-voxel-muted">
+                        Runs independently on clvg.uk auto-go against your isolated $10,000 live
+                        paper ledger (every 30m during market hours 09:30–16:00 ET, or every 5m
+                        while Turbo is active).
+                    </span>
+                </div>
+                {activeRun ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Badge variant="soft" size="xs">
+                            {activeStamp}
+                        </Badge>
+                        <Badge variant="soft" colorScheme="accent" size="xs">
+                            {activeRun.signals.length} Signals
+                        </Badge>
+                    </div>
+                ) : null}
             </div>
-            {equitySnapshots.length > 0 ? (
-                <div className="flex flex-col gap-2 min-w-0">
-                    <PerformanceChart
-                        data={equitySnapshots}
-                        benchmarkData={benchmarkData}
-                        selectedBenchmark={settledBenchmark}
-                        pendingBenchmark={pendingBenchmark}
-                        benchmarkError={benchmarkError}
-                        showPercentage={Boolean(settledBenchmark)}
-                    />
-                    {!hasMultiDayHistory && (
-                        <p className="text-xs font-normal text-voxel-muted">
-                            Benchmark comparison begins on Day 2 once 2+ trading days of history are
-                            recorded.
-                        </p>
-                    )}
+
+            <RunPaginator
+                index={runPageIndex}
+                total={totalRuns}
+                onOlder={() => onChangePage(runPageIndex + 1)}
+                onNewer={() => onChangePage(Math.max(runPageIndex - 1, 0))}
+            />
+
+            {activeRun ? (
+                <div className="flex flex-col gap-4 min-w-0">
+                    {activeRun.stages.map((st) => (
+                        <div
+                            key={st.stage_id}
+                            className="voxel-trough bg-voxel-trough p-4 flex flex-col gap-3 min-w-0"
+                        >
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-voxel-bevel-lo pb-2">
+                                <span className="text-sm font-bold text-voxel-ink">LLM Call</span>
+                                <span className="text-xs font-normal font-mono text-voxel-muted">
+                                    {activeRun.signals.length > 0
+                                        ? activeRun.signals
+                                              .map((s) => `${s.action} ${s.ticker}`)
+                                              .join(', ')
+                                        : 'HOLD'}
+                                </span>
+                            </div>
+                            <TraceInspectorBlock
+                                prompt={st.prompt}
+                                trace={st.trace}
+                                toolCalls={st.tool_calls}
+                                fullOutput={st.output}
+                            />
+                        </div>
+                    ))}
                 </div>
             ) : (
-                <Card
-                    variant="outlined"
-                    padding="md"
-                    className="text-center text-voxel-muted text-xs font-normal"
-                >
-                    No equity history available yet. Equity checkpoints are recorded after each live
-                    turn.
-                </Card>
+                <div className="voxel-trough bg-voxel-trough p-4">
+                    <span className="text-xs font-normal text-voxel-muted">
+                        {activeStamp} ·{' '}
+                        {activeJob?.status === 'failed'
+                            ? 'failed — no trace output'
+                            : `no trace output yet (status: ${activeJob?.status ?? 'pending'}).`}
+                    </span>
+                    {activeJob?.error_message ? (
+                        <p className="text-xs font-normal text-danger break-words">
+                            {activeJob.error_message}
+                        </p>
+                    ) : null}
+                </div>
             )}
-        </section>
+        </Card>
     );
 }
 
 export function RecipeLivePage({
     recipeId,
     initialData,
-    benchmarkFetchFn = defaultBenchmarkFetchFn,
+    cadence = '3h',
+    initialAtmosphere,
+    initialQuota = null,
+    initialUserRecipes = [],
 }: RecipeLivePageProps) {
     const [runPage, setRunPage] = useState(0);
     const [turboExpiresAt, setTurboExpiresAt] = useState<string | null>(
@@ -191,28 +172,20 @@ export function RecipeLivePage({
     );
     const [isActivatingTurbo, setIsActivatingTurbo] = useState(false);
     const [turboError, setTurboError] = useState<string | null>(null);
-    const [now, setNow] = useState<Date>(() => new Date());
-
-    useEffect(() => {
-        const timer = setInterval(() => setNow(new Date()), 15_000);
-        return () => clearInterval(timer);
-    }, []);
 
     const recentLiveRuns = initialData?.recentLiveRuns ?? [];
     const portfolio = initialData?.portfolio ?? null;
     const liveMeta = initialData?.liveMeta;
     const isLiveEnabled = liveMeta ? liveMeta.isLive : true;
 
-    const totalRuns = recentLiveRuns.length;
-    // Clamp: the list is fixed for the life of the page, but a stale index must
-    // never address a job that is not there.
-    const runPageIndex = totalRuns > 0 ? Math.min(runPage, totalRuns - 1) : 0;
-
-    const hasPortfolio = portfolio !== null;
-    const hasRuns = totalRuns > 0;
-
-    const nextSlotLabel = getNextLiveSlotLabel(now);
-    const turboRemaining = isLiveEnabled ? formatTurboRemainingLabel(turboExpiresAt, now) : null;
+    const actions = useBotHeaderActions({
+        recipeId,
+        recipeName: liveMeta?.recipeName || `Recipe ${recipeId.slice(0, 8)}`,
+        cadence: liveMeta?.cadence ?? cadence,
+        initialIsLive: isLiveEnabled,
+        initialQuota,
+        initialUserRecipes,
+    });
 
     const handleActivateTurbo = async () => {
         if (isActivatingTurbo) return;
@@ -229,65 +202,78 @@ export function RecipeLivePage({
         }
     };
 
+    const isOwner = liveMeta?.isOwner ?? false;
+    const conflictingLiveRecipe =
+        actions.liveControl.state.kind === 'confirming' ||
+        actions.liveControl.state.kind === 'switching'
+            ? actions.liveControl.state.conflicting
+            : null;
+
     return (
-        <PageLayout>
-            <div className="flex flex-col gap-6">
-                <LiveStatusHeader
-                    recipeId={recipeId}
-                    isLiveEnabled={isLiveEnabled}
-                    turboRemaining={turboRemaining}
-                    nextSlotLabel={nextSlotLabel}
-                    liveMeta={liveMeta}
-                    turboExpiresAt={turboExpiresAt}
-                    turboUsedToday={turboUsedToday}
-                    isActivatingTurbo={isActivatingTurbo}
-                    now={now}
-                    onActivateTurbo={handleActivateTurbo}
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink flex flex-col">
+            <BotStageHeader
+                recipeId={recipeId}
+                recipeName={liveMeta?.recipeName || `Live Runs · ${recipeId.slice(0, 8)}`}
+                description={liveMeta?.description}
+                cadence={liveMeta?.cadence ?? cadence}
+                activeTab="live"
+                isOwner={isOwner}
+                isPublic={liveMeta?.isPublic}
+                isTemplate={liveMeta?.isTemplate}
+                isLive={actions.isLive}
+                turboExpiresAt={turboExpiresAt}
+                turboUsedToday={turboUsedToday}
+                initialAtmosphere={initialAtmosphere}
+                quotaStatus={actions.quotaStatus}
+                isRunningBacktest={actions.isRunningBacktest}
+                isTogglingLive={actions.liveControl.isBusy}
+                isActivatingTurbo={isActivatingTurbo}
+                isForking={actions.isForking}
+                backtestError={actions.backtestError}
+                scheduleError={actions.liveControl.scheduleError}
+                forkError={actions.forkError}
+                turboError={turboError}
+                conflictingLiveRecipe={conflictingLiveRecipe}
+                isSwitchingLive={actions.liveControl.state.kind === 'switching'}
+                onBacktest={isOwner ? actions.handleBacktest : undefined}
+                onToggleLive={isOwner ? actions.handleToggleLive : undefined}
+                onConfirmLiveSwitch={actions.handleConfirmSwitch}
+                onCancelLiveSwitch={actions.liveControl.cancelSwitch}
+                onActivateTurbo={isOwner ? handleActivateTurbo : undefined}
+                onFork={!isOwner ? actions.handleFork : undefined}
+                onRequestCapacity={() => actions.setShowPledgeModal(true)}
+            />
+
+            <PageLayout maxWidth="xl" className="flex flex-col gap-6">
+                <LiveRunTracesSection
+                    recentLiveRuns={recentLiveRuns}
+                    runPage={runPage}
+                    onChangePage={setRunPage}
                 />
 
-                {turboError && (
-                    <div
-                        role="alert"
-                        className="border border-danger bg-voxel-surface p-3 text-xs font-normal text-danger rounded-none"
-                    >
-                        {turboError}
-                    </div>
-                )}
+                {portfolio ? (
+                    <Card padding="md" className="flex flex-col gap-6 min-w-0">
+                        <RecipePortfolioBlock
+                            title="Live Paper Portfolio"
+                            cash={portfolio.cash}
+                            totalEquity={portfolio.total_equity}
+                            openPositions={portfolio.open_positions}
+                            embedded
+                        />
+                        <ClosedTradesSection
+                            title="All Closed Live Trades"
+                            trades={portfolio.trades}
+                            emptyMessage="No closed live trades recorded yet."
+                        />
+                    </Card>
+                ) : null}
 
-                {hasPortfolio && (
-                    <RecipePortfolioBlock
-                        title="Live Paper Portfolio"
-                        cash={portfolio.cash}
-                        totalEquity={portfolio.total_equity}
-                        openPositions={portfolio.open_positions}
-                    />
-                )}
-
-                {hasPortfolio && (
-                    <LiveEquityBenchmarkSection
-                        equityCurve={portfolio.equity_curve}
-                        benchmarkFetchFn={benchmarkFetchFn}
-                    />
-                )}
-
-                {hasRuns && (
-                    <LiveRunTracesCard
-                        runs={recentLiveRuns}
-                        pageIndex={runPageIndex}
-                        onOlder={() => setRunPage(Math.min(runPageIndex + 1, totalRuns - 1))}
-                        onNewer={() => setRunPage(Math.max(runPageIndex - 1, 0))}
-                    />
-                )}
-
-                {!hasPortfolio && !hasRuns && (
-                    <div className="voxel-trough bg-voxel-trough p-6 text-center">
-                        <span className="text-xs font-normal text-voxel-muted">
-                            No live runs yet. The first scheduled run will execute at the next
-                            30-minute market-hours ET slot (09:30–16:00 ET).
-                        </span>
-                    </div>
-                )}
-            </div>
-        </PageLayout>
+                <WaitlistPledgeModal
+                    isOpen={actions.showPledgeModal}
+                    onClose={() => actions.setShowPledgeModal(false)}
+                    onSubmit={actions.handlePledgeSubmit}
+                />
+            </PageLayout>
+        </div>
     );
 }

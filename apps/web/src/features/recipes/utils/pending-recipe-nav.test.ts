@@ -9,6 +9,16 @@ describe('pendingRecipeTarget', () => {
         ).toBeNull();
     });
 
+    it('reports a workspace navigation from /recipes/$recipeId and /recipes/$recipeId/edit', () => {
+        expect(pendingRecipeTarget('pending', { pathname: '/recipes/bot-2', search: {} })).toEqual({
+            recipeId: 'bot-2',
+            destination: 'workspace',
+        });
+        expect(
+            pendingRecipeTarget('pending', { pathname: '/recipes/bot-2/edit', search: {} }),
+        ).toEqual({ recipeId: 'bot-2', destination: 'workspace' });
+    });
+
     it('reports a workspace navigation from the pending /build search object', () => {
         expect(
             pendingRecipeTarget('pending', { pathname: '/build', search: { recipeId: 'bot-2' } }),

@@ -381,12 +381,235 @@
         min-height: 20rem;
     }
 
-    .scene-stage-hero.home-hero-viewport {
+    .scene-stage-hero.home-hero-viewport,
+    .scene-stage-hero.build-stage-viewport {
         min-height: calc(100dvh - 3.875rem);
+    }
+
+    /* The build workbench trades stage padding for world: on a phone the card
+       owns the viewport, so the stage gives back its 48px top/bottom inset and
+       the ridge band stays on screen below the card. */
+    .scene-stage-hero.build-stage-viewport {
+        padding-block: clamp(0.75rem, 3vw, 3rem) clamp(1.5rem, 6vh, 3rem);
     }
 
     .scene-stage-footer {
         min-height: 11rem;
+    }
+
+    /* Cedar Ridge backdrop: per-atmosphere exposure, so the same silhouettes
+       read as pre-dawn, midday, golden hour and night without a second scene. */
+    .cedar-ridge .cr-stars {
+        opacity: 0.65;
+        transition: opacity 600ms ease-in-out;
+    }
+
+    .cedar-ridge .cr-celestial {
+        transition: transform 600ms ease-in-out;
+    }
+
+    .cedar-ridge[data-atmosphere='dawn'] .cr-stars {
+        opacity: 0.35;
+    }
+
+    .cedar-ridge[data-atmosphere='daylight'] .cr-stars {
+        opacity: 0;
+    }
+
+    .cedar-ridge[data-atmosphere='after-hours'] .cr-stars {
+        opacity: 1;
+    }
+
+    .cedar-ridge[data-atmosphere='after-hours'] .cr-celestial {
+        transform: translate3d(0, -2.625rem, 0);
+    }
+
+    .cedar-ridge[data-atmosphere='daylight'] .cr-celestial {
+        transform: translate3d(0, -4.5rem, 0);
+    }
+
+    .cedar-ridge .cr-ground {
+        background-image: radial-gradient(rgba(63, 87, 74, 0.28) 1px, transparent 1px);
+        background-size: 24px 24px;
+    }
+
+    /* Cedar Ridge drift: one transform per plane, all reading the same pointer
+       sample. `useCedarRidgeDrift` writes --cr-px/--cr-py on the root; each
+       plane scales them by its own --cr-depth. */
+    .cedar-ridge .cr-layer {
+        transform: translate3d(
+            calc(var(--cr-px, 0) * var(--cr-depth, 0) * 1px),
+            calc(var(--cr-py, 0) * var(--cr-depth, 0) * 1px),
+            0
+        );
+        transition: transform 180ms cubic-bezier(0.2, 0, 0, 1);
+        will-change: transform;
+    }
+
+    @keyframes cr-drift {
+        from {
+            transform: translate3d(-30vw, 0, 0);
+        }
+        to {
+            transform: translate3d(115vw, 0, 0);
+        }
+    }
+
+    @keyframes cr-glide {
+        0% {
+            transform: translate3d(-10vw, 0, 0);
+            opacity: 0;
+        }
+        8%,
+        92% {
+            opacity: 0.65;
+        }
+        100% {
+            transform: translate3d(105vw, -22px, 0);
+            opacity: 0;
+        }
+    }
+
+    @keyframes cr-patrol-bot {
+        0% {
+            transform: translate3d(4vw, 0, 0) scaleX(1);
+        }
+        46% {
+            transform: translate3d(34vw, 0, 0) scaleX(1);
+        }
+        50% {
+            transform: translate3d(34vw, 0, 0) scaleX(-1);
+        }
+        96% {
+            transform: translate3d(4vw, 0, 0) scaleX(-1);
+        }
+        100% {
+            transform: translate3d(4vw, 0, 0) scaleX(1);
+        }
+    }
+
+    @keyframes cr-patrol-fox {
+        0% {
+            transform: translate3d(86vw, 0, 0) scaleX(-1);
+        }
+        46% {
+            transform: translate3d(58vw, 0, 0) scaleX(-1);
+        }
+        50% {
+            transform: translate3d(58vw, 0, 0) scaleX(1);
+        }
+        96% {
+            transform: translate3d(86vw, 0, 0) scaleX(1);
+        }
+        100% {
+            transform: translate3d(86vw, 0, 0) scaleX(-1);
+        }
+    }
+
+    @keyframes cr-bob {
+        0%,
+        100% {
+            transform: translate3d(0, 0, 0);
+        }
+        50% {
+            transform: translate3d(0, -3px, 0);
+        }
+    }
+
+    @keyframes cr-twinkle {
+        0%,
+        100% {
+            opacity: 0.25;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+    @keyframes cr-firefly {
+        0%,
+        100% {
+            transform: translate3d(0, 0, 0);
+            opacity: 0.2;
+        }
+        40% {
+            transform: translate3d(14px, -22px, 0);
+            opacity: 0.95;
+        }
+        75% {
+            transform: translate3d(-10px, -36px, 0);
+            opacity: 0.5;
+        }
+    }
+
+    @keyframes cr-sway {
+        0%,
+        100% {
+            transform: skewX(0deg);
+        }
+        50% {
+            transform: skewX(4deg);
+        }
+    }
+
+    .cedar-ridge .cr-cloud-1 {
+        animation: cr-drift 96s linear infinite;
+        animation-delay: -30s;
+    }
+
+    .cedar-ridge .cr-cloud-2 {
+        animation: cr-drift 132s linear infinite;
+        animation-delay: -84s;
+    }
+
+    .cedar-ridge .cr-cloud-3 {
+        animation: cr-drift 168s linear infinite;
+        animation-delay: -120s;
+    }
+
+    .cedar-ridge .cr-bird {
+        animation: cr-glide 44s linear infinite;
+    }
+
+    .cedar-ridge .cr-bot {
+        animation: cr-patrol-bot 38s linear infinite;
+    }
+
+    .cedar-ridge .cr-fox {
+        animation: cr-patrol-fox 31s linear infinite;
+    }
+
+    .cedar-ridge .cr-star {
+        animation-name: cr-twinkle;
+        animation-duration: 4.6s;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+    }
+
+    .cedar-ridge .cr-firefly {
+        animation-name: cr-firefly;
+        animation-duration: 7.5s;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+    }
+
+    .cedar-ridge .cr-grass {
+        animation-name: cr-sway;
+        animation-duration: 3.8s;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+        transform-origin: bottom center;
+    }
+
+    .cedar-ridge .cr-bob {
+        animation-name: cr-bob;
+        animation-duration: 0.55s;
+        animation-timing-function: steps(2, end);
+        animation-iteration-count: infinite;
+    }
+
+    .cedar-ridge[data-paused='true'] * {
+        animation-play-state: paused;
     }
 
     @media (prefers-reduced-motion: reduce) {

@@ -5,13 +5,17 @@ import { hydrateMemoriesBlockText, hydrateNewsBlockText } from '../prompt-builde
 import type {
     CompletedTradeRecord,
     LivePortfolioAndRuns,
+    LivePortfolioSnapshot,
     LiveRunResult,
     OpenPositionRecord,
     PushStrategy,
     RecipeAlert,
+    RecipeCadence,
     RecipeJobRecord,
+    RecipeOverviewData,
 } from '../types';
 import { getEtDateString } from '../utils/market-hours';
+import { fetchRecipeBacktestHistory } from './recipe-jobs-api';
 
 export async function fetchRecipeAlerts(userId: string): Promise<RecipeAlert[]> {
     const db = getDbAdminClient();
@@ -239,70 +243,29 @@ async function collectLatestMarkPrices(
     return latestPrices;
 }
 
-export async function fetchLivePortfolioAndRuns(
-    recipeId: string,
-    userId: string,
-): Promise<LivePortfolioAndRuns> {
-    const db = getDbServerClient({ useServiceRole: true });
-    const { data: recipeRow, error: recipeErr } = await db
-        .from('strategy_recipes')
-        .select(
-            'id, user_id, name, is_live, turbo_expires_at, is_public, is_template, paper_cash, paper_positions, paper_trades, paper_equity_curve',
-        )
-        .eq('id', recipeId)
-        .single();
+interface RecipePortfolioRow {
+    id: string;
+    user_id: string;
+    name?: string | null;
+    description?: string | null;
+    cadence?: RecipeCadence | null;
+    is_live?: boolean | null;
+    turbo_expires_at?: string | null;
+    is_public: boolean;
+    is_template: boolean;
+    archived_at?: string | null;
+    graph_json?: PushStrategy | null;
+    paper_cash?: number | null;
+    paper_positions?: OpenPositionRecord[] | null;
+    paper_trades?: CompletedTradeRecord[] | null;
+    paper_equity_curve?: { time: string; equity: number }[] | null;
+}
 
-    if (recipeErr || !recipeRow) {
-        throw new Error(`Recipe not found: ${recipeId}`);
-    }
-
-    const row = recipeRow as {
-        id: string;
-        user_id: string;
-        name?: string | null;
-        is_live?: boolean | null;
-        turbo_expires_at?: string | null;
-        is_public: boolean;
-        is_template: boolean;
-        paper_cash?: number | null;
-        paper_positions?: OpenPositionRecord[] | null;
-        paper_trades?: CompletedTradeRecord[] | null;
-        paper_equity_curve?: { time: string; equity: number }[] | null;
-    };
-    const isOwner = row.user_id === userId;
-    if (!isOwner && !row.is_public && !row.is_template) {
-        throw new Error('Unauthorized: cannot view this recipe portfolio');
-    }
-
-    const [{ data: runRows }, quotaRes] = await Promise.all([
-        db
-            .from('recipe_execution_queue')
-            .select(
-                'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
-            )
-            .eq('recipe_id', recipeId)
-            .eq('user_id', row.user_id)
-            .eq('mode', 'live_turn')
-            .order('created_at', { ascending: false })
-            .limit(10),
-        isOwner
-            ? db
-                  .from('recipe_user_quotas')
-                  .select('last_turbo_et_date')
-                  .eq('user_id', userId)
-                  .limit(1)
-            : Promise.resolve({ data: [] as Array<{ last_turbo_et_date?: string | null }> }),
-    ]);
-
-    const todayEt = getEtDateString(new Date());
-    const quotaRow = Array.isArray(quotaRes.data) ? quotaRes.data[0] : null;
-    const turboUsedToday = Boolean(
-        isOwner &&
-            quotaRow &&
-            (quotaRow as { last_turbo_et_date?: string | null }).last_turbo_et_date === todayEt,
-    );
-
-    const recentLiveRuns = (runRows || []) as RecipeJobRecord[];
+async function buildLivePortfolioSnapshot(
+    db: ReturnType<typeof getDbServerClient>,
+    row: RecipePortfolioRow,
+    recentLiveRuns: RecipeJobRecord[],
+): Promise<LivePortfolioSnapshot> {
     const rawPositions = Array.isArray(row.paper_positions) ? row.paper_positions : [];
     const latestPrices = await collectLatestMarkPrices(db, rawPositions, recentLiveRuns);
 
@@ -314,22 +277,232 @@ export async function fetchLivePortfolioAndRuns(
     );
 
     return {
-        portfolio: {
-            cash: Number(cash.toFixed(2)),
-            total_equity: Number((cash + holdingsVal).toFixed(2)),
-            open_positions: openPositions,
-            trades: Array.isArray(row.paper_trades) ? row.paper_trades : [],
-            equity_curve: Array.isArray(row.paper_equity_curve) ? row.paper_equity_curve : [],
-        },
+        cash: Number(cash.toFixed(2)),
+        total_equity: Number((cash + holdingsVal).toFixed(2)),
+        open_positions: openPositions,
+        trades: Array.isArray(row.paper_trades) ? row.paper_trades : [],
+        equity_curve: Array.isArray(row.paper_equity_curve) ? row.paper_equity_curve : [],
+    };
+}
+
+async function readTurboUsedToday(
+    db: ReturnType<typeof getDbServerClient>,
+    userId: string | null,
+    isOwner: boolean,
+): Promise<boolean> {
+    if (!isOwner || !userId) return false;
+    const quotaRes = await db
+        .from('recipe_user_quotas')
+        .select('last_turbo_et_date')
+        .eq('user_id', userId)
+        .limit(1);
+    const todayEt = getEtDateString(new Date());
+    const quotaRow = Array.isArray(quotaRes.data) ? quotaRes.data[0] : null;
+    return Boolean(
+        quotaRow &&
+            (quotaRow as { last_turbo_et_date?: string | null }).last_turbo_et_date === todayEt,
+    );
+}
+
+const PUBLIC_CACHE_TTL_MS = 30_000;
+const PUBLIC_CACHE_MAX_ENTRIES = 50;
+
+const publicLiveCache = new Map<string, { expiresAt: number; value: LivePortfolioAndRuns }>();
+const publicOverviewCache = new Map<string, { expiresAt: number; value: RecipeOverviewData }>();
+
+export function clearPublicRecipeReadCaches(): void {
+    publicLiveCache.clear();
+    publicOverviewCache.clear();
+}
+
+export function invalidatePublicRecipeCache(recipeId: string): void {
+    if (!recipeId) return;
+    publicLiveCache.delete(recipeId);
+    publicOverviewCache.delete(recipeId);
+}
+
+function readBoundedCache<T>(
+    cache: Map<string, { expiresAt: number; value: T }>,
+    key: string,
+): T | null {
+    const entry = cache.get(key);
+    if (!entry) return null;
+    if (Date.now() > entry.expiresAt) {
+        cache.delete(key);
+        return null;
+    }
+    return entry.value;
+}
+
+function writeBoundedCache<T>(
+    cache: Map<string, { expiresAt: number; value: T }>,
+    key: string,
+    value: T,
+) {
+    cache.delete(key);
+    if (cache.size >= PUBLIC_CACHE_MAX_ENTRIES) {
+        const oldestKey = cache.keys().next().value;
+        if (oldestKey !== undefined) cache.delete(oldestKey);
+    }
+    cache.set(key, { expiresAt: Date.now() + PUBLIC_CACHE_TTL_MS, value });
+}
+
+function slimBacktestsForOverview(backtests: RecipeJobRecord[]): RecipeJobRecord[] {
+    let seenLatestCompleted = false;
+    return backtests.map((job) => {
+        if (
+            !job.result_json ||
+            ('mode' in job.result_json && job.result_json.mode === 'live_turn')
+        ) {
+            return job;
+        }
+        const res = job.result_json;
+        const isLatestCompleted = !seenLatestCompleted && job.status === 'completed';
+        if (isLatestCompleted) seenLatestCompleted = true;
+
+        return {
+            ...job,
+            result_json: isLatestCompleted
+                ? {
+                      ...res,
+                      day_steps: (res.day_steps ?? []).map((step) => ({
+                          ...step,
+                          prompt: undefined,
+                          trace: undefined,
+                          full_output: undefined,
+                      })),
+                  }
+                : {
+                      mode: 'backtest',
+                      window_dates: res.window_dates,
+                      total_return_pct_midpoint: res.total_return_pct_midpoint,
+                      total_return_pct_net: res.total_return_pct_net,
+                      total_trades: res.total_trades,
+                      win_rate_pct: res.win_rate_pct,
+                      max_drawdown_pct: res.max_drawdown_pct,
+                      equity_curve: [],
+                      trades: [],
+                  },
+        };
+    });
+}
+
+/**
+ * Strips heavy hydrated prompts and execution trace rounds from live_turn rows
+ * so Overview can analyze up to 50 recent turns without bloating SSR HTML.
+ */
+function slimLiveRunsForOverview(runs: RecipeJobRecord[]): RecipeJobRecord[] {
+    return runs.map((run) => {
+        if (
+            !run.result_json ||
+            !('mode' in run.result_json) ||
+            run.result_json.mode !== 'live_turn'
+        ) {
+            return run;
+        }
+        const live = run.result_json as LiveRunResult;
+        const rawNarrative = (live.final_output || live.stages?.[0]?.output || '').trim();
+        return {
+            ...run,
+            result_json: {
+                mode: 'live_turn',
+                as_of_utc: live.as_of_utc,
+                signals: live.signals ?? [],
+                final_output: rawNarrative.slice(0, 240),
+                stages: (live.stages ?? []).map((st) => ({
+                    stage_id: st.stage_id,
+                    prompt: '',
+                    output: '',
+                    tool_calls: st.tool_calls ?? [],
+                })),
+            },
+        };
+    });
+}
+
+function assertReadableRecipeRow(
+    recipeRow: unknown,
+    recipeErr: unknown,
+    recipeId: string,
+    userId: string | null,
+    unauthorizedMessage: string,
+): { row: RecipePortfolioRow; isOwner: boolean } {
+    if (recipeErr || !recipeRow) {
+        throw new Error(`Recipe not found: ${recipeId}`);
+    }
+    const row = recipeRow as RecipePortfolioRow;
+    const isOwner = Boolean(userId && row.user_id === userId);
+    if (!isOwner && !row.is_public && !row.is_template) {
+        throw new Error(unauthorizedMessage);
+    }
+    if (!isOwner && row.archived_at) {
+        throw new Error(`Recipe not found: ${recipeId}`);
+    }
+    return { row, isOwner };
+}
+
+export async function fetchLivePortfolioAndRuns(
+    recipeId: string,
+    userId: string | null,
+): Promise<LivePortfolioAndRuns> {
+    if (!userId) {
+        const cached = readBoundedCache(publicLiveCache, recipeId);
+        if (cached) return cached;
+    }
+
+    const db = getDbServerClient({ useServiceRole: true });
+    const { data: recipeRow, error: recipeErr } = await db
+        .from('strategy_recipes')
+        .select(
+            'id, user_id, name, description, cadence, is_live, turbo_expires_at, is_public, is_template, archived_at, paper_cash, paper_positions, paper_trades, paper_equity_curve',
+        )
+        .eq('id', recipeId)
+        .single();
+
+    const { row, isOwner } = assertReadableRecipeRow(
+        recipeRow,
+        recipeErr,
+        recipeId,
+        userId,
+        'Unauthorized: cannot view this recipe portfolio',
+    );
+
+    const [{ data: runRows }, turboUsedToday] = await Promise.all([
+        db
+            .from('recipe_execution_queue')
+            .select(
+                'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
+            )
+            .eq('recipe_id', recipeId)
+            .eq('user_id', row.user_id)
+            .eq('mode', 'live_turn')
+            .order('created_at', { ascending: false })
+            .limit(10),
+        readTurboUsedToday(db, userId, isOwner),
+    ]);
+
+    const recentLiveRuns = (runRows || []) as RecipeJobRecord[];
+    const portfolio = await buildLivePortfolioSnapshot(db, row, recentLiveRuns);
+
+    const result: LivePortfolioAndRuns = {
+        portfolio,
         recentLiveRuns,
         liveMeta: {
             recipeName: row.name ?? '',
+            description: row.description ?? '',
+            cadence: row.cadence ?? '3h',
             isLive: Boolean(row.is_live),
             isOwner,
+            isPublic: Boolean(row.is_public),
+            isTemplate: Boolean(row.is_template),
             turboExpiresAt: row.turbo_expires_at ?? null,
             turboUsedToday,
         },
     };
+    if (!isOwner) {
+        writeBoundedCache(publicLiveCache, recipeId, result);
+    }
+    return result;
 }
 
 export const fetchLivePortfolioAndRunsFn = createServerFn({ method: 'GET' })
@@ -339,6 +512,105 @@ export const fetchLivePortfolioAndRunsFn = createServerFn({ method: 'GET' })
         const {
             data: { user },
         } = await auth.auth.getUser();
-        if (!user?.id) throw new Error('Unauthorized: please sign in to inspect live portfolios');
-        return fetchLivePortfolioAndRuns(recipeId, user.id);
+        return fetchLivePortfolioAndRuns(recipeId, user?.id ?? null);
+    });
+
+function resolveReadableOverviewRow(
+    recipeRow: unknown,
+    recipeErr: unknown,
+    recipeId: string,
+    userId: string | null,
+): { row: RecipePortfolioRow; graph: PushStrategy; isOwner: boolean } {
+    const { row, isOwner } = assertReadableRecipeRow(
+        recipeRow,
+        recipeErr,
+        recipeId,
+        userId,
+        'Unauthorized: cannot view this recipe',
+    );
+    const graph = row.graph_json;
+    if (!graph || !Array.isArray(graph.stages) || graph.stages.length !== 1) {
+        throw new Error('Recipe has no runnable strategy graph');
+    }
+    return { row, graph, isOwner };
+}
+
+export async function fetchRecipeOverview(
+    recipeId: string,
+    userId: string | null,
+): Promise<RecipeOverviewData> {
+    if (!userId) {
+        const cached = readBoundedCache(publicOverviewCache, recipeId);
+        if (cached) return cached;
+    }
+
+    const db = getDbServerClient({ useServiceRole: true });
+    const { data: recipeRow, error: recipeErr } = await db
+        .from('strategy_recipes')
+        .select(
+            'id, user_id, name, description, cadence, is_public, is_template, is_live, turbo_expires_at, archived_at, graph_json, paper_cash, paper_positions, paper_trades, paper_equity_curve',
+        )
+        .eq('id', recipeId)
+        .single();
+
+    const { row, graph, isOwner } = resolveReadableOverviewRow(
+        recipeRow,
+        recipeErr,
+        recipeId,
+        userId,
+    );
+
+    const [{ data: runRows }, recentBacktests, turboUsedToday] = await Promise.all([
+        db
+            .from('recipe_execution_queue')
+            .select(
+                'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
+            )
+            .eq('recipe_id', recipeId)
+            .eq('user_id', row.user_id)
+            .eq('mode', 'live_turn')
+            .order('created_at', { ascending: false })
+            .limit(50),
+        fetchRecipeBacktestHistory(recipeId, row.user_id, 5).catch(() => []),
+        readTurboUsedToday(db, userId, isOwner),
+    ]);
+
+    const recentLiveRuns = (runRows || []) as RecipeJobRecord[];
+    const portfolio = await buildLivePortfolioSnapshot(db, row, recentLiveRuns);
+
+    const strategy: PushStrategy = {
+        ...graph,
+        id: isOwner ? row.id : undefined,
+        name: row.name || graph.name,
+        description: row.description ?? graph.description,
+        cadence: row.cadence || graph.cadence,
+    };
+
+    const overviewResult: RecipeOverviewData = {
+        recipeId: row.id,
+        strategy,
+        isOwner,
+        isPublic: Boolean(row.is_public),
+        isTemplate: Boolean(row.is_template),
+        isLive: Boolean(row.is_live),
+        turboExpiresAt: row.turbo_expires_at ?? null,
+        turboUsedToday,
+        portfolio,
+        recentLiveRuns: slimLiveRunsForOverview(recentLiveRuns),
+        recentBacktests: slimBacktestsForOverview(recentBacktests),
+    };
+    if (!isOwner) {
+        writeBoundedCache(publicOverviewCache, recipeId, overviewResult);
+    }
+    return overviewResult;
+}
+
+export const fetchRecipeOverviewFn = createServerFn({ method: 'GET' })
+    .validator((d: { recipeId: string }) => d)
+    .handler(async ({ data: { recipeId } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        return fetchRecipeOverview(recipeId, user?.id ?? null);
     });

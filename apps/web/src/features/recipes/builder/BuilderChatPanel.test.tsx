@@ -86,7 +86,7 @@ beforeEach(() => {
 });
 
 describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment Card)', () => {
-    it('renders on SceneStage with GardenBackdrop, starter chips, 3-step stepper, and sr-only h1', () => {
+    it('renders on SceneStage with CedarRidgeBackdrop, starter chips, 3-step stepper, and sr-only h1', () => {
         const { container } = renderWithQuery(
             <BuilderChatPanel userId="user-1" initialAtmosphere="dusk" />,
         );
@@ -94,7 +94,10 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
         const stage = container.querySelector('section[data-slot="scene-stage"]');
         expect(stage).toBeInTheDocument();
         expect(stage).toHaveAttribute('data-atmosphere', 'dusk');
-        expect(screen.getByTestId('garden-backdrop')).toBeInTheDocument();
+        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute(
+            'data-atmosphere',
+            'dusk',
+        );
 
         const starterChips = screen.getByTestId('builder-starter-chips');
         expect(starterChips).toBeInTheDocument();

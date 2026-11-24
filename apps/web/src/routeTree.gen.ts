@@ -51,8 +51,10 @@ import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as RecipesIndexRouteImport } from './routes/recipes/index'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 import { Route as PersonalityTCodeRouteImport } from './routes/personality.t.$code'
+import { Route as RecipesRecipeIdIndexRouteImport } from './routes/recipes/$recipeId/index'
+import { Route as RecipesLiveRecipeIdRouteImport } from './routes/recipes/live/$recipeId'
+import { Route as AuthedRecipesRecipeIdEditRouteImport } from './routes/_authed/recipes/$recipeId/edit'
 import { Route as AuthedRecipesBacktestJobIdRouteImport } from './routes/_authed/recipes/backtest/$jobId'
-import { Route as AuthedRecipesLiveRecipeIdRouteImport } from './routes/_authed/recipes/live/$recipeId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -264,16 +266,26 @@ const PersonalityTCodeRoute = PersonalityTCodeRouteImport.update({
   path: '/t/$code',
   getParentRoute: () => PersonalityRoute,
 } as any)
+const RecipesRecipeIdIndexRoute = RecipesRecipeIdIndexRouteImport.update({
+  id: '/recipes/$recipeId/',
+  path: '/recipes/$recipeId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecipesLiveRecipeIdRoute = RecipesLiveRecipeIdRouteImport.update({
+  id: '/recipes/live/$recipeId',
+  path: '/recipes/live/$recipeId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthedRecipesRecipeIdEditRoute =
+  AuthedRecipesRecipeIdEditRouteImport.update({
+    id: '/recipes/$recipeId/edit',
+    path: '/recipes/$recipeId/edit',
+    getParentRoute: () => AuthedRoute,
+  } as any)
 const AuthedRecipesBacktestJobIdRoute =
   AuthedRecipesBacktestJobIdRouteImport.update({
     id: '/recipes/backtest/$jobId',
     path: '/recipes/backtest/$jobId',
-    getParentRoute: () => AuthedRoute,
-  } as any)
-const AuthedRecipesLiveRecipeIdRoute =
-  AuthedRecipesLiveRecipeIdRouteImport.update({
-    id: '/recipes/live/$recipeId',
-    path: '/recipes/live/$recipeId',
     getParentRoute: () => AuthedRoute,
   } as any)
 
@@ -319,8 +331,10 @@ export interface FileRoutesByFullPath {
   '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
+  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRoute
+  '/recipes/$recipeId/': typeof RecipesRecipeIdIndexRoute
+  '/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
-  '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -363,8 +377,10 @@ export interface FileRoutesByTo {
   '/recipes': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
+  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRoute
+  '/recipes/$recipeId': typeof RecipesRecipeIdIndexRoute
+  '/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
-  '/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -410,8 +426,10 @@ export interface FileRoutesById {
   '/recipes/': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
+  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRoute
+  '/recipes/$recipeId/': typeof RecipesRecipeIdIndexRoute
+  '/_authed/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
   '/_authed/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
-  '/_authed/recipes/live/$recipeId': typeof AuthedRecipesLiveRecipeIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -457,8 +475,10 @@ export interface FileRouteTypes {
     | '/recipes/'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
-    | '/recipes/backtest/$jobId'
     | '/recipes/live/$recipeId'
+    | '/recipes/$recipeId/'
+    | '/recipes/$recipeId/edit'
+    | '/recipes/backtest/$jobId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -501,8 +521,10 @@ export interface FileRouteTypes {
     | '/recipes'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
-    | '/recipes/backtest/$jobId'
     | '/recipes/live/$recipeId'
+    | '/recipes/$recipeId'
+    | '/recipes/$recipeId/edit'
+    | '/recipes/backtest/$jobId'
   id:
     | '__root__'
     | '/'
@@ -547,8 +569,10 @@ export interface FileRouteTypes {
     | '/recipes/'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
+    | '/recipes/live/$recipeId'
+    | '/recipes/$recipeId/'
+    | '/_authed/recipes/$recipeId/edit'
     | '/_authed/recipes/backtest/$jobId'
-    | '/_authed/recipes/live/$recipeId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -589,6 +613,8 @@ export interface RootRouteChildren {
   ReasoningIndexRoute: typeof ReasoningIndexRoute
   RecipesIndexRoute: typeof RecipesIndexRoute
   MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute
+  RecipesLiveRecipeIdRoute: typeof RecipesLiveRecipeIdRoute
+  RecipesRecipeIdIndexRoute: typeof RecipesRecipeIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -887,6 +913,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PersonalityTCodeRouteImport
       parentRoute: typeof PersonalityRoute
     }
+    '/recipes/$recipeId/': {
+      id: '/recipes/$recipeId/'
+      path: '/recipes/$recipeId'
+      fullPath: '/recipes/$recipeId/'
+      preLoaderRoute: typeof RecipesRecipeIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/recipes/live/$recipeId': {
+      id: '/recipes/live/$recipeId'
+      path: '/recipes/live/$recipeId'
+      fullPath: '/recipes/live/$recipeId'
+      preLoaderRoute: typeof RecipesLiveRecipeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authed/recipes/$recipeId/edit': {
+      id: '/_authed/recipes/$recipeId/edit'
+      path: '/recipes/$recipeId/edit'
+      fullPath: '/recipes/$recipeId/edit'
+      preLoaderRoute: typeof AuthedRecipesRecipeIdEditRouteImport
+      parentRoute: typeof AuthedRoute
+    }
     '/_authed/recipes/backtest/$jobId': {
       id: '/_authed/recipes/backtest/$jobId'
       path: '/recipes/backtest/$jobId'
@@ -894,26 +941,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthedRecipesBacktestJobIdRouteImport
       parentRoute: typeof AuthedRoute
     }
-    '/_authed/recipes/live/$recipeId': {
-      id: '/_authed/recipes/live/$recipeId'
-      path: '/recipes/live/$recipeId'
-      fullPath: '/recipes/live/$recipeId'
-      preLoaderRoute: typeof AuthedRecipesLiveRecipeIdRouteImport
-      parentRoute: typeof AuthedRoute
-    }
   }
 }
 
 interface AuthedRouteChildren {
   AuthedProfileRoute: typeof AuthedProfileRoute
+  AuthedRecipesRecipeIdEditRoute: typeof AuthedRecipesRecipeIdEditRoute
   AuthedRecipesBacktestJobIdRoute: typeof AuthedRecipesBacktestJobIdRoute
-  AuthedRecipesLiveRecipeIdRoute: typeof AuthedRecipesLiveRecipeIdRoute
 }
 
 const AuthedRouteChildren: AuthedRouteChildren = {
   AuthedProfileRoute: AuthedProfileRoute,
+  AuthedRecipesRecipeIdEditRoute: AuthedRecipesRecipeIdEditRoute,
   AuthedRecipesBacktestJobIdRoute: AuthedRecipesBacktestJobIdRoute,
-  AuthedRecipesLiveRecipeIdRoute: AuthedRecipesLiveRecipeIdRoute,
 }
 
 const AuthedRouteWithChildren =
@@ -993,6 +1033,8 @@ const rootRouteChildren: RootRouteChildren = {
   ReasoningIndexRoute: ReasoningIndexRoute,
   RecipesIndexRoute: RecipesIndexRoute,
   MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
+  RecipesLiveRecipeIdRoute: RecipesLiveRecipeIdRoute,
+  RecipesRecipeIdIndexRoute: RecipesRecipeIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

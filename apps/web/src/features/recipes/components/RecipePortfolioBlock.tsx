@@ -18,6 +18,7 @@ interface RecipePortfolioBlockProps {
     totalEquity: number;
     openPositions: OpenPositionRecord[];
     maxOpenTrades?: number;
+    embedded?: boolean;
 }
 
 function formatDollar(value: number): string {
@@ -50,6 +51,7 @@ export function RecipePortfolioBlock({
     totalEquity,
     openPositions,
     maxOpenTrades = 4,
+    embedded = false,
 }: RecipePortfolioBlockProps) {
     const investedValue = openPositions.reduce(
         (sum, pos) =>
@@ -58,8 +60,8 @@ export function RecipePortfolioBlock({
         0,
     );
 
-    return (
-        <Card padding="md" className="flex flex-col gap-4 min-w-0">
+    const content = (
+        <div className="flex flex-col gap-4 min-w-0">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
                 <SectionHeading>{title}</SectionHeading>
                 <div className="flex flex-wrap items-center gap-2">
@@ -72,34 +74,38 @@ export function RecipePortfolioBlock({
                 </div>
             </div>
 
-            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-4">
-                <MetricTile
-                    label="Cash Available"
-                    value={<span className="font-mono tabular-nums">{formatDollar(cash)}</span>}
-                />
-                <MetricTile
-                    label="Open Market Value"
-                    value={
-                        <span className="font-mono tabular-nums">
-                            {formatDollar(investedValue)}
-                        </span>
-                    }
-                />
-                <MetricTile
-                    label="Total Equity"
-                    value={
-                        <span className="font-mono tabular-nums">{formatDollar(totalEquity)}</span>
-                    }
-                />
-                <MetricTile
-                    label="Open Positions"
-                    value={
-                        <span className="font-mono tabular-nums">
-                            {openPositions.length} / {maxOpenTrades}
-                        </span>
-                    }
-                />
-            </div>
+            {!embedded ? (
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-4">
+                    <MetricTile
+                        label="Cash Available"
+                        value={<span className="font-mono tabular-nums">{formatDollar(cash)}</span>}
+                    />
+                    <MetricTile
+                        label="Open Market Value"
+                        value={
+                            <span className="font-mono tabular-nums">
+                                {formatDollar(investedValue)}
+                            </span>
+                        }
+                    />
+                    <MetricTile
+                        label="Total Equity"
+                        value={
+                            <span className="font-mono tabular-nums">
+                                {formatDollar(totalEquity)}
+                            </span>
+                        }
+                    />
+                    <MetricTile
+                        label="Open Positions"
+                        value={
+                            <span className="font-mono tabular-nums">
+                                {openPositions.length} / {maxOpenTrades}
+                            </span>
+                        }
+                    />
+                </div>
+            ) : null}
 
             {openPositions.length === 0 ? (
                 <div className="voxel-trough bg-voxel-trough p-4">
@@ -164,6 +170,14 @@ export function RecipePortfolioBlock({
                     </TableBody>
                 </Table>
             )}
+        </div>
+    );
+
+    if (embedded) return content;
+
+    return (
+        <Card padding="md" className="flex flex-col gap-4 min-w-0">
+            {content}
         </Card>
     );
 }

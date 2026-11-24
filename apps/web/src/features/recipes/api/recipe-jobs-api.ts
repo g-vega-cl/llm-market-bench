@@ -180,6 +180,27 @@ export async function fetchRecentBacktestJobs(
     return (data || []) as RecipeJobRecord[];
 }
 
+export async function fetchRecipeBacktestHistory(
+    recipeId: string,
+    ownerUserId: string,
+    limit = 5,
+): Promise<RecipeJobRecord[]> {
+    const db = getDbServerClient({ useServiceRole: true });
+    const { data, error } = await db
+        .from('recipe_execution_queue')
+        .select(
+            'id, recipe_id, mode, status, progress_pct, provider, model, result_json, error_message, created_at, started_at, completed_at',
+        )
+        .eq('recipe_id', recipeId)
+        .eq('user_id', ownerUserId)
+        .eq('mode', 'backtest')
+        .order('created_at', { ascending: false })
+        .limit(limit);
+
+    if (error) throw new Error(error.message);
+    return (data || []) as RecipeJobRecord[];
+}
+
 export const fetchRecentBacktestJobsFn = createServerFn({ method: 'GET' }).handler(async () => {
     const auth = getAuthServerClient();
     const {

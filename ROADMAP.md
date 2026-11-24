@@ -6,6 +6,22 @@ A living document of features and improvements in progress or planned for the pl
 
 ## ⚡ Horizon 1: Immediate Focus (Now)
 
+### Infrastructure & Operations (needs a human)
+
+Full detail and commands in [[entities/open-operations-followups]].
+
+- [ ] - **Reset the MiniPC sudo password** — `cv-minipc`'s password is not the one in the local note; three attempts fail. Needs a hypervisor console (`rw init=/bin/bash` → `passwd cv-minipc`).
+- [ ] - **Rotate the credentials pasted into a chat log** — MiniPC sudo password plus the second value in that note. Move both into a password manager.
+- [ ] - **Upgrade cloudflared on the MiniPC** — fedora is on 2026.11.2, minipc still 2026.10.4. `deb` staged at `/tmp/cloudflared.deb`; one host at a time, verify four tunnel connections after each.
+- [ ] - **Fix Tailscale SSH check-mode** — an expiring browser check blocks `deploy_secondary.sh` and silently stalls the auto-deploy watcher's MiniPC step.
+- [ ] - **Decide the fate of `/strata/`** — routes to `172.17.0.1:8080`, nothing listens, so it answers 502 and hides real upstream errors.
+- [ ] - **Close the Strata gap in failover** — `nginx.secondary.conf` has no `/strata/` location and three secondary compose services hardcode `STRATA_BASE_URL=http://primary-workstation:3001`.
+- [ ] - **Add a replication-lag gate before promotion** — `promote_to_primary.sh` promotes without checking `pg_stat_wal_receiver`, so a stalled standby would be promoted silently.
+- [ ] - **Lock the deployers** — only the rebind helper takes a `flock`; `deploy_web.sh`, `deploy_secondary.sh` and `promote_to_primary.sh` can still interleave.
+- [ ] - **Assert mount source, not just bytes** — byte-identical repo and deploy-repo configs let a rebuild re-point the mount with no drift detected.
+- [ ] - **Guard `promote_to_primary.sh` against the wrong host** — run on the workstation it rewrites the local standby config and writes a local sentinel.
+- [ ] - **Review the seven files left dirty by another session** — `apps/engine/recipes/`, `apps/free_llm_proxy/`, `apps/web/src/features/recipes/builder/`.
+
 ### Autoresearch & Prompt Evolution (Local Loop)
 
 - [x] - Set up a local auto researcher with Qwen, Strata, and Jev. Evaluated across 10-batch (300 iterations) tournament on 2-year multi-regime dataset (507 days, 106 weeks). Revealed that unconstrained open-to-close daily direction caps at ~52% due to random walk noise and selectivity subsidy trap. Post-mortem documented at [[concepts/daily-directional-predictability-limits]].

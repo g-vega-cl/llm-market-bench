@@ -77,8 +77,10 @@ A single pure module shared by the studio, the live status page, and the quota A
 | `canActivateTurboEt(now)` | Same gates but `< 15:55` ET (five minutes of runway before the close). |
 | `computeTurboExpiryIso(now)` | `min(now + 1h, today 16:00 ET)` as a UTC ISO string. |
 | `isTurboActive(expiresAt, now)` | Un-expired window **and** regular market hours. |
-| `formatTurboRemainingLabel(expiresAt, now)` | `\`<N>m left\`` when active, otherwise `null`. |
+| `formatTurboRemainingLabel(expiresAt, now)` | `` `<N>m left` `` when active, otherwise `null`. |
 | `getNextLiveSlotLabel(now)` | `HH:MM ET today`, `09:30 ET tomorrow`, `09:30 ET Monday`, or `09:30 ET next trading day`. |
+
+Two user-facing cadence labels are exported from the same module so no surface hardcodes the copy: `LIVE_CADENCE_LABEL = '30m'` and `TURBO_CADENCE_LABEL = '5m'`. They are the single spelling used by the compiled-bot workspace's live badge (`LIVE ON (30m)`) and its Turbo next-run line (`Next run within 5m (Turbo) · <n>m left`), keeping the copy aligned with the schedule it describes. See [[entities/recipe-studio]].
 
 `TurboButton.tsx` renders one of four mutually exclusive states, re-reading the clock every 15s unless an external `now` is supplied: active countdown (`Turbo: 42m left (5m)`, solid accent, disabled), exhausted allowance (`Turbo Used Today`), market closed (`Turbo (Market Closed)`), or the actionable `Turbo (5m x 1h)` button. Every clock-derived label carries `suppressHydrationWarning` so SSR/hydration skew cannot warn.
 

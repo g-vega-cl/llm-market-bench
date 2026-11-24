@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
 import type { RecipeJobRecord } from '../types';
@@ -49,6 +49,7 @@ vi.mock('../api/recipe-jobs-api', () => ({
 vi.mock('../api/recipes-studio-api', () => ({
     previewStrategyPromptFn: vi.fn(),
     submitWaitlistPledgeFn: vi.fn(),
+    fetchLivePortfolioAndRunsFn: vi.fn().mockResolvedValue(null),
 }));
 
 import { fetchLatestRecipeRunFn } from '../api/recipe-jobs-api';
@@ -291,7 +292,7 @@ describe('CompiledBotWorkspace', () => {
             />,
         );
 
-        expect(screen.getByTestId('builder-status')).toHaveTextContent(/LIVE ACTIVE/i);
+        expect(screen.getByTestId('bot-live-status')).toHaveTextContent(/LIVE ON \(30m\)/i);
         expect(screen.queryByTestId('compiled-bot-live-warning')).not.toBeInTheDocument();
         unmount();
 
@@ -471,5 +472,220 @@ describe('CompiledBotWorkspace', () => {
         });
         expect(switchLiveScheduleFn).not.toHaveBeenCalled();
         expect(toggleLiveScheduleFn).not.toHaveBeenCalled();
+    });
+
+    describe('live status block', () => {
+        const liveTurn: RecipeJobRecord = {
+            id: 'live-run-1',
+            recipe_id: 'live-123',
+            mode: 'live_turn',
+            status: 'completed',
+            progress_pct: 100,
+            result_json: null,
+            error_message: null,
+            created_at: '2026-11-24T19:00:00Z',
+            completed_at: '2026-11-24T19:00:51Z',
+        };
+
+        const liveRecipe = { ...strategy, id: 'live-123' };
+        const liveSummary = {
+            id: 'live-123',
+            name: strategy.name,
+            cadence: '3h' as const,
+            is_live: true,
+            trial_count: 1,
+            updated_at: '2026-11-24T19:00:00Z',
+        };
+        const liveSnapshot = {
+            totalEquity: 10412,
+            cash: 10412,
+            isLive: true,
+            isOwner: true,
+            turboExpiresAt: null,
+            lastRun: liveTurn,
+            fetchedAt: '2026-11-24T19:01:00Z',
+        };
+
+        it('is the first block of the hero card and carries state, next run, last turn and equity', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[liveSummary]}
+                    initialLive={liveSnapshot}
+                />,
+            );
+
+            const heroCard = screen.getByTestId('compiled-bot-hero-card');
+            const banner = screen.getByTestId('bot-live-status');
+            expect(heroCard.firstElementChild).toBe(banner);
+            expect(banner).toHaveTextContent(/LIVE ON \(30m\)/i);
+            expect(banner).toHaveTextContent(/Next run/i);
+            expect(banner).toHaveTextContent(/Last turn .*completed/i);
+            expect(banner).toHaveTextContent(/Equity \$10,412\.00/);
+            expect(banner).toHaveTextContent(/Cash \$10,412\.00/);
+            expect(within(banner).getByRole('link', { name: /open live status/i })).toHaveAttribute(
+                'href',
+                '/recipes/live/live-123',
+            );
+        });
+
+        it('keeps the live state when the snapshot read failed, without inventing a history', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[liveSummary]}
+                    initialLive={null}
+                />,
+            );
+
+            const banner = screen.getByTestId('bot-live-status');
+            expect(banner).toHaveTextContent(/LIVE ON \(30m\)/i);
+            expect(banner).toHaveTextContent(/Live history not loaded/i);
+            expect(banner).not.toHaveTextContent(/No live turns yet/i);
+            expect(banner).not.toHaveTextContent(/Equity/i);
+        });
+
+        it('reports PAUSED with no next run and no live link when the bot is not scheduled', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[{ ...liveSummary, is_live: false }]}
+                />,
+            );
+
+            const banner = screen.getByTestId('bot-live-status');
+            expect(banner).toHaveTextContent(/PAUSED/i);
+            expect(banner).toHaveTextContent(/Next run Paused/i);
+            expect(within(banner).queryByRole('link')).toBeNull();
+        });
+
+        it('reports an unknown schedule instead of claiming PAUSED when neither read resolved', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[]}
+                    initialLive={null}
+                />,
+            );
+
+            const banner = screen.getByTestId('bot-live-status');
+            expect(banner).toHaveTextContent(/SCHEDULE UNKNOWN/i);
+            expect(banner).toHaveTextContent(/Next run unknown/i);
+            expect(banner).not.toHaveTextContent(/PAUSED/i);
+            expect(screen.getByTestId('builder-status')).not.toHaveTextContent(/LIVE RECOMMENDED/i);
+        });
+
+        it('does not adopt the live schedule of a bot the viewer does not own', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[]}
+                    initialLive={{ ...liveSnapshot, isLive: false, isOwner: false }}
+                />,
+            );
+
+            expect(screen.getByTestId('bot-live-status')).toHaveTextContent(/SCHEDULE UNKNOWN/i);
+        });
+
+        it('trusts the live snapshot when the bot is outside the My Bots window', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[]}
+                    initialLive={liveSnapshot}
+                />,
+            );
+
+            const banner = screen.getByTestId('bot-live-status');
+            expect(banner).toHaveTextContent(/LIVE ON \(30m\)/i);
+            expect(banner).not.toHaveTextContent(/PAUSED/i);
+            expect(screen.getByTestId('builder-status')).not.toHaveTextContent(/LIVE RECOMMENDED/i);
+        });
+
+        it('does not advise enabling live on a bot that is already live, even when it came from a fallback template', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={{ ...liveRecipe, stages: liveRecipe.stages }}
+                    initialUserRecipes={[liveSummary]}
+                    initialLive={liveSnapshot}
+                    fallback
+                    warning="Super PAC data is unavailable offline; run this bot live."
+                />,
+            );
+
+            expect(screen.queryByTestId('compiled-bot-live-warning')).not.toBeInTheDocument();
+            expect(screen.getByTestId('bot-live-status')).toHaveTextContent(/LIVE ON \(30m\)/i);
+        });
+
+        it('surfaces a failed live turn instead of a green equity line', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[liveSummary]}
+                    initialLive={{
+                        ...liveSnapshot,
+                        lastRun: {
+                            ...liveTurn,
+                            status: 'failed' as const,
+                            error_message: 'LLM timeout',
+                        },
+                    }}
+                />,
+            );
+
+            expect(screen.getByTestId('bot-live-status')).toHaveTextContent(/Last turn .*failed/i);
+        });
+
+        it('reports a Turbo window as the next run when the bot is boosted', () => {
+            const turboExpiresAt = new Date(Date.now() + 3 * 60_000).toISOString();
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[{ ...liveSummary, turbo_expires_at: turboExpiresAt }]}
+                    initialLive={liveSnapshot}
+                />,
+            );
+
+            const banner = screen.getByTestId('bot-live-status');
+            expect(banner).toHaveTextContent(/Next run within 5m \(Turbo\)/i);
+            expect(banner).toHaveTextContent(/3m left|m left/i);
+        });
+
+        it('does not render for an unsaved draft, where there is no live state yet', () => {
+            renderWithQuery(
+                <CompiledBotWorkspace initialStrategy={{ ...strategy, id: undefined }} />,
+            );
+
+            expect(screen.queryByTestId('bot-live-status')).toBeNull();
+            expect(screen.getByTestId('builder-status')).toHaveTextContent(/BOT READY/i);
+        });
+
+        it('keeps the work status line below it, so an unsaved draft stays visible on a live bot', async () => {
+            vi.mocked(fetchLatestRecipeRunFn).mockResolvedValue({
+                ...runningJob,
+                recipe_id: 'live-123',
+                status: 'processing',
+            });
+
+            renderWithQuery(
+                <CompiledBotWorkspace
+                    initialStrategy={liveRecipe}
+                    initialUserRecipes={[liveSummary]}
+                    initialLive={liveSnapshot}
+                />,
+            );
+
+            fireEvent.change(screen.getByPlaceholderText('Name this strategy'), {
+                target: { value: 'Renamed live bot' },
+            });
+
+            await waitFor(() =>
+                expect(screen.getByTestId('builder-status')).toHaveTextContent(
+                    /draft not saved yet/i,
+                ),
+            );
+            expect(screen.getByTestId('bot-live-status')).toHaveTextContent(/LIVE ON \(30m\)/i);
+            expect(screen.getByTestId('builder-status')).not.toHaveTextContent(/LIVE ACTIVE/i);
+        });
     });
 });

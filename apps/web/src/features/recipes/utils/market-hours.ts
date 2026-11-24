@@ -24,6 +24,10 @@ const MARKET_CLOSE_MINUTES_ET = 16 * 60;
 const TURBO_ACTIVATION_CUTOFF_MINUTES_ET = 15 * 60 + 55;
 const TURBO_DURATION_MS = 60 * 60 * 1000;
 
+/** One spelling of the live cadence for user-facing copy, next to the schedule it describes. */
+export const LIVE_CADENCE_LABEL = '30m';
+export const TURBO_CADENCE_LABEL = '5m';
+
 export interface EtClockParts {
     etDate: string;
     weekday: string;

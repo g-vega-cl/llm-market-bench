@@ -1,5 +1,5 @@
 import { Badge } from '@llm-market-bench/ui-design-system';
-import { LIVE_ONLY_TOOL_NAMES, type RecipeJobRecord } from '../types';
+import { LIVE_ONLY_TOOL_NAMES, type RecipeJobRecord, type RecipeSummaryItem } from '../types';
 import type { StatusTone } from './builder-phases';
 
 export interface RunView {
@@ -68,14 +68,6 @@ export type WorkspaceStatus =
           preferLive: boolean;
       }
     | {
-          kind: 'live_active';
-          label: 'LIVE ACTIVE';
-          tone: 'success';
-          detail: string;
-          showLiveWarning: false;
-          preferLive: false;
-      }
-    | {
           kind: 'fallback_template';
           label: 'CLOSEST WORKING TEMPLATE';
           tone: 'warning';
@@ -108,6 +100,29 @@ export type WorkspaceStatus =
           preferLive: false;
       };
 
+/**
+ * Tri-state schedule for the workspace: `null` means neither the live snapshot nor
+ * the (20-row-capped) My Bots list could answer. A snapshot describing a bot the
+ * viewer does not own is not their schedule, and a row mutated on this page is
+ * fresher than the loader's snapshot.
+ */
+export function resolveScheduledLive(args: {
+    recipeId?: string;
+    live?: { isLive: boolean; isOwner: boolean } | null;
+    loadedRecipes: RecipeSummaryItem[];
+    currentRecipes: RecipeSummaryItem[];
+}): boolean | null {
+    // An unsaved draft cannot be scheduled: that is a known answer, not unknown.
+    if (!args.recipeId) return false;
+    const current = args.currentRecipes.find((r) => r.id === args.recipeId);
+    const loaded = args.loadedRecipes.find((r) => r.id === args.recipeId);
+    const fromSnapshot = args.live?.isOwner === true ? args.live.isLive : null;
+    const fromRecord = current ? Boolean(current.is_live) : null;
+    const mutatedHere =
+        current !== undefined && Boolean(current.is_live) !== Boolean(loaded?.is_live);
+    return mutatedHere ? fromRecord : (fromSnapshot ?? fromRecord);
+}
+
 export function resolveLiveWarningMessage(
     warning: string | undefined,
     selectedTools: string[],
@@ -128,7 +143,8 @@ export function deriveWorkspaceStatus(args: {
     hasEmptyPrompt: boolean;
     runInFlight: boolean;
     runView: RunView | null;
-    isCurrentlyScheduledLive: boolean;
+    /** `null` when the schedule is unknown — never treated as paused. */
+    isCurrentlyScheduledLive: boolean | null;
     fallback: boolean;
     hasLiveWarning: boolean;
     strategyId?: string;
@@ -146,7 +162,7 @@ export function deriveWorkspaceStatus(args: {
         };
     }
     if (args.runInFlight && args.runView) {
-        const adviseLive = args.hasLiveWarning && !args.isCurrentlyScheduledLive;
+        const adviseLive = args.hasLiveWarning && args.isCurrentlyScheduledLive === false;
         return {
             kind: 'run_in_flight',
             label: args.runView.label,
@@ -156,27 +172,18 @@ export function deriveWorkspaceStatus(args: {
             preferLive: adviseLive,
         };
     }
-    if (args.isCurrentlyScheduledLive) {
-        return {
-            kind: 'live_active',
-            label: 'LIVE ACTIVE',
-            tone: 'success',
-            detail: args.statusDetail,
-            showLiveWarning: false,
-            preferLive: false,
-        };
-    }
     if (args.fallback) {
+        const adviseLive = args.hasLiveWarning && args.isCurrentlyScheduledLive === false;
         return {
             kind: 'fallback_template',
             label: 'CLOSEST WORKING TEMPLATE',
             tone: 'warning',
             detail: args.statusDetail,
-            showLiveWarning: args.hasLiveWarning,
-            preferLive: args.hasLiveWarning,
+            showLiveWarning: adviseLive,
+            preferLive: adviseLive,
         };
     }
-    if (args.hasLiveWarning) {
+    if (args.hasLiveWarning && args.isCurrentlyScheduledLive === false) {
         return {
             kind: 'live_recommended',
             label: 'LIVE RECOMMENDED',

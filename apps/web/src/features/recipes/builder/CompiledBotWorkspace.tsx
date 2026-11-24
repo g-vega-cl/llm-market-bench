@@ -27,6 +27,8 @@ import { buildBacktestError, upsertSavedRecipeSummary } from '../utils/live-stud
 import { useLatestRecipeRun } from '../utils/use-latest-recipe-run';
 import { useLiveScheduleControl } from '../utils/use-live-schedule-control';
 import { useRecipeDraft } from '../utils/use-recipe-draft';
+import { useRecipeLiveSummary } from '../utils/use-recipe-live-summary';
+import { BuilderBotLiveStatus } from './BuilderBotLiveStatus';
 import { BuilderStatusStrip } from './BuilderStatusStrip';
 import { BuilderStepper } from './BuilderStepper';
 import { CompiledBotBlueprintSection, type WorkspaceTab } from './CompiledBotBlueprintSection';
@@ -37,12 +39,16 @@ import {
     isInFlightRun,
     LiveWarningBanner,
     resolveLiveWarningMessage,
+    resolveScheduledLive,
 } from './compiled-bot-status';
+import type { RecipeLiveSummary } from './live-summary';
 
 export interface CompiledBotWorkspaceProps {
     initialStrategy: PushStrategy;
     initialQuota?: RecipeUserQuotaStatus | null;
     initialUserRecipes?: RecipeSummaryItem[];
+    /** Live facts cut from the live page's read; null when unknown. */
+    initialLive?: RecipeLiveSummary | null;
     summary?: string;
     fallback?: boolean;
     warning?: string;
@@ -59,6 +65,7 @@ export function CompiledBotWorkspace({
     initialStrategy,
     initialQuota = null,
     initialUserRecipes = [],
+    initialLive = null,
     summary,
     fallback = false,
     warning,
@@ -91,8 +98,16 @@ export function CompiledBotWorkspace({
     const [showPledgeModal, setShowPledgeModal] = useState(false);
     const [activeTab, setActiveTab] = useState<WorkspaceTab>('blocks');
 
+    const liveSummary: RecipeLiveSummary | null = useRecipeLiveSummary(strategy.id, initialLive);
+
     const currentSavedRecord = userRecipes.find((r) => r.id === strategy.id);
-    const isCurrentlyScheduledLive = Boolean(currentSavedRecord?.is_live);
+    // Tri-state: `null` when neither the summary nor the capped My Bots list knows.
+    const isCurrentlyScheduledLive = resolveScheduledLive({
+        recipeId: strategy.id,
+        live: liveSummary,
+        loadedRecipes: initialUserRecipes,
+        currentRecipes: userRecipes,
+    });
 
     const refreshQuota = async () => {
         try {
@@ -191,7 +206,7 @@ export function CompiledBotWorkspace({
             id: strategy.id ?? '',
             name: strategy.name,
             cadence: strategy.cadence,
-            is_live: isCurrentlyScheduledLive,
+            is_live: isCurrentlyScheduledLive === true,
             trial_count: 0,
             updated_at: new Date().toISOString(),
         };
@@ -231,6 +246,19 @@ export function CompiledBotWorkspace({
                         data-testid="compiled-bot-hero-card"
                         className="voxel-card mx-auto flex w-full max-w-4xl flex-col gap-4 rounded-none p-6 min-w-0"
                     >
+                        {strategy.id ? (
+                            <BuilderBotLiveStatus
+                                recipeId={strategy.id}
+                                isScheduledLive={isCurrentlyScheduledLive}
+                                turboExpiresAt={
+                                    currentSavedRecord?.turbo_expires_at ??
+                                    liveSummary?.turboExpiresAt ??
+                                    null
+                                }
+                                summary={liveSummary}
+                            />
+                        ) : null}
+
                         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-voxel-bevel-hi pb-3 min-w-0">
                             {onStartOver ? (
                                 <Button
@@ -290,7 +318,7 @@ export function CompiledBotWorkspace({
                             }
                             isRunningBacktest={isRunningBacktest}
                             isTogglingLive={liveControl.isBusy}
-                            isCurrentlyScheduledLive={isCurrentlyScheduledLive}
+                            isCurrentlyScheduledLive={isCurrentlyScheduledLive === true}
                             backtestButtonLabel={resolveBacktestButtonLabel(
                                 isRunningBacktest,
                                 quotaStatus,

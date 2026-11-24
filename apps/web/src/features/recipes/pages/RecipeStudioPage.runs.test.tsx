@@ -225,9 +225,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
             expect(alert).toHaveTextContent(/Enable live for/i);
             expect(alert).toHaveTextContent(/instead\?/i);
             expect(screen.getByRole('button', { name: 'Switch to This' })).toBeInTheDocument();
-            expect(
-                screen.getByRole('button', { name: 'Keep Old Live Recipe' }),
-            ).toBeInTheDocument();
+            expect(screen.getByRole('button', { name: 'Keep current' })).toBeInTheDocument();
         });
 
         // Click Switch to This — should switch atomically and navigate
@@ -299,7 +297,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
             expect(screen.getByRole('alert')).toBeInTheDocument();
         });
 
-        fireEvent.click(screen.getByRole('button', { name: 'Keep Old Live Recipe' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Keep current' }));
 
         await waitFor(() => {
             expect(screen.queryByRole('alert')).not.toBeInTheDocument();

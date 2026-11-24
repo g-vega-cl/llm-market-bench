@@ -53,7 +53,7 @@ export function LiveSwitchConfirmation({
                     onClick={onCancel}
                     disabled={isSwitching}
                 >
-                    Keep {conflictingRecipe.name}
+                    Keep current
                 </Button>
             </div>
         </div>

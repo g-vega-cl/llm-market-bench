@@ -41,7 +41,7 @@ describe('LiveSwitchConfirmation', () => {
         const handlers = renderConfirmation();
 
         fireEvent.click(screen.getByRole('button', { name: 'Switch to This' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Keep Trump & Chips' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Keep current' }));
 
         expect(handlers.onConfirm).toHaveBeenCalledTimes(1);
         expect(handlers.onCancel).toHaveBeenCalledTimes(1);
@@ -51,7 +51,7 @@ describe('LiveSwitchConfirmation', () => {
         renderConfirmation({ isSwitching: true });
 
         expect(screen.getByRole('button', { name: 'Switch to This' })).toBeDisabled();
-        expect(screen.getByRole('button', { name: 'Keep Trump & Chips' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Keep current' })).toBeDisabled();
         expect(screen.getByRole('button', { name: 'Switch to This' })).toHaveAttribute(
             'aria-busy',
             'true',

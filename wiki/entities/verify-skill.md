@@ -9,7 +9,7 @@ The **verify skill** (`.agents/skills/verify/`) is the post-coding verification 
 
 The skill ships as two files:
 
-- `.agents/skills/verify/SKILL.md` — the protocol describing eight verification tiers and the required report format.
+- `.agents/skills/verify/SKILL.md` — the protocol describing eight verification tiers, the interactive decision triage, and the required report format.
 - `.agents/skills/verify/scripts/verify.sh` — a bundled runner that executes the relevant checks.
 
 ## Verification Tiers
@@ -27,7 +27,7 @@ The protocol audits every changed file through eight tiers; none may be skipped.
     (which syncs configs, executes `docker compose restart archive-postgrest` on the replica to force a schema cache reload, and probes local read health). Then execute a live read probe against `SUPABASE_PROJECT_URL` (`https://benchify-archive-db.clvg.uk/rest/v1/<new_or_modified_table>?limit=1`) to confirm `200 OK` and zero `PGRST205` errors.
 - **Tier 5: Architecture, UI/UX & design system** — Zero frontend compute ([[concepts/zero-frontend-compute]]), consumption of `@llm-market-bench/ui-design-system` components, zero arbitrary Tailwind values, single dark theme, fluent responsive layout with no explicit breakpoints, and tool-first LLM architecture.
 - **Tier 6: Observability & error resilience** — `logger.exception("...")` in `except` blocks ([[concepts/observability-standard]]) and no swallowed errors.
-- **Tier 7: Principal / Distinguished Engineer / Technical Fellow critical code & architecture review** — Rigorous counterfactual audit ("Could this have been done better?"). Enforces mandatory adversarial red-team review by spawning an isolated `research` subagent on the cold git diff using the cold-context prompt template to eliminate author bias and sycophancy. The subagent is delegated through the host agent platform's native tool — `invoke_subagent` (`TypeName: "research"`, `Role: "Principal / Distinguished Engineer / Technical Fellow Reviewer"`) on Antigravity, or `delegate_task` on Hermes — so the protocol stays portable across agent runtimes. Mandates state-space minimization ("make illegal states unrepresentable", banning $2^N$ boolean flag sprawl, requiring explicit state transition matrices, and deriving state over caching mutable state). Enforces the 10/10 Methodical Agentic Debugging Protocol (5-step investigative loop: locate/reproduce -> hypotheses -> evidence -> state isolation -> minimal fix) to eliminate shotgun debugging. Runner script (`verify.sh`) deterministically flags silent exception swallowing (`contextlib.suppress(Exception)`) and shotgun surgery (>10 production files). Audits changes through the 5-step System Design Interview rubric (data mutability/append-only rules, index/query shape alignment, end-to-end data flow and cache invalidation, SPOFs and graceful degradation, and scale limits). Enforces anti-sycophancy (the delete check, comparing against an alternative design, "Tidy First"), SOLID and functional core / imperative shell separation, diff-scoped McCabe cyclomatic complexity (`C901` ≤ 15), explicit CAP/PACELC trade-off stances (CP for ledger/trade mutations, AP for read paths), idempotency, and physical resource intuition (zero N+1 queries, $O(1)$ dictionary lookups). Tactical defects are fixed immediately; structural pushback is escalated in the report. See `[[concepts/staff-engineer-verification]]` and `[[concepts/state-machines]]`.
+- **Tier 7: Principal / Distinguished Engineer / Technical Fellow critical code & architecture review** — Rigorous counterfactual audit ("Could this have been done better?"). Enforces mandatory adversarial red-team review by spawning an isolated `research` subagent on the cold git diff using the cold-context prompt template to eliminate author bias and sycophancy. The subagent is delegated through the host agent platform's native tool — `invoke_subagent` (`TypeName: "research"`, `Role: "Principal / Distinguished Engineer / Technical Fellow Reviewer"`) on Antigravity, or `delegate_task` on Hermes — so the protocol stays portable across agent runtimes. Mandates state-space minimization ("make illegal states unrepresentable", banning $2^N$ boolean flag sprawl, requiring explicit state transition matrices, and deriving state over caching mutable state). Enforces the 10/10 Methodical Agentic Debugging Protocol (5-step investigative loop: locate/reproduce -> hypotheses -> evidence -> state isolation -> minimal fix) to eliminate shotgun debugging. Runner script (`verify.sh`) deterministically flags silent exception swallowing (`contextlib.suppress(Exception)`) and shotgun surgery (>10 production files). Audits changes through the 5-step System Design Interview rubric (data mutability/append-only rules, index/query shape alignment, end-to-end data flow and cache invalidation, SPOFs and graceful degradation, and scale limits). Enforces anti-sycophancy (the delete check, comparing against an alternative design, "Tidy First"), SOLID and functional core / imperative shell separation, diff-scoped McCabe cyclomatic complexity (`C901` ≤ 15), explicit CAP/PACELC trade-off stances (CP for ledger/trade mutations, AP for read paths), idempotency, and physical resource intuition (zero N+1 queries, $O(1)$ dictionary lookups). Unmistakable tactical/hygiene defects (swallowed exceptions, unused imports, formatting drift, missing idempotency guards, broken wikilinks, improper imports) are auto-fixed immediately; user choices, structural pushback, and high-attention operational/risk items route through the **Interactive Decision & Attention Triage** (`[[concepts/grill-me]]` style). See `[[concepts/staff-engineer-verification]]` and `[[concepts/state-machines]]`.
 - **Tier 8: Wiki & documentation synchronization** — **Mandatory sync**: Updates concept and entity pages for any modified formulas, models, tools, schemas, state machines, or UI flows. Enforces state machine synchronization against `[[concepts/state-machines]]`. Enforces strict config parity against `packages/config/tools.json` and `packages/config/models.json` via `apps/engine/wiki_lint.py`, preserves existing tool definitions during auto-wiki generation, refreshes `wiki/concepts/code-hotspots.md` via `hotspots.py --write-wiki`, auto-indexes new pages via `wiki_lint.py --fix`, and regenerates QMD vector embeddings (`qmd update && qmd embed`). Guarantees all backtick file references are root-relative and internal wikilinks resolve.
 
 ## The Runner
@@ -71,9 +71,26 @@ When `supabase/migrations/` exists, the runner additionally inspects `git diff -
 
 `qmd embed` runs with its output captured to a temp file. A failure whose output matches a GPU VRAM constraint (`cuda error` or `out of memory`) is downgraded to a warning — the run continues, and BM25 keyword search remains fully updated because `qmd update` already completed. Any other `qmd embed` failure prints the captured output to stderr and aborts the run with a non-zero exit, so genuine embedding regressions are never silently swallowed.
 
+## Interactive Decision & Attention Triage
+
+`SKILL.md` Section 3 defines the triage step that runs after automated checks and the Tier 7 subagent audit complete — and after unmistakable tactical/hygiene defects (swallowed exceptions, unused imports, formatting drift, missing idempotency guards, broken wikilinks, improper imports) are auto-fixed. Remaining choices and high-attention risks are never buried in a wall of report text or answered with a generic *"Proceed with fixes?"* prompt; they are triaged like `/grill-me` (`.agents/skills/grill-me/SKILL.md`).
+
+**When to run vs. skip** — skip directly to the report (Section 4) when zero decision or high-attention items remain. Run the loop whenever a finding involves:
+
+- **User choices or tradeoffs** — multiple viable fixes, counterfactual architecture alternatives, behavior or UX changes, file-split boundaries.
+- **Structural pushback** flagged `WARN`/`FAIL` in Tier 7.
+- **High-attention operational or risk items** the user must explicitly act on or acknowledge — a Tier 4 MiniPC edge replica deploy / live read probe after DB migrations, missing CI workflow secrets, or concrete 10x failure risks.
+
+**The loop:**
+
+1. **Pre-question summary** — show what already passed (or was auto-fixed) versus what needs a decision or attention.
+2. **One question at a time** via `ask_question` (Antigravity) or `clarify` (Hermes), walking in dependency order. Put the `(Recommended)` option first, provide concrete mutually-exclusive fix options, and always include a deferral option (`"Defer / track as debt"` for code items, `"Acknowledge — handle later"` for operational items).
+3. **Design-spec guardrail** — check `.agents/rules/design-spec.md` before proposing any UI/UX fix option; never propose banned patterns (floating tooltips, popovers, SVG title hovers, modals, accordions).
+4. **Batch apply & single re-verification** — collect all answers across the loop first, apply every chosen fix together in one batch, run one re-verification pass over the affected checks, then emit the final Section 4 report.
+
 ## Report Format
 
-Every run concludes with an eight-row status table — one row per tier — using PASS / WARN / FAIL plus notes and action items, followed by a mandatory 4-bullet **Principal / Distinguished Engineer / Technical Fellow Critique**:
+`SKILL.md` Section 4 concludes every run with an eight-row status table — one row per tier — using PASS / WARN / FAIL plus notes and action items, followed by a mandatory 4-bullet **Principal / Distinguished Engineer / Technical Fellow Critique**:
 1. **Subagent Verdict & Link**: `PASS` / `WARN (Debt Incurred)` / `FAIL` with clickable link `[principal-fellow-reviewer](conversation://<id>)`
 2. **Tactical Defects Caught & Fixed**: Concrete bugs, bad practices, or principle violations caught by the subagent and resolved during verification
 3. **Unresolved Structural Pushback & Fragilities**: What is still flimsy, leaky, or coupling too many modules, and what counterfactual design would eliminate it
@@ -83,6 +100,7 @@ Every run concludes with an eight-row status table — one row per tier — usin
 
 - [[concepts/state-machines]]
 - [[concepts/staff-engineer-verification]]
+- [[concepts/grill-me]]
 - [[concepts/project-linting]]
 - [[concepts/code-hotspots]]
 - [[concepts/observability-standard]]

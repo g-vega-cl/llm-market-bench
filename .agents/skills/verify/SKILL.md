@@ -170,8 +170,8 @@ Apply a rigorous Principal / Distinguished Engineer / Technical Fellow engineeri
    - **Cold Context Mandate**: The prompt to the subagent must contain ONLY the 1-sentence task goal and the git diff (`git diff HEAD~1` or staged/working diff). The main agent is **strictly prohibited from providing justifications or rationalizations** to the reviewer.
    - **Adversarial Posture**: The subagent assumes the code contains flaws, anti-patterns, or fragility under load, auditing against `GEMINI.md` mandates, SOLID principles, trade idempotency, and scaling limits.
    - **Triage Protocol**:
-     - *Tactical defects* (e.g., swallowed exceptions, missing idempotency guards, prompt leaks, improper imports): Main agent must fix them immediately and re-verify.
-     - *Structural pushback* (e.g., shotgun surgery, primitive obsession, missing domain abstraction): Main agent must document the debt transparently as `WARN` or `FAIL` in the report for the user's decision.
+     - *Tactical defects* (e.g., swallowed exceptions, unused imports, formatting drift, missing idempotency guards, broken wikilinks, improper imports): Main agent must fix them immediately and re-verify.
+     - *User-choice, structural pushback & high-attention items* (e.g., multiple viable counterfactual fixes, behavior/UX tradeoffs, shotgun surgery, primitive obsession, missing domain abstraction, MiniPC migration deploys, CI secret parity, 10x failure risks): Never bury these in prose or ask a vague *"Should I fix these?"* yes/no prompt. Route them through the **Interactive Decision & Attention Triage** below.
 2. **Anti-sycophancy and counterfactual critique**:
    - Never accept code just because tests pass.
    - *The delete check*: Could this problem be solved by deleting code, using an existing PostgREST query, or configuring an existing module rather than adding new code?
@@ -277,7 +277,28 @@ Apply a rigorous Principal / Distinguished Engineer / Technical Fellow engineeri
 
 ---
 
-## 3. Verification report format
+## 3. Interactive decision & attention triage (Grill-Me protocol)
+
+After automated checks and the Tier 7 subagent audit complete (and after unmistakable tactical/hygiene defects are auto-fixed), never bury remaining choices or high-attention risks inside a wall of report text or ask a generic *"Proceed with fixes?"* prompt. Instead, triage them like `/grill-me` (`.agents/skills/grill-me/SKILL.md`):
+
+1. **When to run vs. skip**:
+   - **Skip directly to Section 4** if zero decision or high-attention items remain.
+   - **Run the Grill-Me loop** whenever any finding involves:
+     - **User choices or tradeoffs** (multiple viable fixes, counterfactual architecture alternatives, behavior or UX changes, file-split boundaries).
+     - **Structural pushback** flagged as `WARN`/`FAIL` in Tier 7.
+     - **High-attention operational or risk items** that the user must explicitly act on or acknowledge (e.g., Tier 4 MiniPC edge replica deploy / live read probe after DB migrations, missing CI workflow secrets, or concrete 10x failure risks).
+2. **Pre-question summary**:
+   - Present a brief summary of what already passed (or was auto-fixed) versus what requires a decision or attention.
+3. **One-question-at-a-time interview**:
+   - Ask **one question at a time** via `ask_question` (Antigravity) or `clarify` (Hermes), walking in dependency order.
+   - Put the `(Recommended)` option first, provide concrete mutually-exclusive fix options, and always include a deferral option (`"Defer / track as debt"` for code items, or `"Acknowledge — handle later"` for operational items).
+   - Check `.agents/rules/design-spec.md` before proposing any UI/UX fix option; never propose banned patterns (floating tooltips, popovers, SVG title hovers, modals, accordions).
+4. **Batch apply & single re-verification**:
+   - Collect all answers across the Grill-Me loop first, apply every chosen fix together in one batch, run one re-verification pass covering the affected checks, and then output the final Section 4 report.
+
+---
+
+## 4. Verification report format
 
 Conclude every verification run with an eight-tier status report and a mandatory Principal / Distinguished Engineer / Technical Fellow critique block:
 

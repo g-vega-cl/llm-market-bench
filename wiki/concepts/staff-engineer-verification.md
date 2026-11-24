@@ -18,7 +18,7 @@ AI models naturally suffer from conversational sycophancy (`knowledge-db/2026-10
 When the agent that writes code also performs the review in the same conversation turn, cognitive dissonance and self-justification degrade the review into rubber-stamping. To break this feedback loop:
 - **Cold Review Boundary**: The main agent spawns an isolated `research` subagent (`Role: "Principal / Distinguished Engineer / Technical Fellow Reviewer"`) passing *only* the git diff and objective requirements. The main agent is prohibited from priming or defending the implementation.
 - **Adversarial Mandate**: The subagent explicitly hunts for leaky abstractions, race conditions, edge-case failures, and architectural drift.
-- **Triage Loop**: Tactical bugs caught by the subagent are fixed immediately; structural critiques are recorded as debt rather than being rationalized away.
+- **Triage Loop**: Unmistakable tactical bugs caught by the subagent are fixed immediately; structural critiques, counterfactual choices, and high-attention operational/risk items are routed through one-at-a-time `[[concepts/grill-me]]` triage (never buried in prose or rationalized away).
 
 Principal / Distinguished Engineer / Technical Fellow review forces counterfactual examination before committing any change:
 
@@ -137,6 +137,7 @@ When tests or verification checks fail during implementation, AI agents frequent
 
 - [[concepts/state-machines]] — Canonical registry of explicit and implicit finite state machines
 - [[entities/verify-skill]] — The eight-tier verification protocol and runner
+- [[concepts/grill-me]] — One-at-a-time decision & attention interview protocol
 - [[concepts/vertical-slice-islands]] — File size ceilings, cohesion, and test colocation
 - [[concepts/observability-standard]] — Structured logging and traceback preservation
 - [[concepts/test-latency-guards]] — Hermetic test speed and zero-sleep mandates

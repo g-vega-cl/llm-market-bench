@@ -27,11 +27,20 @@ rsync -avz --delete \
     --exclude '*.pyc' \
     --exclude 'data/' \
     "${SCRIPT_DIR}/docker-compose.secondary.yml" \
-    "${SCRIPT_DIR}/nginx.secondary.conf" \
+    "${SCRIPT_DIR}/ensure_proxy_config.sh" \
     "${SCRIPT_DIR}/bootstrap_replica.sh" \
     "${SCRIPT_DIR}/promote_to_primary.sh" \
     "${SCRIPT_DIR}/Dockerfile.trader" \
     "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/"
+
+# Routing config is failover state, not code: a promotion rewrites nginx.secondary.conf in place and
+# leaves .promoted behind, so a routine deploy must not rsync standby routing back over it.
+if ssh "${TARGET_HOST}" "test -f ${REMOTE_DIR}/docker/archive/.promoted"; then
+    echo "WARNING: ${TARGET_HOST} is in promoted (local-write) failover state; keeping its nginx.secondary.conf."
+    echo "         Clear with: ssh ${TARGET_HOST} 'rm -f ${REMOTE_DIR}/docker/archive/.promoted' once the workstation is primary again."
+else
+    rsync -avz "${SCRIPT_DIR}/nginx.secondary.conf" "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/"
+fi
 
 rsync -avz --delete \
     --exclude '__pycache__' \
@@ -74,7 +83,7 @@ echo "=== [4/5] Setting execution permissions on remote helper scripts ==="
 ssh "${TARGET_HOST}" "chmod +x ${REMOTE_DIR}/docker/archive/*.sh"
 
 echo "=== [5/5] Rebuilding, launching Docker containers, and reloading PostgREST schema cache on ${TARGET_HOST} ==="
-ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build && docker compose -f docker-compose.secondary.yml restart archive-postgrest && docker compose -f docker-compose.secondary.yml ps"
+ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build && bash ensure_proxy_config.sh docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && docker compose -f docker-compose.secondary.yml restart archive-postgrest && docker compose -f docker-compose.secondary.yml ps"
 
 echo "=== [6/5] Verifying local read replica endpoint health on ${TARGET_HOST} ==="
 if ! ssh "${TARGET_HOST}" "curl -s -f -o /dev/null http://localhost:3001/rest/v1/"; then

@@ -51,6 +51,7 @@ if git diff --quiet "${LAST_SHA}" "${REMOTE_SHA}" -- \
     docker/archive/docker-compose.yml \
     docker/archive/docker-compose.secondary.yml \
     docker/archive/deploy_web.sh \
+    docker/archive/ensure_proxy_config.sh \
     package.json \
     pnpm-lock.yaml \
     pnpm-workspace.yaml \

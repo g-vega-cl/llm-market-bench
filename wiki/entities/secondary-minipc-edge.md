@@ -52,8 +52,8 @@ The secondary MiniPC server (`cv-minipc@minipc`) acts as a 24/7 dedicated edge g
 3. **Replication & Lifecycle Automation**:
    - `docker/archive/setup_primary_replication.sh`: Idempotently provisions the `replicator` role, reserves `minipc_standby_slot`, and configures `pg_hba.conf` on the primary.
    - `docker/archive/bootstrap_replica.sh`: Streams initial `pg_basebackup` with `-R` (standby mode) into `archive_pgdata_replica` on the MiniPC.
-   - `docker/archive/promote_to_primary.sh`: Fast manual 1-command promotion script that triggers `pg_ctl promote` and configures Nginx for local write processing during disaster recovery.
-   - `docker/archive/deploy_secondary.sh`: Host-to-host synchronization and automated deployment script using `rsync` and SSH. Deploys compose stacks, the trader engine (`apps/engine/`, excluding `.venv`, `tests`, `market`, caches), `packages/config/`, `Dockerfile.trader`, and environment files (`docker/archive/.env`, `apps/engine/.env`, `apps/free_llm_proxy/.env`) to `cv-minipc@minipc`. Immediately after synchronization, step 5 rebuilds and launches containers (`docker compose -f docker-compose.secondary.yml up -d --build`), restarts `archive-postgrest` (`docker compose -f docker-compose.secondary.yml restart archive-postgrest`) to force-reload the PostgREST schema cache (necessary because physical PostgreSQL replication does not propagate `NOTIFY` events), and step 6 verifies local read health (`curl http://localhost:3001/rest/v1/`).
+   - `docker/archive/promote_to_primary.sh`: Fast manual 1-command promotion script that triggers `pg_ctl promote`, polls `pg_is_in_recovery` until the server is genuinely read-write (no fixed sleep), rewrites `nginx.secondary.conf` to route every method to the local replica, rebinds the proxy through `ensure_proxy_config.sh` (validate → recreate → md5 assertion, because the single-file bind mount ignores `nginx -s reload`), writes the `.promoted` sentinel, and only then prints `Failover Complete!`. Any failed step exits non-zero, so a half-finished failover is never reported as success.
+   - `docker/archive/deploy_secondary.sh`: Host-to-host synchronization and automated deployment script using `rsync` and SSH. Deploys compose stacks, the trader engine (`apps/engine/`, excluding `.venv`, `tests`, `market`, caches), `packages/config/`, `Dockerfile.trader`, `ensure_proxy_config.sh`, and environment files (`docker/archive/.env`, `apps/engine/.env`, `apps/free_llm_proxy/.env`) to `cv-minipc@minipc`. Routing config is synced **only while the MiniPC is not promoted**: when `docker/archive/.promoted` exists, step 3 skips `nginx.secondary.conf` and prints a warning, so a routine deploy cannot silently revert a live failover to standby routing. Immediately after synchronization, step 5 rebuilds and launches containers (`docker compose -f docker-compose.secondary.yml up -d --build`), rebinds `archive-proxy` through `ensure_proxy_config.sh`, restarts `archive-postgrest` (`docker compose -f docker-compose.secondary.yml restart archive-postgrest`) to force-reload the PostgREST schema cache (necessary because physical PostgreSQL replication does not propagate `NOTIFY` events), and step 6 verifies local read health (`curl http://localhost:3001/rest/v1/`).
 
 ## Intraday Tape Streaming Service
 
@@ -94,6 +94,17 @@ If the primary workstation suffers a prolonged outage:
 ssh cv-minipc@minipc
 cd ~/llm-market-bench/docker/archive && ./promote_to_primary.sh
 ```
+
+The script exits 0 only when all four checks hold: the standby reports `pg_is_in_recovery = false`, `nginx.secondary.conf` was rewritten to `default local_read_backend`, the running `archive-proxy` container is verified to serve that rewritten file, and — as a warning — the old primary was probed on `http://primary-workstation:3001/rest/v1/`. Promotion leaves `docker/archive/.promoted` behind (git-ignored); that sentinel is what makes the state survive the next `deploy_secondary.sh`.
+
+**Demotion is manual and one-way by design.** From the workstation, once it is healthy again:
+
+```bash
+ssh cv-minipc@minipc 'rm -f ~/llm-market-bench/docker/archive/.promoted'
+./docker/archive/deploy_secondary.sh cv-minipc@minipc     # re-syncs standby routing + rebinds the proxy
+```
+
+Then demote the MiniPC database (`pg_rewind` or a fresh reclone) and re-attach streaming replication from the workstation. No `demote.sh` exists yet.
 
 ## Related
 

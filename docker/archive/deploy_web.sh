@@ -99,6 +99,11 @@ smoke_check() {
 if [[ "${REMOTE_ONLY}" == "false" ]]; then
     echo "=== [2/4] Building and starting web-app + web-proxy on primary workstation ==="
     (cd "${SCRIPT_DIR}" && docker compose -f docker-compose.yml up -d --build web-app web-proxy)
+    # nginx.web.conf is a single-file bind mount: the container keeps the inode it was created with,
+    # so a synced config stays invisible until the container is recreated. The helper validates the
+    # new config first, recreates only when the served bytes differ, then asserts the rebind.
+    bash "${SCRIPT_DIR}/ensure_proxy_config.sh" \
+        "${SCRIPT_DIR}/docker-compose.yml" web-proxy market-bench-web-proxy "${SCRIPT_DIR}/nginx.web.conf"
     smoke_check "primary workstation" ""
 else
     echo "=== [2/4] Skipping primary workstation (--remote-only) ==="
@@ -124,6 +129,7 @@ if [[ "${LOCAL_ONLY}" == "false" ]]; then
     rsync -avz \
         "${SCRIPT_DIR}/Dockerfile.web" \
         "${SCRIPT_DIR}/nginx.web.conf" \
+        "${SCRIPT_DIR}/ensure_proxy_config.sh" \
         "${SCRIPT_DIR}/docker-compose.secondary.yml" \
         "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/"
 
@@ -147,7 +153,7 @@ if [[ "${LOCAL_ONLY}" == "false" ]]; then
     fi
 
     echo "=== [4/4] Rebuilding and starting web-app + web-proxy on ${TARGET_HOST} ==="
-    ssh "${TARGET_HOST}" "bash -lc 'set -a && source ${REMOTE_DIR}/apps/web/.env && if [ -f ${REMOTE_DIR}/docker/archive/.env ]; then source ${REMOTE_DIR}/docker/archive/.env; fi && set +a && export WEB_ENV_FILE=${REMOTE_DIR}/apps/web/.env && cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build web-app web-proxy && docker compose -f docker-compose.secondary.yml ps web-app web-proxy'"
+    ssh "${TARGET_HOST}" "bash -lc 'set -a && source ${REMOTE_DIR}/apps/web/.env && if [ -f ${REMOTE_DIR}/docker/archive/.env ]; then source ${REMOTE_DIR}/docker/archive/.env; fi && set +a && export WEB_ENV_FILE=${REMOTE_DIR}/apps/web/.env && cd ${REMOTE_DIR}/docker/archive && docker compose -f docker-compose.secondary.yml up -d --build web-app web-proxy && bash ensure_proxy_config.sh docker-compose.secondary.yml web-proxy market-bench-web-proxy-secondary nginx.web.conf && docker compose -f docker-compose.secondary.yml ps web-app web-proxy'"
     smoke_check "${TARGET_HOST}" "${TARGET_HOST}"
 else
     echo "=== [3/4] Skipping MiniPC sync/deploy (--local-only) ==="

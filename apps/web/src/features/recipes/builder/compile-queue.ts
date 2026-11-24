@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient } from '~/lib/db';
+import recipeCompileJson from '../../../../../../packages/config/recipe-compile.json';
 import {
     type BuilderMessage,
     buildConversation,
@@ -23,7 +24,9 @@ export const BUILDER_BURST_LIMIT = 5;
 export const BUILDER_BURST_WINDOW_MINUTES = 5;
 /** Single-flight per-user concurrency lock: 1 active compile at a time. */
 export const MAX_PENDING_COMPILES = 1;
-export const COMPILE_MAX_TOKENS = 1600;
+// Shared with apps/engine/recipes/worker.py via packages/config/recipe-compile.json.
+export const COMPILE_MAX_TOKENS: number = (recipeCompileJson as { compileMaxTokens: number })
+    .compileMaxTokens;
 /** A queued job this old gets an honest "worker is busy" line in the strip. */
 export const QUEUE_SLOW_MS = 60_000;
 /** Past this the client gives up, cancels the row and offers Try again. */

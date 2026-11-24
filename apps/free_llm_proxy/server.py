@@ -1,16 +1,17 @@
 """FastAPI Server exposing OpenAI-compatible /v1 endpoints with dynamic failover."""
 
 import asyncio
+from collections.abc import Callable
 import logging
 import secrets
 import time
-from typing import Any, Callable
+from typing import Any
 
 from fastapi import FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from apps.free_llm_proxy import config
-from apps.free_llm_proxy.circuit_breaker import _DETERMINISTIC_4XX, CircuitBreaker
+from apps.free_llm_proxy.circuit_breaker import CircuitBreaker
 from apps.free_llm_proxy.client import execute_completion
 from apps.free_llm_proxy.db import AuditDB
 from apps.free_llm_proxy.discovery import ModelDiscovery, is_allowed_model
@@ -19,12 +20,24 @@ from apps.free_llm_proxy.failover import (
     UNCAPPED,
     attempt_budget,
     cascade_candidates,
+    is_empty_completion,
     is_futile_rate_limit,
     is_plan_model,
     opencode_go_attempts,
     segment_remaining_s,
 )
 from apps.free_llm_proxy.models import ChatCompletionRequest
+from apps.free_llm_proxy.request_helpers import (
+    apply_output_ceiling,
+    apply_thinking_params,
+    extract_client_info,
+    extract_prompt_preview,
+    extract_purpose,
+    failure_priority,
+    is_explicit_paid_request,
+    normalize_non_streaming_choices,
+    resolve_candidate_model,
+)
 from apps.free_llm_proxy.router import Router, estimate_prompt_tokens
 from apps.free_llm_proxy.security import UnauthorizedMonitor
 from apps.free_llm_proxy.session import SESSION_HEADER, derive_session_id
@@ -78,33 +91,54 @@ async def _dispatch_with_timeout(
     """
     timeout = config.CLOUD_REQUEST_TIMEOUT_SECONDS
     if provider_id == "strata" or timeout <= 0:
-        return await execute_completion(
+        status_code, body_or_gen, resp_headers = await execute_completion(
             provider_cfg=provider_cfg,
             payload=payload,
             stream=stream,
         )
-    if budget_s is not None:
-        timeout = min(timeout, budget_s)
-    try:
-        return await asyncio.wait_for(
-            execute_completion(
-                provider_cfg=provider_cfg,
-                payload=payload,
-                stream=stream,
-            ),
-            timeout=timeout,
+    else:
+        if budget_s is not None:
+            timeout = min(timeout, budget_s)
+        try:
+            status_code, body_or_gen, resp_headers = await asyncio.wait_for(
+                execute_completion(
+                    provider_cfg=provider_cfg,
+                    payload=payload,
+                    stream=stream,
+                ),
+                timeout=timeout,
+            )
+        except TimeoutError:
+            return (
+                504,
+                {
+                    "error": {
+                        "message": f"Provider {provider_id} request timed out after {timeout:.1f}s.",
+                        "type": "timeout_error",
+                    }
+                },
+                {},
+            )
+
+    # Reasoning exhaustion or silent 0-token upstreams return HTTP 200 with no visible
+    # output; convert to 503 so in-provider cascades and cross-provider failover recover.
+    if not stream and status_code == 200 and is_empty_completion(body_or_gen):
+        logger.warning(
+            "Provider %s model %s returned HTTP 200 with an empty completion; failing over",
+            provider_id,
+            payload.get("model"),
         )
-    except TimeoutError:
         return (
-            504,
+            503,
             {
                 "error": {
-                    "message": f"Provider {provider_id} request timed out after {timeout:.1f}s.",
-                    "type": "timeout_error",
+                    "message": f"Provider {provider_id} returned an empty completion.",
+                    "type": "empty_completion",
                 }
             },
-            {},
+            resp_headers,
         )
+    return status_code, body_or_gen, resp_headers
 
 
 async def _dispatch_candidate_attempts(
@@ -174,74 +208,6 @@ async def _dispatch_candidate_attempts(
     return (status_code, body_or_gen, resp_headers), None, metered_used, skip_error
 
 
-def _failure_priority(status_code: int) -> int:
-    """Orders failure statuses so downstream 404/504 never masks 429/5xx."""
-    if status_code == 429:
-        return 4
-    if status_code in _DETERMINISTIC_4XX:
-        return 3
-    if status_code >= 500:
-        return 2
-    return 1
-
-
-def _resolve_candidate_model(
-    p_id: str,
-    p_cfg: dict[str, Any],
-    requested_model: str,
-    available_models: list[str],
-    *,
-    is_paid: bool,
-) -> tuple[str | None, str | None, dict[str, Any] | None]:
-    """Resolves target model or returns ``(None, skip_reason, error_body)``."""
-    allowed_patterns = p_cfg.get("allowed_model_patterns")
-    dynamic_fallback = p_cfg.get("dynamic_fallback_model")
-    if is_paid and not available_models:
-        return (
-            None,
-            f"{p_id} (catalog unavailable; paid dispatch refused)",
-            {
-                "error": {
-                    "message": f"{p_id} catalog discovery failed; refusing paid dispatch",
-                    "type": "provider_unavailable",
-                }
-            },
-        )
-    if allowed_patterns is not None and not dynamic_fallback and not available_models:
-        return (
-            None,
-            f"{p_id} (catalog unavailable; free-only dispatch refused)",
-            {
-                "error": {
-                    "message": (
-                        f"{p_id} catalog discovery failed; refusing ungrounded dispatch"
-                    ),
-                    "type": "provider_unavailable",
-                }
-            },
-        )
-
-    target_model = router.resolve_model_for_provider(
-        p_id, requested_model, available_models
-    )
-    if allowed_patterns is not None and not is_allowed_model(
-        target_model, allowed_patterns
-    ):
-        if dynamic_fallback and is_allowed_model(dynamic_fallback, allowed_patterns):
-            return dynamic_fallback, None, None
-        return (
-            None,
-            f"{p_id} (no allowed free model resolved)",
-            {
-                "error": {
-                    "message": f"{p_id} resolved no allowed free model",
-                    "type": "provider_unavailable",
-                }
-            },
-        )
-    return target_model, None, None
-
-
 async def _cascade_in_provider(
     provider_id: str,
     provider_cfg: dict[str, Any],
@@ -288,125 +254,10 @@ async def _cascade_in_provider(
         )
         if status_code == 200:
             return status_code, body_or_gen, resp_headers, fallback_model
-        if _failure_priority(status_code) > _failure_priority(best_failure[0]):
+        if failure_priority(status_code) > failure_priority(best_failure[0]):
             best_failure = (status_code, body_or_gen, resp_headers)
 
     return (*best_failure, target_model)
-
-
-THINKING_KEYS = ("reasoning_effort", "reasoning", "reasoning_budget_tokens")
-
-
-def _effort_from_reasoning_budget(budget: float) -> str:
-    """Maps a Strata-style token budget onto an OpenAI effort band."""
-    for threshold, level in config.REASONING_BUDGET_BANDS:
-        if budget > threshold:
-            return level
-    return "low"
-
-
-def apply_thinking_params(
-    payload: dict[str, Any], p_cfg: dict[str, Any], model: str
-) -> None:
-    """Forwards thinking controls only to providers that declare support for them.
-
-    Every thinking key is stripped first: a gateway that 400s on unknown fields
-    otherwise converts a caller's effort request into a 60s provider cooldown
-    (circuit_breaker: deterministic 4xx). Declared params are then re-added, with
-    the OpenAI `reasoning_effort` spelling normalized to OpenRouter's object form.
-    """
-    requested_effort = payload.get("reasoning_effort")
-    requested_reasoning = payload.get("reasoning")
-    budget = payload.get("reasoning_budget_tokens")
-    for key in THINKING_KEYS:
-        payload.pop(key, None)
-
-    effort = (
-        requested_effort.strip().lower() if isinstance(requested_effort, str) else ""
-    )
-    if not effort and isinstance(budget, (int, float)) and not isinstance(budget, bool):
-        effort = _effort_from_reasoning_budget(budget)
-    if (
-        not effort
-        and config.AUTO_GO_DEFAULT_REASONING_EFFORT
-        and model.lower().endswith("-go")
-    ):
-        effort = config.AUTO_GO_DEFAULT_REASONING_EFFORT
-
-    declared = set(p_cfg.get("thinking_params") or [])
-    if (
-        "reasoning" in declared
-        and isinstance(requested_reasoning, dict)
-        and requested_reasoning
-    ):
-        payload["reasoning"] = dict(requested_reasoning)
-    if "reasoning_effort" in declared and effort:
-        payload["reasoning_effort"] = effort
-    elif "reasoning" in declared and effort:
-        reasoning = dict(payload.get("reasoning") or {})
-        reasoning.setdefault("effort", effort)
-        payload["reasoning"] = reasoning
-
-
-def apply_output_ceiling(payload: dict[str, Any], p_cfg: dict[str, Any]) -> None:
-    """Clamps both output-token spellings to the provider's declared ceiling.
-
-    Reasoning tokens are billed inside this budget, so the ceiling is the real
-    thinking cap. A provider's own limit wins; undeclared providers fall back to
-    CLOUD_MAX_OUTPUT_TOKENS. The clamp only ever lowers a caller's request.
-    """
-    ceiling = p_cfg.get("max_output_tokens")
-    if not isinstance(ceiling, int) or isinstance(ceiling, bool) or ceiling <= 0:
-        ceiling = config.CLOUD_MAX_OUTPUT_TOKENS
-    for key in ("max_tokens", "max_completion_tokens"):
-        value = payload.get(key)
-        if isinstance(value, int) and not isinstance(value, bool) and value > ceiling:
-            payload[key] = ceiling
-
-
-def _is_explicit_paid_request(model: str, provider_id: str) -> bool:
-    """True when the caller deliberately targeted the paid provider."""
-    requested = model.strip().lower()
-    return requested == provider_id or requested.startswith(f"{provider_id}/")
-
-
-def extract_prompt_preview(messages: list[Any], max_length: int = 60) -> str | None:
-    """Extract a concise text snippet (up to max_length chars) of caller intent/why."""
-    if not messages:
-        return None
-    user_msgs = [m for m in messages if getattr(m, "role", "") == "user"]
-    target = user_msgs[-1] if user_msgs else messages[-1]
-    content = getattr(target, "content", None)
-    if isinstance(content, str):
-        text = " ".join(content.split()).strip()
-        if not text:
-            return None
-        return text[:max_length] + ("..." if len(text) > max_length else "")
-    elif isinstance(content, list):
-        parts = []
-        for part in content:
-            if isinstance(part, dict) and part.get("type") == "text":
-                txt = part.get("text", "")
-                if txt:
-                    parts.append(txt)
-        text = " ".join(" ".join(parts).split()).strip()
-        if not text:
-            return None
-        return text[:max_length] + ("..." if len(text) > max_length else "")
-    return None
-
-
-def extract_client_info(request: Request | None) -> tuple[str, str]:
-    """Extracts client IP and User-Agent from Request."""
-    if not request:
-        return ("unknown", "unknown")
-    client_ip = (
-        request.headers.get("cf-connecting-ip")
-        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-        or (request.client.host if request.client else "unknown")
-    )
-    user_agent = request.headers.get("user-agent", "unknown")
-    return (client_ip, user_agent)
 
 
 def _record_unauthorized(request: Request | None, message: str) -> None:
@@ -551,6 +402,171 @@ async def get_logs(
     )
 
 
+def _build_dispatch_cfg(
+    p_id: str,
+    p_cfg: dict[str, Any],
+    raw_body: dict[str, Any],
+    client_ip: str,
+    user_agent: str,
+    request: Request,
+) -> dict[str, Any]:
+    if p_id != "opencode-go":
+        return p_cfg
+    session_id = derive_session_id(
+        raw_body.get("messages") or [],
+        client_ip=client_ip,
+        user_agent=user_agent,
+        provided=request.headers.get(SESSION_HEADER),
+    )
+    return {
+        **p_cfg,
+        "extra_headers": {
+            **p_cfg.get("extra_headers", {}),
+            SESSION_HEADER: session_id,
+        },
+    }
+
+
+async def _build_streaming_response(
+    *,
+    body_or_gen: Any,
+    p_id: str,
+    p_cfg: dict[str, Any],
+    req: ChatCompletionRequest,
+    target_model: str,
+    elapsed_ms: float,
+    start_time: float,
+    failover_log: list[str],
+    client_ip: str,
+    user_agent: str,
+    purpose: str | None,
+    prompt_preview: str | None,
+) -> tuple[StreamingResponse | None, dict[str, Any] | None]:
+    primed: list[Any] = []
+    upstream: Any | None = None
+    produced = False
+    try:
+        primed, upstream, produced = await prime_sse_stream(body_or_gen)
+    except asyncio.CancelledError:
+        await close_stream_source(body_or_gen)
+        raise
+    except Exception:
+        await close_stream_source(body_or_gen)
+        logger.exception("Provider %s died before the first token", p_id)
+
+    if not produced:
+        await close_stream_source(body_or_gen)
+        circuit_breaker.record_stream_failure(p_id)
+        failover_log.append(f"{p_id} (stream ended before first token)")
+        return None, {
+            "error": {
+                "message": f"{p_id} closed the stream before the first token",
+                "type": "stream_truncated",
+            }
+        }
+
+    def _log_stream(result: dict[str, Any]) -> None:
+        usage = result.get("usage") or {}
+        if result.get("truncated"):
+            circuit_breaker.record_stream_failure(p_id)
+        elif not result.get("cancelled"):
+            circuit_breaker.record_success(p_id)
+        audit_db.log_call(
+            requested_model=req.model,
+            routed_provider=p_id,
+            routed_model=target_model,
+            prompt_tokens=int(usage.get("prompt_tokens", 0) or 0),
+            completion_tokens=int(usage.get("completion_tokens", 0) or 0),
+            total_tokens=int(usage.get("total_tokens", 0) or 0),
+            latency_ms=elapsed_ms,
+            status_code=200,
+            failover_chain=failover_log,
+            error_message=result.get("error"),
+            client_ip=client_ip,
+            user_agent=user_agent,
+            purpose=purpose,
+            prompt_preview=prompt_preview,
+            is_stream=True,
+            usage_available=result.get("usage") is not None,
+            ttft_ms=float(result.get("ttft_ms") or 0.0),
+            duration_ms=float(result.get("duration_ms") or elapsed_ms),
+            stream_completed=bool(result.get("completed")),
+            billing=str(p_cfg.get("billing") or "free"),
+        )
+
+    return (
+        StreamingResponse(
+            audited_sse_stream(
+                prefixed_stream(primed, upstream),
+                _log_stream,
+                started_at=start_time,
+            ),
+            media_type="text/event-stream",
+        ),
+        None,
+    )
+
+
+def _build_json_response(
+    *,
+    body_or_gen: Any,
+    p_id: str,
+    p_cfg: dict[str, Any],
+    req: ChatCompletionRequest,
+    target_model: str,
+    elapsed_ms: float,
+    failover_log: list[str],
+    client_ip: str,
+    user_agent: str,
+    purpose: str | None,
+    prompt_preview: str | None,
+) -> JSONResponse:
+    circuit_breaker.record_success(p_id)
+    normalize_non_streaming_choices(body_or_gen)
+    usage = body_or_gen.get("usage", {})
+    audit_db.log_call(
+        requested_model=req.model,
+        routed_provider=p_id,
+        routed_model=target_model,
+        prompt_tokens=usage.get("prompt_tokens", 0),
+        completion_tokens=usage.get("completion_tokens", 0),
+        total_tokens=usage.get("total_tokens", 0),
+        latency_ms=elapsed_ms,
+        status_code=200,
+        failover_chain=failover_log,
+        client_ip=client_ip,
+        user_agent=user_agent,
+        purpose=purpose,
+        prompt_preview=prompt_preview,
+        usage_available=bool(usage),
+        duration_ms=elapsed_ms,
+        stream_completed=True,
+        billing=str(p_cfg.get("billing") or "free"),
+    )
+    return JSONResponse(content=body_or_gen, status_code=200)
+
+
+def _record_candidate_failure(
+    p_id: str,
+    status_code: int,
+    body_or_gen: Any,
+    resp_headers: dict[str, str],
+    failover_log: list[str],
+) -> Any:
+    retry_after = resp_headers.get("retry-after") or resp_headers.get("ratelimit-reset")
+    circuit_breaker.record_failure(
+        p_id, status_code=status_code, retry_after=retry_after
+    )
+    reason = (
+        "empty completion"
+        if isinstance(body_or_gen, dict)
+        and (body_or_gen.get("error") or {}).get("type") == "empty_completion"
+        else f"HTTP {status_code}"
+    )
+    failover_log.append(f"{p_id} ({reason})")
+    return body_or_gen
+
+
 @app.post("/v1/chat/completions")
 async def chat_completions(
     request: Request,
@@ -571,18 +587,8 @@ async def chat_completions(
             },
         ) from e
 
-    client_ip = (
-        request.headers.get("cf-connecting-ip")
-        or request.headers.get("x-forwarded-for", "").split(",")[0].strip()
-        or (request.client.host if request.client else "unknown")
-    )
-    user_agent = request.headers.get("user-agent", "unknown")
-    purpose = (
-        request.headers.get("x-purpose")
-        or request.headers.get("x-client-id")
-        or request.headers.get("x-caller-reason")
-        or None
-    )
+    client_ip, user_agent = extract_client_info(request)
+    purpose = extract_purpose(request)
     prompt_preview = extract_prompt_preview(req.messages, max_length=60)
 
     # Estimate prompt size so providers with a context ceiling below it are
@@ -601,7 +607,7 @@ async def chat_completions(
         )
 
     start_time = time.perf_counter()
-    failover_log = []
+    failover_log: list[str] = []
     last_error = None
     paid_started: float | None = None
     metered_dispatches = 0
@@ -617,77 +623,51 @@ async def chat_completions(
         if is_paid and paid_started is None:
             paid_started = time.perf_counter()
 
-        # Budget guard, re-checked at every dispatch below as well: the free
-        # segment must finish inside the caller's own window, and the metered
-        # segment gets its own small budget so a paid pass cannot outlive it.
         if not req.stream and _segment_remaining(is_paid) < MIN_ATTEMPT_SECONDS:
             segment = "paid" if is_paid else "free"
             failover_log.append(f"{p_id} (skipped: {segment} pass deadline exhausted)")
-            if last_error is None:
-                last_error = {
-                    "error": {
-                        "message": (
-                            f"{p_id} skipped: the {segment} segment budget is spent; "
-                            "raise FREE_PASS_DEADLINE_SECONDS / "
-                            "PAID_PASS_DEADLINE_SECONDS (0 disables)"
-                        ),
-                        "type": "timeout_error",
-                    }
+            last_error = last_error or {
+                "error": {
+                    "message": (
+                        f"{p_id} skipped: the {segment} segment budget is spent; "
+                        "raise FREE_PASS_DEADLINE_SECONDS / "
+                        "PAID_PASS_DEADLINE_SECONDS (0 disables)"
+                    ),
+                    "type": "timeout_error",
                 }
+            }
             continue
 
-        # Fetch or resolve target model for this candidate
-        base_url = p_cfg["base_url"]
         headers = (
             {"Authorization": f"Bearer {p_cfg['api_key']}"}
             if p_cfg.get("api_key")
             else {}
         )
-        available_models = await discovery.fetch_live_models(p_id, base_url, headers)
-        target_model, skip_reason, skip_err = _resolve_candidate_model(
-            p_id, p_cfg, req.model, available_models, is_paid=is_paid
+        available_models = await discovery.fetch_live_models(
+            p_id, p_cfg["base_url"], headers
+        )
+        target_model, skip_reason, skip_err = resolve_candidate_model(
+            router, p_id, p_cfg, req.model, available_models, is_paid=is_paid
         )
         if target_model is None:
             if skip_reason:
                 failover_log.append(skip_reason)
-            if skip_err is not None and last_error is None:
-                last_error = skip_err
+            last_error = last_error if last_error is not None else skip_err
             continue
 
-        # OpenCode Go requires a stable session header for routing and prompt caching
-        dispatch_cfg = p_cfg
-        if p_id == "opencode-go":
-            session_id = derive_session_id(
-                raw_body.get("messages") or [],
-                client_ip=client_ip,
-                user_agent=user_agent,
-                provided=request.headers.get(SESSION_HEADER),
-            )
-            dispatch_cfg = {
-                **p_cfg,
-                "extra_headers": {
-                    **p_cfg.get("extra_headers", {}),
-                    SESSION_HEADER: session_id,
-                },
-            }
-
-        # Build payload copy with resolved target model
-        payload = dict(raw_body)
-        payload["model"] = target_model
-
-        # Cloud free-tier providers enforce an output token limit; clamp when routing to cloud
+        dispatch_cfg = _build_dispatch_cfg(
+            p_id, p_cfg, raw_body, client_ip, user_agent, request
+        )
+        payload = {**raw_body, "model": target_model}
         if p_id != "strata":
             apply_thinking_params(payload, p_cfg, req.model)
             apply_output_ceiling(payload, p_cfg)
 
-        # A plan-bearing provider declares which of its models the subscription
-        # already covers. Spend those first and keep exactly one metered model as
-        # the last resort, so a subscription call never buys tokens needlessly.
-        attempt_models: list[tuple[str, bool]] = [
-            (target_model, is_paid and not is_plan_model(p_cfg, target_model))
-        ]
-        if p_id == "opencode-go" and not _is_explicit_paid_request(req.model, p_id):
-            attempt_models = opencode_go_attempts(p_cfg, available_models, target_model)
+        attempt_models: list[tuple[str, bool]] = (
+            opencode_go_attempts(p_cfg, available_models, target_model)
+            if p_id == "opencode-go" and not is_explicit_paid_request(req.model, p_id)
+            else [(target_model, is_paid and not is_plan_model(p_cfg, target_model))]
+        )
 
         (
             (status_code, body_or_gen, resp_headers),
@@ -703,18 +683,12 @@ async def chat_completions(
             stream=req.stream,
             is_paid=is_paid,
             metered_used=metered_dispatches,
-            remaining_fn=lambda: _segment_remaining(is_paid),
+            remaining_fn=lambda is_paid=is_paid: _segment_remaining(is_paid),
             failover_log=failover_log,
         )
-        if answered_model:
-            target_model = answered_model
-        if skip_error is not None and last_error is None:
-            last_error = skip_error
-
+        target_model = answered_model or target_model
+        last_error = last_error if last_error is not None else skip_error
         if status_code == 0:
-            # Nothing was dispatched for this candidate: the budget ran out
-            # between the chain guard and the attempt. The skip is already in the
-            # failover log, and there is no provider result to strike or report.
             continue
 
         (
@@ -731,127 +705,49 @@ async def chat_completions(
             (status_code, body_or_gen, resp_headers),
             available_models=available_models,
             stream=req.stream,
-            remaining_fn=lambda: _segment_remaining(is_paid),
+            remaining_fn=lambda is_paid=is_paid: _segment_remaining(is_paid),
         )
 
         elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)
-
-        if status_code == 200:
-            # A streaming call is only a success once the stream itself finishes:
-            # resetting here would erase the truncation strikes that record_stream_failure
-            # accrues while the body is being relayed.
-            if not req.stream:
-                circuit_breaker.record_success(p_id)
-
-            if req.stream:
-                primed: list[Any] = []
-                upstream: Any | None = None
-                produced = False
-                try:
-                    primed, upstream, produced = await prime_sse_stream(body_or_gen)
-                except asyncio.CancelledError:
-                    # The caller hung up while we held the head of the stream.
-                    await close_stream_source(body_or_gen)
-                    raise
-                except Exception:  # noqa: BLE001
-                    await close_stream_source(body_or_gen)
-                    logger.exception("Provider %s died before the first token", p_id)
-
-                if not produced:
-                    await close_stream_source(body_or_gen)
-                    circuit_breaker.record_stream_failure(p_id)
-                    failover_log.append(f"{p_id} (stream ended before first token)")
-                    last_error = {
-                        "error": {
-                            "message": (
-                                f"{p_id} closed the stream before the first token"
-                            ),
-                            "type": "stream_truncated",
-                        }
-                    }
-                    continue
-
-                def _log_stream(result: dict[str, Any]) -> None:
-                    usage = result.get("usage") or {}
-                    truncated = bool(result.get("truncated"))
-                    if truncated:
-                        circuit_breaker.record_stream_failure(p_id)
-                    elif not result.get("cancelled"):
-                        # A caller hanging up mid-stream says nothing about the
-                        # provider, so it must not clear (or add) strikes.
-                        circuit_breaker.record_success(p_id)
-                    audit_db.log_call(
-                        requested_model=req.model,
-                        routed_provider=p_id,
-                        routed_model=target_model,
-                        prompt_tokens=int(usage.get("prompt_tokens", 0) or 0),
-                        completion_tokens=int(usage.get("completion_tokens", 0) or 0),
-                        total_tokens=int(usage.get("total_tokens", 0) or 0),
-                        latency_ms=elapsed_ms,
-                        status_code=200,
-                        failover_chain=failover_log,
-                        error_message=result.get("error"),
-                        client_ip=client_ip,
-                        user_agent=user_agent,
-                        purpose=purpose,
-                        prompt_preview=prompt_preview,
-                        is_stream=True,
-                        usage_available=result.get("usage") is not None,
-                        ttft_ms=float(result.get("ttft_ms") or 0.0),
-                        duration_ms=float(result.get("duration_ms") or elapsed_ms),
-                        stream_completed=bool(result.get("completed")),
-                        billing=str(p_cfg.get("billing") or "free"),
-                    )
-
-                return StreamingResponse(
-                    audited_sse_stream(
-                        prefixed_stream(primed, upstream),
-                        _log_stream,
-                        started_at=start_time,
-                    ),
-                    media_type="text/event-stream",
-                )
-
-            else:
-                # Ensure choices have a string content even if reasoning models omitted it
-                if isinstance(body_or_gen, dict):
-                    for choice in body_or_gen.get("choices", []):
-                        msg = choice.get("message", {})
-                        if "content" not in msg or msg["content"] is None:
-                            msg["content"] = ""
-
-                usage = body_or_gen.get("usage", {})
-                audit_db.log_call(
-                    requested_model=req.model,
-                    routed_provider=p_id,
-                    routed_model=target_model,
-                    prompt_tokens=usage.get("prompt_tokens", 0),
-                    completion_tokens=usage.get("completion_tokens", 0),
-                    total_tokens=usage.get("total_tokens", 0),
-                    latency_ms=elapsed_ms,
-                    status_code=200,
-                    failover_chain=failover_log,
-                    client_ip=client_ip,
-                    user_agent=user_agent,
-                    purpose=purpose,
-                    prompt_preview=prompt_preview,
-                    usage_available=bool(usage),
-                    duration_ms=elapsed_ms,
-                    stream_completed=True,
-                    billing=str(p_cfg.get("billing") or "free"),
-                )
-                return JSONResponse(content=body_or_gen, status_code=200)
-
-        else:
-            # Trip circuit breaker and try next candidate
-            retry_after = resp_headers.get("retry-after") or resp_headers.get(
-                "ratelimit-reset"
+        if status_code != 200:
+            last_error = _record_candidate_failure(
+                p_id, status_code, body_or_gen, resp_headers, failover_log
             )
-            circuit_breaker.record_failure(
-                p_id, status_code=status_code, retry_after=retry_after
+            continue
+
+        if req.stream:
+            stream_resp, stream_err = await _build_streaming_response(
+                body_or_gen=body_or_gen,
+                p_id=p_id,
+                p_cfg=p_cfg,
+                req=req,
+                target_model=target_model,
+                elapsed_ms=elapsed_ms,
+                start_time=start_time,
+                failover_log=failover_log,
+                client_ip=client_ip,
+                user_agent=user_agent,
+                purpose=purpose,
+                prompt_preview=prompt_preview,
             )
-            failover_log.append(f"{p_id} (HTTP {status_code})")
-            last_error = body_or_gen
+            if stream_resp is not None:
+                return stream_resp
+            last_error = stream_err
+            continue
+
+        return _build_json_response(
+            body_or_gen=body_or_gen,
+            p_id=p_id,
+            p_cfg=p_cfg,
+            req=req,
+            target_model=target_model,
+            elapsed_ms=elapsed_ms,
+            failover_log=failover_log,
+            client_ip=client_ip,
+            user_agent=user_agent,
+            purpose=purpose,
+            prompt_preview=prompt_preview,
+        )
 
     # If all candidates in chain failed
     elapsed_ms = round((time.perf_counter() - start_time) * 1000, 1)

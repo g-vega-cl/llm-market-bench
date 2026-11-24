@@ -4,6 +4,7 @@ from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
 
 from recipes.push_schema import PushStrategy
 from recipes.worker import STALE_COMPILE_MESSAGE, process_next_recipe_job
@@ -599,9 +600,51 @@ def test_compile_job_enforces_locked_model_tokens_and_json_mode():
     assert len(post_events) == 1
     sent_payload = post_events[0][2]
     assert sent_payload["model"] == "auto-go"
-    assert sent_payload["max_tokens"] == 1600
+    assert sent_payload["max_tokens"] == 32_768
     assert sent_payload["temperature"] == 0.5
     assert sent_payload["response_format"] == {"type": "json_object"}
+
+
+def test_compile_job_timeout_covers_proxy_pass_budget():
+    from recipes.worker import COMPILE_TIMEOUT_SECONDS
+
+    assert COMPILE_TIMEOUT_SECONDS >= 180
+
+
+def test_compile_job_extracts_multipart_and_strips_think_blocks():
+    events = []
+    client, queue_table = _compile_job_client()
+    client.rpc.side_effect = _rpc_router(events)
+
+    multipart = [
+        {
+            "type": "text",
+            "text": '<think>internal reasoning</think>{"status":"question","question":"Which?","options":["A"]}',
+        },
+    ]
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client(events, content=multipart)):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "COMPLETED"
+    completed = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "completed"]
+    assert completed[0]["result_json"] == {"content": '{"status":"question","question":"Which?","options":["A"]}'}
+
+
+@pytest.mark.parametrize("empty_reply", ["", "   ", "<think>truncated reasoning without answer"])
+def test_compile_job_fails_once_on_empty_or_think_only_reply(empty_reply):
+    events = []
+    client, queue_table = _compile_job_client()
+    client.rpc.side_effect = _rpc_router(events)
+
+    with patch("recipes.worker.httpx.AsyncClient", new=_compile_client(events, content=empty_reply)):
+        res = process_next_recipe_job(client, target_mode="compile")
+
+    assert res == "FAILED"
+    assert len([e for e in events if e[0] == "post"]) == 1
+    failed = [c[0][0] for c in queue_table.update.call_args_list if c[0][0].get("status") == "failed"]
+    assert len(failed) == 1
+    assert failed[0]["error_message"] == "Builder model returned an empty reply"
 
 
 def test_compile_job_rejects_injected_extra_system_role():

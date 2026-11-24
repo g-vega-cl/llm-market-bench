@@ -5,7 +5,9 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Literal
 
 import httpx
@@ -19,15 +21,26 @@ JobOutcome = Literal["EMPTY", "COMPLETED", "FAILED", "CANCELLED"]
 SUPPORTED_JOB_MODES = ("backtest", "live_turn", "compile")
 
 # /build compiles ride the same queue. The daemon is not behind the edge's ~30s
-# function ceiling, so it can give the free provider a longer window than the old
-# synchronous request did; the web tier keeps the template fallback for failures.
-# 45s proved tight: a live smoke compile failed at 46s against the free provider.
-# Nothing upstream caps this (the client polls), so give the model 60s.
-COMPILE_TIMEOUT_SECONDS = max(30, int(os.environ.get("RECIPE_COMPILE_TIMEOUT_SECONDS", "60")))
+# function ceiling, and free_llm_proxy's auto-go pass budget is 165s (120s free
+# + 45s paid), so give the proxy a 180s window before timing out.
+_RECIPE_COMPILE_CONFIG_PATH = Path(__file__).resolve().parents[3] / "packages" / "config" / "recipe-compile.json"
+
+
+def _load_compile_max_tokens() -> int:
+    """Read shared web/engine compile token ceiling from packages/config/recipe-compile.json."""
+    try:
+        with open(_RECIPE_COMPILE_CONFIG_PATH, encoding="utf-8") as fh:
+            return int(json.load(fh)["compileMaxTokens"])
+    except (OSError, KeyError, ValueError) as exc:
+        raise RuntimeError(f"Recipe compile config is missing or invalid: {_RECIPE_COMPILE_CONFIG_PATH}") from exc
+
+
+COMPILE_TIMEOUT_SECONDS = max(30, int(os.environ.get("RECIPE_COMPILE_TIMEOUT_SECONDS", "180")))
 BUILDER_DAILY_LIMIT = 25
-COMPILE_MAX_TOKENS = 1600
+COMPILE_MAX_TOKENS: int = _load_compile_max_tokens()
 COMPILE_MAX_MESSAGES = 9  # 1 system + up to 8 conversation turns
 DEFAULT_COMPILE_PROXY_URL = "https://llm.clvg.uk/v1"
+_THINK_BLOCK_RE = re.compile(r"<think>[\s\S]*?(?:</think>|$)", re.IGNORECASE)
 # A compile nobody ever claimed (daemon down, or a burst the lane never reached)
 # must not block the per-user single-flight cap forever. Matches the existing
 # 10-minute recovery rule for stalled `processing` rows.
@@ -270,6 +283,26 @@ def _sanitize_compile_payload(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _extract_compile_content(body: dict[str, Any]) -> str:
+    """Extract visible text from a compile completion, stripping inline <think> tags."""
+    choices = body.get("choices") or []
+    raw_content = (choices[0].get("message") or {}).get("content") if choices else None
+    if isinstance(raw_content, list):
+        parts = [
+            str(part.get("text") or "") if isinstance(part, dict) else (part if isinstance(part, str) else "")
+            for part in raw_content
+        ]
+        text = "\n".join(p for p in parts if p)
+    elif isinstance(raw_content, str):
+        text = raw_content
+    else:
+        text = ""
+    visible = _THINK_BLOCK_RE.sub("", text).strip()
+    if not visible:
+        raise RuntimeError("Builder model returned an empty reply")
+    return visible
+
+
 async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dict[str, Any]:
     """Run one /build compile: meter, POST the locked auto-go request, return the raw reply.
 
@@ -316,6 +349,8 @@ async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dic
         response.raise_for_status()
         body = response.json()
 
+    content = _extract_compile_content(body)
+
     usage = body.get("usage")
     if isinstance(usage, dict):
         logger.info(
@@ -326,10 +361,6 @@ async def _execute_compile_job(sb: Any, job: dict[str, Any], job_id: str) -> dic
             usage.get("completion_tokens"),
         )
 
-    choices = body.get("choices") or []
-    content = (choices[0].get("message") or {}).get("content") if choices else None
-    if not content:
-        raise RuntimeError("Builder model returned an empty reply")
     return {"content": content}
 
 

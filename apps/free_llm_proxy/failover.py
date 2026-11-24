@@ -19,6 +19,7 @@ from __future__ import annotations
 import fnmatch
 import json
 import logging
+import re
 import time
 from dataclasses import dataclass
 from typing import Any
@@ -275,3 +276,43 @@ def cascade_candidates(
             ordered.append(model)
             seen.add(model)
     return ordered[:_MAX_DYNAMIC_CASCADE_RETRIES]
+
+
+_THINK_BLOCK_RE = re.compile(r"<think>[\s\S]*?(?:</think>|$)", re.IGNORECASE)
+
+
+def _has_visible_text(text: Any) -> bool:
+    return isinstance(text, str) and bool(_THINK_BLOCK_RE.sub("", text).strip())
+
+
+def _choice_has_output(choice: Any) -> bool:
+    """True when one completion choice carries visible text, tool calls, refusal, or audio."""
+    if not isinstance(choice, dict):
+        return False
+    msg = choice.get("message")
+    if not isinstance(msg, dict):
+        return _has_visible_text(choice.get("text"))
+    if msg.get("tool_calls") or msg.get("function_call") or msg.get("audio"):
+        return True
+    if _has_visible_text(msg.get("refusal")):
+        return True
+    content = msg.get("content")
+    if isinstance(content, str):
+        return _has_visible_text(content)
+    if isinstance(content, list):
+        return any(
+            (isinstance(part, dict) and _has_visible_text(part.get("text")))
+            or _has_visible_text(part)
+            for part in content
+        )
+    return False
+
+
+def is_empty_completion(body: Any) -> bool:
+    """True when a non-streaming 200 payload contains no usable assistant output."""
+    if not isinstance(body, dict):
+        return True
+    choices = body.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return True
+    return not any(_choice_has_output(choice) for choice in choices)

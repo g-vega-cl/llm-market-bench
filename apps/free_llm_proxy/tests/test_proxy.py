@@ -2055,3 +2055,178 @@ def test_multihop_cascade_503_then_429_then_404_preserves_429(client, monkeypatc
     assert resp.status_code == 502
     assert circuit_breaker.is_healthy("nous") is False
     assert circuit_breaker.get_status_overview()["nous"]["rate_limit_hits"] == 1
+
+
+def test_empty_non_streaming_completion_fails_over(client, monkeypatch):
+    """An upstream HTTP 200 with blank content/reasoning-exhausted output must fail over."""
+    from apps.free_llm_proxy.server import router
+
+    chain = [
+        ("nous", router.providers["nous"] | {"api_key": "nous_test_key"}),
+        ("groq", router.providers["groq"] | {"api_key": "groq_test_key"}),
+    ]
+    monkeypatch.setattr(router, "get_candidate_chain", lambda *a, **kw: chain)
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        if provider_id == "nous":
+            return ["tencent/hy4-flash:free", "qwen/qwen4-max:free"]
+        if provider_id == "groq":
+            return ["openai/gpt-oss-120b"]
+        return []
+
+    attempts = []
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        attempts.append((provider_cfg.get("name"), payload["model"]))
+        if provider_cfg.get("name") == "Nous Research":
+            return (
+                200,
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": None,
+                                "reasoning_content": "thought until max_tokens",
+                            },
+                            "finish_reason": "length",
+                        }
+                    ]
+                },
+                {},
+            )
+        return (
+            200,
+            {
+                "choices": [
+                    {"message": {"role": "assistant", "content": '{"status":"ok"}'}}
+                ]
+            },
+            {},
+        )
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={"model": "auto-go", "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == '{"status":"ok"}'
+    assert attempts[-1] == ("Groq", "openai/gpt-oss-120b")
+    assert len(attempts) >= 2
+
+
+def test_tool_calls_with_null_content_stay_200(client, monkeypatch):
+    """Tool calls legitimately omit message.content and must not trigger empty failover."""
+    from apps.free_llm_proxy.server import router
+
+    chain = [("groq", router.providers["groq"] | {"api_key": "groq_test_key"})]
+    monkeypatch.setattr(router, "get_candidate_chain", lambda *a, **kw: chain)
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        return ["openai/gpt-oss-120b"]
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        return (
+            200,
+            {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": "call_1",
+                                    "type": "function",
+                                    "function": {
+                                        "name": "get_stock_quote",
+                                        "arguments": "{}",
+                                    },
+                                }
+                            ],
+                        },
+                        "finish_reason": "tool_calls",
+                    }
+                ]
+            },
+            {},
+        )
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={"model": "auto-go", "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert resp.status_code == 200
+    msg = resp.json()["choices"][0]["message"]
+    assert msg["content"] == ""
+    assert msg["tool_calls"][0]["id"] == "call_1"
+
+
+def test_inline_think_only_completion_fails_over_and_logs_reason(client, monkeypatch):
+    """Unclosed or empty <think> blocks must fail over and record '(empty completion)'."""
+    from apps.free_llm_proxy.server import audit_db, router
+
+    chain = [
+        ("nous", router.providers["nous"] | {"api_key": "nous_test_key"}),
+        ("groq", router.providers["groq"] | {"api_key": "groq_test_key"}),
+    ]
+    monkeypatch.setattr(router, "get_candidate_chain", lambda *a, **kw: chain)
+
+    async def mock_fetch(provider_id, base_url, headers, client=None, **kwargs):
+        if provider_id == "nous":
+            return ["tencent/hy4-flash:free", "qwen/qwen4-max:free"]
+        return ["openai/gpt-oss-120b"]
+
+    async def mock_execute(provider_cfg, payload, stream=False, client=None):
+        if provider_cfg.get("name") == "Nous Research":
+            return (
+                200,
+                {
+                    "choices": [
+                        {
+                            "message": {
+                                "role": "assistant",
+                                "content": "<think>still thinking when max_tokens hit",
+                            },
+                            "finish_reason": "length",
+                        }
+                    ]
+                },
+                {},
+            )
+        return (
+            200,
+            {
+                "choices": [
+                    {"message": {"role": "assistant", "content": '{"status":"ok"}'}}
+                ]
+            },
+            {},
+        )
+
+    monkeypatch.setattr(
+        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
+    )
+    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
+
+    resp = client.post(
+        "/v1/chat/completions",
+        headers={"Authorization": "Bearer sk-test-master-key"},
+        json={"model": "auto-go", "messages": [{"role": "user", "content": "hi"}]},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["choices"][0]["message"]["content"] == '{"status":"ok"}'
+    latest_log = audit_db.get_logs(limit=1)["logs"][0]
+    assert "nous (empty completion)" in latest_log["failover_chain"]

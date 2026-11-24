@@ -169,6 +169,7 @@ async def _dispatch_with_timeout(
 - **Applies to every cloud attempt** — the primary dispatch plus each in-provider cascade step (Gemini, OpenRouter, NVIDIA NIM, Kilo Code, and catalog-driven cascades such as Nous) routes through `_dispatch_with_timeout`, so a hung fallback model is bounded exactly like the primary one.
 - **`budget_s` tightens the cap** — the free segment passes its remaining budget; the paid segment passes its own smaller cap. `None` keeps the provider-wide default.
 - **Returns `504`, not an exception** — the synthesized `504` `timeout_error` body flows through the normal status-code handling, so the router advances to the next candidate and the attempt is recorded in the audit `failover_chain` as `<provider> (HTTP 504)`.
+- **Empty non-streaming completions fail over (`is_empty_completion` in `failover.py`)** — if a non-streaming upstream returns HTTP `200` with no usable output (blank or `<think>`-only `content` across all choices and no `tool_calls`, `function_call`, `refusal`, or `audio`, e.g., from reasoning exhaustion or a silent 0-token response), `_dispatch_with_timeout` converts it to `503 empty_completion` and records `<provider> (empty completion)` in `failover_chain` so in-provider cascades and cross-provider failover advance instead of returning `200` with empty text.
 - **Strata is exempt** — local inference legitimately runs for minutes on deep reasoning prompts, so `provider_id == "strata"` bypasses the wrapper entirely and keeps its full budget with no total duration cap.
 - **Kill switch** — setting `CLOUD_REQUEST_TIMEOUT_SECONDS` to `0` (or any non-positive value) disables the cap for all providers, restoring the plain `execute_completion` path.
 
@@ -288,6 +289,8 @@ When an upstream endpoint returns temporary errors (503 high-demand spike, 404 d
 - **Nous Research** (catalog-driven): On `400`/`429`/`503`, cascades through up to 2 further allowed `:free` models ordered by `preferred_patterns`.
 
 The cascade re-checks the segment budget before *every* retry, so a multi-model provider cannot spend the request budget several times over, and quota-dead 429s stop the cascade mid-way instead of only at its start. When no fallback answers, the highest-priority failure status is preserved (see Circuit Breaker) so a trailing `404`/`504` never masks a `429`.
+
+- **Server & Request Helpers (`apps/free_llm_proxy/server.py`, `request_helpers.py`)** — `server.py` owns HTTP routes, auth, dispatch, and audit logging, while `request_helpers.py` holds pure thinking-param stripping/passthrough, output-ceiling clamping, candidate resolution, and prompt/client metadata extraction.
 
 ## Provider Output Ceilings & Thinking Passthrough (Behavioral Rules)
 

@@ -27,7 +27,7 @@ function describe(phase: BuilderPhase, elapsedMs: number, detail?: string): Stat
                 text:
                     detail ??
                     (elapsedMs >= SLOW_AFTER_MS
-                        ? 'the free model is slow right now — still trying, and it falls back to a working template if it misses the deadline'
+                        ? 'the model is slow right now — still trying, and it falls back to a working template if it misses the deadline'
                         : 'asking the model, then validating the recipe'),
                 tone: 'accent',
             };

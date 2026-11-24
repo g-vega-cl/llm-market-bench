@@ -16,9 +16,9 @@ Files with high churn and high bug fix density represent code where changes freq
 | `apps/web/src/routes/__root.tsx` | 18 | 11 | 61.1% | 349 | 198 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 21 | 8 | 38.1% | 358 | 168 | **CRITICAL** |
 | `apps/web/src/routes/-__root.test.tsx` | 14 | 8 | 57.1% | 530 | 112 | **CRITICAL** |
-| `apps/engine/recipes/test_worker.py` | 17 | 6 | 35.3% | 567 | 102 | **CRITICAL** |
-| `apps/free_llm_proxy/server.py` | 19 | 5 | 26.3% | 795 | 95 | **HIGH** |
-| `apps/engine/recipes/worker.py` | 15 | 6 | 40.0% | 374 | 90 | **CRITICAL** |
+| `apps/engine/recipes/test_worker.py` | 17 | 6 | 35.3% | 598 | 102 | **CRITICAL** |
+| `apps/free_llm_proxy/server.py` | 19 | 5 | 26.3% | 711 | 95 | **HIGH** |
+| `apps/engine/recipes/worker.py` | 15 | 6 | 40.0% | 398 | 90 | **CRITICAL** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
 | `apps/web/src/routes/index.tsx` | 20 | 4 | 20.0% | 23 | 80 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 16 | 5 | 31.2% | 562 | 80 | **HIGH** |

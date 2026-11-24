@@ -41,14 +41,16 @@ A second concurrent insert therefore fails with SQLSTATE `23505`, which `enqueue
 
 A queue row is data, not a trusted request. Both ends of the lane re-derive the model contract rather than trusting what was stored:
 
-- **Enqueue side (`buildCompilePayload`)** — emits `{ model: 'auto-go', temperature: 0.2, max_tokens: COMPILE_MAX_TOKENS (1600), response_format: { type: 'json_object' }, messages: buildConversation(...) }`. Model, token budget, and JSON mode are server-owned constants.
+- **Enqueue side (`buildCompilePayload`)** — emits `{ model: 'auto-go', temperature: 0.2, max_tokens: COMPILE_MAX_TOKENS (32_768), response_format: { type: 'json_object' }, messages: buildConversation(...) }`. Model, token budget (sourced from `packages/config/recipe-compile.json`), and JSON mode are server-owned constants.
 - **Worker side (`_sanitize_compile_payload`)** — before the meter and before any provider call, the daemon validates and rewrites the stored payload:
   - `messages` must be a non-empty list of at most `COMPILE_MAX_MESSAGES` (9 = 1 system + up to 8 conversation turns);
   - the first message must be `system` or `user`, every later message must be `user` or `assistant` (an injected second `system` turn fails the job);
   - every `content` must be non-empty text, truncated to 8000 chars for `system` and 2200 chars otherwise;
   - the last message must be a `user` turn;
-  - `max_tokens` is clamped to `1..COMPILE_MAX_TOKENS` (1600) and defaults to 1600 for a non-int or bool; `temperature` is clamped to `0.0..0.5` and defaults to 0.2;
+  - `max_tokens` is clamped to `1..COMPILE_MAX_TOKENS` (32_768) and defaults to 32_768 for a non-int or bool; `temperature` is clamped to `0.0..0.5` and defaults to 0.2;
   - `model` is forced to `auto-go` and `response_format` to `{ "type": "json_object" }`.
+
+`_extract_compile_content` handles both string and multipart `list` content and strips any `<think>...</think>` blocks, raising `RuntimeError("Builder model returned an empty reply")` if no visible text remains.
 
 A payload that fails validation raises before `consume_builder_compile`, so a tampered row costs no meter and no provider tokens. See [[concepts/recipe-builder-compiler]] for the conversation-level validation (`validateBuilderMessages`) that runs on the way in.
 
@@ -64,7 +66,7 @@ The compile lane loop (`_compile_lane_loop`) runs this sweep at most once per `S
 
 A 60s sweep cannot beat a 5s pop poll, so the sweep alone is not enough: a daemon returning to a 12-minute-old row claims and runs it first. `_execute_compile_job` therefore re-reads `created_at` and raises `STALE_COMPILE_MESSAGE` **before** the meter and before any provider call. A late job fails instead of charging a user for a compile they stopped waiting for. Proven live: a synthetic 12-minute-old row was claimed and completed before this guard, and fails without a provider call after it.
 
-Two more live findings from the same probe round: a provider timeout recorded `error_message = ""` (the row was `failed` with no text, so the UI could only say "failed"), and 45s was too tight — a real compile hit 46s against the free provider. `_failure_text()` now returns "The model took too long to answer. Try again." for `httpx.TimeoutException` and `<Type>: the job stopped without a message.` otherwise, and the budget is `COMPILE_TIMEOUT_SECONDS` = 60s (`RECIPE_COMPILE_TIMEOUT_SECONDS`, floor 30).
+Two more live findings from the same probe round: a provider timeout recorded `error_message = ""` (the row was `failed` with no text, so the UI could only say "failed"), and 45s/60s were too tight relative to `free_llm_proxy`'s 165s pass budget (`120s` free + `45s` paid). `_failure_text()` now returns "The model took too long to answer. Try again." for `httpx.TimeoutException` and `<Type>: the job stopped without a message.` otherwise, and the budget is `COMPILE_TIMEOUT_SECONDS` = 180s (`RECIPE_COMPILE_TIMEOUT_SECONDS`, floor 30).
 
 ## Client-Side Give-Up Path
 

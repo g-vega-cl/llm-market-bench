@@ -151,63 +151,65 @@ export function BuilderDescribeStep({
                 onSend={(text) => void chat.send(text)}
             />
 
-            <form
-                className="flex flex-col gap-3 min-w-0"
-                onSubmit={(event) => {
-                    event.preventDefault();
-                    void chat.send(chat.draft);
-                }}
-            >
-                <div className="voxel-trough bg-voxel-trough rounded-none flex w-full p-3 transition-colors focus-within:ring-2 focus-within:ring-accent/40">
-                    <textarea
-                        ref={textareaRef}
-                        rows={3}
-                        aria-label="Describe your trading bot"
-                        aria-describedby={hintId}
-                        placeholder="Describe what your bot should trade and when to enter or exit..."
-                        value={chat.draft}
-                        onChange={(event) => chat.setDraft(event.target.value)}
-                        onKeyDown={handleTextareaKeyDown}
-                        onFocus={onFocusTextarea}
-                        disabled={chat.isCompiling}
-                        maxLength={MAX_TURN_CHARS}
-                        className="w-full min-h-[4.5rem] max-h-60 resize-none overflow-y-auto bg-transparent text-xs font-normal leading-relaxed text-voxel-ink placeholder:text-voxel-muted focus:outline-none disabled:opacity-50"
-                    />
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 min-w-0">
-                        <span id={hintId} className="text-xs font-normal text-voxel-muted min-w-0">
-                            {`${String(chat.draft.length)} / ${String(MAX_TURN_CHARS)} · Ctrl/⌘+Enter to submit`}
-                        </span>
-                        {chat.draft.length > 0 ? (
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="outline"
-                                colorScheme="neutral"
-                                onClick={() => {
-                                    chat.setDraft('');
-                                    textareaRef.current?.focus();
-                                }}
-                                disabled={chat.isCompiling}
-                            >
-                                Clear
-                            </Button>
-                        ) : null}
+            {!chat.isCompiling ? (
+                <form
+                    className="flex flex-col gap-3 min-w-0"
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        void chat.send(chat.draft);
+                    }}
+                >
+                    <div className="voxel-trough bg-voxel-trough rounded-none flex w-full p-3 transition-colors focus-within:ring-2 focus-within:ring-accent/40">
+                        <textarea
+                            ref={textareaRef}
+                            rows={3}
+                            aria-label="Describe your trading bot"
+                            aria-describedby={hintId}
+                            placeholder="Describe what your bot should trade and when to enter or exit..."
+                            value={chat.draft}
+                            onChange={(event) => chat.setDraft(event.target.value)}
+                            onKeyDown={handleTextareaKeyDown}
+                            onFocus={onFocusTextarea}
+                            maxLength={MAX_TURN_CHARS}
+                            className="w-full min-h-[4.5rem] max-h-60 resize-none overflow-y-auto bg-transparent text-xs font-normal leading-relaxed text-voxel-ink placeholder:text-voxel-muted focus:outline-none disabled:opacity-50"
+                        />
                     </div>
-                    <Button
-                        type="submit"
-                        variant="solid"
-                        size="md"
-                        colorScheme="accent"
-                        className="voxel-btn--hero"
-                        isLoading={chat.isCompiling}
-                        disabled={!chat.draft.trim()}
-                    >
-                        {isInitialStep ? 'Continue to Alignment →' : 'Send Answer →'}
-                    </Button>
-                </div>
-            </form>
+                    <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                            <span
+                                id={hintId}
+                                className="text-xs font-normal text-voxel-muted min-w-0"
+                            >
+                                {`${String(chat.draft.length)} / ${String(MAX_TURN_CHARS)} · Ctrl/⌘+Enter to submit`}
+                            </span>
+                            {chat.draft.length > 0 ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    colorScheme="neutral"
+                                    onClick={() => {
+                                        chat.setDraft('');
+                                        textareaRef.current?.focus();
+                                    }}
+                                >
+                                    Clear
+                                </Button>
+                            ) : null}
+                        </div>
+                        <Button
+                            type="submit"
+                            variant="solid"
+                            size="md"
+                            colorScheme="accent"
+                            className="voxel-btn--hero"
+                            disabled={!chat.draft.trim()}
+                        >
+                            {isInitialStep ? 'Continue to Alignment →' : 'Send Answer →'}
+                        </Button>
+                    </div>
+                </form>
+            ) : null}
 
             {isInitialStep && !chat.pendingIdea ? (
                 <BuilderStarterChips disabled={chat.isCompiling} onSelect={onSelectChip} />

@@ -5,7 +5,7 @@ category: concept
 
 # Code Hotspots & Architectural Friction
 
-Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **337**).
+Living metrics generated from git history (Lookback window: **60 days ago**, Total commits analyzed: **334**).
 
 ## Top Hotspots
 
@@ -13,21 +13,21 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/web/src/routes/__root.tsx` | 18 | 11 | 61.1% | 349 | 198 | **CRITICAL** |
-| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 21 | 8 | 38.1% | 358 | 168 | **CRITICAL** |
-| `apps/web/src/routes/-__root.test.tsx` | 14 | 8 | 57.1% | 530 | 112 | **CRITICAL** |
-| `apps/engine/recipes/test_worker.py` | 17 | 6 | 35.3% | 598 | 102 | **CRITICAL** |
-| `apps/free_llm_proxy/server.py` | 19 | 5 | 26.3% | 711 | 95 | **HIGH** |
-| `apps/engine/recipes/worker.py` | 15 | 6 | 40.0% | 398 | 90 | **CRITICAL** |
+| `apps/web/src/routes/__root.tsx` | 18 | 11 | 61.1% | 389 | 198 | **CRITICAL** |
+| `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 20 | 8 | 40.0% | 358 | 160 | **CRITICAL** |
+| `apps/engine/recipes/test_worker.py` | 18 | 7 | 38.9% | 598 | 126 | **CRITICAL** |
+| `apps/free_llm_proxy/server.py` | 20 | 6 | 30.0% | 711 | 120 | **CRITICAL** |
+| `apps/engine/recipes/worker.py` | 16 | 7 | 43.8% | 398 | 112 | **CRITICAL** |
+| `apps/web/src/routes/-__root.test.tsx` | 14 | 8 | 57.1% | 546 | 112 | **CRITICAL** |
 | `apps/web/src/features/home/components/LiveAgentConsole.tsx` | 17 | 5 | 29.4% | 304 | 85 | **HIGH** |
 | `apps/web/src/routes/index.tsx` | 20 | 4 | 20.0% | 23 | 80 | **HIGH** |
 | `apps/engine/trading/test_live_intraday_agent.py` | 16 | 5 | 31.2% | 562 | 80 | **HIGH** |
-| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 19 | 4 | 21.1% | 474 | 76 | **HIGH** |
-| `apps/web/src/features/daily-predictions/pages/DailyPredictionsPage.tsx` | 18 | 4 | 22.2% | 328 | 72 | **HIGH** |
-| `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 12 | 6 | 50.0% | 186 | 72 | **HIGH** |
+| `apps/web/src/features/recipes/pages/RecipeStudioPage.tsx` | 19 | 4 | 21.1% | 399 | 76 | **HIGH** |
+| `apps/free_llm_proxy/tests/test_proxy.py` | 18 | 4 | 22.2% | 1895 | 72 | **HIGH** |
 | `apps/web/src/features/home/components/ConsoleQueueCard.tsx` | 12 | 6 | 50.0% | 226 | 72 | **HIGH** |
 | `apps/engine/trading/runner.py` | 17 | 4 | 23.5% | 570 | 68 | **HIGH** |
 | `apps/engine/trading/live_intraday_agent.py` | 17 | 4 | 23.5% | 625 | 68 | **HIGH** |
+| `apps/web/src/features/portfolios/pages/PortfolioDetailPage.tsx` | 11 | 6 | 54.5% | 186 | 66 | **HIGH** |
 
 ## Temporal Coupling (Co-churn)
 
@@ -36,7 +36,7 @@ Files that consistently change in the same commit indicate implicit architectura
 | Primary File | Coupled File | Shared Commits | Coupling Strength |
 | :--- | :--- | :---: | :---: |
 | `apps/engine/trading/live_intraday_agent.py` | `apps/engine/trading/test_live_intraday_agent.py` | 14 | 88% |
-| `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 13 | 76% |
+| `apps/free_llm_proxy/server.py` | `apps/free_llm_proxy/tests/test_proxy.py` | 14 | 78% |
 | `apps/web/src/routes/-__root.test.tsx` | `apps/web/src/routes/__root.tsx` | 12 | 86% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/tests/test_proxy.py` | 11 | 79% |
 | `apps/free_llm_proxy/providers.json` | `apps/free_llm_proxy/server.py` | 10 | 71% |
@@ -53,7 +53,7 @@ Files that consistently change in the same commit indicate implicit architectura
 
 ## Team Health
 
-Team forensics over the same scoped window (commits analyzed: **337**, months: **2**).
+Team forensics over the same scoped window (commits analyzed: **334**, months: **2**).
 
 - **Bus factor**: `g-vega-cl` accounts for **100%** of human commits — **FRAGILE** (single-author risk when ≥ 60%).
 - **Commit velocity trend** (12 months ago): **ACCELERATING** (last 3 months vs the 3 before, ±25% band).
@@ -63,7 +63,7 @@ Team forensics over the same scoped window (commits analyzed: **337**, months: *
 
 | Author | Commits | Share of window commits |
 | :--- | ---: | ---: |
-| `g-vega-cl` | 337 | 100.0% |
+| `g-vega-cl` | 334 | 100.0% |
 
 ### Commit Velocity
 
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **337**, months: *
 | 2026-08 | 114 | ▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇ |
-| 2026-11 | 203 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 204 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

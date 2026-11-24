@@ -112,6 +112,7 @@
 
 ## Concepts
 
+- [[concepts/atomic-live-schedule-switch]] — single-transaction `switch_live_schedule` RPC that pauses one live bot and enables another
 - [[concepts/turnstile-captcha]] — Cloudflare Turnstile CAPTCHA gating password login and signup
 - [[concepts/page-surface-conventions]] — PageLayout padding opt-out (`withPadding={false}`) and action-vs-browse page title rules, enforced by `page-surface-conventions.test.tsx`
 - [[concepts/starter-recipes]] — catalog of pre-built recipe templates in packages/config/starter-recipes.json

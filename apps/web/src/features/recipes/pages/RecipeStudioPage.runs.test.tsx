@@ -4,6 +4,7 @@ import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import {
     activateRecipeTurboFn,
     fetchRecipeQuotaStatusFn,
+    switchLiveScheduleFn,
     toggleLiveScheduleFn,
 } from '../api/recipes-quota-api';
 import { RecipeStudioPage } from './RecipeStudioPage';
@@ -44,6 +45,7 @@ vi.mock('../api/recipes-quota-api', () => ({
     activateRecipeTurboFn: vi.fn(),
     fetchRecipeQuotaStatusFn: vi.fn(),
     toggleLiveScheduleFn: vi.fn(),
+    switchLiveScheduleFn: vi.fn(),
 }));
 
 vi.mock('../api/recipes-studio-api', () => ({
@@ -167,9 +169,11 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
             name: 'New Recipe',
             cadence: '3h',
         } as never);
-        vi.mocked(toggleLiveScheduleFn)
-            .mockResolvedValueOnce({ id: 'rec-old-1', is_live: false })
-            .mockResolvedValueOnce({ id: 'rec-new-1', is_live: true });
+        vi.mocked(switchLiveScheduleFn).mockResolvedValueOnce({
+            pausedId: 'rec-old-1',
+            enabledId: 'rec-new-1',
+            is_live: true,
+        });
         vi.mocked(fetchRecipeQuotaStatusFn).mockResolvedValue({
             tier: 'beta_starter',
             activeBacktests: 0,
@@ -186,6 +190,19 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
 
         render(
             <RecipeStudioPage
+                initialQuota={{
+                    tier: 'beta_starter',
+                    activeBacktests: 0,
+                    maxConcurrentBacktests: 1,
+                    backtestsLast24h: 0,
+                    dailyBacktestLimit: 2,
+                    liveTurnsLast24h: 0,
+                    dailyLiveTurnLimit: 3,
+                    activeLiveRecipes: 1,
+                    maxLiveRecipes: 1,
+                    globalPendingBacktests: 0,
+                    globalQueueCap: 20,
+                }}
                 initialUserRecipes={[
                     {
                         id: 'rec-old-1',
@@ -213,16 +230,13 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
             ).toBeInTheDocument();
         });
 
-        // Click Switch to This — should disable old, enable new, navigate
+        // Click Switch to This — should switch atomically and navigate
         fireEvent.click(screen.getByRole('button', { name: 'Switch to This' }));
 
         await waitFor(() => {
-            expect(toggleLiveScheduleFn).toHaveBeenCalledTimes(2);
-            expect(toggleLiveScheduleFn).toHaveBeenNthCalledWith(1, {
-                data: { recipeId: 'rec-old-1', isLive: false },
-            });
-            expect(toggleLiveScheduleFn).toHaveBeenNthCalledWith(2, {
-                data: { recipeId: 'rec-new-1', isLive: true },
+            expect(switchLiveScheduleFn).toHaveBeenCalledTimes(1);
+            expect(switchLiveScheduleFn).toHaveBeenCalledWith({
+                data: { pauseRecipeId: 'rec-old-1', enableRecipeId: 'rec-new-1' },
             });
             expect(mockNavigate).toHaveBeenCalledWith({
                 to: '/recipes/live/$recipeId',
@@ -253,6 +267,19 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
 
         render(
             <RecipeStudioPage
+                initialQuota={{
+                    tier: 'beta_starter',
+                    activeBacktests: 0,
+                    maxConcurrentBacktests: 1,
+                    backtestsLast24h: 0,
+                    dailyBacktestLimit: 2,
+                    liveTurnsLast24h: 0,
+                    dailyLiveTurnLimit: 3,
+                    activeLiveRecipes: 1,
+                    maxLiveRecipes: 1,
+                    globalPendingBacktests: 0,
+                    globalQueueCap: 20,
+                }}
                 initialUserRecipes={[
                     {
                         id: 'rec-old-1',

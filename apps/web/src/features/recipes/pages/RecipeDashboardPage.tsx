@@ -131,11 +131,12 @@ export function RecipeDashboardPage({
                     onRequestCapacity={() => setShowPledgeModal(true)}
                 />
 
-                {liveControl.state.kind === 'confirming' && (
+                {(liveControl.state.kind === 'confirming' ||
+                    liveControl.state.kind === 'switching') && (
                     <LiveSwitchConfirmation
                         conflictingRecipe={liveControl.state.conflicting}
                         targetRecipeName={liveControl.state.target.name}
-                        isSwitching={false}
+                        isSwitching={liveControl.state.kind === 'switching'}
                         onConfirm={() => void liveControl.confirmSwitch()}
                         onCancel={liveControl.cancelSwitch}
                     />

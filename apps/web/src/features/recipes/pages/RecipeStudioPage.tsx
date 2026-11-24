@@ -8,12 +8,9 @@ import {
     TYPE_GRID,
 } from '~/features/personality/personality-data';
 import { track } from '~/lib/analytics';
+import { assertServerFnResult } from '~/lib/server-fn';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
-import {
-    activateRecipeTurboFn,
-    fetchRecipeQuotaStatusFn,
-    toggleLiveScheduleFn,
-} from '../api/recipes-quota-api';
+import { activateRecipeTurboFn, fetchRecipeQuotaStatusFn } from '../api/recipes-quota-api';
 import {
     fetchRecipeAlertsFn,
     markAlertReadFn,
@@ -54,7 +51,8 @@ import {
     upsertSavedRecipeSummary,
 } from '../utils/live-studio-helpers';
 import { clearLocalDraft, loadLocalDraft } from '../utils/local-draft';
-import { RecipeSaveError, useRecipeDraft } from '../utils/use-recipe-draft';
+import { useLiveScheduleControl } from '../utils/use-live-schedule-control';
+import { useRecipeDraft } from '../utils/use-recipe-draft';
 import { useStrategyRemoval } from '../utils/use-strategy-removal';
 
 interface RecipeStudioPageProps {
@@ -102,33 +100,12 @@ export function RecipeStudioPage({
         initialStrategy ? -1 : 0,
     );
 
-    const [scheduleError, setScheduleError] = useState<string | null>(null);
     const [backtestError, setBacktestError] = useState<BacktestError | null>(null);
     const [preview, setPreview] = useState<PreviewState>({ status: 'template' });
     const [quotaStatus, setQuotaStatus] = useState<RecipeUserQuotaStatus | null>(initialQuota);
     const [userRecipes, setUserRecipes] = useState<RecipeSummaryItem[]>(initialUserRecipes);
-    const removal = useStrategyRemoval((item) => {
-        setUserRecipes((prev) => prev.filter((r) => r.id !== item.id));
-        if (strategy.id === item.id) {
-            // The removed row must not stay open in the editor, otherwise the
-            // next Backtest or Schedule Live persist would act on a hidden strategy.
-            draft.resetTo(STARTER_RECIPES[0]);
-            setActiveTemplateIdx(0);
-            setBacktestError(null);
-            setScheduleError(null);
-            setPreview({ status: 'template' });
-        }
-    });
-    const [isTogglingLive, setIsTogglingLive] = useState(false);
     const [isActivatingTurbo, setIsActivatingTurbo] = useState(false);
     const [isRunningBacktest, setIsRunningBacktest] = useState(false);
-
-    // Live switch confirmation state
-    const [conflictingLiveRecipe, setConflictingLiveRecipe] = useState<RecipeSummaryItem | null>(
-        null,
-    );
-    const [isSwitchingLive, setIsSwitchingLive] = useState(false);
-
     const [alerts, setAlerts] = useState<RecipeAlert[]>([]);
     const [showAlertsInbox, setShowAlertsInbox] = useState<boolean>(false);
     const [showPledgeModal, setShowPledgeModal] = useState<boolean>(false);
@@ -142,13 +119,36 @@ export function RecipeStudioPage({
         }
     };
 
+    const liveControl = useLiveScheduleControl({
+        userRecipes,
+        quotaStatus,
+        onRecipesChange: setUserRecipes,
+        onRefreshQuota: refreshQuota,
+        onEnabledNavigate: async (recipeId) => {
+            await navigate({ to: '/recipes/live/$recipeId', params: { recipeId } });
+        },
+    });
+
+    const removal = useStrategyRemoval((item) => {
+        setUserRecipes((prev) => prev.filter((r) => r.id !== item.id));
+        if (strategy.id === item.id) {
+            // The removed row must not stay open in the editor, otherwise the
+            // next Backtest or Schedule Live persist would act on a hidden strategy.
+            draft.resetTo(STARTER_RECIPES[0]);
+            setActiveTemplateIdx(0);
+            setBacktestError(null);
+            liveControl.setScheduleError(null);
+            setPreview({ status: 'template' });
+        }
+    });
+
     const handleSelectTemplate = (idx: number) => {
         setActiveTemplateIdx(idx);
         draft.resetTo(STARTER_RECIPES[idx]);
-        setScheduleError(null);
+        liveControl.setScheduleError(null);
+        liveControl.cancelSwitch();
         setBacktestError(null);
         setPreview({ status: 'template' });
-        setConflictingLiveRecipe(null);
     };
 
     const handleSelectTemplateByCode = (code: string) => {
@@ -183,12 +183,12 @@ export function RecipeStudioPage({
     ): Promise<StrategyRecipeRecord> => {
         // One in-flight save at a time: run/schedule callers share the promise,
         // so a recipe can never be inserted twice from a duplicate click.
-        const saved = await draft.save(
-            (recipe) =>
-                saveRecipeFn({
-                    data: { recipe, restore: options.restore ?? false },
-                }) as Promise<StrategyRecipeRecord>,
-        );
+        const saved = await draft.save(async (recipe) => {
+            const res = await saveRecipeFn({
+                data: { recipe, restore: options.restore ?? false },
+            });
+            return assertServerFnResult(res, 'Saving strategy') as StrategyRecipeRecord;
+        });
         setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved));
         return saved;
     };
@@ -205,16 +205,19 @@ export function RecipeStudioPage({
     };
 
     const handleBacktest = async () => {
-        if (isRunningBacktest) return;
+        if (isRunningBacktest || liveControl.isBusy || draft.isSaving) return;
         setIsRunningBacktest(true);
-        setScheduleError(null);
+        liveControl.setScheduleError(null);
         let queuedBacktestJobId: string | undefined;
         let didNavigate = false;
         try {
             const saved = await persistActiveStrategy();
-            const job = (await enqueueRecipeJobFn({
-                data: { recipeId: saved.id, mode: 'backtest' },
-            })) as { id: string; status: string; result_json?: BacktestResultData };
+            const job = assertServerFnResult(
+                await enqueueRecipeJobFn({
+                    data: { recipeId: saved.id, mode: 'backtest' },
+                }),
+                'Starting backtest',
+            ) as { id: string; status: string; result_json?: BacktestResultData };
             queuedBacktestJobId = job.id;
             // The activation funnel ends here in the client: the runner settles the
             // job server-side, where no PostHog client exists.
@@ -223,19 +226,15 @@ export function RecipeStudioPage({
             didNavigate = true;
             return;
         } catch (err) {
-            // A failed save is reported inline next to the name field; surfacing
-            // it here too would duplicate the alert.
-            if (!(err instanceof RecipeSaveError)) {
-                setBacktestError((prev) => {
-                    const next = buildBacktestError({ err, queuedBacktestJobId });
-                    // Preserve the queued job id across retries so the fallback
-                    // "Open Backtest Run" link stays visible on quota failures.
-                    if (!next.backtestJobId && prev?.backtestJobId) {
-                        return { ...next, backtestJobId: prev.backtestJobId };
-                    }
-                    return next;
-                });
-            }
+            setBacktestError((prev) => {
+                const next = buildBacktestError({ err, queuedBacktestJobId });
+                // Preserve the queued job id across retries so the fallback
+                // "Open Backtest Run" link stays visible on quota failures.
+                if (!next.backtestJobId && prev?.backtestJobId) {
+                    return { ...next, backtestJobId: prev.backtestJobId };
+                }
+                return next;
+            });
         } finally {
             setIsRunningBacktest(false);
             if (!didNavigate) await refreshQuota();
@@ -245,125 +244,30 @@ export function RecipeStudioPage({
     const currentSavedRecord = userRecipes.find((r) => r.id === strategy.id);
     const isCurrentlyScheduledLive = Boolean(currentSavedRecord?.is_live);
 
-    const applyScheduleError = (err: unknown) => {
-        // A failed save is reported inline next to the name field.
-        if (err instanceof RecipeSaveError) return;
-        const message =
-            err instanceof Error ? err.message : 'Failed updating Scheduled Live status';
-        if (isQuotaLimitMessage(message)) {
-            console.warn('[RecipeStudio] Scheduled Live blocked by quota:', message);
-        } else {
-            console.error('[RecipeStudio] Failed updating Scheduled Live status:', err);
-        }
-        setScheduleError(message);
-    };
-
-    /**
-     * Toggle live schedule for the current recipe.
-     *
-     * When enabling and another recipe is already live, shows a confirmation
-     * trough (LiveSwitchConfirmation) instead of silently switching. On confirm,
-     * disables the old recipe first, then enables the new one.
-     */
-    const handleToggleScheduledLive = async () => {
-        if (isTogglingLive) return;
-        setIsTogglingLive(true);
-        setScheduleError(null);
+    const handleToggleScheduledLive = () => {
+        if (liveControl.isBusy) return;
         setBacktestError(null);
-
-        // If currently live, just disable.
-        if (isCurrentlyScheduledLive) {
-            try {
-                const saved = await persistActiveStrategy();
-                const updated = await toggleLiveScheduleFn({
-                    data: { recipeId: saved.id, isLive: false },
-                });
-                setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved, updated.is_live));
-            } catch (err) {
-                applyScheduleError(err);
-            } finally {
-                setIsTogglingLive(false);
-                await refreshQuota();
-            }
-            return;
-        }
-
-        // Check for conflicting live recipe.
-        const conflicting = userRecipes.find((r) => r.is_live && r.id !== strategy.id);
-        if (conflicting) {
-            setIsTogglingLive(false);
-            setConflictingLiveRecipe(conflicting);
-            return;
-        }
-
-        // No conflict — enable directly.
-        try {
-            const saved = await persistActiveStrategy();
-            const updated = await toggleLiveScheduleFn({
-                data: { recipeId: saved.id, isLive: true },
-            });
-            setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved, updated.is_live));
-            // Navigate to the live status page.
-            await navigate({ to: '/recipes/live/$recipeId', params: { recipeId: saved.id } });
-        } catch (err) {
-            applyScheduleError(err);
-        } finally {
-            setIsTogglingLive(false);
-            await refreshQuota();
-        }
-    };
-
-    /**
-     * Confirm the live switch: disable the old live recipe, then enable the new one.
-     */
-    const handleConfirmLiveSwitch = async () => {
-        if (!conflictingLiveRecipe || isSwitchingLive) return;
-        setIsSwitchingLive(true);
-        setScheduleError(null);
-        try {
-            const saved = await persistActiveStrategy();
-
-            // Disable the old live recipe first.
-            await toggleLiveScheduleFn({
-                data: { recipeId: conflictingLiveRecipe.id, isLive: false },
-            });
-
-            // Enable the new one.
-            const updated = await toggleLiveScheduleFn({
-                data: { recipeId: saved.id, isLive: true },
-            });
-
-            setUserRecipes((prev) => {
-                const withoutOld = prev.map((r) =>
-                    r.id === conflictingLiveRecipe.id
-                        ? { ...r, is_live: false, turbo_expires_at: null }
-                        : r,
-                );
-                return upsertSavedRecipeSummary(withoutOld, saved, updated.is_live);
-            });
-
-            setConflictingLiveRecipe(null);
-            await navigate({ to: '/recipes/live/$recipeId', params: { recipeId: saved.id } });
-        } catch (err) {
-            applyScheduleError(err);
-            setConflictingLiveRecipe(null);
-        } finally {
-            setIsSwitchingLive(false);
-            await refreshQuota();
-        }
-    };
-
-    const handleCancelLiveSwitch = () => {
-        setConflictingLiveRecipe(null);
+        const target: RecipeSummaryItem = currentSavedRecord ?? {
+            id: strategy.id ?? '',
+            name: strategy.name,
+            cadence: strategy.cadence,
+            is_live: isCurrentlyScheduledLive,
+            trial_count: 0,
+            updated_at: new Date().toISOString(),
+        };
+        void liveControl.toggle(target, () => persistActiveStrategy());
     };
 
     const handleActivateTurbo = async () => {
         if (isActivatingTurbo || !strategy.id || !isCurrentlyScheduledLive) return;
         setIsActivatingTurbo(true);
-        setScheduleError(null);
+        liveControl.setScheduleError(null);
         setBacktestError(null);
         try {
-            const res = await activateRecipeTurboFn({ data: { recipeId: strategy.id } });
+            const res = assertServerFnResult(
+                await activateRecipeTurboFn({ data: { recipeId: strategy.id } }),
+                'Activating Turbo',
+            );
             setUserRecipes((prev) =>
                 prev.map((r) =>
                     r.id === res.recipeId ? { ...r, turbo_expires_at: res.turboExpiresAt } : r,
@@ -371,7 +275,13 @@ export function RecipeStudioPage({
             );
             setQuotaStatus((prev) => (prev ? { ...prev, turboUsedToday: true } : prev));
         } catch (err) {
-            applyScheduleError(err);
+            const message = err instanceof Error ? err.message : 'Failed activating Turbo';
+            if (isQuotaLimitMessage(message)) {
+                console.warn('[RecipeStudio] Turbo blocked by quota:', message);
+            } else {
+                console.error('[RecipeStudio] Failed activating Turbo:', err);
+            }
+            liveControl.setScheduleError(message);
         } finally {
             setIsActivatingTurbo(false);
             await refreshQuota();
@@ -410,12 +320,14 @@ export function RecipeStudioPage({
                         onSave={handleSaveRecipe}
                         isDirty={draft.isDirty}
                         saveState={draft.saveState}
-                        saveError={draft.saveError}
+                        saveError={
+                            backtestError || liveControl.scheduleError ? null : draft.saveError
+                        }
                         disabled={draft.isSaving || isRunningBacktest}
                     />
 
                     <StudioActionBar
-                        isTogglingLive={isTogglingLive}
+                        isTogglingLive={liveControl.isBusy}
                         isCurrentlyScheduledLive={isCurrentlyScheduledLive}
                         liveRecipeId={isCurrentlyScheduledLive ? strategy.id : undefined}
                         turboExpiresAt={currentSavedRecord?.turbo_expires_at}
@@ -436,19 +348,22 @@ export function RecipeStudioPage({
                     />
                 </div>
 
-                {conflictingLiveRecipe && (
+                {(liveControl.state.kind === 'confirming' ||
+                    liveControl.state.kind === 'switching') && (
                     <LiveSwitchConfirmation
-                        conflictingRecipe={conflictingLiveRecipe}
+                        conflictingRecipe={liveControl.state.conflicting}
                         targetRecipeName={strategy.name}
-                        isSwitching={isSwitchingLive}
-                        onConfirm={handleConfirmLiveSwitch}
-                        onCancel={handleCancelLiveSwitch}
+                        isSwitching={liveControl.state.kind === 'switching'}
+                        onConfirm={() =>
+                            void liveControl.confirmSwitch(() => persistActiveStrategy())
+                        }
+                        onCancel={liveControl.cancelSwitch}
                     />
                 )}
 
                 <StudioAlertSlot
                     backtestError={backtestError}
-                    scheduleError={scheduleError}
+                    scheduleError={liveControl.scheduleError}
                     onRequestCapacity={() => setShowPledgeModal(true)}
                 />
 

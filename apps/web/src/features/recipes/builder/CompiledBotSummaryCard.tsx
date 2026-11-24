@@ -41,14 +41,26 @@ function resolveNextActionCopy(isCurrentlyScheduledLive: boolean, preferLive: bo
     };
 }
 
-function resolveLiveButtonStyle(emphasizeLive: boolean, isCurrentlyScheduledLive: boolean) {
+function resolveLiveButtonStyle(
+    emphasizeLive: boolean,
+    isCurrentlyScheduledLive: boolean,
+    isTogglingLive: boolean,
+) {
+    const label = isTogglingLive
+        ? isCurrentlyScheduledLive
+            ? 'Pausing Live...'
+            : 'Enabling Live...'
+        : isCurrentlyScheduledLive
+          ? 'Live: ON (30m)'
+          : 'Enable Live (30m)';
+
     if (emphasizeLive) {
         return {
             size: 'md' as const,
             variant: 'solid' as const,
             colorScheme: 'accent' as const,
             className: 'voxel-btn--hero',
-            label: 'Enable Live (30m)',
+            label,
         };
     }
     if (isCurrentlyScheduledLive) {
@@ -57,7 +69,7 @@ function resolveLiveButtonStyle(emphasizeLive: boolean, isCurrentlyScheduledLive
             variant: 'solid' as const,
             colorScheme: 'success' as const,
             className: undefined,
-            label: 'Live: ON (30m)',
+            label,
         };
     }
     return {
@@ -65,7 +77,7 @@ function resolveLiveButtonStyle(emphasizeLive: boolean, isCurrentlyScheduledLive
         variant: 'outline' as const,
         colorScheme: 'neutral' as const,
         className: undefined,
-        label: 'Enable Live (30m)',
+        label,
     };
 }
 
@@ -91,7 +103,11 @@ function NextActionCtas({
     onToggleLive: () => void;
 }) {
     const emphasizeLive = preferLive && !isCurrentlyScheduledLive;
-    const liveStyle = resolveLiveButtonStyle(emphasizeLive, isCurrentlyScheduledLive);
+    const liveStyle = resolveLiveButtonStyle(
+        emphasizeLive,
+        isCurrentlyScheduledLive,
+        isTogglingLive,
+    );
     const backtestBtn = (
         <Button
             size={emphasizeLive ? 'sm' : 'md'}

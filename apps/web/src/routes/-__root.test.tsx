@@ -10,6 +10,8 @@ import { describe, expect, it, vi } from 'vitest';
 import {
     BeakerIcon,
     BriefcaseIcon,
+    LoginIcon,
+    LogoutIcon,
     NavLink,
     navItems,
     PostHogAuthSync,
@@ -149,10 +151,12 @@ describe('Root layout navigation', () => {
         // Email should NOT be shown in the navbar
         expect(screen.queryByText('verified@example.com')).toBeNull();
 
-        // Logout button must be present
+        // Logout icon button must be present (SVG, no visible text)
         const logoutLink = screen.getByRole('link', { name: 'Logout' });
         expect(logoutLink).toBeInTheDocument();
         expect(logoutLink).toHaveAttribute('href', '/logout');
+        expect(logoutLink.querySelector('svg')).toBeInTheDocument();
+        expect(logoutLink).toHaveTextContent('');
 
         // Navbar must not have flex-wrap to keep logout on the same row
         const nav = logoutLink.closest('nav');
@@ -160,7 +164,7 @@ describe('Root layout navigation', () => {
         expect(nav?.className).not.toContain('flex-wrap');
     });
 
-    it('all navbar buttons enforce uniform sizing (h-9 w-9 for nav items, h-9 for auth button)', async () => {
+    it('all navbar buttons enforce uniform sizing (h-9 w-9 for nav items and auth icon buttons)', async () => {
         vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
 
         const testRoute = createRootRoute({
@@ -186,10 +190,18 @@ describe('Root layout navigation', () => {
         }
 
         const loginLink = screen.getByRole('link', { name: 'Login' });
-        expect(loginLink).toHaveClass('inline-flex', 'items-center', 'justify-center', 'h-9');
+        expect(loginLink).toHaveClass(
+            'inline-flex',
+            'items-center',
+            'justify-center',
+            'h-9',
+            'w-9',
+        );
+        expect(loginLink.querySelector('svg')).toBeInTheDocument();
+        expect(loginLink).toHaveTextContent('');
     });
 
-    it('BriefcaseIcon and BeakerIcon render recognizable briefcase and conical flask SVGs', () => {
+    it('BriefcaseIcon, BeakerIcon, LoginIcon, and LogoutIcon render recognizable SVGs', () => {
         const { container: briefcaseContainer } = render(<BriefcaseIcon />);
         const briefcaseSvg = briefcaseContainer.querySelector('svg');
         expect(briefcaseSvg).toBeInTheDocument();
@@ -205,6 +217,12 @@ describe('Root layout navigation', () => {
         expect(beakerPaths).toContain('M9 3h6');
         expect(beakerPaths).toContain('M6.5 15h11');
         expect(beakerPaths.length).toBeGreaterThanOrEqual(3);
+
+        const { container: loginContainer } = render(<LoginIcon />);
+        expect(loginContainer.querySelector('svg')).toBeInTheDocument();
+
+        const { container: logoutContainer } = render(<LogoutIcon />);
+        expect(logoutContainer.querySelector('svg')).toBeInTheDocument();
     });
 });
 

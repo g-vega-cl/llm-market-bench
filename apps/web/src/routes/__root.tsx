@@ -208,6 +208,44 @@ export function RecipeIcon() {
     );
 }
 
+export function LoginIcon() {
+    return (
+        <svg
+            className="w-4 h-4 shrink-0"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
+            <polyline points="10 17 15 12 10 7" />
+            <line x1="15" y1="12" x2="3" y2="12" />
+        </svg>
+    );
+}
+
+export function LogoutIcon() {
+    return (
+        <svg
+            className="w-4 h-4 shrink-0"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+    );
+}
+
 export const navItems = [
     { to: '/', label: 'B', ariaLabel: 'Home', exact: true },
     { to: '/recipes', label: <RecipeIcon />, ariaLabel: 'Recipes' },
@@ -352,16 +390,20 @@ export function RootDocument({ children }: { children: ReactNode }) {
                             {user ? (
                                 <Link
                                     to="/logout"
-                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-voxel-trough text-danger hover:bg-danger/10 text-sm uppercase tracking-wider"
+                                    aria-label="Logout"
+                                    title="Logout"
+                                    className="voxel-btn inline-flex items-center justify-center h-9 w-9 shrink-0 bg-voxel-trough text-danger hover:bg-danger/10"
                                 >
-                                    Logout
+                                    <LogoutIcon />
                                 </Link>
                             ) : (
                                 <Link
                                     to="/login"
-                                    className="voxel-btn inline-flex items-center justify-center h-9 px-3 font-bold bg-accent text-voxel-trough hover:bg-accent-hover text-sm uppercase tracking-wider"
+                                    aria-label="Login"
+                                    title="Login"
+                                    className="voxel-btn inline-flex items-center justify-center h-9 w-9 shrink-0 bg-accent text-voxel-trough hover:bg-accent-hover"
                                 >
-                                    Login
+                                    <LoginIcon />
                                 </Link>
                             )}
                         </div>

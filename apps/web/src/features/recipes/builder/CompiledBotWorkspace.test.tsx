@@ -39,6 +39,7 @@ vi.mock('../api/recipes-api', () => ({
 vi.mock('../api/recipes-quota-api', () => ({
     fetchRecipeQuotaStatusFn: vi.fn(),
     toggleLiveScheduleFn: vi.fn(),
+    switchLiveScheduleFn: vi.fn(),
 }));
 
 vi.mock('../api/recipe-jobs-api', () => ({
@@ -52,6 +53,7 @@ vi.mock('../api/recipes-studio-api', () => ({
 
 import { fetchLatestRecipeRunFn } from '../api/recipe-jobs-api';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
+import { switchLiveScheduleFn, toggleLiveScheduleFn } from '../api/recipes-quota-api';
 
 function renderWithQuery(ui: React.ReactElement) {
     const client = new QueryClient({
@@ -303,5 +305,171 @@ describe('CompiledBotWorkspace', () => {
         fireEvent.change(screen.getByLabelText('Prompt text'), { target: { value: '  ' } });
         expect(screen.getByTestId('builder-status')).toHaveTextContent(/PROMPT NEEDED/i);
         expect(screen.queryByTestId('compiled-bot-live-warning')).not.toBeInTheDocument();
+    });
+
+    it('saves, enables live, shows Enabling Live... while in flight, and navigates to live status', async () => {
+        let resolveToggle!: (value: { id: string; is_live: boolean }) => void;
+        vi.mocked(saveRecipeFn).mockResolvedValue({
+            ...strategy,
+            id: 'saved-live-1',
+        } as never);
+        vi.mocked(toggleLiveScheduleFn).mockImplementation(
+            () =>
+                new Promise((resolve) => {
+                    resolveToggle = resolve;
+                }) as never,
+        );
+
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={{ ...strategy, id: undefined }} />);
+
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
+
+        expect(await screen.findByRole('button', { name: /Enabling Live\.\.\./i })).toBeDisabled();
+
+        resolveToggle({ id: 'saved-live-1', is_live: true });
+
+        await waitFor(() => {
+            expect(saveRecipeFn).toHaveBeenCalledTimes(1);
+            expect(toggleLiveScheduleFn).toHaveBeenCalledWith({
+                data: { recipeId: 'saved-live-1', isLive: true },
+            });
+            expect(mockNavigate).toHaveBeenCalledWith({
+                to: '/recipes/live/$recipeId',
+                params: { recipeId: 'saved-live-1' },
+            });
+        });
+    });
+
+    it('surfaces a single role="alert" in StudioAlertSlot when save or envelope fails on Enable Live', async () => {
+        vi.mocked(saveRecipeFn).mockResolvedValue(undefined as never);
+
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={{ ...strategy, id: undefined }} />);
+
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
+
+        await waitFor(() => {
+            const alerts = screen.getAllByRole('alert');
+            expect(alerts).toHaveLength(1);
+            expect(alerts[0]).toHaveTextContent(/Saving strategy did not come back/i);
+        });
+        expect(toggleLiveScheduleFn).not.toHaveBeenCalled();
+    });
+
+    it('keeps LiveSwitchConfirmation visible with switching state and switches atomically via switchLiveScheduleFn', async () => {
+        let resolveSwitch!: (value: {
+            pausedId: string;
+            enabledId: string;
+            is_live: boolean;
+        }) => void;
+        vi.mocked(saveRecipeFn).mockResolvedValue({
+            ...strategy,
+            id: 'new-live-2',
+        } as never);
+        vi.mocked(switchLiveScheduleFn).mockImplementationOnce(
+            () =>
+                new Promise((resolve) => {
+                    resolveSwitch = resolve;
+                }) as never,
+        );
+
+        renderWithQuery(
+            <CompiledBotWorkspace
+                initialStrategy={{ ...strategy, id: undefined }}
+                initialQuota={{
+                    tier: 'beta_starter',
+                    activeBacktests: 0,
+                    maxConcurrentBacktests: 1,
+                    backtestsLast24h: 0,
+                    dailyBacktestLimit: 2,
+                    liveTurnsLast24h: 0,
+                    dailyLiveTurnLimit: 100,
+                    activeLiveRecipes: 1,
+                    maxLiveRecipes: 1,
+                    globalPendingBacktests: 0,
+                    globalQueueCap: 20,
+                    lastTurboEtDate: null,
+                    turboUsedToday: false,
+                }}
+                initialUserRecipes={[
+                    {
+                        id: 'old-live-1',
+                        name: 'Existing Live Bot',
+                        cadence: '3h',
+                        is_live: true,
+                        trial_count: 1,
+                        updated_at: '2026-11-23T00:00:00Z',
+                    },
+                ]}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
+        const switchBtn = await screen.findByRole('button', { name: 'Switch to This' });
+        fireEvent.click(switchBtn);
+
+        expect(screen.getByRole('button', { name: 'Switch to This' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Switch to This' })).toHaveAttribute(
+            'aria-busy',
+            'true',
+        );
+
+        await waitFor(() => expect(switchLiveScheduleFn).toHaveBeenCalledTimes(1));
+        expect(switchLiveScheduleFn).toHaveBeenCalledWith({
+            data: { pauseRecipeId: 'old-live-1', enableRecipeId: 'new-live-2' },
+        });
+        resolveSwitch({ pausedId: 'old-live-1', enabledId: 'new-live-2', is_live: true });
+
+        await waitFor(() => {
+            expect(mockNavigate).toHaveBeenCalledWith({
+                to: '/recipes/live/$recipeId',
+                params: { recipeId: 'new-live-2' },
+            });
+        });
+    });
+
+    it('does not pause the existing live bot if saving the replacement fails during confirmSwitch', async () => {
+        vi.mocked(saveRecipeFn).mockRejectedValue(new Error('Save failed'));
+
+        renderWithQuery(
+            <CompiledBotWorkspace
+                initialStrategy={{ ...strategy, id: undefined }}
+                initialQuota={{
+                    tier: 'beta_starter',
+                    activeBacktests: 0,
+                    maxConcurrentBacktests: 1,
+                    backtestsLast24h: 0,
+                    dailyBacktestLimit: 2,
+                    liveTurnsLast24h: 0,
+                    dailyLiveTurnLimit: 100,
+                    activeLiveRecipes: 1,
+                    maxLiveRecipes: 1,
+                    globalPendingBacktests: 0,
+                    globalQueueCap: 20,
+                    lastTurboEtDate: null,
+                    turboUsedToday: false,
+                }}
+                initialUserRecipes={[
+                    {
+                        id: 'old-live-1',
+                        name: 'Existing Live Bot',
+                        cadence: '3h',
+                        is_live: true,
+                        trial_count: 1,
+                        updated_at: '2026-11-23T00:00:00Z',
+                    },
+                ]}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
+        fireEvent.click(await screen.findByRole('button', { name: 'Switch to This' }));
+
+        await waitFor(() => {
+            const alerts = screen.getAllByRole('alert');
+            expect(alerts).toHaveLength(1);
+            expect(alerts[0]).toHaveTextContent(/Save failed/i);
+        });
+        expect(switchLiveScheduleFn).not.toHaveBeenCalled();
+        expect(toggleLiveScheduleFn).not.toHaveBeenCalled();
     });
 });

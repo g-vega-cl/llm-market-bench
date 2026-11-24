@@ -159,6 +159,7 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
         fireEvent.keyDown(textarea, { key: 'Enter', ctrlKey: true });
         expect(enqueueCompileFn).toHaveBeenCalledTimes(1);
         expect(await screen.findByTestId('builder-compile-pipeline')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Describe your trading bot')).not.toBeInTheDocument();
     });
 
     it('walks through the 3-5 MCQ alignment round and compiles into CompiledBotWorkspace', async () => {

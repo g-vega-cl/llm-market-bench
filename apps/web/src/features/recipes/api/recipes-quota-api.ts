@@ -251,6 +251,64 @@ export async function toggleLiveSchedule(
     return updated as { id: string; is_live: boolean };
 }
 
+export async function switchLiveSchedule(
+    pauseRecipeId: string,
+    enableRecipeId: string,
+    userId: string,
+): Promise<{ pausedId: string; enabledId: string; is_live: boolean }> {
+    const db = getDbAdminClient();
+    const { data: enableRow, error: fetchErr } = await db
+        .from('strategy_recipes')
+        .select('id, user_id, archived_at, graph_json')
+        .eq('id', enableRecipeId)
+        .single();
+
+    if (fetchErr || !enableRow) {
+        throw new Error(`Recipe not found: ${enableRecipeId}`);
+    }
+    const target = enableRow as {
+        id: string;
+        user_id: string;
+        archived_at?: string | null;
+        graph_json: Parameters<typeof assertSingleLlmStage>[0] &
+            Parameters<typeof assertNoPrevOutputPlaceholder>[0];
+    };
+    if (target.user_id !== userId) {
+        throw new Error('Unauthorized: cannot modify live schedule for another user');
+    }
+    if (target.archived_at) {
+        throw new Error(
+            'This strategy was removed from My Strategies. Save it to restore before scheduling it live.',
+        );
+    }
+    assertSingleLlmStage(target.graph_json);
+    assertNoPrevOutputPlaceholder(target.graph_json);
+
+    const { data, error } = await db.rpc('switch_live_schedule', {
+        p_user_id: userId,
+        p_pause_recipe_id: pauseRecipeId,
+        p_enable_recipe_id: enableRecipeId,
+    });
+
+    if (error) {
+        throw new Error(error.message || 'Failed switching live schedule');
+    }
+
+    const rows = Array.isArray(data) ? data : data ? [data] : [];
+    const row = rows[0] as
+        | { paused_id?: string; enabled_id?: string; is_live?: boolean }
+        | undefined;
+    if (!row?.paused_id || !row?.enabled_id) {
+        throw new Error('Failed switching live schedule: empty response');
+    }
+
+    return {
+        pausedId: String(row.paused_id),
+        enabledId: String(row.enabled_id),
+        is_live: Boolean(row.is_live ?? true),
+    };
+}
+
 export async function activateRecipeTurbo(
     recipeId: string,
     userId: string,
@@ -473,6 +531,17 @@ export const toggleLiveScheduleFn = createServerFn({ method: 'POST' })
         } = await auth.auth.getUser();
         if (!user?.id) throw new Error('Unauthorized: please sign in to manage live schedules');
         return toggleLiveSchedule(recipeId, isLive, user.id);
+    });
+
+export const switchLiveScheduleFn = createServerFn({ method: 'POST' })
+    .validator((d: { pauseRecipeId: string; enableRecipeId: string }) => d)
+    .handler(async ({ data: { pauseRecipeId, enableRecipeId } }) => {
+        const auth = getAuthServerClient();
+        const {
+            data: { user },
+        } = await auth.auth.getUser();
+        if (!user?.id) throw new Error('Unauthorized: please sign in to manage live schedules');
+        return switchLiveSchedule(pauseRecipeId, enableRecipeId, user.id);
     });
 
 export const activateRecipeTurboFn = createServerFn({ method: 'POST' })

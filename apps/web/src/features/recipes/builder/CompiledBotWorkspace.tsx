@@ -3,6 +3,7 @@ import { usePostHog } from '@posthog/react';
 import { Link, useNavigate } from '@tanstack/react-router';
 import { useState } from 'react';
 import { track } from '~/lib/analytics';
+import { assertServerFnResult } from '~/lib/server-fn';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import { fetchRecipeQuotaStatusFn } from '../api/recipes-quota-api';
 import { previewStrategyPromptFn, submitWaitlistPledgeFn } from '../api/recipes-studio-api';
@@ -25,7 +26,7 @@ import type {
 import { buildBacktestError, upsertSavedRecipeSummary } from '../utils/live-studio-helpers';
 import { useLatestRecipeRun } from '../utils/use-latest-recipe-run';
 import { useLiveScheduleControl } from '../utils/use-live-schedule-control';
-import { RecipeSaveError, useRecipeDraft } from '../utils/use-recipe-draft';
+import { useRecipeDraft } from '../utils/use-recipe-draft';
 import { BuilderStatusStrip } from './BuilderStatusStrip';
 import { BuilderStepper } from './BuilderStepper';
 import { CompiledBotBlueprintSection, type WorkspaceTab } from './CompiledBotBlueprintSection';
@@ -131,12 +132,12 @@ export function CompiledBotWorkspace({
     const persistActiveStrategy = async (
         options: { restore?: boolean } = {},
     ): Promise<StrategyRecipeRecord> => {
-        const saved = await draft.save(
-            (recipe) =>
-                saveRecipeFn({
-                    data: { recipe, restore: options.restore ?? false },
-                }) as Promise<StrategyRecipeRecord>,
-        );
+        const saved = await draft.save(async (recipe) => {
+            const res = await saveRecipeFn({
+                data: { recipe, restore: options.restore ?? false },
+            });
+            return assertServerFnResult(res, 'Saving strategy') as StrategyRecipeRecord;
+        });
         setUserRecipes((prev) => upsertSavedRecipeSummary(prev, saved));
         return saved;
     };
@@ -158,24 +159,25 @@ export function CompiledBotWorkspace({
         let didNavigate = false;
         try {
             const saved = await persistActiveStrategy();
-            const job = (await enqueueRecipeJobFn({
-                data: { recipeId: saved.id, mode: 'backtest' },
-            })) as { id: string; status: string; result_json?: BacktestResultData };
+            const job = assertServerFnResult(
+                await enqueueRecipeJobFn({
+                    data: { recipeId: saved.id, mode: 'backtest' },
+                }),
+                'Starting backtest',
+            ) as { id: string; status: string; result_json?: BacktestResultData };
             queuedBacktestJobId = job.id;
             track(posthog, 'run_queued', { recipeId: saved.id, jobId: job.id });
             await navigate({ to: '/recipes/backtest/$jobId', params: { jobId: job.id } });
             didNavigate = true;
             return;
         } catch (err) {
-            if (!(err instanceof RecipeSaveError)) {
-                setBacktestError((prev) => {
-                    const next = buildBacktestError({ err, queuedBacktestJobId });
-                    if (!next.backtestJobId && prev?.backtestJobId) {
-                        return { ...next, backtestJobId: prev.backtestJobId };
-                    }
-                    return next;
-                });
-            }
+            setBacktestError((prev) => {
+                const next = buildBacktestError({ err, queuedBacktestJobId });
+                if (!next.backtestJobId && prev?.backtestJobId) {
+                    return { ...next, backtestJobId: prev.backtestJobId };
+                }
+                return next;
+            });
         } finally {
             setIsRunningBacktest(false);
             if (!didNavigate) await refreshQuota();
@@ -276,24 +278,6 @@ export function CompiledBotWorkspace({
                             message={liveWarningMessage}
                         />
 
-                        {liveControl.state.kind === 'confirming' ? (
-                            <LiveSwitchConfirmation
-                                conflictingRecipe={liveControl.state.conflicting}
-                                targetRecipeName={strategy.name}
-                                isSwitching={false}
-                                onConfirm={() =>
-                                    void liveControl.confirmSwitch(() => persistActiveStrategy())
-                                }
-                                onCancel={liveControl.cancelSwitch}
-                            />
-                        ) : null}
-
-                        <StudioAlertSlot
-                            backtestError={backtestError}
-                            scheduleError={liveControl.scheduleError}
-                            onRequestCapacity={() => setShowPledgeModal(true)}
-                        />
-
                         <CompiledBotSummaryCard
                             strategy={strategy}
                             summary={summary}
@@ -301,7 +285,9 @@ export function CompiledBotWorkspace({
                             isDirty={draft.isDirty}
                             isBusy={isBusy || hasEmptyPrompt}
                             saveState={draft.saveState}
-                            saveError={draft.saveError}
+                            saveError={
+                                backtestError || liveControl.scheduleError ? null : draft.saveError
+                            }
                             isRunningBacktest={isRunningBacktest}
                             isTogglingLive={liveControl.isBusy}
                             isCurrentlyScheduledLive={isCurrentlyScheduledLive}
@@ -313,6 +299,25 @@ export function CompiledBotWorkspace({
                             onSave={handleSaveRecipe}
                             onBacktest={handleBacktest}
                             onToggleLive={handleToggleScheduledLive}
+                        />
+
+                        {liveControl.state.kind === 'confirming' ||
+                        liveControl.state.kind === 'switching' ? (
+                            <LiveSwitchConfirmation
+                                conflictingRecipe={liveControl.state.conflicting}
+                                targetRecipeName={strategy.name}
+                                isSwitching={liveControl.state.kind === 'switching'}
+                                onConfirm={() =>
+                                    void liveControl.confirmSwitch(() => persistActiveStrategy())
+                                }
+                                onCancel={liveControl.cancelSwitch}
+                            />
+                        ) : null}
+
+                        <StudioAlertSlot
+                            backtestError={backtestError}
+                            scheduleError={liveControl.scheduleError}
+                            onRequestCapacity={() => setShowPledgeModal(true)}
                         />
 
                         <BuilderStepper activeStep={3} />

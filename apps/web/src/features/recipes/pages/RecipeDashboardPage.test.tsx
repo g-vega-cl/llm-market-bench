@@ -41,6 +41,7 @@ vi.mock('../api/archive-recipe', () => ({
 vi.mock('../api/recipes-quota-api', () => ({
     fetchRecipeQuotaStatusFn: vi.fn(),
     toggleLiveScheduleFn: vi.fn(),
+    switchLiveScheduleFn: vi.fn(),
 }));
 
 vi.mock('../api/recipes-studio-api', () => ({

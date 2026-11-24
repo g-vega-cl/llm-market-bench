@@ -1,8 +1,16 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { activateRecipeTurboFn } from '../api/recipes-quota-api';
 import type { LivePortfolioAndRuns } from '../types';
 import { RecipeLivePage } from './RecipeLivePage';
+
+function render(ui: React.ReactElement) {
+    const queryClient = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+    });
+    return rtlRender(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>);
+}
 
 vi.mock('../api/recipes-quota-api', () => ({
     activateRecipeTurboFn: vi.fn(),
@@ -265,6 +273,107 @@ describe('RecipeLivePage', () => {
             );
 
             expect(screen.getByRole('button', { name: /Turbo \(Market Closed\)/i })).toBeDisabled();
+        });
+    });
+
+    describe('Portfolio Equity & Benchmark Chart', () => {
+        const dataWithCurve: LivePortfolioAndRuns = {
+            ...initialData,
+            portfolio: {
+                ...initialData.portfolio,
+                equity_curve: [
+                    { time: '2026-11-14 09:30 ET', equity: 10000 },
+                    { time: '2026-11-18 15:30 ET', equity: 10500 },
+                ],
+            },
+        };
+
+        it('shows empty equity history message when equity_curve is empty', () => {
+            render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
+
+            expect(screen.getByText(/Portfolio Equity & Benchmark/i)).toBeInTheDocument();
+            expect(screen.getByText(/No equity history available yet/i)).toBeInTheDocument();
+        });
+
+        it('defaults to SPY benchmark comparison and allows switching to other benchmarks or None', async () => {
+            const benchmarkFetchFn = vi.fn(
+                async (
+                    tickers: string[],
+                ): Promise<Record<string, { date: string; price: number }[]>> => {
+                    if (tickers[0] === 'SPY') {
+                        return {
+                            SPY: [
+                                { date: '2026-11-14', price: 500 },
+                                { date: '2026-11-18', price: 510 },
+                            ],
+                        };
+                    }
+                    if (tickers[0] === 'QQQ') {
+                        return {
+                            QQQ: [
+                                { date: '2026-11-14', price: 400 },
+                                { date: '2026-11-18', price: 416 },
+                            ],
+                        };
+                    }
+                    return {};
+                },
+            );
+
+            render(
+                <RecipeLivePage
+                    recipeId="rec-1"
+                    initialData={dataWithCurve}
+                    benchmarkFetchFn={benchmarkFetchFn}
+                />,
+            );
+
+            await waitFor(() => {
+                expect(benchmarkFetchFn).toHaveBeenCalledWith(['SPY'], '2026-11-14', '2026-11-18');
+                expect(screen.getByText(/Performance vs Benchmark/i)).toBeInTheDocument();
+            });
+            expect(screen.getByText(/S&P 500:/i)).toBeInTheDocument();
+            expect(screen.getByText(/\+3\.00% outperformance/i)).toBeInTheDocument();
+
+            const select = screen.getByLabelText(/Benchmark/i);
+            fireEvent.change(select, { target: { value: 'QQQ' } });
+
+            await waitFor(() => {
+                expect(benchmarkFetchFn).toHaveBeenCalledWith(['QQQ'], '2026-11-14', '2026-11-18');
+                expect(screen.getByText(/Nasdaq 100:/i)).toBeInTheDocument();
+            });
+
+            fireEvent.change(select, { target: { value: '' } });
+            await waitFor(() => {
+                expect(screen.getByText(/Equity Curve/i)).toBeInTheDocument();
+                expect(screen.getByText('$10,500.00')).toBeInTheDocument();
+            });
+        });
+
+        it('shows Day 1 benchmark notice and skips benchmark fetch for single-day curves', () => {
+            const benchmarkFetchFn = vi.fn();
+            const singleDayData: LivePortfolioAndRuns = {
+                ...initialData,
+                portfolio: {
+                    ...initialData.portfolio,
+                    equity_curve: [
+                        { time: '2026-11-24 09:30 ET', equity: 10000 },
+                        { time: '2026-11-24 14:30 ET', equity: 10150 },
+                    ],
+                },
+            };
+
+            render(
+                <RecipeLivePage
+                    recipeId="rec-1"
+                    initialData={singleDayData}
+                    benchmarkFetchFn={benchmarkFetchFn}
+                />,
+            );
+
+            expect(screen.getByText(/Benchmark comparison begins on Day 2/i)).toBeInTheDocument();
+            expect(benchmarkFetchFn).not.toHaveBeenCalled();
+            expect(screen.getByText('$10,150.00')).toBeInTheDocument();
         });
     });
 });

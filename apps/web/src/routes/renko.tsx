@@ -15,9 +15,9 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
+import { getBenchmarkHistoryFn } from '~/features/portfolios/api/benchmark-server-fn';
 import type { BenchmarkDataPoint } from '~/features/portfolios/api/fetch-portfolios';
 import {
-    fetchBenchmarkHistory,
     fetchPerformanceHistory,
     fetchPortfolioByOwnerId,
     fetchPositions,
@@ -103,15 +103,6 @@ const getLinPortfolioData = createServerFn({ method: 'GET' }).handler(async () =
     return { portfolio, positions, history, trades };
 });
 
-const getBenchmarkData = createServerFn({ method: 'GET' })
-    .validator((d: { tickers: string[]; startDate: string; endDate: string }) => d)
-    .handler(
-        async ({ data }: { data: { tickers: string[]; startDate: string; endDate: string } }) => {
-            if (data.tickers.length === 0) return {};
-            return fetchBenchmarkHistory(data.tickers, data.startDate, data.endDate);
-        },
-    );
-
 export const Route = createFileRoute('/renko')({
     loader: () => getLinPortfolioData(),
     component: RenkoAgentPage,
@@ -120,7 +111,7 @@ export const Route = createFileRoute('/renko')({
 export function RenkoAgentPage() {
     const initialData = Route.useLoaderData();
     const getPortfolioDataFn = useServerFn(getLinPortfolioData);
-    const getBenchmarkDataFn = useServerFn(getBenchmarkData);
+    const getBenchmarkDataFn = useServerFn(getBenchmarkHistoryFn);
 
     return (
         <RenkoAgentPageView

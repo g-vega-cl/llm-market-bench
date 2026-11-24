@@ -150,7 +150,10 @@ describe('recipes-studio-api', () => {
                                     },
                                 ],
                                 paper_trades: [],
-                                paper_equity_curve: [],
+                                paper_equity_curve: [
+                                    { time: '2026-11-14 09:30 ET', equity: 10000 },
+                                    { time: '2026-11-15 15:30 ET', equity: 10250 },
+                                ],
                             },
                             error: null,
                         }),
@@ -161,6 +164,7 @@ describe('recipes-studio-api', () => {
 
         const liveState = await fetchLivePortfolioAndRuns('rec-1', 'user-1');
         expect(liveState.portfolio.cash).toBe(7500);
+        expect(liveState.portfolio.equity_curve).toHaveLength(2);
         expect(liveState.portfolio.open_positions[0].current_price).toBe(220.0);
         expect(liveState.portfolio.open_positions[0].unrealized_pnl_net).toBeGreaterThan(240);
         expect(liveState.recentLiveRuns).toHaveLength(1);

@@ -4,6 +4,8 @@ import {
     buildBacktestError,
     buildInlinePortfolio,
     isQuotaLimitMessage,
+    normalizeEquityTimestamp,
+    toLiveEquitySnapshots,
     upsertSavedRecipeSummary,
 } from './live-studio-helpers';
 
@@ -112,6 +114,24 @@ describe('buildInlinePortfolio', () => {
         expect(pos?.unrealized_pnl_net).toBe(30);
         expect(pos?.unrealized_return_pct).toBe(12.5);
         expect(snapshot?.total_equity).toBe(10270);
+        expect(snapshot?.equity_curve).toEqual([]);
+    });
+
+    it('normalizes ET (EST and EDT) and ISO equity curve timestamps and sorts chronologically', () => {
+        expect(normalizeEquityTimestamp('2026-11-14 09:30 ET')).toBe('2026-11-14T09:30:00-05:00');
+        expect(normalizeEquityTimestamp('2026-07-14 09:30 ET')).toBe('2026-07-14T09:30:00-04:00');
+        expect(normalizeEquityTimestamp('2026-11-15T14:30:00Z')).toBe('2026-11-15T14:30:00Z');
+        expect(normalizeEquityTimestamp('not-a-date')).toBeNull();
+
+        const snapshots = toLiveEquitySnapshots([
+            { time: '2026-11-15 15:30 ET', equity: 10250 },
+            { time: 'bad', equity: 9999 },
+            { time: '2026-11-14 09:30 ET', equity: 10000 },
+        ]);
+        expect(snapshots).toEqual([
+            { date: '2026-11-14T09:30:00-05:00', total_equity: 10000 },
+            { date: '2026-11-15T15:30:00-05:00', total_equity: 10250 },
+        ]);
     });
 
     it('returns null when the live run has no portfolio', () => {

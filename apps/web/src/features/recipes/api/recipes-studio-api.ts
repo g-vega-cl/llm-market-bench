@@ -247,7 +247,7 @@ export async function fetchLivePortfolioAndRuns(
     const { data: recipeRow, error: recipeErr } = await db
         .from('strategy_recipes')
         .select(
-            'id, user_id, name, is_live, turbo_expires_at, is_public, is_template, paper_cash, paper_positions, paper_trades',
+            'id, user_id, name, is_live, turbo_expires_at, is_public, is_template, paper_cash, paper_positions, paper_trades, paper_equity_curve',
         )
         .eq('id', recipeId)
         .single();
@@ -267,6 +267,7 @@ export async function fetchLivePortfolioAndRuns(
         paper_cash?: number | null;
         paper_positions?: OpenPositionRecord[] | null;
         paper_trades?: CompletedTradeRecord[] | null;
+        paper_equity_curve?: { time: string; equity: number }[] | null;
     };
     const isOwner = row.user_id === userId;
     if (!isOwner && !row.is_public && !row.is_template) {
@@ -318,6 +319,7 @@ export async function fetchLivePortfolioAndRuns(
             total_equity: Number((cash + holdingsVal).toFixed(2)),
             open_positions: openPositions,
             trades: Array.isArray(row.paper_trades) ? row.paper_trades : [],
+            equity_curve: Array.isArray(row.paper_equity_curve) ? row.paper_equity_curve : [],
         },
         recentLiveRuns,
         liveMeta: {

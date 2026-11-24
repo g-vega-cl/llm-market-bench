@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn, useServerFn } from '@tanstack/react-start';
+import { getBenchmarkHistoryFn } from '~/features/portfolios/api/benchmark-server-fn';
 import {
-    fetchBenchmarkHistory,
     fetchFrontierThemes,
     fetchFutureForces,
     fetchPerformanceHistory,
@@ -26,15 +26,6 @@ const getPortfolioData = createServerFn({ method: 'GET' })
         return { portfolio, positions, history, trades, themes, forces };
     });
 
-const getBenchmarkData = createServerFn({ method: 'GET' })
-    .validator((d: { tickers: string[]; startDate: string; endDate: string }) => d)
-    .handler(
-        async ({ data }: { data: { tickers: string[]; startDate: string; endDate: string } }) => {
-            if (data.tickers.length === 0) return {};
-            return fetchBenchmarkHistory(data.tickers, data.startDate, data.endDate);
-        },
-    );
-
 export const Route = createFileRoute('/portfolios/$portfolioId')({
     loader: ({ params }) => getPortfolioData({ data: params.portfolioId }),
     component: RouteComponent,
@@ -43,7 +34,7 @@ export const Route = createFileRoute('/portfolios/$portfolioId')({
 function RouteComponent() {
     const initialData = Route.useLoaderData();
     const getPortfolioDataFn = useServerFn(getPortfolioData);
-    const getBenchmarkDataFn = useServerFn(getBenchmarkData);
+    const getBenchmarkDataFn = useServerFn(getBenchmarkHistoryFn);
 
     return (
         <PortfolioDetailPage

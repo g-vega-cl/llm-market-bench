@@ -55,7 +55,69 @@ export function buildInlinePortfolio(liveRes: LiveRunResult): LivePortfolioSnaps
         total_equity: Number((updated.paper_cash + holdingsVal).toFixed(2)),
         open_positions: enrichedPositions,
         trades: updated.paper_trades,
+        equity_curve: updated.paper_equity_curve,
     };
+}
+
+function resolveEasternIsoOffset(datePart: string, hmPart: string, secPart: string): string {
+    // Probe UTC timestamp against America/New_York to determine EST (-05:00) vs EDT (-04:00).
+    const approxUtc = new Date(`${datePart}T${hmPart}:${secPart}Z`);
+    const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        timeZoneName: 'shortOffset',
+    }).formatToParts(approxUtc);
+    const tzPart = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT-5';
+    const offsetMatch = /GMT([+-])(\d{1,2})(?::(\d{2}))?/i.exec(tzPart);
+    if (!offsetMatch) return '-05:00';
+    const [, sign, hrs, mins = '00'] = offsetMatch;
+    return `${sign}${hrs.padStart(2, '0')}:${mins.padStart(2, '0')}`;
+}
+
+/**
+ * Normalize an equity-curve timestamp (e.g. "2026-11-14 09:30 ET" or ISO-8601)
+ * into a Date.parse()-safe ISO string.
+ */
+export function normalizeEquityTimestamp(rawTime: string): string | null {
+    const trimmed = String(rawTime || '').trim();
+    if (!trimmed) return null;
+
+    const etMatch = /^(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})(?::(\d{2}))?\s+ET$/i.exec(trimmed);
+    if (etMatch) {
+        const [, datePart, hmPart, secPart = '00'] = etMatch;
+        const offset = resolveEasternIsoOffset(datePart, hmPart, secPart);
+        return `${datePart}T${hmPart}:${secPart}${offset}`;
+    }
+
+    if (!Number.isNaN(Date.parse(trimmed))) {
+        return trimmed;
+    }
+
+    return null;
+}
+
+export interface LiveEquitySnapshot {
+    date: string;
+    total_equity: number;
+}
+
+export function toLiveEquitySnapshots(
+    equityCurve: { time: string; equity: number }[] | undefined,
+): LiveEquitySnapshot[] {
+    if (!Array.isArray(equityCurve) || equityCurve.length === 0) return [];
+    const parsed: { date: string; total_equity: number; ts: number }[] = [];
+
+    for (const point of equityCurve) {
+        if (!point) continue;
+        const normalized = normalizeEquityTimestamp(point.time);
+        const equity = Number(point.equity);
+        if (!normalized || !Number.isFinite(equity)) continue;
+        const ts = Date.parse(normalized);
+        if (Number.isNaN(ts)) continue;
+        parsed.push({ date: normalized, total_equity: equity, ts });
+    }
+
+    parsed.sort((a, b) => a.ts - b.ts);
+    return parsed.map(({ date, total_equity }) => ({ date, total_equity }));
 }
 
 export function upsertSavedRecipeSummary(

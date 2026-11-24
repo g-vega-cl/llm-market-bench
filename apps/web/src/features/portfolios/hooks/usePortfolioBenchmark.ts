@@ -13,6 +13,7 @@ interface UsePortfolioBenchmarkOptions {
         startDate: string,
         endDate: string,
     ) => Promise<Record<string, BenchmarkDataPoint[]>>;
+    initialBenchmark?: string;
 }
 
 function hasTickerPoints(
@@ -46,8 +47,9 @@ export function usePortfolioBenchmark({
     startDate,
     endDate,
     benchmarkFetchFn,
+    initialBenchmark = '',
 }: UsePortfolioBenchmarkOptions) {
-    const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>('');
+    const [selectedBenchmark, setSelectedBenchmark] = React.useState<string>(initialBenchmark);
     const hasDateRange = Boolean(startDate && endDate);
 
     const benchmarkQuery = useQuery({

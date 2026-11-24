@@ -6,7 +6,14 @@ import {
     SectionHeading,
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+    type BenchmarkDataPoint,
+    BenchmarkSelector,
+    getBenchmarkHistoryFn,
+    PerformanceChart,
+    usePortfolioBenchmark,
+} from '~/features/portfolios';
 import { formatEasternDateTime } from '~/utils/date';
 import { activateRecipeTurboFn } from '../api/recipes-quota-api';
 import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
@@ -18,9 +25,19 @@ import type {
     LiveStatusMeta,
     RecipeJobRecord,
 } from '../types';
+import { toLiveEquitySnapshots } from '../utils/live-studio-helpers';
 import { formatTurboRemainingLabel, getNextLiveSlotLabel } from '../utils/market-hours';
 
 const INLINE_LATEST_ID = 'inline-latest';
+
+type BenchmarkFetchFn = (
+    tickers: string[],
+    startDate: string,
+    endDate: string,
+) => Promise<Record<string, BenchmarkDataPoint[]>>;
+
+const defaultBenchmarkFetchFn: BenchmarkFetchFn = (tickers, startDate, endDate) =>
+    getBenchmarkHistoryFn({ data: { tickers, startDate, endDate } });
 
 interface RecipeLivePageProps {
     recipeId: string;
@@ -29,6 +46,7 @@ interface RecipeLivePageProps {
         recentLiveRuns: RecipeJobRecord[];
         liveMeta?: LiveStatusMeta;
     } | null;
+    benchmarkFetchFn?: BenchmarkFetchFn;
 }
 
 function extractLiveResult(job: RecipeJobRecord | undefined): LiveRunResult | null {
@@ -161,7 +179,78 @@ function LiveStatusHeader({
     );
 }
 
-export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
+interface LiveEquityBenchmarkSectionProps {
+    equityCurve: { time: string; equity: number }[] | undefined;
+    benchmarkFetchFn: BenchmarkFetchFn;
+}
+
+function LiveEquityBenchmarkSection({
+    equityCurve,
+    benchmarkFetchFn,
+}: LiveEquityBenchmarkSectionProps) {
+    const equitySnapshots = useMemo(() => toLiveEquitySnapshots(equityCurve), [equityCurve]);
+    const rawStartDate = equitySnapshots[0]?.date.slice(0, 10) ?? '';
+    const rawEndDate = equitySnapshots[equitySnapshots.length - 1]?.date.slice(0, 10) ?? '';
+    const hasMultiDayHistory = Boolean(rawStartDate && rawEndDate && rawStartDate !== rawEndDate);
+
+    const {
+        selectedBenchmark,
+        onBenchmarkChange,
+        benchmarkData,
+        settledBenchmark,
+        pendingBenchmark,
+        benchmarkError,
+    } = usePortfolioBenchmark({
+        startDate: hasMultiDayHistory ? rawStartDate : '',
+        endDate: hasMultiDayHistory ? rawEndDate : '',
+        benchmarkFetchFn,
+        initialBenchmark: 'SPY',
+    });
+
+    return (
+        <section className="flex flex-col gap-4 min-w-0">
+            <div className="flex flex-wrap items-center justify-between gap-4 w-full">
+                <SectionHeading>Portfolio Equity &amp; Benchmark</SectionHeading>
+                {hasMultiDayHistory && (
+                    <BenchmarkSelector selected={selectedBenchmark} onChange={onBenchmarkChange} />
+                )}
+            </div>
+            {equitySnapshots.length > 0 ? (
+                <div className="flex flex-col gap-2 min-w-0">
+                    <PerformanceChart
+                        data={equitySnapshots}
+                        benchmarkData={benchmarkData}
+                        selectedBenchmark={settledBenchmark}
+                        pendingBenchmark={pendingBenchmark}
+                        benchmarkError={benchmarkError}
+                        showPercentage={Boolean(settledBenchmark)}
+                    />
+                    {!hasMultiDayHistory && (
+                        <p className="text-xs font-normal text-voxel-muted">
+                            Benchmark comparison begins on Day 2 once 2+ trading days of history are
+                            recorded.
+                        </p>
+                    )}
+                </div>
+            ) : (
+                <Card
+                    variant="outlined"
+                    padding="md"
+                    className="text-center text-voxel-muted text-xs font-normal"
+                >
+                    No equity history available yet. Equity checkpoints are recorded after each live
+                    turn.
+                </Card>
+            )}
+        </section>
+    );
+}
+
+export function RecipeLivePage({
+    recipeId,
+    initialData,
+    benchmarkFetchFn = defaultBenchmarkFetchFn,
+}: RecipeLivePageProps) {
     const [selectedRunId, setSelectedRunId] = useState<string | null>(
         () => initialData?.recentLiveRuns[0]?.id ?? null,
     );
@@ -241,6 +330,13 @@ export function RecipeLivePage({ recipeId, initialData }: RecipeLivePageProps) {
                         cash={portfolio.cash}
                         totalEquity={portfolio.total_equity}
                         openPositions={portfolio.open_positions}
+                    />
+                )}
+
+                {hasPortfolio && (
+                    <LiveEquityBenchmarkSection
+                        equityCurve={portfolio.equity_curve}
+                        benchmarkFetchFn={benchmarkFetchFn}
                     />
                 )}
 

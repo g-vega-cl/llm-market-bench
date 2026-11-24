@@ -379,6 +379,7 @@ export interface LivePortfolioSnapshot {
     total_equity: number;
     open_positions: OpenPositionRecord[];
     trades: CompletedTradeRecord[];
+    equity_curve?: { time: string; equity: number }[];
 }
 
 export interface LiveStatusMeta {

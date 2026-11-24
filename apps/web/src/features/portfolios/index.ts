@@ -1,3 +1,4 @@
+export { getBenchmarkHistoryFn } from './api/benchmark-server-fn';
 export type {
     BenchmarkDataPoint,
     PortfolioPerformanceItem,

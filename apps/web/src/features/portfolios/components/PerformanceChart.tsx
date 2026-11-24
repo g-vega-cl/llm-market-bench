@@ -79,18 +79,35 @@ export function PerformanceChart({
 
         if (selectedBenchmark && benchmarkData?.[selectedBenchmark]) {
             const [minDate, maxDate] = d3.extent(parsedData, (d) => d.date);
-            const minTime = minDate ? minDate.getTime() : 0;
-            const maxTime = maxDate ? maxDate.getTime() : Infinity;
+            const minTime = minDate
+                ? Date.UTC(minDate.getUTCFullYear(), minDate.getUTCMonth(), minDate.getUTCDate())
+                : 0;
+            const maxTime = maxDate
+                ? Date.UTC(
+                      maxDate.getUTCFullYear(),
+                      maxDate.getUTCMonth(),
+                      maxDate.getUTCDate(),
+                      23,
+                      59,
+                      59,
+                      999,
+                  )
+                : Infinity;
             const filteredBenchmark = benchmarkData[selectedBenchmark].filter((d) => {
                 const t = new Date(d.date).getTime();
                 return t >= minTime && t <= maxTime;
             });
 
-            benchmarkLines = filteredBenchmark.map((d) => ({
-                date: new Date(d.date),
-                value: d.price,
-                ticker: selectedBenchmark,
-            }));
+            benchmarkLines = filteredBenchmark.map((d) => {
+                const parsed = new Date(d.date);
+                const alignedDate =
+                    minDate && parsed.getTime() < minDate.getTime() ? minDate : parsed;
+                return {
+                    date: alignedDate,
+                    value: d.price,
+                    ticker: selectedBenchmark,
+                };
+            });
         }
 
         const usePercentage = showPercentage && (selectedBenchmark || benchmarkLines.length > 0);
@@ -414,9 +431,13 @@ export function PerformanceChart({
             return { date: latestDate, equity, x: 0, y: 0 };
         }
 
-        const benchmarkPoints = benchmarkData[selectedBenchmark];
+        const startDay = data[0].date.slice(0, 10);
+        const latestDay = latestDate.slice(0, 10);
+        const benchmarkPoints = benchmarkData[selectedBenchmark].filter(
+            (p) => p.date >= startDay && p.date <= latestDay,
+        );
         const benchmarkPoint =
-            benchmarkPoints.find((p) => p.date === latestDate) ||
+            benchmarkPoints.find((p) => p.date === latestDate || p.date === latestDay) ||
             benchmarkPoints[benchmarkPoints.length - 1];
 
         let portfolioChange: number | undefined;

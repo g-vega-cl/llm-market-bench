@@ -50,8 +50,49 @@ const initialData: LivePortfolioAndRuns = {
         trades: [],
     },
     recentLiveRuns: [
+        // Newest first, exactly as the loader orders them (created_at desc).
         {
             id: 'job-1',
+            recipe_id: 'rec-1',
+            mode: 'live_turn',
+            status: 'pending',
+            progress_pct: 0,
+            provider: 'free-llm-proxy',
+            model: 'auto-go',
+            result_json: null,
+            error_message: null,
+            created_at: '2026-04-06T15:32:00Z',
+        },
+        {
+            id: 'job-2',
+            recipe_id: 'rec-1',
+            mode: 'live_turn',
+            status: 'completed',
+            progress_pct: 100,
+            provider: 'free-llm-proxy',
+            model: 'auto-go',
+            result_json: {
+                mode: 'live_turn',
+                as_of_utc: '2026-04-06T12:00:00Z',
+                stages: [
+                    {
+                        stage_id: 's1',
+                        prompt: 'Analyze MSFT at slot 2.',
+                        output: 'HOLD',
+                        tool_calls: [],
+                        trace: { rounds: [], forced_final_synthesis: false },
+                    },
+                ],
+                final_output: '[]',
+                signals: [],
+            },
+            error_message: null,
+            created_at: '2026-04-06T12:32:00Z',
+            started_at: '2026-04-06T12:32:00Z',
+            completed_at: '2026-04-06T12:32:05Z',
+        },
+        {
+            id: 'job-3',
             recipe_id: 'rec-1',
             mode: 'live_turn',
             status: 'completed',
@@ -61,7 +102,7 @@ const initialData: LivePortfolioAndRuns = {
             result_json: {
                 mode: 'live_turn',
                 as_of_utc: '2026-04-06T09:30:00Z',
-                slot_label: '2026-04-06T09:30',
+                slot_label: 'SLOT-LABEL-RAW',
                 stages: [
                     {
                         stage_id: 's1',
@@ -79,18 +120,6 @@ const initialData: LivePortfolioAndRuns = {
             started_at: '2026-04-06T09:32:00Z',
             completed_at: '2026-04-06T09:32:05Z',
         },
-        {
-            id: 'job-2',
-            recipe_id: 'rec-1',
-            mode: 'live_turn',
-            status: 'pending',
-            progress_pct: 0,
-            provider: 'free-llm-proxy',
-            model: 'auto-go',
-            result_json: null,
-            error_message: null,
-            created_at: '2026-04-06T12:32:00Z',
-        },
     ],
 };
 
@@ -104,7 +133,7 @@ describe('RecipeLivePage', () => {
         expect(screen.queryByText(/Live Paper Portfolio/i)).not.toBeInTheDocument();
     });
 
-    it('renders live paper portfolio and the selected run trace', () => {
+    it('renders live paper portfolio and the trace of the run being viewed', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
         expect(screen.getByRole('heading', { name: /Live Status/i })).toBeInTheDocument();
@@ -112,28 +141,88 @@ describe('RecipeLivePage', () => {
         expect(screen.getByText(/Cash Available/i)).toBeInTheDocument();
         expect(screen.getByText(/Total Equity/i)).toBeInTheDocument();
         expect(screen.getAllByText(/NVDA/i).length).toBeGreaterThan(0);
-
         expect(screen.getByText(/Live Run Traces/i)).toBeInTheDocument();
+
+        // Page 1 is the newest run, which is still queued; the trace lives on the older pages.
+        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
+
         expect(screen.getByText(/LLM Call/i)).toBeInTheDocument();
         expect(screen.getByText(/Analyze NVDA at slot 1/i)).toBeInTheDocument();
         expect(screen.getAllByText(/BUY NVDA/i).length).toBeGreaterThan(0);
     });
 
-    it('renders run selector with all persisted runs', () => {
+    it('lands on the newest run and swaps the mounted trace when paging older', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        // Both jobs appear in the RunSelectorBar with their created_at stamps in ET.
-        expect(screen.getByText(/Apr 6 • 5:32 AM ET/i)).toBeInTheDocument();
-        expect(screen.getByText(/Apr 6 • 8:32 AM ET/i)).toBeInTheDocument();
+        // The pill strip and its label are gone; the paginator names the page.
+        expect(screen.queryByText(/Recent Live Turns/i)).not.toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('1 of 3');
+
+        // Page 1 is the newest job by created_at, and it has not produced a trace yet.
+        expect(screen.getByText('Apr 6 • 11:32 AM ET')).toBeInTheDocument();
+        expect(screen.getByText(/queued — no trace output yet/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Analyze MSFT at slot 2/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Analyze NVDA at slot 1/i)).not.toBeInTheDocument();
+        expect(screen.getByRole('button', { name: 'Newer' })).toHaveAttribute(
+            'aria-disabled',
+            'true',
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
+
+        expect(screen.getByRole('status')).toHaveTextContent('2 of 3');
+        expect(screen.getByText('Apr 6 • 8:32 AM ET')).toBeInTheDocument();
+        expect(screen.getByText(/Analyze MSFT at slot 2/i)).toBeInTheDocument();
+        // The previous page's content is unmounted, not merely hidden.
+        expect(screen.queryByText(/queued — no trace output yet/i)).not.toBeInTheDocument();
+        expect(screen.queryByText('Apr 6 • 11:32 AM ET')).not.toBeInTheDocument();
     });
 
-    it('switches run selection and surfaces a pending run without trace output', () => {
+    it('walks to the oldest run, names it in the trace header, and stops at the end', () => {
         render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
 
-        fireEvent.click(screen.getByText(/Apr 6 • 8:32 AM ET/i));
+        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
+        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
 
-        expect(screen.getByText(/Selected live job has no trace output yet/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Analyze NVDA at slot 1/i)).not.toBeInTheDocument();
+        expect(screen.getByRole('status')).toHaveTextContent('3 of 3');
+        expect(screen.getByText('Apr 6 • 5:32 AM ET')).toBeInTheDocument();
+        // The daemon's raw slot label never reaches the DOM.
+        expect(screen.queryByText(/SLOT-LABEL-RAW/)).not.toBeInTheDocument();
+        expect(screen.getByText(/Analyze NVDA at slot 1/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Analyze MSFT at slot 2/i)).not.toBeInTheDocument();
+
+        // Older is inert on the last page but stays focusable.
+        const older = screen.getByRole('button', { name: 'Older' });
+        expect(older).toHaveAttribute('aria-disabled', 'true');
+        expect(older).not.toBeDisabled();
+        older.focus();
+        fireEvent.click(older);
+        expect(document.activeElement).toBe(older);
+        expect(screen.getByRole('status')).toHaveTextContent('3 of 3');
+
+        fireEvent.click(screen.getByRole('button', { name: 'Newer' }));
+        expect(screen.getByRole('status')).toHaveTextContent('2 of 3');
+        expect(screen.getByText(/Analyze MSFT at slot 2/i)).toBeInTheDocument();
+    });
+
+    it('surfaces a failed run as terminal rather than "yet", with its error', () => {
+        const withFailure: typeof initialData = {
+            ...initialData,
+            recentLiveRuns: [
+                {
+                    ...initialData.recentLiveRuns[0],
+                    status: 'failed',
+                    error_message: 'LLM timeout',
+                },
+                ...initialData.recentLiveRuns.slice(1),
+            ],
+        };
+        render(<RecipeLivePage recipeId="rec-1" initialData={withFailure} />);
+
+        expect(screen.getByText(/failed — no trace output/i)).toBeInTheDocument();
+        expect(screen.queryByText(/no trace output yet/i)).not.toBeInTheDocument();
+        expect(screen.getByText('LLM timeout')).toBeInTheDocument();
     });
 
     it('links back to the builder with the active recipeId', () => {

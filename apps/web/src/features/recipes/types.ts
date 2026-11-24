@@ -366,12 +366,6 @@ export interface LiveRunResult {
     signals: { action: string; ticker: string }[];
     executed_signals?: { action: string; ticker: string; price?: number }[];
     signal_prices?: Record<string, number>;
-    updated_portfolio?: {
-        paper_cash: number;
-        paper_positions: OpenPositionRecord[];
-        paper_trades: CompletedTradeRecord[];
-        paper_equity_curve: { time: string; equity: number }[];
-    };
 }
 
 export interface LivePortfolioSnapshot {

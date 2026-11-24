@@ -1,10 +1,4 @@
-import {
-    Badge,
-    Button,
-    Card,
-    PageLayout,
-    SectionHeading,
-} from '@llm-market-bench/ui-design-system';
+import { Badge, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -14,21 +8,13 @@ import {
     PerformanceChart,
     usePortfolioBenchmark,
 } from '~/features/portfolios';
-import { formatEasternDateTime } from '~/utils/date';
 import { activateRecipeTurboFn } from '../api/recipes-quota-api';
+import { LiveRunTracesCard } from '../components/LiveRunTracesCard';
 import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
-import { TraceInspectorBlock } from '../components/TraceInspectorBlock';
 import { TurboButton } from '../components/TurboButton';
-import type {
-    LivePortfolioSnapshot,
-    LiveRunResult,
-    LiveStatusMeta,
-    RecipeJobRecord,
-} from '../types';
+import type { LivePortfolioSnapshot, LiveStatusMeta, RecipeJobRecord } from '../types';
 import { toLiveEquitySnapshots } from '../utils/live-studio-helpers';
 import { formatTurboRemainingLabel, getNextLiveSlotLabel } from '../utils/market-hours';
-
-const INLINE_LATEST_ID = 'inline-latest';
 
 type BenchmarkFetchFn = (
     tickers: string[],
@@ -47,61 +33,6 @@ interface RecipeLivePageProps {
         liveMeta?: LiveStatusMeta;
     } | null;
     benchmarkFetchFn?: BenchmarkFetchFn;
-}
-
-function extractLiveResult(job: RecipeJobRecord | undefined): LiveRunResult | null {
-    if (!job?.result_json) return null;
-    if ('mode' in job.result_json && job.result_json.mode === 'live_turn') {
-        return job.result_json as LiveRunResult;
-    }
-    return null;
-}
-
-interface RunSelectorBarProps {
-    recentLiveRuns: RecipeJobRecord[];
-    hasLatestInline: boolean;
-    isViewingInline: boolean;
-    activeJobId: string | undefined;
-    onSelect: (id: string) => void;
-}
-
-function RunSelectorBar({
-    recentLiveRuns,
-    hasLatestInline,
-    isViewingInline,
-    activeJobId,
-    onSelect,
-}: RunSelectorBarProps) {
-    if (!hasLatestInline && recentLiveRuns.length === 0) return null;
-    return (
-        <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-normal text-voxel-muted">Recent Live Turns:</span>
-            {hasLatestInline && (
-                <Button
-                    size="sm"
-                    variant={isViewingInline ? 'solid' : 'outline'}
-                    onClick={() => onSelect(INLINE_LATEST_ID)}
-                >
-                    Latest Turn
-                </Button>
-            )}
-            {recentLiveRuns.map((run) => {
-                const isSelected = !isViewingInline && activeJobId === run.id;
-                const stamp = run.created_at ? formatEasternDateTime(run.created_at) : '';
-                const label = stamp && stamp !== 'Unknown' ? stamp : run.id.slice(0, 8);
-                return (
-                    <Button
-                        key={run.id}
-                        size="sm"
-                        variant={isSelected ? 'solid' : 'outline'}
-                        onClick={() => onSelect(run.id)}
-                    >
-                        {label}
-                    </Button>
-                );
-            })}
-        </div>
-    );
 }
 
 interface LiveStatusHeaderProps {
@@ -251,9 +182,7 @@ export function RecipeLivePage({
     initialData,
     benchmarkFetchFn = defaultBenchmarkFetchFn,
 }: RecipeLivePageProps) {
-    const [selectedRunId, setSelectedRunId] = useState<string | null>(
-        () => initialData?.recentLiveRuns[0]?.id ?? null,
-    );
+    const [runPage, setRunPage] = useState(0);
     const [turboExpiresAt, setTurboExpiresAt] = useState<string | null>(
         () => initialData?.liveMeta?.turboExpiresAt ?? null,
     );
@@ -274,12 +203,13 @@ export function RecipeLivePage({
     const liveMeta = initialData?.liveMeta;
     const isLiveEnabled = liveMeta ? liveMeta.isLive : true;
 
-    const activeSelection = selectedRunId ?? recentLiveRuns[0]?.id ?? null;
-    const activeJob = recentLiveRuns.find((run) => run.id === activeSelection) ?? recentLiveRuns[0];
-    const activeRun = extractLiveResult(activeJob);
+    const totalRuns = recentLiveRuns.length;
+    // Clamp: the list is fixed for the life of the page, but a stale index must
+    // never address a job that is not there.
+    const runPageIndex = totalRuns > 0 ? Math.min(runPage, totalRuns - 1) : 0;
 
     const hasPortfolio = portfolio !== null;
-    const hasRuns = recentLiveRuns.length > 0;
+    const hasRuns = totalRuns > 0;
 
     const nextSlotLabel = getNextLiveSlotLabel(now);
     const turboRemaining = isLiveEnabled ? formatTurboRemainingLabel(turboExpiresAt, now) : null;
@@ -341,74 +271,12 @@ export function RecipeLivePage({
                 )}
 
                 {hasRuns && (
-                    <Card padding="md" className="flex flex-col gap-4 min-w-0">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
-                            <div className="flex flex-col gap-1 min-w-0">
-                                <SectionHeading>Live Run Traces</SectionHeading>
-                                <span className="text-xs font-normal text-voxel-muted">
-                                    Runs independently on clvg.uk auto-go against your isolated
-                                    $10,000 live paper ledger (every 30m during market hours
-                                    09:30–16:00 ET, or every 5m while Turbo is active).
-                                </span>
-                            </div>
-                            {activeRun && (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <Badge variant="soft" size="xs">
-                                        {activeRun.slot_label ||
-                                            formatEasternDateTime(activeRun.as_of_utc)}
-                                    </Badge>
-                                    <Badge variant="soft" colorScheme="accent" size="xs">
-                                        {activeRun.signals.length} Signals
-                                    </Badge>
-                                </div>
-                            )}
-                        </div>
-
-                        <RunSelectorBar
-                            recentLiveRuns={recentLiveRuns}
-                            hasLatestInline={false}
-                            isViewingInline={false}
-                            activeJobId={activeJob?.id}
-                            onSelect={setSelectedRunId}
-                        />
-
-                        {activeRun ? (
-                            <div className="flex flex-col gap-4 min-w-0">
-                                {activeRun.stages.map((st) => (
-                                    <div
-                                        key={st.stage_id}
-                                        className="voxel-trough bg-voxel-trough p-4 flex flex-col gap-3 min-w-0"
-                                    >
-                                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-voxel-bevel-lo pb-2">
-                                            <span className="text-sm font-bold text-voxel-ink">
-                                                LLM Call
-                                            </span>
-                                            <span className="text-xs font-normal font-mono text-voxel-muted">
-                                                {activeRun.signals.length > 0
-                                                    ? activeRun.signals
-                                                          .map((s) => `${s.action} ${s.ticker}`)
-                                                          .join(', ')
-                                                    : 'HOLD'}
-                                            </span>
-                                        </div>
-                                        <TraceInspectorBlock
-                                            prompt={st.prompt}
-                                            trace={st.trace}
-                                            toolCalls={st.tool_calls}
-                                            fullOutput={st.output}
-                                        />
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="voxel-trough bg-voxel-trough p-4">
-                                <span className="text-xs font-normal text-voxel-muted">
-                                    Selected live job has no trace output yet (status:{' '}
-                                    {activeJob?.status ?? 'pending'}).
-                                </span>
-                            </div>
-                        )}
-                    </Card>
+                    <LiveRunTracesCard
+                        runs={recentLiveRuns}
+                        pageIndex={runPageIndex}
+                        onOlder={() => setRunPage(Math.min(runPageIndex + 1, totalRuns - 1))}
+                        onNewer={() => setRunPage(Math.max(runPageIndex - 1, 0))}
+                    />
                 )}
 
                 {!hasPortfolio && !hasRuns && (

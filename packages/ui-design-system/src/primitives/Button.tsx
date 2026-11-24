@@ -67,7 +67,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref,
     ) => {
         const base =
-            'voxel-btn inline-flex items-center justify-center gap-2 font-bold focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed';
+            'voxel-btn inline-flex items-center justify-center gap-2 font-bold focus:outline-none focus:ring-2 focus:ring-accent/40 disabled:opacity-50 disabled:cursor-not-allowed aria-disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed';
         const colorClasses = colorSchemeMap[colorScheme]?.[variant] ?? colorSchemeMap.accent.solid;
         const sizeClasses = sizeMap[size];
 

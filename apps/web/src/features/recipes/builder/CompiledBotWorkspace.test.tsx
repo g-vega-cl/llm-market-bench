@@ -637,18 +637,27 @@ describe('CompiledBotWorkspace', () => {
         });
 
         it('reports a Turbo window as the next run when the bot is boosted', () => {
-            const turboExpiresAt = new Date(Date.now() + 3 * 60_000).toISOString();
-            renderWithQuery(
-                <CompiledBotWorkspace
-                    initialStrategy={liveRecipe}
-                    initialUserRecipes={[{ ...liveSummary, turbo_expires_at: turboExpiresAt }]}
-                    initialLive={liveSnapshot}
-                />,
-            );
+            // isTurboActive() gates on the ET regular session, so the clock has to be pinned
+            // inside market hours: on the real clock this assertion fails every run after
+            // 16:00 ET and in any CI job that happens to land after the close.
+            vi.useFakeTimers({ shouldAdvanceTime: true });
+            vi.setSystemTime(new Date('2026-11-18T11:00:00-05:00'));
+            try {
+                const turboExpiresAt = new Date(Date.now() + 3 * 60_000).toISOString();
+                renderWithQuery(
+                    <CompiledBotWorkspace
+                        initialStrategy={liveRecipe}
+                        initialUserRecipes={[{ ...liveSummary, turbo_expires_at: turboExpiresAt }]}
+                        initialLive={liveSnapshot}
+                    />,
+                );
 
-            const banner = screen.getByTestId('bot-live-status');
-            expect(banner).toHaveTextContent(/Next run within 5m \(Turbo\)/i);
-            expect(banner).toHaveTextContent(/3m left|m left/i);
+                const banner = screen.getByTestId('bot-live-status');
+                expect(banner).toHaveTextContent(/Next run within 5m \(Turbo\)/i);
+                expect(banner).toHaveTextContent(/3m left|m left/i);
+            } finally {
+                vi.useRealTimers();
+            }
         });
 
         it('does not render for an unsaved draft, where there is no live state yet', () => {

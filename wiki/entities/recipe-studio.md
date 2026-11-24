@@ -85,7 +85,7 @@ The **Recipe Studio** is now a two-surface experience:
 - SSR via `fetchLivePortfolioAndRunsFn`
 - Header: "← Edit Bot" → `/build?recipeId=<id>`, live badge, next run label, Turbo button
 - Live paper portfolio (`RecipePortfolioBlock` with mark prices)
-- Live run traces (`RunSelectorBar` + `TraceInspectorBlock`)
+- Live run traces (`RunPaginator` + `TraceInspectorBlock`)
 
 #### `/recipes/backtest/$jobId` — Live Backtest View (`RecipeBacktestPage`)
 - Polls `fetchRecipeRunDetailFn` every 1.5s

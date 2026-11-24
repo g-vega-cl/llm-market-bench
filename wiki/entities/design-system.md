@@ -53,7 +53,7 @@ Defined in `apps/web/src/styles/app.css` via `@theme inline`:
 
 Composable base components that handle styling and accessibility:
 
-- **Button**: Tactile `.voxel-btn` primitive with 2px raised bevels, sharp `rounded-none` corners, and physical `translate(2px, 2px)` click depression. `isLoading` renders an inline pulsing Voxel pixel square (`data-slot="button-pending-dot"`, `w-2 h-2 rounded-none bg-current animate-pulse motion-reduce:animate-none`) and sets `aria-busy="true"` (no SVG spinner).
+- **Button**: Tactile `.voxel-btn` primitive with 2px raised bevels, sharp `rounded-none` corners, and physical `translate(2px, 2px)` click depression. `isLoading` renders an inline pulsing Voxel pixel square (`data-slot="button-pending-dot"`, `w-2 h-2 rounded-none bg-current animate-pulse motion-reduce:animate-none`) and sets `aria-busy="true"` (no SVG spinner). The base class also styles `aria-disabled` (`aria-disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:cursor-not-allowed`), so a control that stays focusable but is inert — the `RunPaginator` boundary buttons, which use `aria-disabled` plus a guarded handler instead of `disabled` so keyboard focus is never dropped to `<body>` — reads as disabled without losing focus. See [[entities/recipe-live-status]].
 - **Card**: Raised `.voxel-card` block with `rounded-none` geometry, stepped moss surface, and hard offset shadow.
 - **Badge**: Sharp `.voxel-badge` tag with optional square pixel dot indicator. The base class carries `gap-1.5` so the dot and label are separated by container gap rather than a child `mr-1.5` margin. Every badge emits a `data-color-scheme` attribute (the resolved `severity ?? colorScheme ?? 'neutral'`) for test and styling hooks. Solid-variant dot colors are resolved from a dedicated `solidDotColors` map so the indicator always contrasts against the solid fill:
 
@@ -190,3 +190,4 @@ Beyond the primitives, the feature pages render through the same Voxel tokens an
 - [[concepts/cumulative-layout-shift]]
 - [[concepts/type-safety]]
 - [[entities/personality-quiz]]
+- [[entities/recipe-live-status]] — the `RunPaginator` boundary buttons that rely on the `aria-disabled` styling

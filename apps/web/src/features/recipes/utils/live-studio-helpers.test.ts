@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { BacktestError } from '../types';
 import {
     buildBacktestError,
-    buildInlinePortfolio,
     isQuotaLimitMessage,
     normalizeEquityTimestamp,
     toLiveEquitySnapshots,
@@ -75,48 +74,7 @@ describe('buildBacktestError', () => {
     });
 });
 
-describe('buildInlinePortfolio', () => {
-    const updatedPortfolio = {
-        paper_cash: 10000,
-        paper_positions: [
-            {
-                ticker: 'NVDA',
-                shares: 2,
-                entry_price: 120,
-                entry_time: '2026-04-06T09:30:00Z',
-                current_price: 135,
-                market_value: 270,
-                cost_basis: 240,
-                unrealized_pnl_net: 30,
-                unrealized_return_pct: 12.5,
-            },
-        ],
-        paper_trades: [],
-        paper_equity_curve: [],
-    };
-
-    it('builds a LivePortfolioSnapshot with enriched positions', () => {
-        const snapshot = buildInlinePortfolio({
-            mode: 'live_turn',
-            as_of_utc: '2026-04-06T09:30:00Z',
-            stages: [],
-            final_output: '[{"action":"BUY","ticker":"NVDA"}]',
-            signals: [{ action: 'BUY', ticker: 'NVDA' }],
-            signal_prices: { NVDA: 135 },
-            updated_portfolio: updatedPortfolio,
-        } as never);
-        expect(snapshot).not.toBeNull();
-        expect(snapshot?.cash).toBe(10000);
-        expect(snapshot?.open_positions).toHaveLength(1);
-        const pos = snapshot?.open_positions[0];
-        expect(pos?.current_price).toBe(135);
-        expect(pos?.market_value).toBe(270);
-        expect(pos?.unrealized_pnl_net).toBe(30);
-        expect(pos?.unrealized_return_pct).toBe(12.5);
-        expect(snapshot?.total_equity).toBe(10270);
-        expect(snapshot?.equity_curve).toEqual([]);
-    });
-
+describe('toLiveEquitySnapshots', () => {
     it('normalizes ET (EST and EDT) and ISO equity curve timestamps and sorts chronologically', () => {
         expect(normalizeEquityTimestamp('2026-11-14 09:30 ET')).toBe('2026-11-14T09:30:00-05:00');
         expect(normalizeEquityTimestamp('2026-07-14 09:30 ET')).toBe('2026-07-14T09:30:00-04:00');
@@ -132,18 +90,6 @@ describe('buildInlinePortfolio', () => {
             { date: '2026-11-14T09:30:00-05:00', total_equity: 10000 },
             { date: '2026-11-15T15:30:00-05:00', total_equity: 10250 },
         ]);
-    });
-
-    it('returns null when the live run has no portfolio', () => {
-        const snapshot = buildInlinePortfolio({
-            mode: 'live_turn',
-            as_of_utc: '2026-04-06T09:30:00Z',
-            stages: [],
-            final_output: 'HOLD',
-            signals: [],
-            updated_portfolio: undefined,
-        } as never);
-        expect(snapshot).toBeNull();
     });
 });
 

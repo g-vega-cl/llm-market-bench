@@ -471,6 +471,88 @@ async def _audit_max_pain_portfolio(
     return anomalies, healed, flagged
 
 
+def _reconcile_picks_performance(
+    client: Any,
+    portfolio: dict[str, Any],
+    owner_id: str,
+    auto_heal: bool,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Verify closed-session portfolio_performance rows match cumulative realized trade PnL."""
+    from execution.system_portfolios import INITIAL_PORTFOLIO_CASH
+
+    anomalies: list[dict[str, Any]] = []
+    healed: list[dict[str, Any]] = []
+    flagged: list[dict[str, Any]] = []
+
+    pid = str(portfolio["id"])
+    perf_rows = (
+        client.table("portfolio_performance").select("date, total_equity").eq("portfolio_id", pid).execute().data or []
+    )
+    if not perf_rows:
+        return anomalies, healed, flagged
+
+    trades = (
+        client.table("trades").select("signal, realized_pnl, executed_at").eq("portfolio_id", pid).execute().data or []
+    )
+    open_dates = {
+        str(t.get("executed_at", ""))[:10]
+        for t in trades
+        if t.get("signal") in ("BUY", "SHORT") and t.get("realized_pnl") is None
+    }
+    pnl_by_date: dict[str, float] = {}
+    for t in trades:
+        if t.get("signal") in ("SELL", "COVER") and t.get("realized_pnl") is not None:
+            d = str(t.get("executed_at", ""))[:10]
+            pnl_by_date[d] = pnl_by_date.get(d, 0.0) + float(t["realized_pnl"])
+
+    expected_by_date: dict[str, float] = {}
+    running = INITIAL_PORTFOLIO_CASH
+    for d in sorted(pnl_by_date):
+        running += pnl_by_date[d]
+        if d not in open_dates:
+            expected_by_date[d] = running
+
+    for row in perf_rows:
+        d = str(row.get("date", ""))
+        if d not in expected_by_date:
+            continue
+        actual = float(row.get("total_equity") or 0.0)
+        expected = expected_by_date[d]
+        if abs(actual - expected) <= 0.05:
+            continue
+
+        anomaly = {
+            "date": d,
+            "owner_id": owner_id,
+            "type": "desynced_picks_performance",
+            "details": f"portfolio_performance total_equity ${actual:,.2f} != expected ${expected:,.2f}",
+        }
+        anomalies.append(anomaly)
+        if not auto_heal:
+            flagged.append(anomaly)
+            continue
+
+        client.table("portfolio_performance").update(
+            {
+                "total_equity": expected,
+                "cash_balance": expected,
+                "buying_power": expected,
+                "realized": expected,
+            }
+        ).eq("portfolio_id", pid).eq("date", d).execute()
+        healed.append(
+            {
+                "date": d,
+                "owner_id": owner_id,
+                "details": f"Backfilled portfolio_performance from ${actual:,.2f} to ${expected:,.2f}",
+                "new_equity": round(expected, 2),
+            }
+        )
+        logger.warning(f"Reconciled {owner_id} {d} portfolio_performance: ${actual:,.2f} -> ${expected:,.2f}")
+
+    return anomalies, healed, flagged
+
+
 async def _audit_picks_portfolios(
     client: Any,
     port_by_owner: dict[str, Any],
@@ -505,6 +587,10 @@ async def _audit_picks_portfolios(
         )
         entries = [t for t in open_trades if t.get("signal") in ("BUY", "SHORT")]
         if not entries:
+            p_anom, p_heal, p_flag = _reconcile_picks_performance(client, portfolio, owner_id, auto_heal)
+            anomalies.extend(p_anom)
+            healed.extend(p_heal)
+            flagged.extend(p_flag)
             continue
 
         stale_dates = sorted(
@@ -561,6 +647,11 @@ async def _audit_picks_portfolios(
                 }
             )
             logger.warning(f"Auto-healed {owner_id} for {session_date}: liquidated {legs_closed} stale picks leg(s)")
+
+        p_anom, p_heal, p_flag = _reconcile_picks_performance(client, portfolio, owner_id, auto_heal)
+        anomalies.extend(p_anom)
+        healed.extend(p_heal)
+        flagged.extend(p_flag)
 
     return anomalies, healed, flagged
 

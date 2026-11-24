@@ -204,10 +204,15 @@ Each basket is also paper-executed as a mechanical long/short portfolio by `apps
 * **Sizing**: 50% long / 50% short of equity, equal weight per leg (16.67% notional), 5 bps slippage per side, gross 100% / net 0.
 * **Prices**: entry at the official RTH open print (09:31–10:00 ET window, hard cutoff) and exit at the official closing print (16:00–16:05 ET) — the same basis `evaluate_stock_picks.py` grades on, so portfolio PnL and `ls_spread_alpha_pct` reconcile.
 * **Ledger**: longs write `BUY` + `portfolio_positions`; shorts write `SHORT`/`COVER` only. `trades.decision_id` = originating basket id. Exits write `portfolio_performance` `(portfolio_id, date)`.
-* **Equity is derived, never assigned**: `Portfolio.total_equity` resolves to `metrics.total_equity` and falls back to `cash_balance`, so the exit path never sets it on the object — the persisted `portfolios` column is the truth and is written alongside the `portfolio_performance` snapshot.
+* **Prior-session leg guard**: `_prior_open_dates(client, portfolio_id, session_date)` reads every `trades` row with `realized_pnl IS NULL` and returns the sorted distinct dates before `session_date` that still hold a `BUY`/`SHORT` leg. A non-empty result skips that owner's entire entry for the session (`skipped[owner_id] = "unclosed prior legs (<dates>)"`, logged as a warning) instead of stacking a second session's book on top of an unclosed one — the same all-or-nothing discipline the exit path already enforces.
+* **Session-scoped equity snapshots**: `_picks_equity_snapshots(client, portfolio_id, session_date, new_cash)` returns `(session_equity, total_realized, current_equity)` so a later session's open leg can never rewrite a closed session's history:
+  - `session_equity = INITIAL_PORTFOLIO_CASH + Σ realized_pnl` over `SELL`/`COVER` rows executed on or before `session_date` (falling back to `new_cash` when no exit rows exist),
+  - `total_realized = INITIAL_PORTFOLIO_CASH + Σ realized_pnl` over every exit,
+  - `current_equity = max(0, new_cash + Σ total_cost of open BUY legs)`.
+  The `portfolio_performance` row for the session stores `session_equity` (as `total_equity`, `cash_balance`, `buying_power`, and `realized`), while the live `portfolios` row stores `cash_balance = new_cash`, `total_equity` / `buying_power` / `excess_liquidity = current_equity`, and `realized = total_realized`. The exit result's `equity` field reports `session_equity`.
 * **All-or-nothing close**: if any open leg lacks a close price, the whole session is skipped and stays flagged rather than persisted with an equity that omits the unpriced leg. Re-runs resume: legs that already carry an exit row at that session's `exit_ts` are skipped by ticker, so a crash mid-loop is finished by the next run instead of being blocked forever as `already exited`.
 * **Trigger**: MiniPC daemon `run_systematic_strategy_hooks` → `_run_picks_portfolio_hook` (hooks window widened to 16:05 ET), and manually `main.py picks-trade --action entry|exit|status`.
-* **Audit**: `portfolio_auditor.py` flags `unliquidated_picks_legs` and liquidates stale legs in `--fix`. See [[concepts/system-portfolios]] §13.
+* **Audit**: `portfolio_auditor.py` flags `unliquidated_picks_legs` and liquidates stale legs in `--fix`, and `_reconcile_picks_performance` flags/heals `desynced_picks_performance` when a closed session's `portfolio_performance.total_equity` drifts from cumulative realized PnL. See [[concepts/system-portfolios]] §13 and [[entities/portfolio-auditor]].
 
 ## Related
 
@@ -222,3 +227,4 @@ Each basket is also paper-executed as a mechanical long/short portfolio by `apps
 - [[concepts/prompt-section-splitting]] — frozen header/mutable strategy/frozen footer prompt structure
 - [[concepts/experiment-display-score]] — `hurdle_score` fallback used by the track cards
 - [[concepts/state-machines]] — `pending` → `evaluated` | `cancelled` lifecycle registry
+- [[entities/portfolio-auditor]] — stale-leg liquidation and performance reconciliation

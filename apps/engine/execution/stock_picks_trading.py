@@ -26,7 +26,7 @@ from zoneinfo import ZoneInfo
 
 from core.config import logger
 from core.db import get_supabase_client
-from execution.system_portfolios import DEFAULT_SLIPPAGE_BPS, get_or_create_system_portfolio
+from execution.system_portfolios import DEFAULT_SLIPPAGE_BPS, INITIAL_PORTFOLIO_CASH, get_or_create_system_portfolio
 
 SYS_PICKS_OWNER_PREFIX = "sys-picks-"
 PICKS_MODEL_TRACKS = ("deepseek-flash", "MiniMax-M3.1-Flash", "gpt-6-luna", "consensus")
@@ -59,6 +59,60 @@ def _price(price_map: dict[str, float], ticker: str) -> float:
     except (TypeError, ValueError):
         return 0.0
     return value if value > 0 else 0.0
+
+
+def _prior_open_dates(client: Any, portfolio_id: str, session_date: str) -> list[str]:
+    """Return sorted prior session dates that still have unclosed BUY/SHORT legs."""
+    open_trades = (
+        client.table("trades")
+        .select("signal, executed_at")
+        .eq("portfolio_id", portfolio_id)
+        .is_("realized_pnl", "null")
+        .execute()
+        .data
+        or []
+    )
+    return sorted(
+        {
+            str(t.get("executed_at", ""))[:10]
+            for t in open_trades
+            if t.get("signal") in ("BUY", "SHORT") and str(t.get("executed_at", ""))[:10] < session_date
+        }
+    )
+
+
+def _picks_equity_snapshots(
+    client: Any,
+    portfolio_id: str,
+    session_date: str,
+    new_cash: float,
+) -> tuple[float, float, float]:
+    """Compute (session_equity, total_realized, current_equity) decoupled from later open sessions."""
+    all_trades = (
+        client.table("trades")
+        .select("signal, total_cost, realized_pnl, executed_at")
+        .eq("portfolio_id", portfolio_id)
+        .execute()
+        .data
+        or []
+    )
+    exits = [t for t in all_trades if t.get("signal") in ("SELL", "COVER") and t.get("realized_pnl") is not None]
+    if exits:
+        session_equity = INITIAL_PORTFOLIO_CASH + sum(
+            float(t["realized_pnl"]) for t in exits if str(t.get("executed_at", ""))[:10] <= session_date
+        )
+        total_realized = INITIAL_PORTFOLIO_CASH + sum(float(t["realized_pnl"]) for t in exits)
+    else:
+        session_equity = new_cash
+        total_realized = new_cash
+
+    open_long_cost = sum(
+        float(t.get("total_cost") or 0.0)
+        for t in all_trades
+        if t.get("signal") == "BUY" and t.get("realized_pnl") is None
+    )
+    current_equity = max(0.0, new_cash + open_long_cost)
+    return session_equity, total_realized, current_equity
 
 
 def _split_legs(picks: list[dict[str, Any]]) -> tuple[list[dict], list[dict]]:
@@ -249,6 +303,14 @@ async def execute_picks_entries(
             skipped[owner_id] = "already entered for this session"
             continue
 
+        prior_dates = _prior_open_dates(client, portfolio_id, session_date)
+        if prior_dates:
+            skipped[owner_id] = f"unclosed prior legs ({', '.join(prior_dates)})"
+            logger.warning(
+                f"[{owner_id}] Skipping {session_date} entry: unclosed prior legs on {', '.join(prior_dates)}"
+            )
+            continue
+
         equity = float(portfolio.cash_balance)
         long_budget, short_budget = _budgets(equity, longs, shorts)
         per_long = long_budget / len(longs) if longs else 0.0
@@ -429,14 +491,17 @@ async def execute_picks_exits(
             continue
 
         new_cash = max(0.0, cash + long_proceeds + short_pnl_total)
+        session_equity, total_realized, current_equity = _picks_equity_snapshots(
+            client, portfolio_id, session_date, new_cash
+        )
         if not dry_run:
             client.table("portfolios").update(
                 {
                     "cash_balance": new_cash,
-                    "total_equity": new_cash,
-                    "realized": new_cash,
-                    "buying_power": new_cash,
-                    "excess_liquidity": new_cash,
+                    "total_equity": current_equity,
+                    "realized": total_realized,
+                    "buying_power": current_equity,
+                    "excess_liquidity": current_equity,
                     "last_updated_at": datetime.now(UTC).isoformat(),
                 }
             ).eq("id", portfolio_id).execute()
@@ -444,11 +509,11 @@ async def execute_picks_exits(
                 {
                     "portfolio_id": portfolio_id,
                     "date": session_date,
-                    "total_equity": new_cash,
-                    "cash_balance": new_cash,
-                    "buying_power": new_cash,
+                    "total_equity": session_equity,
+                    "cash_balance": session_equity,
+                    "buying_power": session_equity,
                     "sma": 0.0,
-                    "realized": new_cash,
+                    "realized": session_equity,
                 },
                 on_conflict="portfolio_id,date",
             ).execute()
@@ -460,9 +525,9 @@ async def execute_picks_exits(
             "portfolio_id": portfolio_id,
             "legs": legs,
             "realized_pnl": round(realized_pnl_total, 4),
-            "equity": round(new_cash, 2),
+            "equity": round(session_equity, 2),
         }
-        logger.info(f"[{owner_id}] Picks exit {session_date} (dry_run={dry_run}): equity ${new_cash:,.2f}")
+        logger.info(f"[{owner_id}] Picks exit {session_date} (dry_run={dry_run}): equity ${session_equity:,.2f}")
 
     return {
         "status": "success" if closed else "skipped",

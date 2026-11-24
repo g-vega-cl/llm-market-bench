@@ -301,3 +301,104 @@ async def test_picks_exit_without_open_legs_is_skipped():
 
     assert result["status"] == "skipped"
     assert store.count("trades") == 0
+
+
+@pytest.mark.asyncio
+async def test_picks_entries_skip_when_prior_session_has_unclosed_legs():
+    store = seed_session(FakeSupabase(), session="2026-11-19")
+    portfolios, getter = stored_portfolio_getter(store)
+
+    first = await execute_picks_entries(
+        "2026-11-19",
+        price_map=open_price_map(),
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+    assert first["status"] == "success"
+    cash_after_first = {pid: p.cash_balance for pid, p in portfolios.items()}
+
+    # Seed 2026-11-20 with distinct basket IDs so picks_by_basket stays isolated from 2026-11-19.
+    for index, model in enumerate(PICKS_MODEL_TRACKS):
+        bid = f"basket-next-{index}"
+        store.rows["daily_stock_baskets"].append(
+            {"id": bid, "target_date": "2026-11-20", "model_name": model, "status": "pending"}
+        )
+        store.rows["daily_stock_picks"].append(
+            {
+                "id": f"pick-next-{index}",
+                "basket_id": bid,
+                "target_date": "2026-11-20",
+                "model_name": model,
+                "ticker": "AAA",
+                "direction": "UP",
+                "rank": 1,
+                "confidence": 70.0,
+                "status": "pending",
+            }
+        )
+
+    second = await execute_picks_entries(
+        "2026-11-20",
+        price_map=open_price_map(),
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+    assert second["status"] == "skipped"
+    assert all("unclosed prior legs (2026-11-19)" in reason for reason in second["skipped"].values())
+    assert store.count("trades") == 24
+    for pid, p in portfolios.items():
+        assert p.cash_balance == pytest.approx(cash_after_first[pid])
+
+
+@pytest.mark.asyncio
+async def test_picks_exit_with_later_open_session_snapshots_true_historical_equity():
+    store = seed_session(FakeSupabase(), session="2026-11-19")
+    portfolios, getter = stored_portfolio_getter(store)
+    await execute_picks_entries(
+        "2026-11-19",
+        price_map=open_price_map(),
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+    # Simulate a later session's open BUY leg already deducting cash before 2026-11-19 was closed.
+    consensus_pf = portfolios[picks_owner_id("consensus")]
+    later_long_cost = 2000.0
+    consensus_pf.cash_balance -= later_long_cost
+    store.rows["trades"].append(
+        {
+            "id": "later-buy",
+            "portfolio_id": consensus_pf.id,
+            "ticker": "ZZZ",
+            "signal": "BUY",
+            "quantity": 20,
+            "price": 100.0,
+            "total_cost": later_long_cost,
+            "realized_pnl": None,
+            "executed_at": "2026-11-20T14:30:00Z",
+        }
+    )
+
+    result = await execute_picks_exits(
+        "2026-11-19",
+        price_map=open_price_map(price=101.0),
+        get_supabase_client_fn=lambda: store,
+        get_or_create_system_portfolio_fn=getter,
+    )
+    assert result["status"] == "success"
+
+    entry_long = 100.0 * 1.0005
+    exit_long = 101.0 * (1 - 0.0005)
+    entry_short = 100.0 * (1 - 0.0005)
+    exit_short = 101.0 * (1 + 0.0005)
+    pnl_1119 = 3 * 16 * (exit_long - entry_long) + 3 * 16 * (entry_short - exit_short)
+    expected_1119_eq = 10000.0 + pnl_1119
+
+    perf = next(
+        r
+        for r in store.rows["portfolio_performance"]
+        if r["portfolio_id"] == consensus_pf.id and r["date"] == "2026-11-19"
+    )
+    assert perf["total_equity"] == pytest.approx(expected_1119_eq)
+    pf_row = next(r for r in store.rows["portfolios"] if r["id"] == consensus_pf.id)
+    assert pf_row["cash_balance"] == pytest.approx(expected_1119_eq - later_long_cost)
+    assert pf_row["total_equity"] == pytest.approx(expected_1119_eq)

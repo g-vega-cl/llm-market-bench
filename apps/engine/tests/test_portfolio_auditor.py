@@ -1011,6 +1011,45 @@ class TestPicksPortfolioAudit:
         assert len(flagged) == 1
         assert "auto-heal incomplete: missing close price for NVDA" in flagged[0]["details"]
 
+    @pytest.mark.asyncio
+    async def test_reconciles_desynced_picks_performance(self):
+        from audit.portfolio_auditor import _reconcile_picks_performance
+        from execution.picks_fakes import FakeSupabase
+
+        store = FakeSupabase(
+            {
+                "trades": [
+                    {
+                        "portfolio_id": "pf-1",
+                        "signal": "BUY",
+                        "realized_pnl": 153.11,
+                        "executed_at": "2026-11-19T14:30:00Z",
+                    },
+                    {
+                        "portfolio_id": "pf-1",
+                        "signal": "SELL",
+                        "realized_pnl": 153.11,
+                        "executed_at": "2026-11-19T21:00:00Z",
+                    },
+                ],
+                "portfolio_performance": [
+                    {"portfolio_id": "pf-1", "date": "2026-11-19", "total_equity": 6411.63, "cash_balance": 6411.63},
+                ],
+            }
+        )
+        portfolio = {"id": "pf-1", "owner_id": "sys-picks-consensus"}
+
+        anomalies, healed, flagged = _reconcile_picks_performance(
+            store, portfolio, "sys-picks-consensus", auto_heal=True
+        )
+
+        assert len(anomalies) == 1
+        assert anomalies[0]["type"] == "desynced_picks_performance"
+        assert len(healed) == 1
+        assert healed[0]["new_equity"] == 10153.11
+        assert flagged == []
+        assert store.rows["portfolio_performance"][0]["total_equity"] == pytest.approx(10153.11)
+
 
 @pytest.mark.asyncio
 async def test_audit_skips_archived_and_non_spy_daily_portfolios(mock_supabase):

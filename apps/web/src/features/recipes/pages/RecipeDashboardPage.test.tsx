@@ -3,20 +3,31 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RecipeSummaryItem } from '../types';
 import { RecipeDashboardPage } from './RecipeDashboardPage';
 
+const routerState = vi.hoisted(() => ({
+    status: 'idle' as 'idle' | 'pending',
+    location: { pathname: '/recipes', search: {} as Record<string, unknown> },
+}));
+
 vi.mock('@tanstack/react-router', () => ({
+    useRouterState: ({ select }: { select: (state: unknown) => unknown }) =>
+        select({ status: routerState.status, location: routerState.location }),
+    useRouter: () => ({ state: { status: routerState.status } }),
     Link: ({
         children,
         to,
         params,
         search,
         className,
+        disabled,
+        ...rest
     }: {
         children: React.ReactNode;
         to: string;
         params?: Record<string, string>;
         search?: Record<string, string>;
         className?: string;
-    }) => {
+        disabled?: boolean;
+    } & Record<string, unknown>) => {
         let href = to;
         if (params) {
             for (const [key, val] of Object.entries(params)) {
@@ -27,7 +38,12 @@ vi.mock('@tanstack/react-router', () => ({
             href = `${href}?recipeId=${search.recipeId}`;
         }
         return (
-            <a href={href} className={className}>
+            <a
+                href={disabled ? undefined : href}
+                aria-disabled={disabled || undefined}
+                className={className}
+                {...rest}
+            >
                 {children}
             </a>
         );
@@ -74,6 +90,8 @@ const sampleBots: RecipeSummaryItem[] = [
 
 beforeEach(() => {
     vi.clearAllMocks();
+    routerState.status = 'idle';
+    routerState.location = { pathname: '/recipes', search: {} };
 });
 
 describe('RecipeDashboardPage', () => {
@@ -97,18 +115,38 @@ describe('RecipeDashboardPage', () => {
             'href',
             '/build',
         );
-        expect(screen.getByRole('link', { name: 'AI Capex Momentum' })).toHaveAttribute(
-            'href',
-            '/build?recipeId=bot-1',
-        );
-        expect(screen.getByRole('link', { name: 'Value Compounder' })).toHaveAttribute(
-            'href',
-            '/build?recipeId=bot-2',
-        );
+        expect(
+            screen.getByRole('link', { name: /AI Capex Momentum \(open recipe workspace\)/ }),
+        ).toHaveAttribute('href', '/build?recipeId=bot-1');
+        expect(
+            screen.getByRole('link', { name: /Value Compounder \(open recipe workspace\)/ }),
+        ).toHaveAttribute('href', '/build?recipeId=bot-2');
         expect(screen.getByRole('link', { name: 'LIVE 30m' })).toHaveAttribute(
             'href',
             '/recipes/live/bot-1',
         );
+    });
+
+    it('shows the in-flight state on the card being opened, and disables every card action', () => {
+        routerState.status = 'pending';
+        routerState.location = { pathname: '/build', search: { recipeId: 'bot-2' } };
+        render(<RecipeDashboardPage initialUserRecipes={sampleBots} />);
+
+        expect(screen.getByTestId('bot-actions-bot-2')).toHaveAttribute('aria-busy', 'true');
+        expect(screen.getByTestId('bot-open-bot-2')).toHaveAttribute('aria-disabled', 'true');
+        expect(screen.getByTestId('bot-open-bot-2')).not.toHaveAttribute('href');
+        expect(screen.getByText('Opening bot…')).toBeInTheDocument();
+
+        // The other card is untouched: only the card being opened goes busy.
+        expect(screen.getByTestId('bot-actions-bot-1')).not.toHaveAttribute('aria-busy');
+        expect(screen.getByTestId('bot-open-bot-1')).toHaveAttribute(
+            'href',
+            '/build?recipeId=bot-1',
+        );
+
+        expect(screen.getByRole('button', { name: 'Pause Live' })).toBeEnabled();
+        expect(screen.getByRole('button', { name: 'Enable Live (30m)' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Remove AI Capex Momentum' })).toBeEnabled();
     });
 
     it('removes a bot when clicking Remove', async () => {

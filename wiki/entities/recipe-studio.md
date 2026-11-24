@@ -67,9 +67,11 @@ The **Recipe Studio** is now a two-surface experience:
 
 #### `/recipes` — My Bots Dashboard (`RecipeDashboardPage`)
 - **Empty state**: Hero card with "Build Your First Bot →" linking to `/build`
-- **Bot cards** (fluid grid, `minmax(min(100%,20rem),1fr)`):
-  - Bot name → `/build?recipeId=<id>`
-  - Live badge ("LIVE 30m" success / "TURBO 5m" accent) → `/recipes/live/$recipeId`
+- **Bot cards** (`BotCard`, fluid grid, `minmax(min(100%,20rem),1fr)`):
+  - Bot name → `/build?recipeId=<id>`, followed by an always-visible chevron that turns gold and nudges right on hover (`group/open`), plus a gold underline on hover/focus — the name alone read as static text on touch, where no hover state exists; the link carries `aria-label="<name> (open recipe workspace)"` so the affordance is not visual-only
+  - In-flight state: the card derives the pending destination from the router (`useRouterState` + `pendingRecipeTarget(state.status, state.location)`, which reports `workspace` or `live`) rather than latching a local flag, then dims the name, swaps the chevron for the pulsing pending pixel in a fixed `w-4 h-4` slot, renders a `role="status"` line naming the destination ("Opening bot…" / "Opening live view…"), sets `aria-busy` on the actions row only (never on an ancestor of the live region), and drops both links' `href` plus disables both actions. A same-frame second click is prevented by reading `router.state.status` synchronously inside the click handler — no private latch to strand — and modified/aux clicks are never swallowed. Only the card being opened goes busy; siblings stay interactive. See [[concepts/state-machines]] §2.12
+  - The two buttons — and the header "Build New Bot" link — stay locked for the duration of a live-toggle or removal mutation, so navigating away cannot discard that request's in-flow success or error message
+  - Live badge ("LIVE 30m" success / "TURBO 5m" accent) → `/recipes/live/$recipeId` (goes inert with the rest of the card while opening)
   - "Enable Live (30m)" / "Pause Live" button (shared `useLiveScheduleControl` state machine)
   - "Remove" button (soft-hide via `archived_at`, never `DELETE`)
 - **Quota strip** (`RecipeQuotaStrip`): Compact 1-line summary (backtests left, live bots, global queue)

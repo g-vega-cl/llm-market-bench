@@ -1,11 +1,5 @@
-import {
-    Badge,
-    Button,
-    Card,
-    PageLayout,
-    SectionHeading,
-} from '@llm-market-bench/ui-design-system';
-import { Link } from '@tanstack/react-router';
+import { Button, Card, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { Link, useRouterState } from '@tanstack/react-router';
 import { useState } from 'react';
 import { fetchRecipeQuotaStatusFn } from '../api/recipes-quota-api';
 import {
@@ -13,6 +7,7 @@ import {
     markAlertReadFn,
     submitWaitlistPledgeFn,
 } from '../api/recipes-studio-api';
+import { BotCard } from '../components/BotCard';
 import { LiveSwitchConfirmation } from '../components/LiveSwitchConfirmation';
 import { RecipeAlertsInbox } from '../components/RecipeAlertsInbox';
 import {
@@ -27,7 +22,7 @@ import type {
     RecipeSummaryItem,
     RecipeUserQuotaStatus,
 } from '../types';
-import { isTurboActive } from '../utils/market-hours';
+import { pendingRecipeTarget } from '../utils/pending-recipe-nav';
 import { useLiveScheduleControl } from '../utils/use-live-schedule-control';
 import { useStrategyRemoval } from '../utils/use-strategy-removal';
 
@@ -74,6 +69,13 @@ export function RecipeDashboardPage({
         onRefreshQuota: refreshQuota,
     });
 
+    const pendingRecipeId = useRouterState({
+        select: (state) => pendingRecipeTarget(state.status, state.location)?.recipeId ?? null,
+    });
+    const pendingDestination = useRouterState({
+        select: (state) => pendingRecipeTarget(state.status, state.location)?.destination ?? null,
+    });
+
     const handleLoadAlerts = async () => {
         try {
             const list = await fetchRecipeAlertsFn();
@@ -95,7 +97,7 @@ export function RecipeDashboardPage({
     };
 
     const unreadAlerts = alerts.filter((a) => !a.is_read).length;
-    const isCardActionDisabled =
+    const isActionLocked =
         liveControl.isBusy ||
         liveControl.state.kind === 'confirming' ||
         Boolean(removal.removingId);
@@ -118,6 +120,8 @@ export function RecipeDashboardPage({
                         {userRecipes.length > 0 && (
                             <Link
                                 to="/build"
+                                disabled={isActionLocked}
+                                aria-disabled={isActionLocked || undefined}
                                 className="voxel-btn inline-flex items-center px-4 py-2 text-sm font-bold bg-accent text-voxel-trough hover:bg-accent-hover"
                             >
                                 + Build New Bot
@@ -174,68 +178,22 @@ export function RecipeDashboardPage({
                     <div className="flex flex-col gap-3">
                         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-4">
                             {userRecipes.map((item) => {
-                                const turbo = item.is_live && isTurboActive(item.turbo_expires_at);
                                 const isTogglingThis =
                                     liveControl.state.kind === 'toggling' &&
                                     liveControl.state.recipeId === item.id;
                                 return (
-                                    <Card
+                                    <BotCard
                                         key={item.id}
-                                        padding="md"
-                                        data-testid={`bot-card-${item.id}`}
-                                        className="flex flex-col justify-between gap-3 min-w-0"
-                                    >
-                                        <div className="flex items-start justify-between gap-2 min-w-0">
-                                            <Link
-                                                to="/build"
-                                                search={{ recipeId: item.id }}
-                                                className="text-sm font-bold text-voxel-ink hover:text-accent break-words min-w-0"
-                                            >
-                                                {item.name}
-                                            </Link>
-                                            {item.is_live && (
-                                                <Link
-                                                    to="/recipes/live/$recipeId"
-                                                    params={{ recipeId: item.id }}
-                                                    className="shrink-0"
-                                                >
-                                                    <Badge
-                                                        variant="soft"
-                                                        colorScheme={turbo ? 'accent' : 'success'}
-                                                        size="xs"
-                                                        suppressHydrationWarning
-                                                    >
-                                                        {turbo ? 'TURBO 5m' : 'LIVE 30m'}
-                                                    </Badge>
-                                                </Link>
-                                            )}
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-voxel-bevel-hi">
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                colorScheme={item.is_live ? 'success' : 'neutral'}
-                                                disabled={isCardActionDisabled}
-                                                isLoading={isTogglingThis}
-                                                onClick={() => void liveControl.toggle(item)}
-                                            >
-                                                {item.is_live ? 'Pause Live' : 'Enable Live (30m)'}
-                                            </Button>
-
-                                            <Button
-                                                size="sm"
-                                                variant="outline"
-                                                colorScheme="danger"
-                                                aria-label={`Remove ${item.name}`}
-                                                disabled={isCardActionDisabled}
-                                                isLoading={removal.removingId === item.id}
-                                                onClick={() => removal.remove(item)}
-                                            >
-                                                Remove
-                                            </Button>
-                                        </div>
-                                    </Card>
+                                        item={item}
+                                        pendingDestination={
+                                            pendingRecipeId === item.id ? pendingDestination : null
+                                        }
+                                        isLocked={isActionLocked}
+                                        isTogglingLive={isTogglingThis}
+                                        isRemoving={removal.removingId === item.id}
+                                        onToggleLive={(recipe) => void liveControl.toggle(recipe)}
+                                        onRemove={(recipe) => removal.remove(recipe)}
+                                    />
                                 );
                             })}
                         </div>

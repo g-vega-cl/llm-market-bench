@@ -247,6 +247,21 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 
 ---
 
+### 2.12 `/recipes` Bot Card Open & Mutation Lock (`BotCardPendingDestination`)
+
+- **Source Files**: [`apps/web/src/features/recipes/components/BotCard.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/components/BotCard.tsx), [`apps/web/src/features/recipes/utils/pending-recipe-nav.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/utils/pending-recipe-nav.ts), [`apps/web/src/features/recipes/pages/RecipeDashboardPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/recipes/pages/RecipeDashboardPage.tsx)
+- **Entity Page**: [[entities/recipe-studio]]
+- **States**:
+  - `BotCardPendingDestination = 'workspace' | 'live' | null` — derived, never stored: `pendingRecipeTarget(router.state.status, router.state.location)` reads the in-flight location the router publishes at navigation start (`/build?recipeId=<id>` → `workspace`, `/recipes/live/<id>` → `live`, pathname checked before search so a stray query cannot reclassify a live-page navigation). A failed or aborted navigation clears it for free.
+  - Card lock = `isLocked || isOpening`, where `isLocked` covers a live-toggle / removal mutation and `isOpening` the card's own navigation; both links lose their `href` and both buttons disable.
+- **Invariants**:
+  - No latch of our own: the duplicate-click guard reads `router.state.status` synchronously, because `navigate()` sets `status = 'pending'` inside the first click's call stack. A private ref latch strands on any click that never starts a navigation (ctrl/cmd-click, click on an already-inert link) and leaves the affordance silently dead until remount.
+  - Modified/aux clicks (`metaKey`, `ctrlKey`, `shiftKey`, `altKey`, `button !== 0`) are never swallowed — they open a new tab/browser path and must reach the browser.
+  - `aria-busy` sits on the actions row, never on an ancestor of the `role="status"` line, so AT cannot suppress the in-flight announcement; `role="status"` implies the polite region, so no duplicate `aria-live`.
+  - A mutation in flight locks navigation for the same reason the Studio's `isBusy` locks execution: leaving the page discards the mutation's in-flow success/error message.
+
+---
+
 ## 3. Implicit State Debt & Refactoring Backlog
 
 The following areas in the codebase currently manage state implicitly through combinations of nullable columns, flags, or string literals, and are targeted for systematic collapse into explicit types and constraints:

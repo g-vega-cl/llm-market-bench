@@ -38,6 +38,8 @@ Full detail and commands in [[entities/open-operations-followups]].
 
 ### Marketing & Building in Public
 
+- [x] - Benchify: complete P0 launch-readiness blockers for `benchify.dev` (legal pages, SEO/share metadata, disclaimer, activation event, deploy verification).
+- [ ] - Benchify: work through the remaining P1–P3 launch-readiness items in [LAUNCH_READINESS.md](./LAUNCH_READINESS.md) before the public push.
 - [ ] - Benchify: start building in public. Maybe videos maybe blogs anything but start saying the things you think about that loud critique YouTube videos critique other creators or say something good about them too. Audit audit audit
 - [ ] - Benchify: publish your plan for marketing and results. Make it PostHog focused
 - [ ] - Benchify; can you beat the agent game

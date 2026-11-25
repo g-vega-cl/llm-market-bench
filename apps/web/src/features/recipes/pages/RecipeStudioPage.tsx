@@ -252,6 +252,8 @@ export function RecipeStudioPage({
             name: strategy.name,
             cadence: strategy.cadence,
             is_live: isCurrentlyScheduledLive,
+            // Not yet saved through this path, so it carries the column default.
+            is_public: true,
             trial_count: 0,
             updated_at: new Date().toISOString(),
         };

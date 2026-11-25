@@ -23,10 +23,10 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 
 2a. **`/recipes/$recipeId/performance` — Performance tab** (public-capable; same payload, its own loader): equity vs benchmark, open positions, closed trades.  
 2b. **`/recipes/$recipeId/behavior` — Behaviour tab** (public-capable, same `fetchRecipeOverviewFn` loader): tool usage, action mix, ticker focus, exit reasons; renders an empty state before the first run.
-   - Chrome is `BotSceneShell` (page-level Cedar Ridge world, `← <bot name>` back link, sub-nav in `currentMode="item"` so the active chip claims `aria-current="true"` rather than `page`), then the three Matcha & Voxel blocks that used to sit under the hub card:
+   - Chrome is `BotSceneShell` (page-level Cedar Ridge world, `← Overview` back link, bot name + live badge row), then the three Matcha & Voxel blocks that used to sit under the hub card:
      - **Performance & Equity** (`PerformanceOverviewBlock` + `PerformanceChart` + benchmark selector)
      - **Behaviors & Insights** (`BotBehaviorsBlock` powered by `recipe-insights.ts` over up to 50 slimmed live turns or latest backtest)
-     - **Open Positions + Recent 5 Closed Trades** (`ClosedTradesSection` with in-flow trough inspection, trailing link to `/recipes/live/$recipeId/runs`) + **Recent Backtests & Strategy DNA** (`OverviewBottomSection`)
+     - **Open Positions + Recent 5 Closed Trades** (`ClosedTradesSection` with in-flow `.voxel-trough` catalyst/confidence inspection, trailing link to `/recipes/live/$recipeId/runs`) + **Recent Backtests & Strategy DNA** (`OverviewBottomSection`)
    - Because those panels own the Enable Live and Run Backtest buttons, the shell's `alerts` slot carries the hub card's feedback with them: `LiveSwitchConfirmation` at the 3-live cap, `StudioAlertSlot` quota/execution errors, and a `role="alert"` fork error. `WaitlistPledgeModal` mounts outside the shell.
 
 3. **`/recipes/$recipeId/edit` — Blueprint Editor** (owner-only)
@@ -51,9 +51,9 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 
 ## Architecture
 
-### 1. Storage & Corpus (unchanged)
+### 1. Storage & Corpus
 - `public.recipe_news_corpus`: Point-in-time news articles with `search_tsv` and GIN indexes
-- `public.strategy_recipes`: Push v2 strategy configurations (`graph_json` with `version: "2.0-push"`, single `stages` item), cadence (default `3h`), `turbo_expires_at`, concurrency limits, isolated paper ledgers
+- `public.strategy_recipes`: Push v2 strategy configurations (`graph_json` with `version: "2.0-push"`, single `stages` item), cadence (default `3h`), `turbo_expires_at`, `is_public` (default `TRUE`), concurrency limits, isolated paper ledgers
 - `public.recipe_intraday_bars`: Cached intraday bars for backtesting and live snapshots
 - `public.recipe_execution_queue`: Priority queue with counted dual-lane dequeue (`pop_next_recipe_job`), 3 concurrent backtests, 1 open live turn per recipe
 - `public.recipe_user_quotas`: Per-user quotas (2 backtests/day, 3 live bots, 1 Turbo/day via `activate_recipe_turbo`)
@@ -102,7 +102,7 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 - Calm lower workspace (`CompiledBotBlueprintSection`) with a WAI-ARIA segmented tab bar (`Blocks & Tools` | `Prompt Preview`).
 
 #### `/recipes` — My Bots Dashboard (`RecipeDashboardPage`)
-- **Bot cards** (`BotCard`, fluid grid): the name link targets `/recipes/$recipeId` (Bot Overview) with an always-visible chevron; the live badge links to `/recipes/live/$recipeId/runs`; owner actions (Enable/Pause Live, Remove) plus a `+ Build New Bot` CTA to `/build`.
+- **Bot cards** (`BotCard`, fluid grid): the name link targets `/recipes/$recipeId` (Bot Overview) with an always-visible chevron; the live badge links to `/recipes/live/$recipeId/runs`; owner actions (Enable/Pause Live, Remove, **Public/Private visibility toggle**) plus a `+ Build New Bot` CTA to `/build`.
 - **In-flight state**: the card derives the pending destination from the router via `pendingRecipeTarget(state.status, state.location)`, which now reports `workspace` for `/recipes/<id>` and `/recipes/<id>/edit` and `live` for `/recipes/live/<id>`. See [[concepts/state-machines]] §2.12.
 - **Quota strip**, **Recent backtests strip**, **Alerts inbox**, **Waitlist pledge modal**.
 
@@ -145,11 +145,38 @@ The Bot Overview surface renders deterministic behavioral telemetry computed ser
 
 ## 7. Public Read Caching & Invalidation
 
-`fetchLivePortfolioAndRuns` and `fetchRecipeOverview` accept a nullable `userId`. Non-owner reads of public/template recipes are served from bounded 30-second in-memory caches (`publicLiveCache`, `publicOverviewCache`, max 50 entries, oldest-evicted); owner reads are never cached. `clearPublicRecipeReadCaches()` clears both (test/ops hook), and `invalidatePublicRecipeCache(recipeId)` drops a single recipe's entries on every save, archive, live toggle, live switch, and Turbo activation. `assertReadableRecipeRow` enforces that a non-owner can only read `is_public`/`is_template` rows and never an archived one, and `fetchRecipeOverview` strips the row `id` from the returned `strategy` for non-owners so the owner's `user_id` is never leaked.
+`fetchLivePortfolioAndRuns` and `fetchRecipeOverview` accept a nullable `userId`. Non-owner reads of public/template recipes are served from bounded 30-second in-memory caches (`publicLiveCache`, `publicOverviewCache`, max 50 entries, oldest-evicted); owner reads are never cached. `clearPublicRecipeReadCaches()` clears both (test/ops hook), and `invalidatePublicRecipeCache(recipeId)` drops a single recipe's entries on every save, archive, live toggle, live switch, and Turbo activation.
 
-## 8. Pausing Live Schedule
-- `toggleLiveSchedule` clears `turbo_expires_at` and cancels pending `live_turn` rows; `invalidatePublicRecipeCache(recipeId)` drops the public read caches
-- `strategy_recipes_turbo_requires_live` CHECK backstops
+**Cached-read guard**: `isStillPubliclyReadable(db, recipeId)` performs a lightweight indexed read (`select('id, is_public, is_template, archived_at')`) before serving any cached payload. If the bot has been made private or archived since the cache was populated, the guard returns `false` and the full fetch path runs, which enforces the read gate and returns `Unauthorized`. This prevents a stale public cache from outliving the owner's visibility change.
+
+`assertReadableRecipeRow` enforces that a non-owner can only read `is_public`/`is_template` rows and never an archived one, and `fetchRecipeOverview` strips the row `id` from the returned `strategy` for non-owners so the owner's `user_id` is never leaked.
+
+## 8. Owner-Controlled Visibility (`is_public`)
+
+Each recipe carries an `is_public` boolean column (default `TRUE`) that controls:
+- Whether strangers can read the bot's overview, performance, behaviour, and run-trace pages
+- Whether the bot is eligible for the leaderboard (`get_llm_leaderboard_metrics` filters user bots to `is_public = TRUE`)
+- Whether the bot appears in the public Recipe Gallery
+
+**Server function**: `setRecipeVisibilityFn` (`apps/web/src/features/recipes/api/set-recipe-visibility.ts`) — a `POST` server function that:
+- Verifies ownership against the stored row (not trusted from the caller)
+- Rejects starter templates (`is_template = TRUE`), which are public by definition
+- Rejects archived/removed bots (`archived_at IS NOT NULL`), which have their own `restore` flow
+- Updates only `is_public`, deliberately leaving `updated_at` untouched (visibility is not a content edit; bumping it would trip the showcase publisher's graph-drift guard)
+- Logs the transition (`console.info`) for audit trail
+- Calls `invalidatePublicRecipeCache(recipeId)` to immediately drop stale public reads
+
+**Client hook**: `useRecipeVisibility` (`apps/web/src/features/recipes/utils/use-recipe-visibility.ts`) — a confirmed (non-optimistic) toggle:
+- Calls `setRecipeVisibilityFn` with the opposite of the current `is_public`
+- Only updates the local list via `onChanged` **after** the server confirms
+- A failure leaves the row untouched and surfaces the error message in-flow
+- Uses a ref latch (`inFlight`) to prevent double-submits in the same tick
+
+**UI component**: `BotVisibilityToggle` (`apps/web/src/features/recipes/components/BotVisibilityToggle.tsx`) — a quiet outline button rendered through the design-system `Button` primitive:
+- Label reads the current state: "Public" / "Private"
+- `aria-pressed` carries the state; `aria-label` names the flip ("Bot visibility for {name}") so screen readers never infer from the visible word
+- Disabled while the mutation is in flight (`isTogglingVisibility`)
+- Deliberately low-emphasis: this is an opt-out, not a primary action
 
 ## 9. Fork (Copy Into Your Account)
 - `forkRecipe` copies public/template/own recipe → new row owned by caller

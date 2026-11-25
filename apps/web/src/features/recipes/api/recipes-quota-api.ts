@@ -352,7 +352,7 @@ export async function fetchUserRecipes(userId: string): Promise<RecipeSummaryIte
     const db = getDbAdminClient();
     const { data, error } = await db
         .from('strategy_recipes')
-        .select('id, name, cadence, is_live, trial_count, updated_at, turbo_expires_at')
+        .select('id, name, cadence, is_live, is_public, trial_count, updated_at, turbo_expires_at')
         .eq('user_id', userId)
         // Removed strategies stay in the database; they are only hidden here.
         .is('archived_at', null)
@@ -360,7 +360,12 @@ export async function fetchUserRecipes(userId: string): Promise<RecipeSummaryIte
         .limit(20);
 
     if (error) throw new Error(error.message);
-    return (data || []) as RecipeSummaryItem[];
+    // The column is nullable: a NULL reads as private on the read gate, so it
+    // must read as private here too rather than defaulting to public.
+    return ((data || []) as RecipeSummaryItem[]).map((row) => ({
+        ...row,
+        is_public: Boolean(row.is_public),
+    }));
 }
 
 const SHOWCASE_PIN_ROW_ID = 1;

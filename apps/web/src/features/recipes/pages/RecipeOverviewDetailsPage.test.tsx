@@ -248,6 +248,7 @@ describe('RecipeOverviewDetailsPage', () => {
                         name: 'Other Bot',
                         cadence: '3h',
                         is_live: true,
+                        is_public: true,
                         trial_count: 0,
                         updated_at: '2026-11-20T00:00:00.000Z',
                     },

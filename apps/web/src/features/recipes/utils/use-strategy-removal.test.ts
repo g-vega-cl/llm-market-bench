@@ -13,6 +13,7 @@ const strategy: RecipeSummaryItem = {
     name: 'Quality Value Screener',
     cadence: '3h',
     is_live: false,
+    is_public: true,
     trial_count: 0,
     updated_at: '2026-11-17T12:00:00.000Z',
 };

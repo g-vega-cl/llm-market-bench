@@ -135,6 +135,8 @@ export function useBotHeaderActions({
             name: recipeName,
             cadence,
             is_live: isLive,
+            // Not saved through this path yet, so it carries the column default.
+            is_public: true,
             trial_count: 0,
             updated_at: new Date().toISOString(),
         };

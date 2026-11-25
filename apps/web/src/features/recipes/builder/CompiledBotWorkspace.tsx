@@ -211,6 +211,8 @@ export function CompiledBotWorkspace({
             name: strategy.name,
             cadence: strategy.cadence,
             is_live: isCurrentlyScheduledLive === true,
+            // Not saved through this path yet, so it carries the column default.
+            is_public: true,
             trial_count: 0,
             updated_at: new Date().toISOString(),
         };

@@ -24,6 +24,7 @@ import type {
 } from '../types';
 import { pendingRecipeTarget } from '../utils/pending-recipe-nav';
 import { useLiveScheduleControl } from '../utils/use-live-schedule-control';
+import { useRecipeVisibility } from '../utils/use-recipe-visibility';
 import { useStrategyRemoval } from '../utils/use-strategy-removal';
 
 export interface RecipeDashboardPageProps {
@@ -51,6 +52,14 @@ export function RecipeDashboardPage({
 
     const removal = useStrategyRemoval((item) => {
         setUserRecipes((prev) => prev.filter((r) => r.id !== item.id));
+    });
+
+    // Visibility is confirmed by the server before the card repaints, so a
+    // failed flip leaves the row showing its previous state.
+    const visibility = useRecipeVisibility((item, isPublic) => {
+        setUserRecipes((prev) =>
+            prev.map((r) => (r.id === item.id ? { ...r, is_public: isPublic } : r)),
+        );
     });
 
     const refreshQuota = async () => {
@@ -100,7 +109,8 @@ export function RecipeDashboardPage({
     const isActionLocked =
         liveControl.isBusy ||
         liveControl.state.kind === 'confirming' ||
-        Boolean(removal.removingId);
+        Boolean(removal.removingId) ||
+        Boolean(visibility.togglingId);
 
     return (
         <div className="min-h-screen bg-voxel-canvas text-voxel-ink">
@@ -191,8 +201,12 @@ export function RecipeDashboardPage({
                                         isLocked={isActionLocked}
                                         isTogglingLive={isTogglingThis}
                                         isRemoving={removal.removingId === item.id}
+                                        isTogglingVisibility={visibility.togglingId === item.id}
                                         onToggleLive={(recipe) => void liveControl.toggle(recipe)}
                                         onRemove={(recipe) => removal.remove(recipe)}
+                                        onToggleVisibility={(recipe) =>
+                                            void visibility.toggle(recipe)
+                                        }
                                     />
                                 );
                             })}
@@ -200,6 +214,11 @@ export function RecipeDashboardPage({
                         {removal.errorMessage && (
                             <span role="alert" className="text-xs font-normal text-danger">
                                 {removal.errorMessage}
+                            </span>
+                        )}
+                        {visibility.errorMessage && (
+                            <span role="alert" className="text-xs font-normal text-danger">
+                                {visibility.errorMessage}
                             </span>
                         )}
                     </div>

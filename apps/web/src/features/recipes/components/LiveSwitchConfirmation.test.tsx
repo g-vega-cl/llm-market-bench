@@ -14,6 +14,7 @@ function renderConfirmation(overrides: Partial<Parameters<typeof LiveSwitchConfi
                 name: 'Trump & Chips',
                 cadence: '3h',
                 is_live: true,
+                is_public: true,
                 trial_count: 0,
                 updated_at: '',
             }}

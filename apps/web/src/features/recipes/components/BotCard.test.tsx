@@ -46,6 +46,7 @@ const liveBot: RecipeSummaryItem = {
     name: 'AI Capex Momentum',
     cadence: '3h',
     is_live: true,
+    is_public: true,
     trial_count: 2,
     updated_at: '2026-11-20T10:00:00Z',
 };
@@ -53,6 +54,7 @@ const liveBot: RecipeSummaryItem = {
 function renderCard(overrides: Partial<Parameters<typeof BotCard>[0]> = {}) {
     const onToggleLive = vi.fn();
     const onRemove = vi.fn();
+    const onToggleVisibility = vi.fn();
     render(
         <BotCard
             item={liveBot}
@@ -60,12 +62,14 @@ function renderCard(overrides: Partial<Parameters<typeof BotCard>[0]> = {}) {
             isLocked={false}
             isTogglingLive={false}
             isRemoving={false}
+            isTogglingVisibility={false}
             onToggleLive={onToggleLive}
             onRemove={onRemove}
+            onToggleVisibility={onToggleVisibility}
             {...overrides}
         />,
     );
-    return { onToggleLive, onRemove };
+    return { onToggleLive, onRemove, onToggleVisibility };
 }
 
 describe('BotCard', () => {
@@ -170,5 +174,38 @@ describe('BotCard', () => {
 
         expect(onToggleLive).toHaveBeenCalledTimes(1);
         expect(onRemove).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows the visibility state as a quiet control that names the setting', () => {
+        const { onToggleVisibility } = renderCard();
+
+        const control = screen.getByRole('button', {
+            name: 'Bot visibility for AI Capex Momentum',
+        });
+        expect(control).toHaveTextContent('Public');
+        // The accessible name stays stable; the state lives in aria-pressed, so a
+        // screen reader never hears "make private, pressed" on a public bot.
+        expect(control).toHaveAttribute('aria-pressed', 'true');
+
+        fireEvent.click(control);
+        expect(onToggleVisibility).toHaveBeenCalledTimes(1);
+    });
+
+    it('reads Private for a hidden bot with the same accessible name', () => {
+        renderCard({ item: { ...liveBot, is_public: false } });
+
+        const control = screen.getByRole('button', {
+            name: 'Bot visibility for AI Capex Momentum',
+        });
+        expect(control).toHaveTextContent('Private');
+        expect(control).toHaveAttribute('aria-pressed', 'false');
+    });
+
+    it('locks the visibility control while its own mutation is in flight', () => {
+        renderCard({ isTogglingVisibility: true });
+
+        expect(
+            screen.getByRole('button', { name: 'Bot visibility for AI Capex Momentum' }),
+        ).toBeDisabled();
     });
 });

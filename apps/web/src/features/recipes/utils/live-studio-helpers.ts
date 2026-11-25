@@ -100,6 +100,7 @@ export function upsertSavedRecipeSummary(
                 name: saved.name,
                 cadence: saved.cadence,
                 is_live: nextLive,
+                is_public: Boolean(saved.is_public),
                 trial_count: saved.trial_count ?? 0,
                 updated_at: saved.updated_at ?? new Date().toISOString(),
                 turbo_expires_at: nextTurbo ?? null,

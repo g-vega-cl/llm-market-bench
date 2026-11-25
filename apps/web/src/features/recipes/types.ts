@@ -344,6 +344,13 @@ export interface RecipeSummaryItem {
     name: string;
     cadence: RecipeCadence;
     is_live: boolean;
+    /**
+     * Whether strangers can read this bot and whether it is ranked on the
+     * leaderboard. Required, because a privacy control must never be inferred:
+     * the read gate treats a falsy value as private, so producers map the
+     * nullable column through `Boolean()` rather than defaulting it to public.
+     */
+    is_public: boolean;
     trial_count: number;
     updated_at: string;
     turbo_expires_at?: string | null;

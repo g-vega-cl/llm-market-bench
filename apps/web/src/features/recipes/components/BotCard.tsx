@@ -4,6 +4,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react';
 
 import type { RecipeSummaryItem } from '../types';
 import { isTurboActive } from '../utils/market-hours';
+import { BotVisibilityToggle } from './BotVisibilityToggle';
 
 /** Which link on this card started the in-flight navigation, if any. */
 export type BotCardPendingDestination = 'workspace' | 'live' | null;
@@ -16,8 +17,12 @@ export interface BotCardProps {
     isLocked: boolean;
     isTogglingLive: boolean;
     isRemoving: boolean;
+    /** A public/private flip for this card is in flight. */
+    isTogglingVisibility: boolean;
     onToggleLive: (item: RecipeSummaryItem) => void;
     onRemove: (item: RecipeSummaryItem) => void;
+    /** Flips the bot between public and private. */
+    onToggleVisibility: (item: RecipeSummaryItem) => void;
 }
 
 const PENDING_COPY: Record<Exclude<BotCardPendingDestination, null>, string> = {
@@ -46,13 +51,16 @@ export function BotCard({
     isLocked,
     isTogglingLive,
     isRemoving,
+    isTogglingVisibility,
     onToggleLive,
     onRemove,
+    onToggleVisibility,
 }: BotCardProps) {
     const router = useRouter();
     const turbo = item.is_live && isTurboActive(item.turbo_expires_at);
     const isOpening = pendingDestination !== null;
     const isActionDisabled = isLocked || isOpening;
+    const isPublic = item.is_public;
 
     const guardDuplicateClick = (event: ReactMouseEvent<HTMLAnchorElement>) => {
         // A modified or non-primary click opens elsewhere / in a new tab and
@@ -137,7 +145,9 @@ export function BotCard({
             )}
 
             <div
-                aria-busy={isOpening || isTogglingLive || isRemoving || undefined}
+                aria-busy={
+                    isOpening || isTogglingLive || isRemoving || isTogglingVisibility || undefined
+                }
                 data-testid={`bot-actions-${item.id}`}
                 className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-voxel-bevel-hi"
             >
@@ -152,17 +162,27 @@ export function BotCard({
                     {item.is_live ? 'Pause Live' : 'Enable Live (30m)'}
                 </Button>
 
-                <Button
-                    size="sm"
-                    variant="outline"
-                    colorScheme="danger"
-                    aria-label={`Remove ${item.name}`}
-                    disabled={isActionDisabled}
-                    isLoading={isRemoving}
-                    onClick={() => onRemove(item)}
-                >
-                    Remove
-                </Button>
+                <div className="flex flex-wrap items-center gap-2 min-w-0">
+                    <BotVisibilityToggle
+                        name={item.name}
+                        isPublic={isPublic}
+                        testId={`bot-visibility-${item.id}`}
+                        disabled={isActionDisabled || isTogglingVisibility}
+                        onToggle={() => onToggleVisibility(item)}
+                    />
+
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        colorScheme="danger"
+                        aria-label={`Remove ${item.name}`}
+                        disabled={isActionDisabled}
+                        isLoading={isRemoving}
+                        onClick={() => onRemove(item)}
+                    >
+                        Remove
+                    </Button>
+                </div>
             </div>
         </Card>
     );

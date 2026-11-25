@@ -308,6 +308,18 @@ describe('recipes-studio-api', () => {
                             },
                             error: null,
                         }),
+                    // The cached-read guard re-establishes visibility with one
+                    // small read before serving a cached payload.
+                    maybeSingle: () =>
+                        Promise.resolve({
+                            data: {
+                                id: 'rec-overview',
+                                is_public: isPublic,
+                                is_template: false,
+                                archived_at: null,
+                            },
+                            error: null,
+                        }),
                 };
                 return chain;
             },
@@ -322,6 +334,60 @@ describe('recipes-studio-api', () => {
 
         clearPublicRecipeReadCaches();
         mockServerDb = makeOverviewDb(false);
+        await expect(fetchRecipeOverview('rec-overview', null)).rejects.toThrow('Unauthorized');
+    });
+
+    it('will not serve a cached public payload after the bot is made private', async () => {
+        const overviewRow = (isPublic: boolean) => ({
+            id: 'rec-overview',
+            user_id: 'author-1',
+            name: 'Shared Catalyst Bot',
+            description: 'Public showcase bot',
+            cadence: '3h',
+            is_public: isPublic,
+            is_template: false,
+            is_live: true,
+            turbo_expires_at: null,
+            archived_at: null,
+            graph_json: STARTER_RECIPES[0],
+            paper_cash: 10000,
+            paper_positions: [],
+            paper_trades: [],
+            paper_equity_curve: [],
+        });
+        const dbFor = (isPublic: boolean) => ({
+            from(_table: string) {
+                const chain = {
+                    select: () => chain,
+                    eq: () => chain,
+                    in: () => chain,
+                    order: () => chain,
+                    limit: () => Promise.resolve({ data: [], error: null }),
+                    single: () => Promise.resolve({ data: overviewRow(isPublic), error: null }),
+                    // The cached-read guard re-establishes visibility with one
+                    // small read before serving a cached payload.
+                    maybeSingle: () =>
+                        Promise.resolve({
+                            data: {
+                                id: 'rec-overview',
+                                is_public: isPublic,
+                                is_template: false,
+                                archived_at: null,
+                            },
+                            error: null,
+                        }),
+                };
+                return chain;
+            },
+        });
+
+        mockServerDb = dbFor(true);
+        const cached = await fetchRecipeOverview('rec-overview', null);
+        expect(cached.isPublic).toBe(true);
+
+        // No explicit invalidation: the column flipped on another instance,
+        // which cannot clear this process's cache.
+        mockServerDb = dbFor(false);
         await expect(fetchRecipeOverview('rec-overview', null)).rejects.toThrow('Unauthorized');
     });
 });

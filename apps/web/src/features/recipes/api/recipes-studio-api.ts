@@ -441,16 +441,43 @@ function assertReadableRecipeRow(
     return { row, isOwner };
 }
 
+/**
+ * A cached public payload must never outlive the bot's visibility.
+ *
+ * These caches live in process memory, so an unpublish handled by another
+ * instance cannot invalidate them; without this check a stranger keeps reading
+ * a bot the owner has just hidden until the TTL expires. One small indexed read
+ * re-establishes the gate, while the expensive payload stays cached.
+ */
+async function isStillPubliclyReadable(
+    db: ReturnType<typeof getDbServerClient>,
+    recipeId: string,
+): Promise<boolean> {
+    const { data, error } = await db
+        .from('strategy_recipes')
+        .select('id, is_public, is_template, archived_at')
+        .eq('id', recipeId)
+        .maybeSingle();
+    if (error || !data) return false;
+    const row = data as {
+        is_public?: boolean | null;
+        is_template?: boolean | null;
+        archived_at?: string | null;
+    };
+    if (row.archived_at) return false;
+    return Boolean(row.is_public) || Boolean(row.is_template);
+}
+
 export async function fetchLivePortfolioAndRuns(
     recipeId: string,
     userId: string | null,
 ): Promise<LivePortfolioAndRuns> {
+    const db = getDbServerClient({ useServiceRole: true });
     if (!userId) {
         const cached = readBoundedCache(publicLiveCache, recipeId);
-        if (cached) return cached;
+        if (cached && (await isStillPubliclyReadable(db, recipeId))) return cached;
     }
 
-    const db = getDbServerClient({ useServiceRole: true });
     const { data: recipeRow, error: recipeErr } = await db
         .from('strategy_recipes')
         .select(
@@ -539,12 +566,12 @@ export async function fetchRecipeOverview(
     recipeId: string,
     userId: string | null,
 ): Promise<RecipeOverviewData> {
+    const db = getDbServerClient({ useServiceRole: true });
     if (!userId) {
         const cached = readBoundedCache(publicOverviewCache, recipeId);
-        if (cached) return cached;
+        if (cached && (await isStillPubliclyReadable(db, recipeId))) return cached;
     }
 
-    const db = getDbServerClient({ useServiceRole: true });
     const { data: recipeRow, error: recipeErr } = await db
         .from('strategy_recipes')
         .select(

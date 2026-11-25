@@ -8,6 +8,7 @@ function record(id: string, isLive: boolean): RecipeSummaryItem {
         name: `Bot ${id}`,
         cadence: '3h',
         is_live: isLive,
+        is_public: true,
         trial_count: 1,
         updated_at: '2026-11-24T00:00:00Z',
     };

@@ -154,8 +154,10 @@ export async function saveRecipe(
 }
 
 export const saveRecipeFn = createServerFn({ method: 'POST' })
-    // Publication is an editorial act performed by the showcase publisher CLI,
-    // never a client-controlled field: the browser may not flip `is_public`.
+    // Publication is an editorial act performed by the showcase publisher CLI;
+    // this path cannot flip `is_public`, so a studio persist never changes
+    // visibility as a side effect. The owner's public/private opt-out has its
+    // own server function, `setRecipeVisibilityFn`.
     // `restore` is the studio's explicit "bring this removed strategy back".
     .validator((d: { recipe: PushStrategy; restore?: boolean }) => d)
     .handler(async ({ data: { recipe, restore = false } }) => {

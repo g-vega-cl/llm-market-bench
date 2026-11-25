@@ -109,3 +109,17 @@ Verdict: the site works and the core flow is credible, but it is **not ready for
 3. Watch activation and drop-offs.
 4. Finish P1.
 5. Public announcement.
+
+---
+
+## Decisions taken (2026-11-25)
+
+Recorded so the next session does not re-litigate them from a stale premise. A
+non-goal is a decision, not an absence.
+
+- **Analytics consent: no cookie, no banner.** PostHog runs with `persistence: 'memory'`. A cold load of `/` wrote a 333-byte `ph_*` cookie before the change and zero browser storage after, while the deployed site still loads `posthog-recorder.js`, requests flags, and dispatches events. Signed-in users stay whole because `PostHogAuthSync` re-identifies on every load; only anonymous cross-session attribution is lost. Accepted risk: PostHog processes in the US and EU/UK visitors are measured without a consent gate — 9 distinct EU/UK people in the 30 days to 2026-11-25 against 330 US. Revisit if EU traffic grows or a banner becomes acceptable.
+- **Bot visibility: public by default, now disclosed.** `is_public` keeps `DEFAULT TRUE`; the compiled-bot card states the bot's visibility, and a fork inherits its source's value, so a copy of a private bot stays private.
+- **Operator identity: trading name only.** Terms and Privacy Policy name “the independent llm-market-bench project, established in Ontario, Canada” with no legal person. Governing law is Ontario with a consumer court exception and an explicit consumer-rights carve-out. Residual gap: no named controller for GDPR Art. 13 — `privacy@benchify.dev` must work for the policy to be actionable.
+- **Email: still open.** `benchify.dev` publishes no MX and `clvg.uk` answers `550 5.1.1` for both aliases. Email Routing on `benchify.dev` forwarding to the operator's destination is the chosen fix; it stays a P0 item until the addresses accept mail.
+- **Terms: drafted, not reviewed.** Eligibility 16+, consumer carve-out, Ontario governing law and venue, severability and entire-agreement clauses are in place and pinned by `apps/web/src/test/legal-surface-conventions.test.ts`. No lawyer has read them.
+

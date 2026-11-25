@@ -6,7 +6,7 @@ export interface FinancialDisclaimerProps {
 }
 
 const shortText =
-    'Benchify is a research and benchmarking tool. Paper trading only. Not financial advice.';
+    'Benchify is a research and benchmarking tool. Paper trading only. Not financial advice. No returns guaranteed.';
 
 export function FinancialDisclaimer({ compact = false, className = '' }: FinancialDisclaimerProps) {
     if (compact) {

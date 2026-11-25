@@ -147,7 +147,7 @@ export const termsOfService: LegalDocument = {
 export const financialDisclaimer: LegalDocument = {
     title: 'Financial Disclaimer',
     updated: '2026-11-25',
-    intro: 'Benchify is an educational research and benchmarking tool. Nothing on this site is financial, investment, legal, or tax advice.',
+    intro: 'Benchify is an educational research and benchmarking tool. Nothing on this site is financial, investment, legal, or tax advice. No returns are guaranteed.',
     sections: [
         {
             heading: 'No advice or recommendation',

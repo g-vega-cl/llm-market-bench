@@ -41,6 +41,21 @@ Verdict: the site works and the core flow is credible, but it is **not ready for
 
 - **Deploy evidence:** Netlify builds were stopped (`stop_builds: true`) and had been stuck on commit `6fc031b` since 2026-11-23. Builds were re-enabled and a production deploy was triggered for `ddf07def` (deploy `6b0743fe8ef30301a09a8651`, state `ready`, published 20:25 UTC). The self-hosted watcher behind `benchify.dev` also advanced to `ddf07def`. Live `benchify.dev`, `www.benchify.dev`, and `main--benchify.netlify.app` all serve the new title and the new legal routes.
 - **Final wording verification:** commit `20b6e63e` (explicit no-return-guarantee wording) was also deployed and verified live on both `benchify.dev` and `main--benchify.netlify.app`.
+
+### Independent verification evidence
+
+- `git status --short --branch`: `## main...origin/main` (clean except unrelated wiki files).
+- `git rev-parse HEAD origin/main`: both `86f1d8b51b0b0f62387a5d94aeacfb72f793c285`.
+- Live HTTP checks: `curl -s -o /dev/null -w '%{http_code}'` returned `200` for `/`, `/build`, `/personality`, `/leaderboard`, `/privacy`, `/terms`, `/disclaimer`, `/login`, `/signup?next=%2F`, `/robots.txt`, `/sitemap.xml`, and `/og-image.png`.
+- Live metadata: each key route contains `Benchify: build and backtest trading bots` or the matching page-specific title, `og:image`/`twitter:image` pointing to `https://benchify.dev/og-image.png`, `twitter:card` `summary_large_image`, and a `rel="canonical"` link. No `tannerlinsley` placeholder remains in live HTML.
+- Live footer/disclaimer bar contains `Privacy Policy`, `Terms of Service`, `Financial Disclaimer`, and `Paper trading only. Not financial advice. No returns guaranteed.`.
+- Legal links are present in the live `/login` and `/signup?next=%2F` HTML.
+- `/robots.txt` contains `User-agent: *`, `Allow: /`, and `Sitemap: https://benchify.dev/sitemap.xml`.
+- `/sitemap.xml` contains nine canonical public routes including the legal pages.
+- `/og-image.png` returns `image/png` with content length `97368`.
+- Activation event: `bot_activated`, `benchify:bot-activated`, and `backtest_queued` are present in the live `/assets/index-TYYpjXJD.js` bundle.
+- Netlify API: production deploy `6b0743fe8ef30301a09a8651` is `ready` for `ddf07def`; later doc deploys `0e5c70e6`, `20b6e63e`, and `86f1d8b5` are also `ready`.
+- Local verification: `pnpm --filter web test` passed 1536 tests; `pnpm --filter web build` (including `tsc --noEmit`) passed; targeted `pnpm biome check` was clean for all P0 files.
 - **Live page checks:** `/`, `/build`, `/personality`, `/leaderboard`, `/privacy`, `/terms`, `/disclaimer`, `/login`, and `/signup?next=%2F` return the expected titles, canonical links, OG tags, footer, disclaimer bar, and legal links. No `tannerlinsley` metadata remains.
 - **Static files:** `/robots.txt` includes `User-agent: *`, `Allow: /`, and the sitemap directive. `/sitemap.xml` returns valid XML with the nine public routes. `/og-image.png` returns `image/png` at 1200×630.
 - **Activation funnel:** `$pageview` → `user_signed_up` → `builder_opened` → `builder_compiled` → `bot_activated` → `run_queued`. `bot_activated` fires once per browser session from `track()` on the first `run_queued` event, with `source: backtest_queued` and the `recipeId`/`jobId` props. The event name is in the live JS bundle.

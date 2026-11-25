@@ -356,6 +356,11 @@ export function RootDocument({ children }: { children: ReactNode }) {
                                   'https://us.i.posthog.com',
                         ui_host: 'https://us.posthog.com',
                         defaults: '2025-05-24',
+                        // No PostHog cookie or localStorage: analytics state lives
+                        // in page memory, so nothing persistent is written before a
+                        // visitor asks us to. Signed-in users stay whole because
+                        // PostHogAuthSync re-identifies on every load.
+                        persistence: 'memory',
                         capture_exceptions: {
                             capture_unhandled_errors: true,
                             capture_unhandled_rejections: true,

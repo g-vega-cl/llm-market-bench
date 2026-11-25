@@ -24,7 +24,7 @@ export const privacyPolicy: LegalDocument = {
             bullets: [
                 'Account information: email address, password hash, and, if you sign in with Google, the basic profile information Google returns (such as your email and display name). Passwords are handled by Supabase Auth; we never store your plaintext password.',
                 'Product data: bot descriptions, starter ideas, alignment answers, compiled strategies, backtest settings, and results you create in the builder.',
-                'Usage data: page views, clicks, feature interactions, and errors captured by PostHog. Session replay is enabled with text inputs masked. Browser console logs and unhandled errors are also captured for debugging.',
+                'Usage data: page views, clicks, feature interactions, and errors captured by PostHog. Session replay is enabled with form inputs masked, but other text on the page — including bot descriptions, compiled strategies, and chat messages — is captured as part of the replay. Browser console logs and unhandled errors are also captured for debugging.',
                 'Technical and security data: IP-derived coarse location, device/browser type, timestamps, and abuse-prevention tokens from Cloudflare Turnstile.',
                 'Support communications: messages you send when you contact us about the product.',
             ],
@@ -40,12 +40,13 @@ export const privacyPolicy: LegalDocument = {
                 'Netlify — site hosting, builds, and deployment logs.',
                 'Cloudflare — Turnstile abuse prevention on signup and login forms.',
                 'Google Fonts — fonts loaded by the browser when you view the site.',
+                'Language-model providers — when you describe a bot, answer alignment questions, compile a strategy, or use the research chat, the text you write is sent to third-party AI providers so they can produce the reply or the compiled bot. These currently include DeepSeek (direct chat), MiniMax (market commentary), and the model gateway that compilation and analysis are routed through, which currently fronts Groq, Google (Gemini), OpenRouter, Nous Research, NVIDIA, Kilo and OpenCode. Those providers may process your text outside your country, and the set of providers behind the gateway changes as models are added or retired.',
             ],
         },
         {
             heading: 'Cookies and local storage',
             paragraphs: [
-                'Benchify uses browser storage for three purposes: keeping you signed in (Supabase auth cookies/storage), remembering product state such as in-progress drafts, and maintaining PostHog analytics sessions. We do not use advertising cookies or sell data to advertisers.',
+                'Benchify uses browser storage for two purposes: keeping you signed in (Supabase auth cookies and storage) and remembering product state such as in-progress drafts. Product analytics does not use cookies or local storage — PostHog state is held in page memory for the duration of a visit, so a returning anonymous visitor is not recognised. We do not use advertising cookies or sell data to advertisers.',
             ],
         },
         {
@@ -57,7 +58,7 @@ export const privacyPolicy: LegalDocument = {
         {
             heading: 'Your choices and deletion rights',
             paragraphs: [
-                'You can request access to, correction of, or deletion of your account and product data by emailing privacy@benchify.dev. We will verify the request and respond within a reasonable period. You can also delete browser-only drafts by clearing site data, and you can limit analytics by blocking third-party scripts in your browser. Deleting your account does not erase aggregate usage data that can no longer be linked to you.',
+                'You can request access to, correction of, or deletion of your account and product data by emailing privacy@benchify.dev. We will verify the request and respond within 30 days. You can also delete browser-only drafts by clearing site data. Analytics requests are sent through our own domain (https://benchify.dev/p/*) rather than a third-party script, so a generic third-party blocker will not stop them; blocking that path, or enabling your browser’s tracking protection, will. PostHog processes and stores analytics data in the United States. Deleting your account does not erase aggregate usage data that can no longer be linked to you.',
             ],
         },
         {

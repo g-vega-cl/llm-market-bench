@@ -11,6 +11,7 @@ export type AnalyticsEvent =
     | 'builder_failed'
     | 'builder_question_answered'
     | 'builder_declined'
+    | 'bot_activated'
     | 'gallery_signin_clicked'
     | 'quiz_started'
     | 'quiz_question_answered'
@@ -24,6 +25,24 @@ type CaptureClient =
     | null
     | undefined;
 
+const ACTIVATION_SESSION_KEY = 'benchify:bot-activated';
+
+/**
+ * Activation is defined as "queued a backtest for a compiled bot". The first
+ * `run_queued` in a browser session also emits `bot_activated`, which gives
+ * PostHog a single stable event for the activation funnel.
+ */
+function captureActivationOnce(client: CaptureClient, props?: Record<string, unknown>): void {
+    if (typeof window === 'undefined') return;
+    try {
+        if (window.sessionStorage.getItem(ACTIVATION_SESSION_KEY)) return;
+        window.sessionStorage.setItem(ACTIVATION_SESSION_KEY, '1');
+    } catch {
+        return;
+    }
+    client?.capture?.('bot_activated', { ...props, source: 'backtest_queued' });
+}
+
 /** No-op without a client, so server renders and tests never throw. */
 export function track(
     client: CaptureClient,
@@ -31,4 +50,5 @@ export function track(
     props?: Record<string, unknown>,
 ): void {
     client?.capture?.(event, props);
+    if (event === 'run_queued') captureActivationOnce(client, props);
 }

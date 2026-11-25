@@ -15,9 +15,11 @@ import { createServerFn } from '@tanstack/react-start';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
+import { FinancialDisclaimer } from '~/features/legal/FinancialDisclaimer';
+import { SiteFooter } from '~/features/legal/SiteFooter';
 import { getAuthServerClient } from '~/lib/auth';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
-import { seo } from '~/lib/seo';
+import { canonicalUrl, seo } from '~/lib/seo';
 import { posthogBeforeSend } from '~/utils/posthog-filter';
 import { warmRouteChunks } from '~/utils/route-warmup';
 import appCss from '../styles/app.css?url';
@@ -88,8 +90,11 @@ export const Route = createRootRoute({
                 content: 'width=device-width, initial-scale=1',
             },
             ...seo({
-                title: 'Benchify, LLM Market Benchmarking',
-                description: `Benchify is a LLM Market Benchmarking platform`,
+                title: 'Benchify — build and backtest trading bots',
+                description:
+                    'Describe a trading bot in one sentence, backtest it on point-in-time news, and see how it holds up. Paper cash only, with the results left on the record.',
+                keywords:
+                    'trading bot builder, LLM benchmark, backtesting, paper trading, Benchify',
             }),
         ],
         links: [{ rel: 'stylesheet', href: appCss }],
@@ -313,11 +318,15 @@ export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } =
 export function RootDocument({ children }: { children: ReactNode }) {
     const context = Route.useRouteContext();
     const user = context?.user;
+    const router = useRouter();
+    const canonical = canonicalUrl(router.state.location.pathname);
 
     return (
         <html lang="en">
             <head>
                 <HeadContent />
+                <link rel="canonical" href={canonical} />
+                <meta property="og:url" content={canonical} />
                 <link rel="preconnect" href="https://fonts.googleapis.com" />
                 <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
                 <link
@@ -409,7 +418,9 @@ export function RootDocument({ children }: { children: ReactNode }) {
                         </div>
                     </nav>
                     <GlobalBackground />
+                    <FinancialDisclaimer compact />
                     <main id="main-content">{children}</main>
+                    <SiteFooter />
                     <TanStackRouterDevtools position="bottom-right" />
                     <Scripts />
                 </PostHogProvider>

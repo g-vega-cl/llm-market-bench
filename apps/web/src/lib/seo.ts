@@ -1,33 +1,35 @@
+export const SITE_URL = 'https://benchify.dev';
+export const DEFAULT_OG_IMAGE = `${SITE_URL}/og-image.png`;
+
+export function canonicalUrl(path = '/'): string {
+    const normalized = path.startsWith('/') ? path : `/${path}`;
+    return `${SITE_URL}${normalized}`;
+}
+
 export const seo = ({
     title,
     description,
     keywords,
-    image,
+    image = DEFAULT_OG_IMAGE,
 }: {
     title: string;
     description?: string;
     image?: string;
     keywords?: string;
 }) => {
-    const tags = [
+    return [
         { title },
         { name: 'description', content: description },
-        { name: 'keywords', content: keywords },
+        ...(keywords ? [{ name: 'keywords', content: keywords }] : []),
+        { name: 'robots', content: 'index,follow' },
+        { property: 'og:site_name', content: 'Benchify' },
         { name: 'twitter:title', content: title },
         { name: 'twitter:description', content: description },
-        { name: 'twitter:creator', content: '@tannerlinsley' },
-        { name: 'twitter:site', content: '@tannerlinsley' },
-        { name: 'og:type', content: 'website' },
-        { name: 'og:title', content: title },
-        { name: 'og:description', content: description },
-        ...(image
-            ? [
-                  { name: 'twitter:image', content: image },
-                  { name: 'twitter:card', content: 'summary_large_image' },
-                  { name: 'og:image', content: image },
-              ]
-            : []),
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:image', content: image },
+        { property: 'og:type', content: 'website' },
+        { property: 'og:title', content: title },
+        { property: 'og:description', content: description },
+        { property: 'og:image', content: image },
     ];
-
-    return tags;
 };

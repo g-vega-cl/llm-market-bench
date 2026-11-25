@@ -47,9 +47,9 @@ export const Route = createFileRoute('/build')({
     head: () => ({
         meta: [
             ...seo({
-                title: 'Build a trading bot from one sentence | Benchify',
+                title: 'Build a trading bot | Benchify',
                 description:
-                    'Describe the bot you want. The builder asks one quick alignment round, then compiles a runnable point-in-time recipe you can edit and backtest.',
+                    'Benchify turns one sentence into a runnable trading bot recipe, then lets you backtest it on point-in-time news before you switch it Live.',
             }),
         ],
     }),

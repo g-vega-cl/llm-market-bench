@@ -10,9 +10,9 @@ export const Route = createFileRoute('/personality/')({
     head: () => ({
         meta: [
             ...seo({
-                title: 'Investing Style & Best Trading Bot Quiz | Benchify',
+                title: 'Investing style test | Benchify',
                 description:
-                    'Take the 16-question diagnostic, across four acts, to map your investing personality across Horizon, Signal Anchor, Crowd Stance, and Cadence and unlock your matched starter trading bot.',
+                    'Take Benchify’s 16-question investing style test to find your trading personality and unlock a matched starter bot you can backtest.',
             }),
         ],
     }),

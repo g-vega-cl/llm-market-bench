@@ -4,6 +4,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { fetchLeaderboardPage } from '~/features/leaderboard/api/fetch-leaderboard';
 import { LEADERBOARD_PAGE_SIZE } from '~/features/leaderboard/components/LeaderboardTable';
 import { LeaderboardPage } from '~/features/leaderboard/pages/LeaderboardPage';
+import { seo } from '~/lib/seo';
 
 const getLeaderboardData = createServerFn({ method: 'GET' }).handler(async () => {
     const [initialData, initialAtmosphere] = await Promise.all([
@@ -22,6 +23,15 @@ const getLeaderboardData = createServerFn({ method: 'GET' }).handler(async () =>
 
 export const Route = createFileRoute('/leaderboard/')({
     loader: async () => await getLeaderboardData(),
+    head: () => ({
+        meta: [
+            ...seo({
+                title: 'Published bot leaderboard | Benchify',
+                description:
+                    'See how published Benchify trading bots are doing. Paper-cash results, ranking methodology, and point-in-time backtests in one place.',
+            }),
+        ],
+    }),
     component: RouteComponent,
 });
 

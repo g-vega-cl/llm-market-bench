@@ -18,6 +18,7 @@ import { Route as BuildRouteImport } from './routes/build'
 import { Route as ChatRouteImport } from './routes/chat'
 import { Route as CompaniesRouteImport } from './routes/companies'
 import { Route as DailyPredictionsBacktestRouteImport } from './routes/daily-predictions-backtest'
+import { Route as DisclaimerRouteImport } from './routes/disclaimer'
 import { Route as EarningsAuditRouteImport } from './routes/earnings-audit'
 import { Route as GeneratedNewslettersRouteImport } from './routes/generated-newsletters'
 import { Route as HowItWorksRouteImport } from './routes/how-it-works'
@@ -27,10 +28,12 @@ import { Route as LlmLogsRouteImport } from './routes/llm-logs'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as PersonalityRouteImport } from './routes/personality'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as RecipesDemoRouteImport } from './routes/recipes-demo'
 import { Route as RenkoRouteImport } from './routes/renko'
 import { Route as RetiredAgentsRouteImport } from './routes/retired-agents'
 import { Route as SignupRouteImport } from './routes/signup'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as TodayRouteImport } from './routes/today'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as AiPredictionsIndexRouteImport } from './routes/ai-predictions/index'
@@ -106,6 +109,11 @@ const DailyPredictionsBacktestRoute =
     path: '/daily-predictions-backtest',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DisclaimerRoute = DisclaimerRouteImport.update({
+  id: '/disclaimer',
+  path: '/disclaimer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EarningsAuditRoute = EarningsAuditRouteImport.update({
   id: '/earnings-audit',
   path: '/earnings-audit',
@@ -151,6 +159,11 @@ const PersonalityRoute = PersonalityRouteImport.update({
   path: '/personality',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecipesDemoRoute = RecipesDemoRouteImport.update({
   id: '/recipes-demo',
   path: '/recipes-demo',
@@ -169,6 +182,11 @@ const RetiredAgentsRoute = RetiredAgentsRouteImport.update({
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
   path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TodayRoute = TodayRouteImport.update({
@@ -331,6 +349,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof ChatRoute
   '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/disclaimer': typeof DisclaimerRoute
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -340,10 +359,12 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/personality': typeof PersonalityRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/today': typeof TodayRoute
   '/recipes/$recipeId': typeof RecipesRecipeIdRouteRouteWithChildren
   '/profile': typeof AuthedProfileRoute
@@ -383,6 +404,7 @@ export interface FileRoutesByTo {
   '/chat': typeof ChatRoute
   '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/disclaimer': typeof DisclaimerRoute
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -391,10 +413,12 @@ export interface FileRoutesByTo {
   '/llm-logs': typeof LlmLogsRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
+  '/privacy': typeof PrivacyRoute
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/today': typeof TodayRoute
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
@@ -434,6 +458,7 @@ export interface FileRoutesById {
   '/chat': typeof ChatRoute
   '/companies': typeof CompaniesRouteWithChildren
   '/daily-predictions-backtest': typeof DailyPredictionsBacktestRoute
+  '/disclaimer': typeof DisclaimerRoute
   '/earnings-audit': typeof EarningsAuditRoute
   '/generated-newsletters': typeof GeneratedNewslettersRoute
   '/how-it-works': typeof HowItWorksRoute
@@ -443,10 +468,12 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/personality': typeof PersonalityRouteWithChildren
+  '/privacy': typeof PrivacyRoute
   '/recipes-demo': typeof RecipesDemoRoute
   '/renko': typeof RenkoRoute
   '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
+  '/terms': typeof TermsRoute
   '/today': typeof TodayRoute
   '/recipes/$recipeId': typeof RecipesRecipeIdRouteRouteWithChildren
   '/_authed/profile': typeof AuthedProfileRoute
@@ -488,6 +515,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/companies'
     | '/daily-predictions-backtest'
+    | '/disclaimer'
     | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
@@ -497,10 +525,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/personality'
+    | '/privacy'
     | '/recipes-demo'
     | '/renko'
     | '/retired-agents'
     | '/signup'
+    | '/terms'
     | '/today'
     | '/recipes/$recipeId'
     | '/profile'
@@ -540,6 +570,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/companies'
     | '/daily-predictions-backtest'
+    | '/disclaimer'
     | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
@@ -548,10 +579,12 @@ export interface FileRouteTypes {
     | '/llm-logs'
     | '/login'
     | '/logout'
+    | '/privacy'
     | '/recipes-demo'
     | '/renko'
     | '/retired-agents'
     | '/signup'
+    | '/terms'
     | '/today'
     | '/profile'
     | '/auth/callback'
@@ -590,6 +623,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/companies'
     | '/daily-predictions-backtest'
+    | '/disclaimer'
     | '/earnings-audit'
     | '/generated-newsletters'
     | '/how-it-works'
@@ -599,10 +633,12 @@ export interface FileRouteTypes {
     | '/login'
     | '/logout'
     | '/personality'
+    | '/privacy'
     | '/recipes-demo'
     | '/renko'
     | '/retired-agents'
     | '/signup'
+    | '/terms'
     | '/today'
     | '/recipes/$recipeId'
     | '/_authed/profile'
@@ -644,6 +680,7 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRoute
   CompaniesRoute: typeof CompaniesRouteWithChildren
   DailyPredictionsBacktestRoute: typeof DailyPredictionsBacktestRoute
+  DisclaimerRoute: typeof DisclaimerRoute
   EarningsAuditRoute: typeof EarningsAuditRoute
   GeneratedNewslettersRoute: typeof GeneratedNewslettersRoute
   HowItWorksRoute: typeof HowItWorksRoute
@@ -653,10 +690,12 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   PersonalityRoute: typeof PersonalityRouteWithChildren
+  PrivacyRoute: typeof PrivacyRoute
   RecipesDemoRoute: typeof RecipesDemoRoute
   RenkoRoute: typeof RenkoRoute
   RetiredAgentsRoute: typeof RetiredAgentsRoute
   SignupRoute: typeof SignupRoute
+  TermsRoute: typeof TermsRoute
   TodayRoute: typeof TodayRoute
   RecipesRecipeIdRouteRoute: typeof RecipesRecipeIdRouteRouteWithChildren
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
@@ -741,6 +780,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DailyPredictionsBacktestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/disclaimer': {
+      id: '/disclaimer'
+      path: '/disclaimer'
+      fullPath: '/disclaimer'
+      preLoaderRoute: typeof DisclaimerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/earnings-audit': {
       id: '/earnings-audit'
       path: '/earnings-audit'
@@ -804,6 +850,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PersonalityRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/recipes-demo': {
       id: '/recipes-demo'
       path: '/recipes-demo'
@@ -830,6 +883,13 @@ declare module '@tanstack/react-router' {
       path: '/signup'
       fullPath: '/signup'
       preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/today': {
@@ -1130,6 +1190,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRoute,
   CompaniesRoute: CompaniesRouteWithChildren,
   DailyPredictionsBacktestRoute: DailyPredictionsBacktestRoute,
+  DisclaimerRoute: DisclaimerRoute,
   EarningsAuditRoute: EarningsAuditRoute,
   GeneratedNewslettersRoute: GeneratedNewslettersRoute,
   HowItWorksRoute: HowItWorksRoute,
@@ -1139,10 +1200,12 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   PersonalityRoute: PersonalityRouteWithChildren,
+  PrivacyRoute: PrivacyRoute,
   RecipesDemoRoute: RecipesDemoRoute,
   RenkoRoute: RenkoRoute,
   RetiredAgentsRoute: RetiredAgentsRoute,
   SignupRoute: SignupRoute,
+  TermsRoute: TermsRoute,
   TodayRoute: TodayRoute,
   RecipesRecipeIdRouteRoute: RecipesRecipeIdRouteRouteWithChildren,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,

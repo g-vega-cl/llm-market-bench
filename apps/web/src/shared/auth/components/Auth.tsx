@@ -155,6 +155,22 @@ export function Auth({
                     </Button>
 
                     {afterSubmit ? afterSubmit : null}
+
+                    <p className="text-xs leading-relaxed text-voxel-muted text-center">
+                        By continuing you agree to the{' '}
+                        <a href="/terms" className="text-accent hover:underline">
+                            Terms
+                        </a>{' '}
+                        and acknowledge the{' '}
+                        <a href="/privacy" className="text-accent hover:underline">
+                            Privacy Policy
+                        </a>{' '}
+                        and{' '}
+                        <a href="/disclaimer" className="text-accent hover:underline">
+                            Financial Disclaimer
+                        </a>
+                        .
+                    </p>
                 </form>
             </div>
         </div>

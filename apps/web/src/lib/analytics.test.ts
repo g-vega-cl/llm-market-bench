@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { track } from './analytics';
 
 describe('track', () => {
+    beforeEach(() => {
+        window.sessionStorage.clear();
+    });
+
     it('forwards the event and props to the client', () => {
         const capture = vi.fn();
         track({ capture }, 'recipe_forked', { recipeId: 'r-1' });
@@ -17,5 +21,19 @@ describe('track', () => {
         const capture = vi.fn();
         track({ capture }, 'builder_declined');
         expect(capture).toHaveBeenCalledWith('builder_declined', undefined);
+    });
+
+    it('emits bot_activated once on the first queued backtest', () => {
+        const capture = vi.fn();
+        track({ capture }, 'run_queued', { recipeId: 'r-1', jobId: 'j-1' });
+        expect(capture).toHaveBeenCalledWith('bot_activated', {
+            recipeId: 'r-1',
+            jobId: 'j-1',
+            source: 'backtest_queued',
+        });
+
+        capture.mockClear();
+        track({ capture }, 'run_queued', { recipeId: 'r-1', jobId: 'j-2' });
+        expect(capture).not.toHaveBeenCalledWith('bot_activated', expect.anything());
     });
 });

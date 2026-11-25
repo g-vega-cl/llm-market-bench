@@ -118,6 +118,32 @@ def test_call_free_proxy_requires_master_key_for_remote_proxy(monkeypatch):
         aw.call_free_proxy("prompt text")
 
 
+def test_call_openrouter_raises_runtime_error_on_error_body_without_choices(monkeypatch):
+    """An out-of-credit 200 with {"error": ...} must not crash the tier chain.
+
+    `resp.json()["choices"]` raised KeyError here, and main() only catches
+    RequestException / JSONDecodeError / RuntimeError — so the whole run died
+    before the free backup and the proxy were ever tried.
+    """
+    import apps.engine.auto_wiki as aw
+
+    class _ErrorResp:
+        status_code = 200
+
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "error": {"code": 402, "message": "Insufficient credits"},
+            }
+
+    monkeypatch.setattr(aw.requests, "post", lambda *a, **k: _ErrorResp())
+
+    with pytest.raises(RuntimeError, match="Insufficient credits"):
+        aw.call_openrouter("prompt text", "some/model", "or-key")
+
+
 def test_main_falls_back_to_free_proxy_when_openrouter_fails(monkeypatch, diff_file):
     """Both OpenRouter tiers failing must route to the free-llm-proxy, then succeed."""
     import apps.engine.auto_wiki as aw

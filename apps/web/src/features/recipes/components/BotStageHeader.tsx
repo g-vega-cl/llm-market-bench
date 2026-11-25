@@ -202,7 +202,7 @@ function HeaderActionButtons({
                     {resolveLiveToggleLabel(isTogglingLive, isLive)}
                 </Button>
             ) : null}
-            {activeTab === 'live' && isLive && onActivateTurbo ? (
+            {isLive && onActivateTurbo ? (
                 <TurboButton
                     turboExpiresAt={turboExpiresAt}
                     turboUsedToday={turboUsedToday}

@@ -57,11 +57,11 @@ This keeps benchmark feedback in-flow per the design system's zero-floating-tool
 
 `PerformanceChart` is a pure presentational consumer: it never fetches. The `selectedBenchmark` / `pendingBenchmark` / `benchmarkError` triple is produced by `usePortfolioBenchmark` (`apps/web/src/features/portfolios/hooks/usePortfolioBenchmark.ts`), which uses a non-suspending `useQuery` with `enabled: Boolean(selectedBenchmark && hasDateRange)` and `placeholderData: keepPreviousData`.
 
-The hook accepts an optional `initialBenchmark` (default `''`) that seeds the `selectedBenchmark` state, so a surface can open with a benchmark already selected — `RecipeLivePage` passes `'SPY'` so the live equity chart starts on the S&P 500 comparison instead of an empty overlay.
+The hook accepts an optional `initialBenchmark` (default `''`) that seeds the `selectedBenchmark` state, so a surface can open with a benchmark already selected — `RecipeOverviewDetailsPage` passes `'SPY'` so the equity chart starts on the S&P 500 comparison instead of an empty overlay.
 
 Because the hook derives `status` (`'idle' | 'loading' | 'settled' | 'error'`) and `settledBenchmark` directly from `benchmarkQuery.data` / `benchmarkQuery.isPlaceholderData` — with no `useEffect` state synchronization — switching benchmarks never suspends the page up to the route `<Suspense>` boundary. The previously settled benchmark line stays mounted while the new one loads, and the chart only swaps `selectedBenchmark` once the new series has real points. An empty `{}` response settles cleanly with no mislabeled benchmark, and a rejected fetch surfaces `benchmarkError` instead of hanging on the loading state.
 
-Consumers: `PortfolioDetailPage` (`/portfolios/:id`), `RenkoAgentPageView` (`/renko`), and `RecipeLivePage` (`/recipes/live/$recipeId`). See [[concepts/tanstack-query]] for the full hook semantics and the `keepPreviousData` rationale.
+Consumers: `PortfolioDetailPage` (`/portfolios/:id`), `RenkoAgentPageView` (`/renko`), and `RecipeOverviewDetailsPage` (`/recipes/$recipeId/performance`). See [[concepts/tanstack-query]] for the full hook semantics and the `keepPreviousData` rationale.
 
 ## Shared benchmark server function (`getBenchmarkHistoryFn`)
 
@@ -75,7 +75,7 @@ Consumers: `PortfolioDetailPage` (`/portfolios/:id`), `RenkoAgentPageView` (`/re
 
 - `apps/web/src/features/portfolios/components/PerformanceChart.test.tsx` — asserts the in-flow `Loading QQQ...` status renders with `whitespace-nowrap` inside a `flex-wrap` / `min-w-0` header, and that `benchmarkError` renders as a `whitespace-nowrap` error span.
 - `apps/web/src/features/portfolios/pages/PortfolioDetailPageBenchmark.test.tsx` — asserts the page and chart stay mounted (no Suspense fallback) across `None → SPY → QQQ → None` transitions, that the previous settled benchmark remains rendered while the next one loads, that switching back to `None` issues zero extra fetches, and that empty `{}` responses and rejected fetches clear the loading state without hanging.
-- `apps/web/src/features/recipes/pages/RecipeLivePage.test.tsx` — asserts the live equity chart defaults to SPY, switches to QQQ and back to `None`, and skips the benchmark fetch entirely for a single-day equity curve.
+- `apps/web/src/features/recipes/pages/RecipeOverviewDetailsPage.test.tsx` — asserts the equity chart defaults to SPY, switches to QQQ and back to `None`, and skips the benchmark fetch entirely for a single-day equity curve.
 
 ## Related
 

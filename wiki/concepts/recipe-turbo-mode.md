@@ -107,7 +107,7 @@ Turbo can never outlive the live schedule:
 - `apps/engine/recipes/test_runner.py` — 14-slot `LIVE_SLOTS_ET` shape, slot matching/dedup across `10:00`/`11:00`/`15:30`/`16:00`, rejection of pre-open, post-close, weekends, Thanksgiving and Good Friday, `is_us_market_hours_et` boundaries, `enqueue_turbo_recipes` (inserts only un-expired, non-recent bots, does nothing after hours), `run_live_lane_tick` throttles (no re-poll at +10s, re-poll at +31s, no news/stats inside their windows), slot-retry without advancing `last_slot_key`, `run_scheduled_slot` passing distinct slot/recent-turbo cutoffs, no ops event when the only skip is a recent Turbo, and the row-by-row `23505` fallback.
 - `apps/web/src/features/recipes/utils/market-hours.test.ts` — market-hours/holiday/Good Friday detection, the `15:54` vs `15:55` activation cutoff, expiry capping at `16:00 ET` in both EST and EDT, active/remaining-label arithmetic, and next-slot labels.
 - `apps/web/src/features/recipes/api/recipes-quota-api.test.ts` — Turbo RPC arg shape, rejection outside market hours without an RPC call, and `turbo_expires_at: null` + pending-job cancellation when pausing.
-- `apps/web/src/features/recipes/pages/RecipeLivePage.test.tsx` and `RecipeStudioPage.runs.test.tsx` — Turbo activation from both surfaces and the resulting countdown button.
+- `apps/web/src/features/recipes/pages/RecipeOverviewPage.test.tsx` and `RecipeStudioPage.runs.test.tsx` — Turbo activation from both surfaces and the resulting countdown button (Turbo moved to the Overview card when the Live hub was retired; its `useBotHeaderActions` state owns the countdown).
 
 ## Related
 

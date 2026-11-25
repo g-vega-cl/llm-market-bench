@@ -9,8 +9,8 @@ The dedicated live-status page for a Push v2 strategy. It is now a **public-capa
 
 ## Route
 
-- **Files**: `apps/web/src/routes/recipes/live/$recipeId/route.tsx` (Outlet layout), `index.tsx` (the hub, path `/recipes/live/$recipeId/`), and `runs.tsx` (the detail page, `/recipes/live/$recipeId/runs`). Previously a single root-level file at `apps/web/src/routes/recipes/live/$recipeId.tsx`.
-- **Hub vs detail**: the hub renders the shared card plus `BotSummaryStrip` (Total Equity, Cash, Open Positions, Latest Run) and a single `Run traces, portfolio & closed trades →` link; `runs` renders the same card-less chrome through `BotSceneShell` and holds the traces, portfolio and closed trades. Both use the same `fetchLivePortfolioAndRunsFn` fetch, so a navigation costs one load, not two.
+- **Files**: `apps/web/src/routes/recipes/live/$recipeId/route.tsx` (Outlet layout), `index.tsx` (a `beforeLoad` redirect), and `runs.tsx` (the Live Runs tab, `/recipes/live/$recipeId/runs`). The hub that used to live at `/recipes/live/$recipeId/` is retired: it duplicated the Overview card plus a link to the traces it summarised.
+- **Routes**: `/recipes/live/$recipeId` → 307 to `/recipes/live/$recipeId/runs`, so old links survive. `runs` is the Live Runs chip: `BotSceneShell` chrome (name + live badge, then the chip row) around the run paginator and trace inspector, and nothing else — the paper portfolio and closed trades belong to the Performance tab. The shell renders the page's own `sr-only` `<h1>` from its required `sectionTitle` (`{recipeName} — Run traces & portfolio`) and its sub-nav in `currentMode="item"`, so the Live Runs chip claims `aria-current="true"` — it announces the current section without claiming a URL this tab does not own — while the back link announces `Back to {recipeName} Live Runs`. Its loader calls `fetchLivePortfolioAndRunsFn`; the payload still carries the portfolio because the same server function serves both tabs.
 - **Loader**: calls `fetchLivePortfolioAndRunsFn({ data: { recipeId } })`, failing soft to `null`. It resolves `initialAtmosphere` server-side via `resolveAtmospherePhase(new Date(), 'market-et')` (zero-flash hydration), and — only when the caller is the signed-in owner — fetches `fetchRecipeQuotaStatusFn()` and `fetchUserRecipesFn()` in parallel.
 - **Access**: a non-owner may read a recipe that is `is_public` or `is_template`; the owner's `user_id` is never leaked to a non-owner. A private recipe, or a missing row, resolves to `null` and renders an `ErrorCard` with a back-to-My-Bots link. Owner actions (Backtest, live toggle, Turbo) are gated on `liveMeta.isOwner`.
 
@@ -22,13 +22,13 @@ The dedicated live-status page for a Push v2 strategy. It is now a **public-capa
 - the recipe name/description, a `Live: 30m • Backtest: <cadence> • 1 LLM call` line, and a `Next run:` label (`Paused`, `within 5m (Turbo)`, or `getNextLiveSlotLabel(now)`);
 - owner action buttons — Backtest (`resolveBacktestButtonLabel`), the live toggle (`Enabling Live...` / `Pausing Live...` in-flight labels), and `TurboButton` (only on the live tab while live);
 - `LiveSwitchConfirmation` (the 3-live-cap switch), `StudioAlertSlot`, and fork/extra-error alerts;
-- `BotStageSubNav` (`BotStageSubNav.tsx`) — `Overview` / `Live Runs` / `Blueprint` links (`aria-current="page"` on the active tab; Blueprint only for owners).
+- `BotStageSubNav` (`BotStageSubNav.tsx`) — `Overview` / `Live Runs` / `Blueprint` links (Blueprint only for owners). Its `currentMode: 'page' | 'item' | 'none'` prop (which replaced `markCurrent`) decides the active chip's announcement: `page` on a hub emits `aria-current="page"`, `item` on a detail tab such as this one emits `aria-current="true"`, and `none` leaves the chip unmarked.
 
 All owner actions route through `useBotHeaderActions` (`apps/web/src/features/recipes/utils/use-bot-header-actions.ts`), which wraps `useLiveScheduleControl` and the backtest/fork/pledge server functions.
 
 ## Page content
 
-The hub itself carries no panels — `BotSummaryStrip` shows Total Equity, Cash, Open Positions and the Latest Run stamp with its signal count, and one link opens the detail page. Everything below lives on `/recipes/live/$recipeId/runs`:
+The hub itself carries no panels — `BotSummaryStrip` shows Total Equity, Cash, Open Positions and the Latest Run stamp with its signal count, laid out on an intrinsic `grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))]` grid, and one link opens the detail page. Everything below lives on `/recipes/live/$recipeId/runs`:
 
 - **Live Run Traces** (`LiveRunTracesSection`) — a Card describing the 30m/5m cadence, a run-stamp badge (Eastern `as_of_utc`, falling back to `created_at`) plus signal count, `RunPaginator` one-at-a-time paging (`← Older · N of M · Newer →`, boundary buttons inert via `aria-disabled` but focusable), and one recessed `.voxel-trough` per stage rendered through `TraceInspectorBlock` under a fixed `LLM Call` label. A queued/failed run with no `result_json` renders `no trace output yet (status: …)` plus its `error_message`.
 - **Live Paper Portfolio + Closed Trades** — when a portfolio snapshot exists, a Card renders `RecipePortfolioBlock` (`embedded`, so no duplicate metric tiles) titled `Live Paper Portfolio`, followed by `ClosedTradesSection` titled `All Closed Live Trades` (in-flow `.voxel-trough` catalyst/confidence inspection, zero floating tooltips).
@@ -80,7 +80,7 @@ Every timestamp renders in Eastern time. `runStampLabel(job, run)` formats `run.
 
 ## Tests
 
-- `apps/web/src/features/recipes/pages/RecipeLivePage.test.tsx` — empty state inside the `SceneStage` header, live paper portfolio + `All Closed Live Trades` + trace paging (`RunPaginator`, `LLM Call`, `no trace output yet`), the `Overview` / `Live Runs` / `Blueprint` sub-nav links, Turbo activation and market-closed gating.
+- `apps/web/src/features/recipes/pages/RecipeLiveRunsPage.test.tsx` — empty state inside the `SceneStage` header, trace paging (`RunPaginator`, `LLM Call`, `no trace output yet`), failed-run copy, the `Back to <bot> Live Runs` back link, and the chip row claiming `aria-current="true"` for Live Runs (item mode, not `page`).
 
 ## Related
 
@@ -88,4 +88,5 @@ Every timestamp renders in Eastern time. `runStampLabel(job, run)` formats `run.
 - [[entities/performance-chart]] — the chart now rendered on the Bot Overview page
 - [[concepts/recipe-turbo-mode]] — the Turbo window and its RPC
 - [[concepts/atomic-live-schedule-switch]] — the live switch and cache invalidation
+- [[concepts/page-surface-conventions]] — hub vs detail `aria-current` modes and the detail page's `sr-only` `<h1>`
 - [[entities/secondary-minipc-edge]] — hosts the `recipe-worker` daemon

@@ -21,11 +21,13 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
    - Loads via `fetchRecipeOverviewFn` (30s bounded public cache)
    - Non-owners receive a read-only view with a `Fork to My Bots` action; owner actions (Backtest, live toggle, Turbo, Blueprint) are gated on `isOwner`
 
-2a. **`/recipes/$recipeId/performance` — Overview details** (public-capable, same loader)
-   - Chrome is `BotSceneShell` (page-level Cedar Ridge world, `← <bot name>` back link, sub-nav with `markCurrent={false}`), then the three Matcha & Voxel blocks that used to sit under the hub card:
+2a. **`/recipes/$recipeId/performance` — Performance tab** (public-capable; same payload, its own loader): equity vs benchmark, open positions, closed trades.  
+2b. **`/recipes/$recipeId/behavior` — Behaviour tab** (public-capable, same `fetchRecipeOverviewFn` loader): tool usage, action mix, ticker focus, exit reasons; renders an empty state before the first run.
+   - Chrome is `BotSceneShell` (page-level Cedar Ridge world, `← <bot name>` back link, sub-nav in `currentMode="item"` so the active chip claims `aria-current="true"` rather than `page`), then the three Matcha & Voxel blocks that used to sit under the hub card:
      - **Performance & Equity** (`PerformanceOverviewBlock` + `PerformanceChart` + benchmark selector)
      - **Behaviors & Insights** (`BotBehaviorsBlock` powered by `recipe-insights.ts` over up to 50 slimmed live turns or latest backtest)
      - **Open Positions + Recent 5 Closed Trades** (`ClosedTradesSection` with in-flow trough inspection, trailing link to `/recipes/live/$recipeId/runs`) + **Recent Backtests & Strategy DNA** (`OverviewBottomSection`)
+   - Because those panels own the Enable Live and Run Backtest buttons, the shell's `alerts` slot carries the hub card's feedback with them: `LiveSwitchConfirmation` at the 3-live cap, `StudioAlertSlot` quota/execution errors, and a `role="alert"` fork error. `WaitlistPledgeModal` mounts outside the shell.
 
 3. **`/recipes/$recipeId/edit` — Blueprint Editor** (owner-only)
    - `RecipeEditPage` shares `BotStageHeader` (Blueprint tab active) and renders `RecipeNameField` + `CompiledBotBlueprintSection` (Blocks & Tools / Prompt Preview)
@@ -36,8 +38,8 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
    - `BotStageHeader` (`TurboButton` for owners) plus `BotSummaryStrip` — Total Equity, Cash, Open Positions, Latest Run (stamp + signal count) — and one `Run traces, portfolio & closed trades →` link into the detail page
    - Moved from `/_authed/recipes/live/$recipeId` to root-level `/recipes/live/$recipeId`; non-owners may read public/template recipes
 
-4a. **`/recipes/live/$recipeId/runs` — Run traces & ledger** (public-capable, same loader)
-   - Chrome is `BotSceneShell` (`parent="live"`, back link to the Live hub), then paginated `Live Run Traces` (`RunPaginator` + `TraceInspectorBlock`), embedded `Live Paper Portfolio`, and `All Closed Live Trades`
+4a. **`/recipes/live/$recipeId/runs` — Live Runs tab** (public-capable; same payload, its own loader); the Live hub at `/recipes/live/$recipeId` now redirects here
+   - Chrome is `BotSceneShell` (`parent="live"`, back link to the Live hub, `sectionTitle="Run traces & portfolio"` for the `sr-only` `<h1>`, sub-nav in `currentMode="item"`), then paginated `Live Run Traces` (`RunPaginator` + `TraceInspectorBlock`), embedded `Live Paper Portfolio`, and `All Closed Live Trades`
    - This is where the ~4,000 px of run output belongs: it was the bulk of the old Live page and made that page serve two purposes at once
 
 5. **`/recipes` — My Bots Dashboard** (signed-in users only)
@@ -81,9 +83,18 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 - the recipe name/description, a `Live: 30m • Backtest: <cadence> • 1 LLM call` line, and a `Next run:` label (`Paused`, `within 5m (Turbo)`, or `getNextLiveSlotLabel(now)`);
 - owner action buttons — Backtest (`resolveBacktestButtonLabel`), the live toggle (`Enabling Live...` / `Pausing Live...` in-flight labels), and `TurboButton` (only on the live tab while live);
 - `LiveSwitchConfirmation` (the 3-live-cap switch), `StudioAlertSlot`, and fork/extra-error alerts;
-- `BotStageSubNav` (`BotStageSubNav.tsx`) — `Overview` / `Live Runs` / `Blueprint` links (`aria-current="page"` on the active tab; Blueprint only for owners).
+- `BotStageSubNav` (`BotStageSubNav.tsx`) — `Overview` / `Live Runs` / `Blueprint` links (Blueprint only for owners). The active chip's announcement is driven by `currentMode: 'page' | 'item' | 'none'` (which replaced the `markCurrent` boolean): `page` on the hub, where the chip's href is the current URL, emits `aria-current="page"`; `item` on a detail tab emits `aria-current="true"`, because the chip styles as the current section but links to the hub; `none` leaves it unmarked.
 
 All owner actions route through `useBotHeaderActions` (`apps/web/src/features/recipes/utils/use-bot-header-actions.ts`), which wraps `useLiveScheduleControl` and the backtest/fork/pledge server functions.
+
+#### `BotSceneShell` — detail-tab chrome
+`apps/web/src/features/recipes/components/BotSceneShell.tsx` is the chrome for every non-Overview bot tab (Performance, Behaviour, Live Runs). It mounts the same page-level `SceneStage` + `CedarRidgeBackdrop` + `SceneHudControls` world as the hub, then a header row and the panel:
+
+- a required `sectionTitle` becomes the page's own `<h1 className="sr-only">{recipeName} — {sectionTitle}</h1>`, so a detail tab has a document heading even though the hub owns the visible one;
+- the `← {recipeName}` back link carries `aria-label="Back to {recipeName} {Overview|Live Runs}"`, derived from `parent`, so it announces its destination;
+- `BotStageSubNav` is rendered with `currentMode="item"`;
+- an optional `alerts` slot renders inline notices (live-switch confirmation, quota/execution errors, fork errors) under the sub-nav inside the scene, so a detail page whose panels own the action buttons never loses the feedback the hub card gives;
+- the panel box is written out by hand — `relative z-10 mx-auto flex w-full max-w-[calc(80rem+3rem)] flex-col gap-6 px-6 pb-8 md:pb-12` — instead of `PageLayout maxWidth="xl"`, because `SceneStage` centres a `max-w-7xl` box inside its own `px-6` and a `PageLayout` preset would emit a competing `max-w-*` utility (`cn` is bare clsx, not tailwind-merge). See [[concepts/page-surface-conventions]].
 
 #### `/build` — 3-Step Chat Builder (`BuilderChatPanel` → `BuilderAlignmentCard` → `CompiledBotWorkspace`)
 - **Step 1 (Describe)**: `BuilderChatPanel` + `BuilderDescribeStep` + `BuilderStatusStrip` + `BuilderCompilePipeline` + `BuilderActivePrompt` + `BuilderMessageHistory` + `BuilderStepper` inside `SceneStage` (`CedarRidgeBackdrop` + `.scene-scrim .voxel-card`). No visible headline block — an `sr-only` `<h1>` carries the page name. The stage uses `build-stage-viewport` sizing and fluid `clamp()` gaps so the ridge band stays on screen below the card on a phone.
@@ -98,6 +109,7 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 
 #### `/recipes/$recipeId`, `/recipes/$recipeId/edit`, & `/recipes/live/$recipeId` — Split Bot Surfaces
 - **`/recipes/$recipeId` (`RecipeOverviewPage`)**: Public-capable for `is_public`/`is_template` bots; `BotStageHeader` above 3 Matcha & Voxel blocks (Performance & Equity, Behaviors & Insights, Positions/Trades/Strategy DNA). Loads via `fetchRecipeOverviewFn` (30s bounded public cache).
+- **`/recipes/$recipeId/performance` & `/recipes/$recipeId/behavior` (`RecipeOverviewDetailsPage`)**: public-capable detail tabs under `BotSceneShell` — `sr-only` `<h1>` from `sectionTitle`, sub-nav in `currentMode="item"`, and an `alerts` slot carrying `LiveSwitchConfirmation`, `StudioAlertSlot`, and the fork error. `WaitlistPledgeModal` mounts outside the shell.
 - **`/recipes/$recipeId/edit` (`RecipeEditPage`)**: Owner-only Blueprint & Prompt Editor. Reached only by the owner; a non-owner renders an `ErrorCard`.
 - **`/recipes/live/$recipeId` (`RecipeLivePage`)**: Public-capable; `BotStageHeader` (`TurboButton` for owners) above paginated `Live Run Traces`, embedded `Live Paper Portfolio`, and `All Closed Live Trades`.
 
@@ -202,6 +214,8 @@ Compile jobs are protected against aging out between the sweep and the pop poll.
 - [[concepts/recipe-builder-usage]] — per-user daily compile metering
 - [[concepts/recipe-builder-compiler]] — plain-English → Push v2 compiler behind `/build`
 - [[concepts/atomic-live-schedule-switch]] — the live switch and public-cache invalidation
+- [[concepts/page-surface-conventions]] — hub/detail chip `aria-current` modes, the `sr-only` detail `<h1>`, and the hand-written shell box
+- [[concepts/fluent-responsive-design]] — the intrinsic `BotSummaryStrip` grid
 - [[entities/free-llm-proxy]]
 - [[entities/design-system]]
 - [[concepts/zero-frontend-compute]]

@@ -29,7 +29,7 @@ export type SceneMotionRole = 'background' | 'reactive' | 'story';
  * straight over the world instead of starting below a reserved band. In `page`
  * mode the host page must keep its own content in positioned layers (`relative
  * z-10`) so the world never paints over text — see `.agents/rules/design-spec.md`
- * §12.2.
+ * §12.
  */
 export type SceneBackdropMode = 'stage' | 'page';
 

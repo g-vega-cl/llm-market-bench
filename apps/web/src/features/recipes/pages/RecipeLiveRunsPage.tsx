@@ -7,8 +7,6 @@ import {
 import { useState } from 'react';
 import { formatEasternDateTime } from '~/utils/date';
 import { BotSceneShell } from '../components/BotSceneShell';
-import { ClosedTradesSection } from '../components/ClosedTradesSection';
-import { RecipePortfolioBlock } from '../components/RecipePortfolioBlock';
 import { RunPaginator } from '../components/RunPaginator';
 import { TraceInspectorBlock } from '../components/TraceInspectorBlock';
 import type {
@@ -146,11 +144,11 @@ export interface RecipeLiveRunsPageProps {
 }
 
 /**
- * Live Runs detail page (`/recipes/live/$recipeId/runs`).
+ * Live Runs tab (`/recipes/live/$recipeId/runs`).
  *
- * The run traces, the live paper portfolio and every closed trade. This used to sit
- * under the Live hub card as ~4,000 px of scroll; now it is the page, with the hub
- * card one back link away.
+ * Prompt, tool calls and output for each scheduled turn, oldest paginated. The
+ * paper portfolio and every closed trade are on the Performance tab; the card that
+ * used to summarise them (`/recipes/live/$recipeId`) redirects here.
  */
 export function RecipeLiveRunsPage({
     recipeId,
@@ -160,7 +158,6 @@ export function RecipeLiveRunsPage({
     const [runPage, setRunPage] = useState(0);
 
     const recentLiveRuns = initialData?.recentLiveRuns ?? [];
-    const portfolio = initialData?.portfolio ?? null;
     const liveMeta = initialData?.liveMeta;
     const isLiveEnabled = liveMeta ? liveMeta.isLive : true;
 
@@ -169,7 +166,7 @@ export function RecipeLiveRunsPage({
             recipeId={recipeId}
             recipeName={liveMeta?.recipeName || `Live Runs · ${recipeId.slice(0, 8)}`}
             activeTab="live"
-            parent="live"
+            sectionTitle="Run traces"
             isOwner={liveMeta?.isOwner ?? false}
             isLive={isLiveEnabled}
             initialAtmosphere={initialAtmosphere}
@@ -179,23 +176,6 @@ export function RecipeLiveRunsPage({
                 runPage={runPage}
                 onChangePage={setRunPage}
             />
-
-            {portfolio ? (
-                <Card padding="md" className="flex flex-col gap-6 min-w-0">
-                    <RecipePortfolioBlock
-                        title="Live Paper Portfolio"
-                        cash={portfolio.cash}
-                        totalEquity={portfolio.total_equity}
-                        openPositions={portfolio.open_positions}
-                        embedded
-                    />
-                    <ClosedTradesSection
-                        title="All Closed Live Trades"
-                        trades={portfolio.trades}
-                        emptyMessage="No closed live trades recorded yet."
-                    />
-                </Card>
-            ) : null}
         </BotSceneShell>
     );
 }

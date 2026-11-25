@@ -1,5 +1,4 @@
 import type { AtmospherePhase } from '@llm-market-bench/ui-design-system';
-import { Link } from '@tanstack/react-router';
 import { useMemo } from 'react';
 import { BotStageHeader } from '../components/BotStageHeader';
 import { BotSummaryStrip } from '../components/BotSummaryStrip';
@@ -32,16 +31,12 @@ function returnToneClass(value: number | null): string {
     return value >= 0 ? 'text-success' : 'text-danger';
 }
 
-const detailLinkClass =
-    'text-xs font-normal text-accent underline underline-offset-4 hover:text-accent-hover whitespace-nowrap';
-
 /**
- * Bot Overview hub (`/recipes/$recipeId`).
+ * Overview tab (`/recipes/$recipeId`).
  *
- * One card: identity, actions, the four numbers that summarise the bot, and one way
- * into the detail page. The panels that used to sit under this card (Performance &
- * Equity, Behaviors & Insights, Positions/Trades/DNA) live at
- * `/recipes/$recipeId/performance`, so this page serves a single purpose.
+ * The bot's identity, its owner actions and the four numbers that summarise it.
+ * Performance, Behaviour and Live Runs are chips in the header, so this page holds
+ * no "→" link and no panels: it is one card you can read without scrolling.
  */
 export function RecipeOverviewPage({
     data,
@@ -56,6 +51,8 @@ export function RecipeOverviewPage({
         initialIsLive: data.isLive,
         initialQuota,
         initialUserRecipes,
+        initialTurboExpiresAt: data.turboExpiresAt ?? null,
+        initialTurboUsedToday: data.turboUsedToday ?? false,
     });
 
     const metrics = useMemo(
@@ -86,16 +83,18 @@ export function RecipeOverviewPage({
                 isPublic={data.isPublic}
                 isTemplate={data.isTemplate}
                 isLive={actions.isLive}
-                turboExpiresAt={data.turboExpiresAt}
-                turboUsedToday={data.turboUsedToday}
+                turboExpiresAt={actions.turboExpiresAt}
+                turboUsedToday={actions.turboUsedToday}
                 initialAtmosphere={initialAtmosphere}
                 quotaStatus={actions.quotaStatus}
                 isRunningBacktest={actions.isRunningBacktest}
                 isTogglingLive={actions.liveControl.isBusy}
+                isActivatingTurbo={actions.isActivatingTurbo}
                 isForking={actions.isForking}
                 backtestError={actions.backtestError}
                 scheduleError={actions.liveControl.scheduleError}
                 forkError={actions.forkError}
+                turboError={actions.turboError}
                 conflictingLiveRecipe={conflictingLiveRecipe}
                 isSwitchingLive={actions.liveControl.state.kind === 'switching'}
                 onBacktest={actions.handleBacktest}
@@ -103,6 +102,7 @@ export function RecipeOverviewPage({
                 onConfirmLiveSwitch={actions.handleConfirmSwitch}
                 onCancelLiveSwitch={actions.liveControl.cancelSwitch}
                 onFork={actions.handleFork}
+                onActivateTurbo={actions.handleActivateTurbo}
                 onRequestCapacity={() => actions.setShowPledgeModal(true)}
             >
                 <BotSummaryStrip
@@ -144,15 +144,6 @@ export function RecipeOverviewPage({
                             ),
                         },
                     ]}
-                    detailLink={
-                        <Link
-                            to="/recipes/$recipeId/performance"
-                            params={{ recipeId: data.recipeId }}
-                            className={detailLinkClass}
-                        >
-                            Performance, behaviors &amp; positions →
-                        </Link>
-                    }
                 />
             </BotStageHeader>
 

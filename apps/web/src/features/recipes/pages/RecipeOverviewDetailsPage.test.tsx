@@ -1,7 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RecipeOverviewData } from '../types';
+import { enqueueRecipeJobFn } from '../api/recipes-api';
+import type { RecipeOverviewData, RecipeUserQuotaStatus } from '../types';
 import { liveOverviewData } from './overview-test-fixture';
 import { RecipeOverviewDetailsPage } from './RecipeOverviewDetailsPage';
 
@@ -86,8 +87,21 @@ beforeEach(() => {
     vi.clearAllMocks();
 });
 
+/**
+ * The block's owner actions (Run 2W Backtest, Enable Live) only render in its
+ * empty state — with an equity curve the chart takes that slot.
+ */
+const noCurveData: RecipeOverviewData = {
+    ...liveOverviewData,
+    isLive: false,
+    isOwner: true,
+    portfolio: { ...liveOverviewData.portfolio, equity_curve: [] },
+    recentLiveRuns: [],
+    recentBacktests: [],
+};
+
 describe('RecipeOverviewDetailsPage', () => {
-    it('renders the three panels behind a back link and an unmarked sub-nav', async () => {
+    it('renders performance and positions behind a back link, without behaviours', async () => {
         const benchmarkFetchFn = vi.fn(
             async (
                 tickers: string[],
@@ -117,12 +131,18 @@ describe('RecipeOverviewDetailsPage', () => {
             />,
         );
 
-        // Detail chrome: back link to the hub, sub-nav present but not claiming this URL.
-        expect(screen.getByRole('link', { name: /← AI Capex Radar/i })).toHaveAttribute(
-            'href',
-            '/recipes/rec-live-1',
+        // Detail chrome: back link to the Overview tab, and this page's own chip.
+        expect(
+            screen.getByRole('link', { name: /Back to AI Capex Radar Overview/i }),
+        ).toHaveAttribute('href', '/recipes/rec-live-1');
+        expect(screen.getByRole('link', { name: 'Performance' })).toHaveAttribute(
+            'aria-current',
+            'page',
         );
-        expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current');
+        // The hub owns the visible h1; this page still needs one of its own.
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+            'AI Capex Radar — Performance & positions',
+        );
         expect(container.querySelector('section[data-slot="scene-stage"]')).toHaveAttribute(
             'data-backdrop-mode',
             'page',
@@ -130,9 +150,8 @@ describe('RecipeOverviewDetailsPage', () => {
 
         expect(screen.getByTestId('bot-performance-block')).toHaveTextContent('LIVE PAPER');
         expect(screen.getByTestId('bot-performance-block')).toHaveTextContent('$10,500.00');
-        expect(screen.getByTestId('bot-behaviors-block')).toHaveTextContent(
-            'Maintaining NVDA long on data center strength.',
-        );
+        // Behaviours have their own tab now; this page must not render them twice.
+        expect(screen.queryByTestId('bot-behaviors-block')).not.toBeInTheDocument();
         expect(screen.getByTestId('bot-positions-dna-block')).toHaveTextContent('BUY AVGO');
         expect(screen.getByRole('link', { name: /Edit Blueprint/i })).toHaveAttribute(
             'href',
@@ -141,10 +160,6 @@ describe('RecipeOverviewDetailsPage', () => {
         expect(screen.getByRole('link', { name: /2026-11-01 → 2026-11-14/i })).toHaveAttribute(
             'href',
             '/recipes/backtest/bt-job-1',
-        );
-        expect(screen.getByRole('link', { name: /View all trades & traces/i })).toHaveAttribute(
-            'href',
-            '/recipes/live/rec-live-1/runs',
         );
 
         await waitFor(() => {
@@ -206,5 +221,60 @@ describe('RecipeOverviewDetailsPage', () => {
         expect(
             screen.getByText(/Benchmark comparison begins once 2\+ trading days/i),
         ).toBeInTheDocument();
+    });
+
+    it('renders the live-switch confirmation when the owner is already at the live cap', () => {
+        const quota: RecipeUserQuotaStatus = {
+            tier: 'free',
+            activeBacktests: 0,
+            maxConcurrentBacktests: 1,
+            backtestsLast24h: 0,
+            dailyBacktestLimit: 3,
+            liveTurnsLast24h: 0,
+            dailyLiveTurnLimit: 24,
+            activeLiveRecipes: 1,
+            maxLiveRecipes: 1,
+            globalPendingBacktests: 0,
+            globalQueueCap: 100,
+        };
+
+        render(
+            <RecipeOverviewDetailsPage
+                data={noCurveData}
+                initialQuota={quota}
+                initialUserRecipes={[
+                    {
+                        id: 'other-bot',
+                        name: 'Other Bot',
+                        cadence: '3h',
+                        is_live: true,
+                        trial_count: 0,
+                        updated_at: '2026-11-20T00:00:00.000Z',
+                    },
+                ]}
+                benchmarkFetchFn={vi.fn()}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
+
+        // Without this surface the button is a silent no-op: the toggle parks in
+        // `confirming` and waits for a confirmation nobody renders.
+        expect(screen.getByRole('alert')).toHaveTextContent('Other Bot is currently live');
+        expect(screen.getByRole('button', { name: /Switch to This/i })).toBeInTheDocument();
+    });
+
+    it('surfaces a rejected backtest as an alert instead of swallowing it', async () => {
+        vi.mocked(enqueueRecipeJobFn).mockRejectedValue(
+            new Error('Quota exceeded: 3/3 backtests today'),
+        );
+
+        render(<RecipeOverviewDetailsPage data={noCurveData} benchmarkFetchFn={vi.fn()} />);
+
+        fireEvent.click(screen.getByRole('button', { name: /Run 2W Backtest/i }));
+
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toHaveTextContent(/Quota exceeded/);
+        });
     });
 });

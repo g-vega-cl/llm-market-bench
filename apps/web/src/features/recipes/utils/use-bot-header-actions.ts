@@ -5,7 +5,7 @@ import { track } from '~/lib/analytics';
 import { assertServerFnResult } from '~/lib/server-fn';
 import { forkRecipeFn } from '../api/fork-recipe';
 import { enqueueRecipeJobFn } from '../api/recipes-api';
-import { fetchRecipeQuotaStatusFn } from '../api/recipes-quota-api';
+import { activateRecipeTurboFn, fetchRecipeQuotaStatusFn } from '../api/recipes-quota-api';
 import { submitWaitlistPledgeFn } from '../api/recipes-studio-api';
 import type {
     BacktestError,
@@ -25,6 +25,8 @@ export interface UseBotHeaderActionsArgs {
     initialIsLive: boolean;
     initialQuota?: RecipeUserQuotaStatus | null;
     initialUserRecipes?: RecipeSummaryItem[];
+    initialTurboExpiresAt?: string | null;
+    initialTurboUsedToday?: boolean;
     externalBusy?: boolean;
     persistBeforeAction?: () => Promise<StrategyRecipeRecord>;
     onNavigateAfterEnableLive?: boolean;
@@ -41,6 +43,8 @@ export function useBotHeaderActions({
     initialIsLive,
     initialQuota = null,
     initialUserRecipes = [],
+    initialTurboExpiresAt = null,
+    initialTurboUsedToday = false,
     externalBusy = false,
     persistBeforeAction,
     onNavigateAfterEnableLive = false,
@@ -55,6 +59,12 @@ export function useBotHeaderActions({
     const [isForking, setIsForking] = useState(false);
     const [forkError, setForkError] = useState<string | null>(null);
     const [showPledgeModal, setShowPledgeModal] = useState(false);
+    // Turbo lives here because its only button is on the Overview card: retiring
+    // the Live hub moved the control that used to sit on it.
+    const [turboExpiresAt, setTurboExpiresAt] = useState<string | null>(initialTurboExpiresAt);
+    const [turboUsedToday, setTurboUsedToday] = useState(initialTurboUsedToday);
+    const [isActivatingTurbo, setIsActivatingTurbo] = useState(false);
+    const [turboError, setTurboError] = useState<string | null>(null);
 
     const refreshQuota = async () => {
         try {
@@ -167,6 +177,21 @@ export function useBotHeaderActions({
         });
     };
 
+    const handleActivateTurbo = async () => {
+        if (isActivatingTurbo) return;
+        setIsActivatingTurbo(true);
+        setTurboError(null);
+        try {
+            const res = await activateRecipeTurboFn({ data: { recipeId } });
+            setTurboExpiresAt(res.turboExpiresAt);
+            setTurboUsedToday(true);
+        } catch (err) {
+            setTurboError(err instanceof Error ? err.message : 'Failed activating Turbo mode');
+        } finally {
+            setIsActivatingTurbo(false);
+        }
+    };
+
     return {
         quotaStatus,
         userRecipes,
@@ -178,11 +203,16 @@ export function useBotHeaderActions({
         forkError,
         showPledgeModal,
         setShowPledgeModal,
+        turboExpiresAt,
+        turboUsedToday,
+        isActivatingTurbo,
+        turboError,
         liveControl,
         handleBacktest,
         handleToggleLive,
         handleConfirmSwitch,
         handleFork,
         handlePledgeSubmit,
+        handleActivateTurbo,
     };
 }

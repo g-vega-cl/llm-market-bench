@@ -53,6 +53,7 @@ import { Route as RecipesRecipeIdRouteRouteImport } from './routes/recipes/$reci
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 import { Route as PersonalityTCodeRouteImport } from './routes/personality.t.$code'
 import { Route as RecipesRecipeIdIndexRouteImport } from './routes/recipes/$recipeId/index'
+import { Route as RecipesRecipeIdBehaviorRouteImport } from './routes/recipes/$recipeId/behavior'
 import { Route as RecipesRecipeIdPerformanceRouteImport } from './routes/recipes/$recipeId/performance'
 import { Route as RecipesLiveRecipeIdRouteRouteImport } from './routes/recipes/live/$recipeId/route'
 import { Route as AuthedRecipesRecipeIdEditRouteImport } from './routes/_authed/recipes/$recipeId/edit'
@@ -280,6 +281,11 @@ const RecipesRecipeIdIndexRoute = RecipesRecipeIdIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RecipesRecipeIdRouteRoute,
 } as any)
+const RecipesRecipeIdBehaviorRoute = RecipesRecipeIdBehaviorRouteImport.update({
+  id: '/behavior',
+  path: '/behavior',
+  getParentRoute: () => RecipesRecipeIdRouteRoute,
+} as any)
 const RecipesRecipeIdPerformanceRoute =
   RecipesRecipeIdPerformanceRouteImport.update({
     id: '/performance',
@@ -360,6 +366,7 @@ export interface FileRoutesByFullPath {
   '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRouteRouteWithChildren
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
+  '/recipes/$recipeId/behavior': typeof RecipesRecipeIdBehaviorRoute
   '/recipes/$recipeId/performance': typeof RecipesRecipeIdPerformanceRoute
   '/recipes/$recipeId/': typeof RecipesRecipeIdIndexRoute
   '/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
@@ -408,6 +415,7 @@ export interface FileRoutesByTo {
   '/recipes': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
+  '/recipes/$recipeId/behavior': typeof RecipesRecipeIdBehaviorRoute
   '/recipes/$recipeId/performance': typeof RecipesRecipeIdPerformanceRoute
   '/recipes/$recipeId': typeof RecipesRecipeIdIndexRoute
   '/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
@@ -461,6 +469,7 @@ export interface FileRoutesById {
   '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRouteRouteWithChildren
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
+  '/recipes/$recipeId/behavior': typeof RecipesRecipeIdBehaviorRoute
   '/recipes/$recipeId/performance': typeof RecipesRecipeIdPerformanceRoute
   '/recipes/$recipeId/': typeof RecipesRecipeIdIndexRoute
   '/_authed/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
@@ -514,6 +523,7 @@ export interface FileRouteTypes {
     | '/recipes/live/$recipeId'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
+    | '/recipes/$recipeId/behavior'
     | '/recipes/$recipeId/performance'
     | '/recipes/$recipeId/'
     | '/recipes/$recipeId/edit'
@@ -562,6 +572,7 @@ export interface FileRouteTypes {
     | '/recipes'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
+    | '/recipes/$recipeId/behavior'
     | '/recipes/$recipeId/performance'
     | '/recipes/$recipeId'
     | '/recipes/$recipeId/edit'
@@ -614,6 +625,7 @@ export interface FileRouteTypes {
     | '/recipes/live/$recipeId'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
+    | '/recipes/$recipeId/behavior'
     | '/recipes/$recipeId/performance'
     | '/recipes/$recipeId/'
     | '/_authed/recipes/$recipeId/edit'
@@ -974,6 +986,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecipesRecipeIdIndexRouteImport
       parentRoute: typeof RecipesRecipeIdRouteRoute
     }
+    '/recipes/$recipeId/behavior': {
+      id: '/recipes/$recipeId/behavior'
+      path: '/behavior'
+      fullPath: '/recipes/$recipeId/behavior'
+      preLoaderRoute: typeof RecipesRecipeIdBehaviorRouteImport
+      parentRoute: typeof RecipesRecipeIdRouteRoute
+    }
     '/recipes/$recipeId/performance': {
       id: '/recipes/$recipeId/performance'
       path: '/performance'
@@ -1071,11 +1090,13 @@ const PersonalityRouteWithChildren = PersonalityRoute._addFileChildren(
 )
 
 interface RecipesRecipeIdRouteRouteChildren {
+  RecipesRecipeIdBehaviorRoute: typeof RecipesRecipeIdBehaviorRoute
   RecipesRecipeIdPerformanceRoute: typeof RecipesRecipeIdPerformanceRoute
   RecipesRecipeIdIndexRoute: typeof RecipesRecipeIdIndexRoute
 }
 
 const RecipesRecipeIdRouteRouteChildren: RecipesRecipeIdRouteRouteChildren = {
+  RecipesRecipeIdBehaviorRoute: RecipesRecipeIdBehaviorRoute,
   RecipesRecipeIdPerformanceRoute: RecipesRecipeIdPerformanceRoute,
   RecipesRecipeIdIndexRoute: RecipesRecipeIdIndexRoute,
 }

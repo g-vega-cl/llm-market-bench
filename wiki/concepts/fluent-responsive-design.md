@@ -79,7 +79,9 @@ For card catalogs, tool registries, and metric tiles, express the intrinsic grid
 - When available width reaches 48rem, 3 columns render.
 - Zero viewport media queries are evaluated.
 
-The `minmax(min(100%, Xrem), 1fr)` track guarantees a single column never overflows a narrow container (the `min(100%, …)` floor) while still expanding to fill wider containers. Common track floors in the codebase: `10rem` (dense metric tiles), `12rem`/`14rem` (stat cards), `15rem`/`16rem` (tool and model cards), `18rem`/`20rem` (portfolio and comparison cards).
+The `minmax(min(100%, Xrem), 1fr)` track guarantees a single column never overflows a narrow container (the `min(100%, …)` floor) while still expanding to fill wider containers. Common track floors in the codebase: `10rem` (dense metric tiles), `11rem` (bot summary strips), `12rem`/`14rem` (stat cards), `15rem`/`16rem` (tool and model cards), `18rem`/`20rem` (portfolio and comparison cards).
+
+A breakpoint pair is not a layout: `BotSummaryStrip` (`apps/web/src/features/recipes/components/BotSummaryStrip.tsx`) replaced `grid-cols-2 gap-3 lg:grid-cols-4` with `grid grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))] gap-3`, so its four tiles (equity, net return, win rate, open positions) form a four-up row at whatever container width fits four 11rem tracks — including a narrow detail column that a `lg:` viewport rule would have forced into four cramped columns.
 
 ### Equal-height stretched grids
 
@@ -110,7 +112,7 @@ Replace breakpoint-dependent direction toggles like `flex-col sm:flex-row` with 
 - [[concepts/cumulative-layout-shift]], Zero layout shift standards and skeleton-free transitions
 - [[entities/daily-market-predictor]], Daily predictor and autoresearch workbench
 - [[entities/daily-score-breakdown]], Multi-pillar composite ratchet score audit
+- [[concepts/page-surface-conventions]], the outer-surface rules the bot detail tabs follow
 ### Mobile text rows
 
 Rows of labels, timestamps, and handles (for example the console queue card's "Latest Answered Turn" row) must wrap as whole fragments: `flex flex-wrap items-baseline gap-x-2 gap-y-1`, `whitespace-nowrap` on each label, timestamp, and `•` separator, and `min-w-0 truncate` on handles. A `justify-between items-center` row without `flex-wrap` squeezes its groups on narrow screens and splits labels from values mid-phrase. Full rules: section 9 of `.agents/rules/design-spec.md`.
-

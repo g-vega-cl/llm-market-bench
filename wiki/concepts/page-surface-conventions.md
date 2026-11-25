@@ -33,6 +33,15 @@ When opting out, the page must re-declare its own horizontal padding (`px-6 md:p
 
 Pages that keep the default rhythm simply omit padding tokens from `className` (e.g. `CompaniesPage`, `CompanyDossierPage`, `GeneratedNewslettersPage`, `MemoriesPage`).
 
+### Shells that write their own box
+
+`BotSceneShell` (`apps/web/src/features/recipes/components/BotSceneShell.tsx`) does not use `PageLayout` at all. It wraps the tab panel in a hand-written `relative z-10 mx-auto flex w-full max-w-[calc(80rem+3rem)] flex-col gap-6 px-6 pb-8 md:pb-12` box, for two reasons specific to a shell that sits under a `SceneStage`:
+
+- `SceneStage` centres a `max-w-7xl` box inside its own `px-6`, so the panel has to be one `max-w-7xl` **plus** that padding wide for its card edge to land on the back link's edge instead of 24 px to the right.
+- `PageLayout`'s `maxWidth` presets would emit a competing `max-w-*` utility, and `cn` is bare clsx (no tailwind-merge), so stylesheet order rather than intent would pick the winner.
+
+The spirit of the opt-out rule is preserved: the shell declares its complete horizontal and vertical padding, and no page rendered inside it adds padding of its own.
+
 ## Page titles: action surfaces vs browse surfaces
 
 A page's job decides whether it carries a visible title block.
@@ -42,11 +51,17 @@ A page's job decides whether it carries a visible title block.
 
 ## Hub and detail pages
 
-A bot surface with a header card carries **one purpose**: the hub renders the card and a summary strip, and its panels live on their own detail route reached by a single link. The rule of thumb is content, not tab count — an editor stays one page (split it and every edit costs a click), while a data dump splits (Overview → `/recipes/$recipeId/performance`, Live Runs → `/recipes/live/$recipeId/runs`).
+A bot surface with a header card carries **one purpose**, and the **chip row is the navigation**: Overview · Performance · Behaviour · Live Runs · Blueprint (last one owner-only). Each chip is a real page with its own URL.
 
-- **Hub**: `BotStageHeader` + `BotSummaryStrip` (four numbers drawn from the same fields the panels read) + exactly one `… →` link. No panels below the card.
-- **Detail**: `BotSceneShell` — the same page-level world, a `← <bot name>` back link to the hub, the sub-nav with `markCurrent={false}` (its chips link elsewhere), then the panels. The panel starts ~24 px under the sub-nav.
-- **Strip content** is per tab: Overview → equity, net return, win rate, open positions; Live Runs → equity, cash, open positions, latest run (stamp + signal count). Never invent a field the panel cannot also show.
+- **Hubs claim the page, detail tabs claim the section.** `BotStageSubNav` (`apps/web/src/features/recipes/components/BotStageSubNav.tsx`) takes `currentMode: 'page' | 'item' | 'none'`, which replaced the old `markCurrent` boolean. On the Overview hub the active chip's href *is* the current URL, so it claims `aria-current="page"`. On a detail tab the chip still reads as the current section but its href points at the hub, so `currentMode="item"` emits `aria-current="true"` — the section is announced without claiming a URL the page does not own. `currentMode="none"` leaves the active chip unmarked.
+- **Detail pages carry their own `sr-only` `<h1>`.** `BotSceneShell` requires a `sectionTitle` and renders `<h1 className="sr-only">{recipeName} — {sectionTitle}</h1>` as the first child of its scene card (for example `AI Capex Radar — Performance & positions`, `Momentum Alpha — Run traces & portfolio`). The hub owns the visible heading; a detail page still needs a document heading, and the repo convention is exactly one `sr-only` `<h1>`.
+- **The back link names its destination.** `← {recipeName}` carries `aria-label="Back to {recipeName} {Overview|Live Runs}"`, so the link announces where it goes instead of only the bot name.
+- **Detail pages own their own feedback.** The Performance and Behaviour panels own the Enable Live and Run Backtest buttons, so the notices the hub card renders have to exist on the detail page too. `BotSceneShell`'s `alerts` slot renders them under the sub-nav, inside the scene: `LiveSwitchConfirmation` when the owner is already at the live cap (without it the toggle parks in `confirming` and the button is a silent no-op), `StudioAlertSlot` for backtest/schedule quota and execution errors, and a `role="alert"` block for a fork error. `WaitlistPledgeModal` stays outside the shell.
+- **Panel ownership is exclusive.** Performance owns equity/benchmark, the open book and closed trades; Behaviour owns tool usage, action mix and exits; Live Runs owns run traces. A block rendered on two tabs is a bug, not redundancy.
+- **The Live Runs hub is retired.** `/recipes/live/$recipeId` redirects to `/recipes/live/$recipeId/runs`; it used to duplicate the Overview card plus a link to the traces it summarised.
+- **Editors stay one page.** Blueprint opens on the editor: chips, one compact status + name/save line, then blocks. Splitting an editor costs a click per edit.
+- **Empty tabs explain themselves.** A bot with no run history still shows Behaviour, saying which run fills it — a chip that opens onto a blank page is worse than one that says why.
+- **Strip content** stays per tab: Overview → equity, net return, win rate, open positions. `BotSummaryStrip` (`apps/web/src/features/recipes/components/BotSummaryStrip.tsx`) lays those tiles out on an intrinsic `grid-cols-[repeat(auto-fit,minmax(min(100%,11rem),1fr))]` grid rather than `grid-cols-2 lg:grid-cols-4`, so the four-up row appears at whatever container width fits four tracks instead of at a viewport breakpoint ([[concepts/fluent-responsive-design]]).
 
 ## Primary action front & center
 Putting no visible title on an action surface only works if the user's primary task actually sits at the top. On mobile (`360px`), stacking a multi-card stepper, status banner, or template catalog above a text input pushes the input and primary CTA below the fold.
@@ -81,3 +96,5 @@ The source scan reads class strings from `className="..."`, `className={cn(...)}
 - [[entities/design-system]] — `PageLayout`, `SectionHeading`, and the typography tiers
 - [[concepts/cumulative-layout-shift]] — zero-flash hydration and reserved-dimension guarantees
 - [[entities/web-app]] — the routes these surfaces live on
+- [[entities/recipe-studio]] — the bot hub, detail tabs, and `/build` that these rules govern
+- [[concepts/fluent-responsive-design]] — the intrinsic grid `BotSummaryStrip` uses instead of a `lg:` breakpoint

@@ -62,23 +62,24 @@ beforeAll(() => {
 });
 
 describe('RecipeLiveRunsPage (detail)', () => {
-    it('carries the back link and a sub-nav that does not claim this URL', () => {
+    it('carries the back link and a chip row that claims this URL', () => {
         render(<RecipeLiveRunsPage recipeId="rec-1" initialData={livePageData} />);
 
-        expect(screen.getByRole('link', { name: /← Momentum Alpha/i })).toHaveAttribute(
-            'href',
-            '/recipes/live/rec-1',
+        expect(
+            screen.getByRole('link', { name: /Back to Momentum Alpha Overview/i }),
+        ).toHaveAttribute('href', '/recipes/rec-1');
+        expect(screen.getByRole('link', { name: 'Live Runs' })).toHaveAttribute(
+            'aria-current',
+            'page',
         );
-        expect(screen.getByRole('link', { name: 'Live Runs' })).not.toHaveAttribute('aria-current');
     });
 
-    it('renders the paper portfolio, closed trades and the trace of the run being viewed', () => {
+    it('renders the trace of the run being viewed and leaves the portfolio to Performance', () => {
         render(<RecipeLiveRunsPage recipeId="rec-1" initialData={livePageData} />);
 
-        expect(screen.getByText(/Live Paper Portfolio/i)).toBeInTheDocument();
-        expect(screen.getByText(/All Closed Live Trades/i)).toBeInTheDocument();
-        expect(screen.getAllByText(/NVDA/i).length).toBeGreaterThan(0);
         expect(screen.getByText(/Live Run Traces/i)).toBeInTheDocument();
+        expect(screen.queryByText(/Live Paper Portfolio/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/All Closed Live Trades/i)).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Older' }));
         fireEvent.click(screen.getByRole('button', { name: 'Older' }));

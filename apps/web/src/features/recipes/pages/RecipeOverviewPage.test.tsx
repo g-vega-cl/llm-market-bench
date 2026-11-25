@@ -92,7 +92,7 @@ beforeEach(() => {
 });
 
 describe('RecipeOverviewPage (hub)', () => {
-    it('renders one card with the summary strip and a single link into the detail page', () => {
+    it('renders one card with the summary strip and the chips as the way into every detail', () => {
         const { container } = render(
             <RecipeOverviewPage data={liveOverviewData} initialAtmosphere="dusk" />,
         );
@@ -112,7 +112,7 @@ describe('RecipeOverviewPage (hub)', () => {
         );
         expect(screen.getByRole('link', { name: 'Live Runs' })).toHaveAttribute(
             'href',
-            '/recipes/live/rec-live-1',
+            '/recipes/live/rec-live-1/runs',
         );
 
         const strip = screen.getByTestId('bot-summary-strip');
@@ -122,11 +122,18 @@ describe('RecipeOverviewPage (hub)', () => {
         expect(strip).toHaveTextContent('100.0%');
         expect(strip).toHaveTextContent('1 / 4');
 
-        expect(
-            screen.getByRole('link', { name: /Performance, behaviors & positions/i }),
-        ).toHaveAttribute('href', '/recipes/rec-live-1/performance');
+        // Every detail is a chip now, so the card carries no "→" link to hunt for.
+        expect(screen.getByRole('link', { name: 'Performance' })).toHaveAttribute(
+            'href',
+            '/recipes/rec-live-1/performance',
+        );
+        expect(screen.getByRole('link', { name: 'Behaviour' })).toHaveAttribute(
+            'href',
+            '/recipes/rec-live-1/behavior',
+        );
+        expect(screen.queryByRole('link', { name: /→/ })).not.toBeInTheDocument();
 
-        // The hub serves one purpose: the panels live on the detail page.
+        // The hub serves one purpose: the panels live on the detail pages.
         expect(screen.queryByTestId('bot-performance-block')).not.toBeInTheDocument();
         expect(screen.queryByTestId('bot-behaviors-block')).not.toBeInTheDocument();
         expect(screen.queryByTestId('bot-positions-dna-block')).not.toBeInTheDocument();

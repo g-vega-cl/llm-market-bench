@@ -327,9 +327,20 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
 
     resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=180)
     resp.raise_for_status()
-    content = resp.json()["choices"][0]["message"]["content"]
+    body = resp.json()
+    # A 200 can still carry {"error": {...}} — an out-of-credit account or a
+    # rate-limited upstream returns no `choices`, and indexing it raised KeyError,
+    # which the tier chain does not catch: the whole run died instead of falling
+    # through to the next model. Validate the shape and raise RuntimeError, which
+    # main() treats as "this tier failed, try the next one".
+    choices = body.get("choices")
+    if not choices:
+        error = body.get("error") if isinstance(body, dict) else None
+        detail = error.get("message") if isinstance(error, dict) else error
+        raise RuntimeError(f"OpenRouter returned no choices ({detail or 'empty response'})")
+    content = choices[0].get("message", {}).get("content")
     if content is None:
-        finish_reason = resp.json()["choices"][0].get("finish_reason", "unknown")
+        finish_reason = choices[0].get("finish_reason", "unknown")
         raise RuntimeError(
             f"OpenRouter returned null content (finish_reason={finish_reason!r}). "
             "Model may have refused or been rate-limited."

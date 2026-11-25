@@ -1,11 +1,23 @@
+import { resolveAtmospherePhase } from '@llm-market-bench/ui-design-system';
 import { createFileRoute } from '@tanstack/react-router';
 import { createServerFn } from '@tanstack/react-start';
-import { fetchLeaderboard } from '~/features/leaderboard/api/fetch-leaderboard';
+import { fetchLeaderboardPage } from '~/features/leaderboard/api/fetch-leaderboard';
+import { LEADERBOARD_PAGE_SIZE } from '~/features/leaderboard/components/LeaderboardTable';
 import { LeaderboardPage } from '~/features/leaderboard/pages/LeaderboardPage';
 
 const getLeaderboardData = createServerFn({ method: 'GET' }).handler(async () => {
-    // Default to 30 days timeframe for SSR/initial load
-    return fetchLeaderboard(30);
+    const [initialData, initialAtmosphere] = await Promise.all([
+        fetchLeaderboardPage({
+            timeWindowDays: 30,
+            category: 'all',
+            sortBy: 'composite_score',
+            sortDir: 'desc',
+            page: 1,
+            pageSize: LEADERBOARD_PAGE_SIZE,
+        }),
+        Promise.resolve(resolveAtmospherePhase(new Date(), 'market-et')),
+    ]);
+    return { initialData, initialAtmosphere };
 });
 
 export const Route = createFileRoute('/leaderboard/')({
@@ -14,7 +26,7 @@ export const Route = createFileRoute('/leaderboard/')({
 });
 
 function RouteComponent() {
-    const initialData = Route.useLoaderData();
+    const { initialData, initialAtmosphere } = Route.useLoaderData();
 
-    return <LeaderboardPage initialData={initialData} />;
+    return <LeaderboardPage initialData={initialData} initialAtmosphere={initialAtmosphere} />;
 }

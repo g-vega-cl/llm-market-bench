@@ -139,7 +139,7 @@ export async function saveRecipe(
         .from('strategy_recipes')
         .insert({
             ...writePayload,
-            is_public: publication === 'publish',
+            is_public: publication !== 'unpublish',
             concurrency_config: {
                 max_open_trades: 4,
                 max_equity_pct_per_trade: 25.0,

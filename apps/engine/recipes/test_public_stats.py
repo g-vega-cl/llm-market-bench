@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from recipes.public_stats import (
+    build_bot_leaderboard_window_rows,
     build_last_action,
     build_public_stats,
     parse_equity_curve,
@@ -206,3 +207,61 @@ def test_refresh_public_stats_upserts_one_row_per_live_recipe():
     assert row["return_pct"] == 1.0
     assert row["resolved_model"] == "qwen3.8-27b"
     assert row["last_action"]["ticker"] == "AMD"
+
+
+def test_build_bot_leaderboard_window_rows_computes_all_four_windows_and_laplace_consistency():
+    from datetime import UTC, datetime
+
+    now = datetime(2026, 11, 25, 16, 0, tzinfo=UTC)
+    recipe = {
+        "id": "bot-1",
+        "name": "Momentum Hunter",
+        "is_live": False,
+        "paper_cash": 10300.0,
+        "paper_positions": [
+            {"ticker": "NVDA", "shares": 10, "entry_price": 100.0, "current_price": 110.0, "unrealized_pnl_net": 100.0}
+        ],
+        "paper_trades": [
+            {"ticker": "AAPL", "exit_time": "2026-11-22 15:30 ET", "pnl_net": 200.0},
+            {"ticker": "AMD", "exit_time": "2026-10-01 15:30 ET", "pnl_net": -50.0},
+        ],
+        "paper_equity_curve": [
+            {"time": "2026-10-01 15:30 ET", "equity": 9950.0},
+            {"time": "2026-11-20 15:30 ET", "equity": 10100.0},
+            {"time": "2026-11-22 15:30 ET", "equity": 10400.0},
+        ],
+    }
+
+    rows = build_bot_leaderboard_window_rows(recipe, now_utc=now)
+    by_window = {row["time_window_days"]: row for row in rows}
+    assert set(by_window) == {7, 30, 90, 0}
+
+    # 30d: anchored to prior close 2026-10-01 ($9,950.00), current $10,400 -> +4.52%
+    w30 = by_window[30]
+    assert w30["return_pct"] == 4.52
+    # 1 closed win in 30d + 1 open win = 2/2 = 100.0%
+    assert w30["win_rate"] == 100.0
+    assert w30["total_trades"] == 1
+    # 2 positive return days (10100 > 9950, 10400 > 10100) -> Laplace (2+2)/(2+4) = 66.67%
+    assert w30["consistency_score"] == 66.67
+    assert w30["has_activity"] is True
+
+    # All-Time (0): includes older Oct 1 trade (-50.0): 1 win + 1 loss closed + 1 open win = 2/3 = 66.67%
+    w_all = by_window[0]
+    assert w_all["total_trades"] == 2
+    assert w_all["realized_pnl"] == 150.0
+    assert w_all["win_rate"] == 66.67
+
+
+def test_build_bot_leaderboard_window_rows_marks_idle_bot_inactive():
+    idle = {
+        "id": "bot-idle",
+        "name": "Draft Bot",
+        "is_live": False,
+        "paper_cash": 10000.0,
+        "paper_positions": [],
+        "paper_trades": [],
+        "paper_equity_curve": [],
+    }
+    rows = build_bot_leaderboard_window_rows(idle)
+    assert all(r["has_activity"] is False and r["win_rate"] is None and r["return_pct"] == 0.0 for r in rows)

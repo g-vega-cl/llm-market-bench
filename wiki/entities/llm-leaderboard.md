@@ -5,74 +5,85 @@ category: entity
 
 # LLM Leaderboard & Screening Tool
 
-The **LLM Leaderboard & Screening Tool** is a diagnostic ranking and evaluation system that assesses the trading performance, reasoning quality, and system consistency of all active and retired LLMs in the multi-agent system.
+The **Unified Leaderboard & Screening Tool** ranks active LLMs, active systematic portfolios (`sys-*`), and all public non-archived user bots (`strategy_recipes`) across `7 Days`, `30 Days`, `90 Days`, and `All-Time` windows.
 
 ---
 
 ## 🎯 Architecture & Metrics Computation
 
-To ensure maximum performance and responsiveness, the metrics are computed dynamically on-the-fly at the database layer using a specialized Remote Procedure Call (RPC) function:
+User-bot window metrics (`7`, `30`, `90`, `0` for All-Time) are pre-materialized by `apps/engine/recipes/public_stats.py` into `public.user_bot_leaderboard_stats` (`supabase/migrations/20261125010000_create_user_bot_leaderboard_stats.sql`). Read requests call the `STABLE` `GET`-routable RPCs (`get_leaderboard_page` and `get_llm_leaderboard_metrics` in `supabase/migrations/20261125020000_materialize_leaderboard_rpc.sql`) via PostgREST HTTP `GET`, keeping reads fast on the MiniPC read replica with zero JSONB unpacking and zero frontend compute ([[concepts/zero-frontend-compute]]).
 
-### 1. RPC Signature (`get_llm_leaderboard_metrics`)
-The RPC takes `time_window_days INT` as an input parameter (supporting `7`, `30`, `90`, or `NULL` for All-Time windowing) and returns aggregated records per model.
+### 1. Unified Competitor Population
+* **Active LLMs**: Enforced in SQL against the active models in `packages/config/models.json` (`gpt-6-luna`, `claude-haiku-5-5`, `gemini-3.5-flash-lite`, `deepseek-flash`, `MiniMax-M3.1-Flash`).
+* **System Portfolios (`sys-*`)**: Active mechanical strategies in `portfolios`, excluding `ARCHIVED_PORTFOLIO_OWNER_IDS`.
+* **User Bots**: All public, non-archived, non-template, single-stage `strategy_recipes` (`is_public = TRUE AND archived_at IS NULL AND is_template = FALSE`). `strategy_recipes.is_public` defaults to `TRUE` so every user bot is publicly visible and inspectable.
 
 ### 2. Metric Scoring Formulas
 
-#### A. Trading Performance (50% of Composite Score)
-* **Return %**: Calculated relative to the starting equity at the beginning of the selected time window (falling back to $10,000.00 if no snapshots exist):
-  $$\text{Return \%} = \frac{\text{Total Equity} - \text{Starting Equity}}{\text{Starting Equity}} \times 100$$
-* **Return Score**: Linear mapping between -15.0% (score of 0) and +15.0% (score of 100).
-* **Win Rate**: Percentage of realized trades yielding positive profit:
-  $$\text{Win Rate} = \frac{\text{Trades with realized\_pnl} > 0}{\text{Total Trades}} \times 100$$
-* **Performance Score**: Blended metric:
-  $$\text{Performance Score} = (0.7 \times \text{Return Score}) + (0.3 \times \text{Win Rate})$$
+#### A. Trading Performance (50% LLM / 70% System & User Bot)
+* **Return %**: Calculated relative to starting equity at the beginning of the selected window (falling back to `$10,000.00` when the portfolio/bot launched after window start so day-1 returns are preserved).
+* **Return Score**: Linear mapping between `-15.0%` (`0`) and `+15.0%` (`100`).
+* **Win Rate**:
+  * For portfolios: combined win rate across closed exit trades (`signal IN ('SELL', 'COVER') AND realized_pnl IS NOT NULL`) and currently held open positions (longs in `position_pnl` plus open `SHORT` lots in `trades`), excluding entry `BUY` rows from the denominator; `NULL` (`—` in UI; neutral `50.0` in score) when neither exists.
+  * For user bots: pre-materialized combined win rate across closed `paper_trades` (`pnl_net > 0`) in the window and open `paper_positions` (`unrealized_pnl_net > 0`), or `NULL` (`—`) when neither exists.
+* **Performance Score**: `(0.7 * Return Score) + (0.3 * Effective Win Rate)`.
 
-#### B. Reasoning Quality (30% of Composite Score)
-* **Verifier Approval Rate**: The percentage of decisions not rejected by the Verifier Agent:
-  $$\text{Approval Rate} = \frac{\text{Approved Decisions}}{\text{Total Non-Error Decisions}}$$
-  * *Approved* statuses: `VALIDATED`, `EXECUTED`, `REJECTED_MARGIN`, `REJECTED_OWNERSHIP`, `REJECTED_REDUNDANCY`, `REJECTED_LIQUIDITY`, `REJECTED_MARKET_CLOSED`, `REJECTED_LIMIT_PRICE`.
-  * *Exception (MiniMax-M3.1-Flash)*: Since `MiniMax-M3.1-Flash` bypasses the verifier entirely, its verifier approval rate is ignored (`NULL`) and not compared on the UI.
-* **Average Confidence**: The arithmetic mean of self-reported `confidence` scores (0-100) on all decisions. Informational only — it earns no points.
-* **Conviction Score**: The normalised [[concepts/conviction-points]] term computed from evaluated `daily_predictions` rows over the window. Neutral 50.0 when a model has no scored predictions. Stated confidence earns nothing on its own; it only pays when it was calibrated against outcomes.
-* **Reasoning Quality Score**: Blended metric:
-  $$\text{Reasoning Quality Score} = (0.7 \times \text{Approval Rate}) + (0.3 \times \text{Conviction Score})$$
-  * *Exception (MiniMax-M3.1-Flash)*: $\text{Reasoning Quality Score} = \text{Conviction Score}$ (100% of conviction).
+#### B. Reasoning Quality (30% LLM only)
+* **Conviction Score**: The normalised [[concepts/conviction-points]] term computed from evaluated `daily_predictions` rows over the window (LLMs only; `NULL` / `'—'` for system portfolios and user bots). Verifier approval scoring has been removed (no active verifier).
+* **Average Confidence**: Arithmetic mean of self-reported `confidence` scores on `decisions` (informational only; `NULL` / `'—'` for non-LLMs).
 
-#### C. Consistency (20% of Composite Score)
-* **API Success Rate**: Percentage of attempts that did not experience API/provider errors:
-  $$\text{API Success Rate} = \frac{\text{Total Decisions} - \text{ERROR\_PROVIDER}}{\text{Total Decisions}} \times 100$$
-* **Trading Activity Rate**: The ratio of distinct calendar days containing at least one attempt relative to the expected weekdays in the selected window (assuming a standard 5-day trading week).
-* **Consistency Score**: Blended metric:
-  $$\text{Consistency Score} = (0.7 \times \text{API Success Rate}) + (0.3 \times \text{Trading Activity Rate})$$
+#### C. Consistency (20% LLM / 30% System & User Bot)
+* **Laplace-Smoothed Daily Return Consistency**: `((pos_days + 2) * 100) / (active_return_days + 4)` over active return sessions in the window where closing equity changed vs. the prior session (`portfolio_performance` or daily-collapsed `paper_equity_curve`), preventing single-day `100%` cliffs and defaulting to `50.0%` when `active_return_days = 0`.
 
-#### D. Leaderboard Composite Score (0-100%)
-The final ranking placement is determined by:
-$$\text{Composite Score} = (0.5 \times \text{Performance Score}) + (0.3 \times \text{Reasoning Quality Score}) + (0.2 \times \text{Consistency Score})$$
-* *Note*: For `MiniMax-M3.1-Flash`, the `Reasoning Quality Score` used here is its `Conviction Score` (as verifier score is ignored).
+#### D. Composite Score (0–100%)
+* **LLMs**: `(0.5 * Performance) + (0.3 * Conviction) + (0.2 * Consistency)`
+* **System Portfolios & User Bots**: `(0.7 * Performance) + (0.3 * Consistency)` (no frozen `50.0` conviction dilution)
+* **Idle Bots (zero activity)**: `0.00%` so unrun draft bots sort below active strategies.
 
 ---
 
 ## 📁 Implementation Components
 
-### Database
-* **RPC Migration (`supabase/migrations/20261105000000_add_conviction_scoring.sql`)**: Current definition of `get_llm_leaderboard_metrics(time_window_days)`, exposing the `conviction_score` column. Supersedes the earlier raw-confidence RPC (`20260622000000_fix_leaderboard_timeframe_return.sql`).
+### Database Migrations
+* `supabase/migrations/20261125000000_unified_leaderboard_and_public_bots.sql` — Makes all non-archived user bots public by default, adds safe ISO date parser `public._safe_iso_date(TEXT)`, updates `get_llm_leaderboard_metrics` to remove verifier scoring, fix win_rate/consistency, and include sys portfolios + user bots.
+* `supabase/migrations/20261125010000_create_user_bot_leaderboard_stats.sql` — Creates `public.user_bot_leaderboard_stats` with RLS/grants and one-time backfill for existing public non-archived single-stage user bots (7d, 30d, 90d, 0=All-Time windows).
+* `supabase/migrations/20261125020000_materialize_leaderboard_rpc.sql` — Adds `decisions` indexes, updates `get_llm_leaderboard_metrics` to read pre-materialized `user_bot_leaderboard_stats`, includes open SHORT lots in open positions, aligns `total_trades` to closed round-trip exits, returns NULL conviction/confidence for non-LLMs, adds `get_leaderboard_page` (STABLE, GET-routable) for server-side category filtering, sorting, 10-row pagination, counts, and Top 3 podium.
 
-### TypeScript / API
-* **Type Definition (`packages/database/index.ts`)**: Defines `LLMLeaderboardRow` representing the RPC output schema.
-* **Fetcher (`apps/web/src/features/leaderboard/api/fetch-leaderboard.ts`)**: Integrates the Supabase RPC call into a TanStack Start server function.
+### Engine Materializer (`apps/engine/recipes/public_stats.py`)
+* `build_bot_leaderboard_window_rows` — Computes pre-materialized 7d/30d/90d/All-Time rows for one public user bot from `paper_cash`, `paper_positions`, `paper_trades`, `paper_equity_curve`.
+* `refresh_user_bot_leaderboard_stats` — Fetches all public non-archived single-stage user bots (paginated), builds window rows, upserts into `user_bot_leaderboard_stats` on `(recipe_id, time_window_days)`.
+* Called from `refresh_public_stats` after recipe stats refresh.
 
-### Web Front-End
-* **Route (`apps/web/src/routes/leaderboard/index.tsx`)**: Exposes the `/leaderboard` route with prehydration.
-* **Leaderboard Page (`apps/web/src/features/leaderboard/pages/LeaderboardPage.tsx`)**: Integrates the timeframe filter, podium cards, data table, and comparison diagnostics.
-* **Podium Component (`apps/web/src/features/leaderboard/components/LeaderboardPodium.tsx`)**: Displays Rank 1, 2, and 3 models in an equal-height `items-stretch` grid (`grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))]`). Cards use `variant="default"`, `radius="none"`, and rank-colored top/left bevels (`border-t-success`/`border-l-success` for #1, `border-t-accent`/`border-l-accent` for #2, `border-t-warning`/`border-l-warning` for #3). There are no arbitrary `min-h-[...]` height variations and no `items-end` alignment — all podium cards share identical height.
-* **Table Component (`apps/web/src/features/leaderboard/components/LeaderboardTable.tsx`)**: Renders all models in a sortable, interactive list containing comparative selection checkboxes.
-* **Comparison Component (`apps/web/src/features/leaderboard/components/ModelComparison.tsx`)**: Displays side-by-side diagnostic cards for two selected models, highlighting winning metrics. Uses an equal-height `items-stretch` grid (`grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))]`) with `variant="default"`, `radius="none"` cards; each metric row is a recessed `voxel-trough` tile that highlights the winning side with a `border-success/40` accent and a `WIN` badge.
+### Types (`packages/database/index.ts`)
+* `LeaderboardEntityType = 'llm' | 'system' | 'user_bot'`
+* `LLMLeaderboardRow` — adds `display_name`, `entity_type`, `portfolio_id`, `recipe_id`, `is_live`, `rank`; makes `win_rate`, `average_confidence`, `conviction_score`, `reasoning_quality_score` nullable.
+* `LeaderboardCategoryCounts` — `{ all, llm, system, user_bot }`
+* `LeaderboardPagePayload` — `{ rows, podium, totalCount, counts }`
+
+### Fetcher (`apps/web/src/features/leaderboard/api/fetch-leaderboard.ts`)
+* `fetchLeaderboardPage` — calls STABLE `get_leaderboard_page` RPC via `{ get: true }` with params: `timeWindowDays`, `category`, `sortBy`, `sortDir`, `page`, `pageSize`. Returns `LeaderboardPagePayload`.
+* `fetchLeaderboard` — calls STABLE `get_llm_leaderboard_metrics` via `{ get: true }` for backward compatibility (homepage barometer).
+
+### Route (`apps/web/src/routes/leaderboard/index.tsx`)
+* Prehydrates page 1 (`pageSize = 10`) plus `resolveAtmospherePhase(new Date(), 'market-et')` via `Promise.all`.
+
+### Page (`apps/web/src/features/leaderboard/pages/LeaderboardPage.tsx`)
+* Renders inside `SceneStage` (`backdropMode="page"`) with `CedarRidgeBackdrop`, `SceneHudControls`.
+* Category filter tabs: **All**, **LLMs**, **System**, **User Bots** (with counts from RPC).
+* Timeframe switcher: 7d, 30d, 60d, 90d, All.
+* Top 3 podium (`LeaderboardPodium`) with athletic 2nd/1st/3rd visual order.
+* Server-paginated table (`LeaderboardTable`) — max 10 per page, sortable columns (Score, Return, Win Rate, Consistency), category-aware pagination.
+* Side-by-side comparison (`ModelComparison`) for up to 2 selected competitors.
+* Living backdrop with atmosphere/motion HUD controls.
 
 ---
 
 ## Related
-- [[entities/database]] — Supabase schema details
-- [[entities/web-app]] — Front-end application slice
-- [[entities/sector-predictor-arena]] — Sector predictor arena comparison
-- [[concepts/visual-planning]] — visual layout planning details
-- [[entities/design-system]] — Voxel primitives and equal-height grid rules
+* [[entities/database]] — Supabase schema details
+* [[entities/web-app]] — Front-end application slice
+* [[concepts/living-scene-backdrops]] — `SceneStage` + `CedarRidgeBackdrop` architecture
+* [[concepts/system-portfolios]] — Mechanical `sys-*` portfolios
+* [[entities/design-system]] — Voxel primitives and table alignment rules
+* [[concepts/zero-frontend-compute]] — Pre-materialization architecture
+* [[concepts/conviction-points]] — Calibrated confidence term
+* [[entities/recipe-studio]] — User bots source (`strategy_recipes`)

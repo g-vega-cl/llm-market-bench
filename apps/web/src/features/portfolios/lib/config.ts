@@ -180,3 +180,37 @@ export function isAutoresearchPortfolio(ownerId: string | null): boolean {
     const normalized = normalizeOwnerId(ownerId);
     return getAutoresearchOwnerIds().includes(normalized);
 }
+
+const SYSTEM_PORTFOLIO_SUBTITLES: Record<string, string> = {
+    'sys-future-forces': 'Multi-Horizon Thematic Forces & Catalysts (2–24 Months)',
+    'sys-smid-quality-compounder': 'Quality & Momentum Small-to-Large Compounder (Zero-Ceiling)',
+    'sys-pead-drift': 'Post-Earnings Drift Systematic Momentum (SUE + Jev)',
+    'sys-max-pain': 'Daily Options Max Pain 0DTE Pinning (Ni et al. + Jev)',
+    'sys-sentiment-fader': 'Contrarian Options Sentiment & Put/Call Ratio Fader',
+    'sys-sector-ls-consensus': 'Consensus Sector Long/Short Dispersion',
+    'sys-sector-ls-30d': '30-Day Consensus Sector Long/Short Dispersion',
+    'sys-sector-ls-90d': '90-Day Consensus Sector Long/Short Dispersion',
+    'sys-sector-uncorr-20d': '20-Day Uncorrelated Sector Momentum (Low-Beta Barbell)',
+    'sys-sector-uncorr-7d': '7-Day Uncorrelated Sector Momentum (Weekly Rotation)',
+    'sys-sector-naive-momentum': '20-Day Unconstrained Momentum (Top 2 Winners)',
+    'sys-sector-mean-reversion': '7-Day Sector Mean Reversion (Oversold Bounce)',
+};
+
+export function getSystemPortfolioSubtitle(ownerId: string): string | undefined {
+    if (SYSTEM_PORTFOLIO_SUBTITLES[ownerId]) {
+        return SYSTEM_PORTFOLIO_SUBTITLES[ownerId];
+    }
+    if (ownerId.startsWith('sys-daily-tlt-close-')) {
+        return 'Daily 20+ Year Treasury Bond Trader (3:50 PM Exit)';
+    }
+    if (ownerId.startsWith('sys-daily-spy-close-')) {
+        return 'Daily S&P 500 Close Trader (3:50 PM Exit)';
+    }
+    if (ownerId.startsWith('sys-daily-spy-')) {
+        return 'Daily S&P 500 Intraday Trader (Profit Target Exit)';
+    }
+    if (ownerId.startsWith('sys-picks-')) {
+        return 'Daily 3 Up / 3 Down Stock Picks (RTH Open → Close)';
+    }
+    return undefined;
+}

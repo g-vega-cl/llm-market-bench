@@ -31,12 +31,15 @@ export function useCedarRidgeDrift(paused: boolean) {
         const el = ref.current;
         if (!el) return;
 
-        const reduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+        const reduce =
+            typeof window.matchMedia === 'function'
+                ? window.matchMedia('(prefers-reduced-motion: reduce)')
+                : null;
         let frame = 0;
         let pointerX = 0;
         let pointerY = 0;
 
-        const frozen = () => paused || reduce.matches || document.hidden;
+        const frozen = () => paused || (reduce?.matches ?? false) || document.hidden;
 
         const scrollTerm = () => Math.min(1, window.scrollY / SCROLL_RANGE_PX) * SCROLL_PX;
 
@@ -79,13 +82,13 @@ export function useCedarRidgeDrift(paused: boolean) {
         window.addEventListener('pointermove', onPointer, { passive: true });
         window.addEventListener('scroll', onScroll, { passive: true });
         document.addEventListener('visibilitychange', onVisibility);
-        reduce.addEventListener('change', onPreference);
+        reduce?.addEventListener('change', onPreference);
 
         return () => {
             window.removeEventListener('pointermove', onPointer);
             window.removeEventListener('scroll', onScroll);
             document.removeEventListener('visibilitychange', onVisibility);
-            reduce.removeEventListener('change', onPreference);
+            reduce?.removeEventListener('change', onPreference);
             if (frame !== 0) cancelAnimationFrame(frame);
         };
     }, [paused]);

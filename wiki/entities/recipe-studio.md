@@ -17,7 +17,7 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
    - Accessible from `/lab` directory and the homepage CTA
 
 2. **`/recipes/$recipeId` — Bot Overview hub** (public-capable for `is_public`/`is_template` bots)
-   - One card, one purpose: `BotStageHeader` (`SceneStage` + `CedarRidgeBackdrop` + `Overview | Live Runs | Blueprint` sub-nav) plus `BotSummaryStrip` — Total Equity, Net Return, Win Rate, Open Positions — and a single `Performance, behaviors & positions →` link into the detail page. The hub renders **no panels**.
+   - One card, one purpose: `BotStageHeader` (`SceneStage` + `CedarRidgeBackdrop` + the `Overview | Performance | Behaviour | Live Runs | Blueprint` chip row) plus `BotSummaryStrip` — Total Equity, Net Return, Win Rate, Open Positions — and a single `Performance, behaviors & positions →` link into the detail page. The hub renders **no panels**.
    - Loads via `fetchRecipeOverviewFn` (30s bounded public cache)
    - Non-owners receive a read-only view with a `Fork to My Bots` action; owner actions (Backtest, live toggle, Turbo, Blueprint) are gated on `isOwner`
 
@@ -89,7 +89,6 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 
 #### `BotSceneShell` — detail-tab chrome
 `apps/web/src/features/recipes/components/BotSceneShell.tsx` is the chrome for every non-Overview bot tab (Performance, Behaviour, Live Runs). It mounts the same page-level `SceneStage` + `CedarRidgeBackdrop` + `SceneHudControls` world as the hub, then a header row and the panel:
-
 - a required `sectionTitle` becomes the page's own `<h1 className="sr-only">{recipeName} — {sectionTitle}</h1>`, so a detail tab has a document heading even though the hub owns the visible one;
 - the `← {recipeName}` back link carries `aria-label="Back to {recipeName} {Overview|Live Runs}"`, derived from `parent`, so it announces its destination;
 - `BotStageSubNav` is rendered with `currentMode="item"`;
@@ -116,7 +115,7 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 #### `/recipes/backtest/$jobId` — Live Backtest View (`RecipeBacktestPage`)
 - Polls `fetchRecipeRunDetailFn` every 1.5s
 - Timeline, telemetry, portfolio, trades, session trace
-- Header links: `← Bot Overview` → `/recipes/$recipeId` and `Edit Blueprint` → `/recipes/$recipeId/edit` (a `live_turn` job opened here links to `/recipes/live/$recipeId`)
+- Header links: `← Bot Overview` → `/recipes/$recipeId` and `Edit Blueprint` → `/recipes/$recipeId/edit` (a `live_turn` job links to `/recipes/live/$recipeId`)
 
 #### `/recipes-demo` — Public Showcase
 - Pinned backtest via `recipe_showcase` table (CLI `publish_showcase`)
@@ -156,6 +155,7 @@ The Bot Overview surface renders deterministic behavioral telemetry computed ser
 - `forkRecipe` copies public/template/own recipe → new row owned by caller
 - Strips live scheduling, publication, Turbo window
 - Resets paper ledger to $10,000 cash
+- **All user bots are public by default** (`is_public: true`)
 
 ## 10. Draft & Explicit Save (`useRecipeDraft`)
 - `RecipeSaveState`: `idle` → `saving` → `saved` | `error`

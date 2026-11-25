@@ -59,9 +59,9 @@ describe('forkRecipe', () => {
         expect(inserted).toHaveLength(1);
         expect(inserted[0].user_id).toBe('user-1');
         expect(inserted[0].name).toBe('Copy of Chip Momentum');
-        // A fork never inherits scheduling or publication.
+        // A fork never inherits live scheduling, and all user bots are public by default.
         expect(inserted[0].is_live).toBe(false);
-        expect(inserted[0].is_public).toBe(false);
+        expect(inserted[0].is_public).toBe(true);
         expect(inserted[0].paper_cash).toBe(10000);
     });
 

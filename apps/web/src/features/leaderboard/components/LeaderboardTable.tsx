@@ -1,6 +1,8 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
 import {
     Badge,
+    Button,
+    Card,
     Table,
     TableBody,
     TableCell,
@@ -8,64 +10,45 @@ import {
     TableHeader,
     TableRow,
 } from '@llm-market-bench/ui-design-system';
-import { useState } from 'react';
-import { getModelDisplayInfo } from '../lib/model-helper';
+import { Link } from '@tanstack/react-router';
+import type { LeaderboardSortDir, LeaderboardSortField } from '../api/fetch-leaderboard';
+import { formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
+
+export const LEADERBOARD_PAGE_SIZE = 10;
 
 interface LeaderboardTableProps {
     models: LLMLeaderboardRow[];
     selectedModels: string[];
+    currentPage: number;
+    pageSize?: number;
+    totalCount: number;
+    sortField: LeaderboardSortField;
+    sortOrder: LeaderboardSortDir;
+    isFetching?: boolean;
+    onSortChange: (field: LeaderboardSortField) => void;
+    onPageChange: (page: number) => void;
     onToggleSelectModel: (modelName: string) => void;
-}
-
-type SortField =
-    | 'composite_score'
-    | 'return_pct'
-    | 'win_rate'
-    | 'verifier_approval_rate'
-    | 'consistency_score';
-
-type SortOrder = 'asc' | 'desc';
-
-function sortLeaderboardModels(
-    models: LLMLeaderboardRow[],
-    sortField: SortField,
-    sortOrder: SortOrder,
-): LLMLeaderboardRow[] {
-    const isAsc = sortOrder === 'asc';
-    return [...models].sort((a, b) => {
-        const valA = a[sortField];
-        const valB = b[sortField];
-
-        if (valA === valB) return 0;
-        if (valA === null) return 1;
-        if (valB === null) return -1;
-
-        const comparison = valA < valB ? -1 : 1;
-        return isAsc ? comparison : -comparison;
-    });
 }
 
 export function LeaderboardTable({
     models,
     selectedModels,
+    currentPage,
+    pageSize = LEADERBOARD_PAGE_SIZE,
+    totalCount,
+    sortField,
+    sortOrder,
+    isFetching = false,
+    onSortChange,
+    onPageChange,
     onToggleSelectModel,
 }: LeaderboardTableProps) {
-    const [sortField, setSortField] = useState<SortField>('composite_score');
-    const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const safePage = Math.min(Math.max(currentPage, 1), totalPages);
+    const startIdx = (safePage - 1) * pageSize;
+    const endIdx = Math.min(startIdx + models.length, totalCount);
 
-    const handleSort = (field: SortField) => {
-        if (sortField === field) {
-            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortField(field);
-            setSortOrder('desc');
-        }
-    };
-
-    // Sort models on client side
-    const sortedModels = sortLeaderboardModels(models, sortField, sortOrder);
-
-    const renderSortIndicator = (field: SortField) => {
+    const renderSortIndicator = (field: LeaderboardSortField) => {
         if (sortField !== field) return <span className="text-voxel-muted pl-1">↕</span>;
         return sortOrder === 'asc' ? (
             <span className="text-accent pl-1">▲</span>
@@ -75,57 +58,64 @@ export function LeaderboardTable({
     };
 
     return (
-        <div className="space-y-4 animate-slide-up" style={{ animationDelay: '100ms' }}>
+        <Card variant="default" padding="md" className="scene-scrim flex flex-col gap-4 min-w-0">
+            <div className="flex flex-wrap justify-between items-center gap-2">
+                <h2 className="text-sm font-bold text-voxel-ink uppercase tracking-wider">
+                    Standings{' '}
+                    {isFetching ? (
+                        <span className="text-xs font-normal text-voxel-muted font-mono">
+                            (updating...)
+                        </span>
+                    ) : null}
+                </h2>
+            </div>
             <Table containerClassName="border-voxel-bevel-hi bg-voxel-trough">
                 <TableHeader className="bg-voxel-surface border-b border-voxel-bevel-hi">
                     <TableRow isHoverable={false}>
                         <TableHead className="w-12 text-center">Compare</TableHead>
                         <TableHead className="w-16">Rank</TableHead>
-                        <TableHead className="min-w-[180px]">Model</TableHead>
+                        <TableHead>Competitor</TableHead>
                         <TableHead
+                            align="right"
                             className="cursor-pointer select-none hover:text-voxel-ink"
-                            onClick={() => handleSort('composite_score')}
+                            onClick={() => onSortChange('composite_score')}
                         >
                             Score {renderSortIndicator('composite_score')}
                         </TableHead>
                         <TableHead
+                            align="right"
                             className="cursor-pointer select-none hover:text-voxel-ink"
-                            onClick={() => handleSort('return_pct')}
+                            onClick={() => onSortChange('return_pct')}
                         >
                             Return {renderSortIndicator('return_pct')}
                         </TableHead>
                         <TableHead
+                            align="right"
                             className="cursor-pointer select-none hover:text-voxel-ink"
-                            onClick={() => handleSort('win_rate')}
+                            onClick={() => onSortChange('win_rate')}
                         >
                             Win Rate {renderSortIndicator('win_rate')}
                         </TableHead>
                         <TableHead
+                            align="right"
                             className="cursor-pointer select-none hover:text-voxel-ink"
-                            onClick={() => handleSort('verifier_approval_rate')}
-                        >
-                            Approval {renderSortIndicator('verifier_approval_rate')}
-                        </TableHead>
-                        <TableHead
-                            className="cursor-pointer select-none hover:text-voxel-ink"
-                            onClick={() => handleSort('consistency_score')}
+                            onClick={() => onSortChange('consistency_score')}
                         >
                             Consistency {renderSortIndicator('consistency_score')}
                         </TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody className="divide-white/5">
-                    {sortedModels.map((model) => {
+                    {models.map((model, idx) => {
                         const isSelected = selectedModels.includes(model.model_name);
                         const isSelectionMaxed = selectedModels.length >= 2 && !isSelected;
-                        const originalRank =
-                            models.findIndex((m) => m.model_name === model.model_name) + 1;
+                        const displayRank = model.rank ?? startIdx + idx + 1;
 
                         return (
                             <LeaderboardTableRow
                                 key={model.model_name}
                                 model={model}
-                                originalRank={originalRank}
+                                originalRank={displayRank}
                                 isSelected={isSelected}
                                 isSelectionMaxed={isSelectionMaxed}
                                 onToggleSelectModel={onToggleSelectModel}
@@ -134,12 +124,59 @@ export function LeaderboardTable({
                     })}
                 </TableBody>
             </Table>
-            {selectedModels.length < 2 && (
-                <p className="text-xs font-normal text-voxel-muted font-mono text-right italic">
-                    Select up to 2 models to run side-by-side comparative diagnostics.
+
+            <div className="flex flex-wrap items-center justify-between gap-4 min-w-0">
+                <p className="text-xs font-normal text-voxel-muted font-mono">
+                    {totalCount > 0 && models.length > 0
+                        ? `Showing ${startIdx + 1}–${endIdx} of ${totalCount}`
+                        : 'No competitors match this filter'}
                 </p>
-            )}
-        </div>
+
+                {totalPages > 1 ? (
+                    <nav
+                        aria-label="Leaderboard pages"
+                        className="flex flex-wrap items-center gap-2"
+                    >
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            colorScheme="neutral"
+                            aria-disabled={safePage <= 1}
+                            onClick={() => {
+                                if (safePage > 1) onPageChange(safePage - 1);
+                            }}
+                        >
+                            ← Prev
+                        </Button>
+                        <span
+                            role="status"
+                            className="text-xs font-normal font-mono text-voxel-muted px-2"
+                        >
+                            Page {safePage} of {totalPages}
+                        </span>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            colorScheme="neutral"
+                            aria-disabled={safePage >= totalPages}
+                            onClick={() => {
+                                if (safePage < totalPages) onPageChange(safePage + 1);
+                            }}
+                        >
+                            Next →
+                        </Button>
+                    </nav>
+                ) : null}
+
+                {selectedModels.length < 2 ? (
+                    <p className="text-xs font-normal text-voxel-muted font-mono italic ml-auto">
+                        Select up to 2 competitors to run side-by-side diagnostics.
+                    </p>
+                ) : null}
+            </div>
+        </Card>
     );
 }
 
@@ -151,6 +188,48 @@ interface LeaderboardTableRowProps {
     onToggleSelectModel: (modelName: string) => void;
 }
 
+function CompetitorCell({
+    model,
+    info,
+}: {
+    model: LLMLeaderboardRow;
+    info: ReturnType<typeof getLeaderboardDisplayInfo>;
+}) {
+    const titleNode = model.recipe_id ? (
+        <Link
+            to="/recipes/$recipeId"
+            params={{ recipeId: model.recipe_id }}
+            className="font-bold text-voxel-ink text-sm hover:text-accent underline decoration-voxel-bevel-hi underline-offset-4 truncate"
+        >
+            {info.name}
+        </Link>
+    ) : model.portfolio_id ? (
+        <Link
+            to="/portfolios/$portfolioId"
+            params={{ portfolioId: model.portfolio_id }}
+            className="font-bold text-voxel-ink text-sm hover:text-accent underline decoration-voxel-bevel-hi underline-offset-4 truncate"
+        >
+            {info.name}
+        </Link>
+    ) : (
+        <span className="font-bold text-voxel-ink text-sm truncate">{info.name}</span>
+    );
+
+    return (
+        <div className="flex flex-col gap-0.5 min-w-0">
+            <div className="flex flex-wrap items-center gap-2 min-w-0">
+                <Badge colorScheme={info.badgeColor} variant="soft" size="xs">
+                    {info.categoryLabel}
+                </Badge>
+                {titleNode}
+            </div>
+            <div className="text-xs font-normal text-voxel-muted font-mono tracking-wider truncate">
+                {info.subtitle}
+            </div>
+        </div>
+    );
+}
+
 function LeaderboardTableRow({
     model,
     originalRank,
@@ -158,7 +237,7 @@ function LeaderboardTableRow({
     isSelectionMaxed,
     onToggleSelectModel,
 }: LeaderboardTableRowProps) {
-    const info = getModelDisplayInfo(model.model_name);
+    const info = getLeaderboardDisplayInfo(model);
     const badgeColor =
         originalRank === 1
             ? 'success'
@@ -182,38 +261,27 @@ function LeaderboardTableRow({
                     className="h-4.5 w-4.5 rounded-none border-zinc-700 bg-zinc-800 text-accent focus:ring-accent accent-accent-hover disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed"
                 />
             </TableCell>
-            <TableCell className="font-mono">
+            <TableCell className="font-mono tabular-nums">
                 <Badge colorScheme={badgeColor} variant="soft" size="xs">
                     #{originalRank}
                 </Badge>
             </TableCell>
-            <TableCell>
-                <div className="flex items-center gap-2.5">
-                    <span className="text-sm font-bold shrink-0">{info.emoji}</span>
-                    <div className="truncate">
-                        <div className="font-bold text-zinc-100 text-sm truncate">{info.name}</div>
-                        <div className="text-xs font-normal text-voxel-muted font-mono tracking-wider truncate">
-                            {model.model_name}
-                        </div>
-                    </div>
-                </div>
+            <TableCell className="min-w-0">
+                <CompetitorCell model={model} info={info} />
             </TableCell>
-            <TableCell className="font-mono">{model.composite_score.toFixed(1)}%</TableCell>
-            <TableCell className="font-mono">
+            <TableCell align="right" className="font-mono tabular-nums">
+                {model.composite_score.toFixed(1)}%
+            </TableCell>
+            <TableCell align="right" className="font-mono tabular-nums">
                 <span className={model.return_pct >= 0 ? 'text-success' : 'text-danger'}>
                     {model.return_pct >= 0 ? '+' : ''}
                     {model.return_pct.toFixed(2)}%
                 </span>
             </TableCell>
-            <TableCell tone="muted" className="font-mono">
-                {model.win_rate.toFixed(1)}%
+            <TableCell align="right" tone="muted" className="font-mono tabular-nums">
+                {formatWinRate(model.win_rate)}
             </TableCell>
-            <TableCell tone="muted" className="font-mono">
-                {model.verifier_approval_rate !== null && model.verifier_approval_rate !== undefined
-                    ? `${model.verifier_approval_rate.toFixed(1)}%`
-                    : '—'}
-            </TableCell>
-            <TableCell tone="muted" className="font-mono">
+            <TableCell align="right" tone="muted" className="font-mono tabular-nums">
                 {model.consistency_score.toFixed(1)}%
             </TableCell>
         </TableRow>

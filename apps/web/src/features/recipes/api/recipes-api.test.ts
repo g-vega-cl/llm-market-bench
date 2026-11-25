@@ -332,11 +332,11 @@ describe('saveRecipe', () => {
         expect(update?.payload).not.toHaveProperty('is_public');
     });
 
-    it('applies an explicit publication decision while new recipes default to private', async () => {
+    it('applies an explicit publication decision while new recipes default to public', async () => {
         const { db, calls } = createMockDb({
             'select:strategy_recipes': { data: { user_id: 'user-1' } },
             'update:strategy_recipes': { data: recipeRow({ is_public: true }) },
-            'insert:strategy_recipes': { data: recipeRow() },
+            'insert:strategy_recipes': { data: recipeRow({ is_public: true }) },
         });
         mockAdminDb = db;
 
@@ -348,7 +348,7 @@ describe('saveRecipe', () => {
         expect(updates[0]?.payload).toMatchObject({ is_public: true });
         expect(updates[1]?.payload).toMatchObject({ is_public: false });
         const insert = calls.find((call) => call.op === 'insert');
-        expect(insert?.payload).toMatchObject({ is_public: false });
+        expect(insert?.payload).toMatchObject({ is_public: true });
     });
 
     it('leaves archived_at untouched on an ordinary save', async () => {

@@ -6,6 +6,7 @@
 
 ## Entities
 
+- [[entities/leaderboard]] — ranks LLMs, systematic portfolios, and public user bots across 7d/30d/90d/All-Time windows with composite scoring formulas
 - [[entities/self-hosted-web-deployment]] — Docker image, Nginx front door, compose services, and deploy script for the self-hosted TanStack Start web app
 - [[entities/open-operations-followups]] — Pending infra work that needs a password, a console, or an owner decision: MiniPC sudo reset, cloudflared upgrade, Strata routing gaps, promotion gates
 - [[entities/personality-quiz]] — 16-question investing style diagnostic matching visitors to 16 archetypes and starter recipes

@@ -1808,23 +1808,67 @@ export type Database = {
                     result: Json;
                 }[];
             };
+            get_leaderboard_page: {
+                Args: {
+                    p_category?: string;
+                    p_limit?: number;
+                    p_offset?: number;
+                    p_sort_by?: string;
+                    p_sort_dir?: string;
+                    p_time_window_days?: number;
+                };
+                Returns: {
+                    all_count: number;
+                    api_success_rate: number;
+                    average_confidence: number | null;
+                    composite_score: number;
+                    consistency_score: number;
+                    conviction_score: number | null;
+                    display_name: string;
+                    entity_type: string;
+                    is_live: boolean;
+                    is_page_row: boolean;
+                    is_podium: boolean;
+                    llm_count: number;
+                    model_name: string;
+                    portfolio_id: string | null;
+                    rank: number;
+                    realized_pnl: number;
+                    reasoning_quality_score: number | null;
+                    recipe_id: string | null;
+                    return_pct: number;
+                    system_count: number;
+                    total_count: number;
+                    total_equity: number;
+                    total_trades: number;
+                    trading_activity_rate: number;
+                    trading_performance_score: number;
+                    user_bot_count: number;
+                    win_rate: number | null;
+                }[];
+            };
             get_llm_leaderboard_metrics: {
                 Args: { time_window_days: number };
                 Returns: {
                     api_success_rate: number;
-                    average_confidence: number;
+                    average_confidence: number | null;
                     composite_score: number;
                     consistency_score: number;
+                    conviction_score: number | null;
+                    display_name: string;
+                    entity_type: string;
+                    is_live: boolean;
                     model_name: string;
+                    portfolio_id: string | null;
                     realized_pnl: number;
-                    reasoning_quality_score: number;
+                    reasoning_quality_score: number | null;
+                    recipe_id: string | null;
                     return_pct: number;
                     total_equity: number;
                     total_trades: number;
                     trading_activity_rate: number;
                     trading_performance_score: number;
-                    verifier_approval_rate: number;
-                    win_rate: number;
+                    win_rate: number | null;
                 }[];
             };
             get_memory_chain: {

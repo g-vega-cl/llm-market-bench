@@ -19,6 +19,8 @@ DEFAULT_SPY_TICKER = "SPY"
 MAX_REASON_CHARS = 220
 MAX_FEED_ROWS = 24
 MAX_FEED_SIGNALS_PER_RUN = 3
+LEADERBOARD_WINDOWS = (7, 30, 90, 0)
+ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
 
 
 def _date_of(value: Any) -> str | None:
@@ -411,7 +413,219 @@ def refresh_public_stats(
     _write_desk_materialisations(sb_client, rows, results)
 
     logger.info("Refreshed %d recipe public stats rows (pruned %d)", len(rows), pruned)
-    return {"live_recipes": len(recipes), "rows_written": len(rows), "rows_pruned": pruned}
+    bot_lb_stats = refresh_user_bot_leaderboard_stats(sb_client, page_size=page_size)
+    return {
+        "live_recipes": len(recipes),
+        "rows_written": len(rows),
+        "rows_pruned": pruned,
+        **({"bot_lb_rows_written": bot_lb_stats["rows_written"]} if bot_lb_stats["rows_written"] else {}),
+    }
+
+
+def _to_float(value: Any) -> float | None:
+    if value is None:
+        return None
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed == parsed else None
+
+
+def _daily_close_equity(curve: Any) -> list[tuple[date, float]]:
+    by_day: dict[date, float] = {}
+    for iso_day, eq in parse_equity_curve(curve):
+        try:
+            d = date.fromisoformat(iso_day)
+        except ValueError:
+            continue
+        by_day[d] = eq
+    return sorted(by_day.items(), key=lambda item: item[0])
+
+
+def _open_position_stats(positions: Any) -> tuple[float, int, int]:
+    if not isinstance(positions, list):
+        return 0.0, 0, 0
+    total_val = 0.0
+    wins = 0
+    total = 0
+    for pos in positions:
+        if not isinstance(pos, dict):
+            continue
+        total += 1
+        mv = _to_float(pos.get("market_value"))
+        shares = _to_float(pos.get("shares"))
+        curr = _to_float(pos.get("current_price"))
+        entry = _to_float(pos.get("entry_price"))
+        if mv is not None:
+            total_val += mv
+        elif shares is not None and (curr is not None or entry is not None):
+            total_val += shares * (curr if curr is not None else entry or 0.0)
+        unreal = _to_float(pos.get("unrealized_pnl_net"))
+        if unreal is None and shares is not None and curr is not None and entry is not None:
+            unreal = (curr - entry) * shares
+        if unreal is not None and unreal > 0:
+            wins += 1
+    return total_val, wins, total
+
+
+def _window_trade_stats(trades: Any, start_day: date | None) -> tuple[float, int, int]:
+    if not isinstance(trades, list):
+        return 0.0, 0, 0
+    realized = 0.0
+    wins = 0
+    total = 0
+    for tr in trades:
+        if not isinstance(tr, dict):
+            continue
+        pnl = _to_float(tr.get("pnl_net"))
+        if pnl is None:
+            continue
+        if start_day is not None:
+            stamp = _date_of(tr.get("exit_time")) or _date_of(tr.get("entry_time"))
+            if not stamp:
+                continue
+            try:
+                if date.fromisoformat(stamp) < start_day:
+                    continue
+            except ValueError:
+                continue
+        total += 1
+        realized += pnl
+        if pnl > 0:
+            wins += 1
+    return realized, wins, total
+
+
+def build_bot_leaderboard_window_rows(
+    recipe: dict[str, Any],
+    *,
+    now_utc: datetime | None = None,
+) -> list[dict[str, Any]]:
+    """Compute pre-materialized 7d/30d/90d/All-Time rows for one public user bot."""
+    now = now_utc or datetime.now(UTC)
+    today = now.date()
+    recipe_id = str(recipe.get("id"))
+    cash = _to_float(recipe.get("paper_cash"))
+    if cash is None:
+        cash = 10000.0
+    curve_points = parse_equity_curve(recipe.get("paper_equity_curve") or [])
+    daily_closes = _daily_close_equity(recipe.get("paper_equity_curve") or [])
+    pos_val, open_wins, open_total = _open_position_stats(recipe.get("paper_positions") or [])
+    last_eq = curve_points[-1][1] if curve_points else (cash + pos_val)
+    trades = recipe.get("paper_trades") or []
+    updated_at = now.isoformat()
+
+    rows: list[dict[str, Any]] = []
+    for w in LEADERBOARD_WINDOWS:
+        start_day = (today - timedelta(days=w)) if w > 0 else None
+        start_eq = 10000.0
+        if start_day is not None:
+            for d, eq in daily_closes:
+                if d <= start_day:
+                    start_eq = eq
+                else:
+                    break
+        realized, closed_wins, closed_total = _window_trade_stats(trades, start_day)
+
+        pos_days = 0
+        active_days = 0
+        for idx in range(1, len(daily_closes)):
+            prev_eq = daily_closes[idx - 1][1]
+            curr_day, curr_eq = daily_closes[idx]
+            if start_day is not None and curr_day < start_day:
+                continue
+            if prev_eq > 0 and curr_eq != prev_eq:
+                active_days += 1
+                if curr_eq > prev_eq:
+                    pos_days += 1
+
+        ret_pct = round(((last_eq - start_eq) / start_eq) * 100.0, 2) if start_eq > 0 else 0.0
+        denom = closed_total + open_total
+        win_rate = round(((closed_wins + open_wins) * 100.0) / denom, 2) if denom > 0 else None
+        consistency = round(((pos_days + 2.0) * 100.0) / (active_days + 4.0), 2)
+        est_weekdays = max(1, (w * 5 // 7) if w > 0 else 20)
+        activity_rate = round(min(100.0, (active_days / est_weekdays) * 100.0), 2)
+        has_activity = closed_total > 0 or open_total > 0 or active_days > 0 or abs(last_eq - start_eq) > 0.01
+        rows.append(
+            {
+                "recipe_id": recipe_id,
+                "time_window_days": w,
+                "total_equity": round(last_eq, 2),
+                "return_pct": ret_pct,
+                "realized_pnl": round(realized, 2),
+                "win_rate": win_rate,
+                "total_trades": closed_total,
+                "consistency_score": consistency,
+                "trading_activity_rate": activity_rate,
+                "has_activity": has_activity,
+                "updated_at": updated_at,
+            }
+        )
+    return rows
+
+
+def _fetch_all_public_user_bots(sb_client: Any, page_size: int = 200) -> list[dict[str, Any]]:
+    collected: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        page = (
+            sb_client.table("strategy_recipes")
+            .select(
+                "id, user_id, name, is_live, is_public, is_template, paper_cash, paper_trades, paper_positions, paper_equity_curve, graph_json"
+            )
+            .eq("is_public", True)
+            .eq("is_template", False)
+            .is_("archived_at", "null")
+            .order("updated_at", desc=True)
+            .range(offset, offset + page_size - 1)
+            .execute()
+        )
+        rows = page.data or []
+        for row in rows:
+            if row.get("user_id") == ANONYMOUS_USER_ID:
+                continue
+            graph = row.get("graph_json")
+            stages = graph.get("stages") if isinstance(graph, dict) else None
+            if not isinstance(stages, list) or len(stages) != 1:
+                continue
+            collected.append(row)
+        if len(rows) < page_size:
+            return collected
+        offset += page_size
+
+
+def refresh_user_bot_leaderboard_stats(
+    sb_client: Any,
+    *,
+    page_size: int = 200,
+) -> dict[str, int]:
+    """Rebuild `user_bot_leaderboard_stats` for every public non-archived user bot."""
+    try:
+        bots = _fetch_all_public_user_bots(sb_client, page_size=page_size)
+    except Exception:
+        logger.exception("Failed fetching public user bots for leaderboard stats")
+        return {"bots": 0, "rows_written": 0}
+    if not bots:
+        return {"bots": 0, "rows_written": 0}
+
+    now_utc = datetime.now(UTC)
+    payload: list[dict[str, Any]] = []
+    for bot in bots:
+        if bot.get("id"):
+            payload.extend(build_bot_leaderboard_window_rows(bot, now_utc=now_utc))
+    if not payload:
+        return {"bots": len(bots), "rows_written": 0}
+
+    try:
+        sb_client.table("user_bot_leaderboard_stats").upsert(
+            payload, on_conflict="recipe_id,time_window_days"
+        ).execute()
+    except Exception:
+        logger.exception("Failed upserting user_bot_leaderboard_stats")
+        return {"bots": len(bots), "rows_written": 0}
+
+    return {"bots": len(bots), "rows_written": len(payload)}
 
 
 def _prune_stale_rows(sb_client: Any, live_ids: set[str], page_size: int = 500) -> int:

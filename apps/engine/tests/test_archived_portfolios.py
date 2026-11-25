@@ -131,3 +131,19 @@ def test_board_never_excludes_a_current_model_owner():
 
     assert "gpt-6-luna" in current
     assert excluded & current == set(), f"current model owners excluded from the board: {sorted(excluded & current)}"
+
+
+def test_latest_leaderboard_rpc_sql_matches_models_json_allowlist_and_archived_owners():
+    """SQL allowlist/archived CTE in get_llm_leaderboard_metrics must stay in parity with models.json."""
+    models = json.loads((REPO_ROOT / "packages" / "config" / "models.json").read_text())
+    expected_llms = {
+        models[k] for k in ("OPENAI_MODEL", "ANTHROPIC_MODEL", "GEMINI_MODEL", "DEEPSEEK_MODEL", "MINIMAX_MODEL")
+    }
+    candidates = sorted(p for p in BOARD_MIGRATION_DIR.glob("*.sql") if "get_llm_leaderboard_metrics" in p.read_text())
+    assert candidates
+    sql = candidates[-1].read_text()
+
+    for owner in expected_llms:
+        assert f"'{owner}'" in sql, f"{candidates[-1].name} missing active LLM '{owner}'"
+    for archived in ARCHIVED_PORTFOLIO_OWNER_IDS:
+        assert f"'{archived}'" in sql, f"{candidates[-1].name} missing archived owner '{archived}'"

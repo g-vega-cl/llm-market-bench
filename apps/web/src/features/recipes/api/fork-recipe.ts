@@ -64,7 +64,7 @@ export async function forkRecipe(recipeId: string, userId: string) {
             description: row.description || '',
             cadence: row.cadence || '3h',
             graph_json: row.graph_json,
-            is_public: false,
+            is_public: true,
             is_template: false,
             is_live: false,
             concurrency_config: {

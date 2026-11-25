@@ -83,3 +83,44 @@ def test_leaderboard_keeps_confidence_as_informational_column():
     """Average confidence stays visible; it just stops earning points."""
     _, content = _latest_leaderboard_definition()
     assert "average_confidence" in _normalise(content)
+
+
+def test_latest_leaderboard_removes_verifier_and_fixes_win_rate_consistency_and_unified_competitors():
+    """Latest leaderboard RPC must drop verifier scoring, fix win_rate/consistency, and unify LLMs + sys + user bots."""
+    filename, content = _latest_leaderboard_definition()
+    sql = _normalise(content)
+
+    # 1. No verifier approval rate weighting or output column
+    assert "verifier_approval_rate" not in sql, f"{filename} must remove verifier_approval_rate"
+    assert "verifier_app_rate" not in sql, f"{filename} must not weight verifier_app_rate"
+
+    # 2. Win rate counts closed exit trades (SELL/COVER) rather than dividing by all BUY rows, with open-position fallback
+    assert "in ('sell', 'cover')" in sql, f"{filename} must restrict realized win rate to SELL/COVER exit trades"
+    assert "from public.position_pnl" in sql, f"{filename} must fall back to open positions when closed trades = 0"
+
+    # 3. Consistency measures daily equity return positivity, not API uptime
+    assert "0.7 * coalesce(mdec.api_succ_rate" not in sql, f"{filename} must not use API uptime as consistency_score"
+    assert "lag(" in sql and "from public.portfolio_performance" in sql, (
+        f"{filename} must compute consistency_score from portfolio_performance daily returns"
+    )
+
+    # 4. Unified competitors: active portfolios (LLMs + sys-*) + all non-archived user bots
+    assert "from public.strategy_recipes" in sql, f"{filename} must include user bots from strategy_recipes"
+    assert "entity_type" in sql, f"{filename} must return entity_type"
+    assert "sys-daily-spy-minimax-m3" in sql, f"{filename} must exclude archived portfolios"
+
+    # 5. Materialized user bot stats + indexes + server-side pagination + non-LLM neutrality
+    assert "public.user_bot_leaderboard_stats" in sql, (
+        f"{filename} must read pre-materialized user_bot_leaderboard_stats instead of unpacking JSONB"
+    )
+    assert "jsonb_array_elements" not in sql, f"{filename} must not unpack JSONB arrays on request path"
+    assert "signal = 'short'" in sql, f"{filename} must include open SHORT lots in open-position win rate"
+    assert "get_leaderboard_page" in sql, f"{filename} must expose STABLE server-side get_leaderboard_page RPC"
+    assert "create index if not exists idx_decisions_created_at" in sql, f"{filename} must index decisions(created_at)"
+
+
+def test_strategy_recipes_default_public_migration_exists():
+    """All non-archived user bots must be public by default and backfilled."""
+    sql = _normalise("\n".join(content for _, content in _migration_files()))
+    assert "alter table public.strategy_recipes alter column is_public set default true" in sql
+    assert "update public.strategy_recipes set is_public = true" in sql

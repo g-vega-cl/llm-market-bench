@@ -114,22 +114,43 @@ export type TradeWithReasoning = Trade & {
     metadata?: Record<string, any> | null;
 };
 
+export type LeaderboardEntityType = 'llm' | 'system' | 'user_bot';
+
 export interface LLMLeaderboardRow {
     model_name: string;
+    display_name?: string;
+    entity_type?: LeaderboardEntityType;
+    portfolio_id?: string | null;
+    recipe_id?: string | null;
+    is_live?: boolean;
     total_equity: number;
     return_pct: number;
     realized_pnl: number;
-    win_rate: number;
+    win_rate: number | null;
     total_trades: number;
-    verifier_approval_rate: number | null;
-    average_confidence: number;
-    conviction_score: number;
+    average_confidence: number | null;
+    conviction_score: number | null;
     api_success_rate: number;
     trading_activity_rate: number;
     trading_performance_score: number;
-    reasoning_quality_score: number;
+    reasoning_quality_score: number | null;
     consistency_score: number;
     composite_score: number;
+    rank?: number;
+}
+
+export interface LeaderboardCategoryCounts {
+    all: number;
+    llm: number;
+    system: number;
+    user_bot: number;
+}
+
+export interface LeaderboardPagePayload {
+    rows: LLMLeaderboardRow[];
+    podium: LLMLeaderboardRow[];
+    totalCount: number;
+    counts: LeaderboardCategoryCounts;
 }
 
 export type CongressTrade = Database['public']['Tables']['congress_trades']['Row'];

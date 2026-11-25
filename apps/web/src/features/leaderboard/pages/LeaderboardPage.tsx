@@ -1,58 +1,133 @@
-import type { LLMLeaderboardRow } from '@llm-market-bench/database';
-import { Button, PageLayout, SectionHeading, Skeleton } from '@llm-market-bench/ui-design-system';
+import type { LeaderboardPagePayload, LLMLeaderboardRow } from '@llm-market-bench/database';
+import {
+    type AtmospherePhase,
+    Button,
+    Card,
+    PageLayout,
+    SceneStage,
+    Skeleton,
+} from '@llm-market-bench/ui-design-system';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { createServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
-import { fetchLeaderboard } from '../api/fetch-leaderboard';
+import { CedarRidgeBackdrop } from '~/features/home/backdrop/CedarRidgeBackdrop';
+import { SceneHudControls } from '~/features/home/backdrop/SceneHudControls';
+import { useDioramaStage } from '~/features/home/backdrop/useDioramaStage';
+import {
+    type FetchLeaderboardPageParams,
+    fetchLeaderboardPage,
+    type LeaderboardCategory,
+    type LeaderboardSortDir,
+    type LeaderboardSortField,
+} from '../api/fetch-leaderboard';
 import { LeaderboardPodium } from '../components/LeaderboardPodium';
-import { LeaderboardTable } from '../components/LeaderboardTable';
+import { LEADERBOARD_PAGE_SIZE, LeaderboardTable } from '../components/LeaderboardTable';
 import { ModelComparison } from '../components/ModelComparison';
 
-const getLeaderboardFn = createServerFn({ method: 'GET' })
-    .validator((d: number | null) => d)
-    .handler(async ({ data: timeframe }: { data: number | null }) => {
-        return fetchLeaderboard(timeframe);
+const getLeaderboardPageFn = createServerFn({ method: 'GET' })
+    .validator((d: FetchLeaderboardPageParams) => d)
+    .handler(async ({ data }: { data: FetchLeaderboardPageParams }) => {
+        return fetchLeaderboardPage(data);
     });
 
 interface LeaderboardPageProps {
-    initialData: LLMLeaderboardRow[];
+    initialData: LeaderboardPagePayload;
+    initialAtmosphere?: AtmospherePhase;
 }
 
-export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
+export function LeaderboardPage({ initialData, initialAtmosphere }: LeaderboardPageProps) {
     const [timeframe, setTimeframe] = useState<number | null>(30);
-    const [selectedModels, setSelectedModels] = useState<string[]>([]);
+    const [category, setCategory] = useState<LeaderboardCategory>('all');
+    const [sortField, setSortField] = useState<LeaderboardSortField>('composite_score');
+    const [sortOrder, setSortOrder] = useState<LeaderboardSortDir>('desc');
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [selectedEntries, setSelectedEntries] = useState<LLMLeaderboardRow[]>([]);
 
-    const {
-        data: models = [],
-        isLoading,
-        isFetching,
-    } = useQuery<LLMLeaderboardRow[]>({
-        queryKey: ['leaderboard', timeframe],
-        queryFn: () => getLeaderboardFn({ data: timeframe }),
-        initialData: timeframe === 30 ? initialData : undefined,
+    const { atmosphere, motion, cycleAtmosphere, toggleMotion } =
+        useDioramaStage(initialAtmosphere);
+
+    const isDefaultQuery =
+        timeframe === 30 &&
+        category === 'all' &&
+        sortField === 'composite_score' &&
+        sortOrder === 'desc' &&
+        currentPage === 1;
+
+    const { data, isLoading, isFetching } = useQuery<LeaderboardPagePayload>({
+        queryKey: ['leaderboard', timeframe, category, sortField, sortOrder, currentPage],
+        queryFn: () =>
+            getLeaderboardPageFn({
+                data: {
+                    timeWindowDays: timeframe,
+                    category,
+                    sortBy: sortField,
+                    sortDir: sortOrder,
+                    page: currentPage,
+                    pageSize: LEADERBOARD_PAGE_SIZE,
+                },
+            }),
+        initialData: isDefaultQuery ? initialData : undefined,
+        staleTime: 60_000,
         refetchOnWindowFocus: false,
         placeholderData: keepPreviousData,
     });
 
+    const pageData = data ?? initialData;
+    const rows = pageData.rows;
+    const podium = pageData.podium;
+    const counts = pageData.counts;
+    const totalCount = pageData.totalCount;
+
+    const selectedIds = selectedEntries.map((m) => m.model_name);
+
     const handleToggleSelectModel = (modelName: string) => {
-        setSelectedModels((prev) => {
-            if (prev.includes(modelName)) {
-                return prev.filter((m) => m !== modelName);
+        setSelectedEntries((prev) => {
+            if (prev.some((m) => m.model_name === modelName)) {
+                return prev.filter((m) => m.model_name !== modelName);
             }
             if (prev.length >= 2) {
                 return prev;
             }
-            return [...prev, modelName];
+            const match =
+                rows.find((m) => m.model_name === modelName) ??
+                podium.find((m) => m.model_name === modelName);
+            return match ? [...prev, match] : prev;
         });
     };
 
     const handleClearComparison = () => {
-        setSelectedModels([]);
+        setSelectedEntries([]);
     };
 
-    // Find selected models in the list
-    const modelA = models.find((m: LLMLeaderboardRow) => m.model_name === selectedModels[0]);
-    const modelB = models.find((m: LLMLeaderboardRow) => m.model_name === selectedModels[1]);
+    const handleSortChange = (field: LeaderboardSortField) => {
+        if (sortField === field) {
+            setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+        } else {
+            setSortField(field);
+            setSortOrder('desc');
+        }
+        setCurrentPage(1);
+    };
+
+    const handleTimeframeChange = (nextTimeframe: number | null) => {
+        setTimeframe(nextTimeframe);
+        setCurrentPage(1);
+        setSelectedEntries([]);
+    };
+
+    const categoryTabs: { id: LeaderboardCategory; label: string; count: number }[] = [
+        { id: 'all', label: 'All', count: counts.all },
+        { id: 'llm', label: 'LLMs', count: counts.llm },
+        { id: 'system', label: 'System', count: counts.system },
+        { id: 'user_bot', label: 'User Bots', count: counts.user_bot },
+    ];
+
+    const modelA = selectedEntries[0]
+        ? (rows.find((m) => m.model_name === selectedEntries[0].model_name) ?? selectedEntries[0])
+        : undefined;
+    const modelB = selectedEntries[1]
+        ? (rows.find((m) => m.model_name === selectedEntries[1].model_name) ?? selectedEntries[1])
+        : undefined;
 
     const timeframes = [
         { label: '7 Days', value: 7 },
@@ -62,38 +137,87 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
     ];
 
     return (
-        <PageLayout>
-            <div className="space-y-8 animate-in fade-in duration-500">
-                {/* Header */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-                    <div>
-                        <SectionHeading>LLM Leaderboard</SectionHeading>
-                        <p className="text-zinc-400 text-xs font-normal leading-relaxed">
-                            Rankings and diagnostics evaluating trading performance, reasoning
-                            quality, and consistency.
-                        </p>
+        <div className="min-h-screen bg-voxel-canvas text-voxel-ink flex flex-col">
+            <SceneStage
+                variant="hero"
+                backdropMode="page"
+                atmosphere={atmosphere}
+                motionRole="reactive"
+                aria-label="Leaderboard header"
+                backdrop={
+                    <CedarRidgeBackdrop
+                        atmosphere={atmosphere}
+                        motion={motion}
+                        className="h-full w-full"
+                    />
+                }
+            >
+                <Card variant="default" padding="md" className="scene-scrim flex flex-col gap-4">
+                    <div className="flex flex-wrap items-start justify-between gap-4 min-w-0">
+                        <div className="flex flex-col gap-1 min-w-0 flex-1 basis-72">
+                            <h1 className="text-lg font-bold text-voxel-ink">Leaderboard</h1>
+                            <p className="text-xs font-normal text-voxel-muted leading-relaxed">
+                                Unified rankings across LLMs, systematic portfolios, and public user
+                                bots — scored on return, win rate, and daily return consistency.
+                            </p>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                            <SceneHudControls
+                                atmosphere={atmosphere}
+                                motion={motion}
+                                onCycleAtmosphere={cycleAtmosphere}
+                                onTogglePaused={toggleMotion}
+                            />
+                        </div>
                     </div>
 
-                    {/* Timeframe selector */}
-                    <div className="flex bg-voxel-trough p-1 rounded-none border border-voxel-bevel-hi shrink-0 self-start md:self-auto shadow-sm gap-1">
-                        {timeframes.map((tf) => (
-                            <Button
-                                key={tf.label}
-                                type="button"
-                                size="sm"
-                                variant={timeframe === tf.value ? 'solid' : 'outline'}
-                                colorScheme={timeframe === tf.value ? 'accent' : 'neutral'}
-                                onClick={() => setTimeframe(tf.value)}
-                                className="font-mono"
-                            >
-                                {tf.label}
-                            </Button>
-                        ))}
-                    </div>
-                </div>
+                    <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-voxel-bevel-hi">
+                        {/* Category Filter Tabs */}
+                        <div className="voxel-trough flex flex-wrap items-center gap-1 p-1 rounded-none">
+                            {categoryTabs.map((tab) => (
+                                <Button
+                                    key={tab.id}
+                                    type="button"
+                                    size="sm"
+                                    variant={category === tab.id ? 'solid' : 'outline'}
+                                    colorScheme={category === tab.id ? 'accent' : 'neutral'}
+                                    onClick={() => {
+                                        setCategory(tab.id);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    {tab.label} ({tab.count})
+                                </Button>
+                            ))}
+                        </div>
 
-                {/* Loading state indicator */}
-                {isLoading && models.length === 0 ? (
+                        {/* Timeframe selector */}
+                        <div className="voxel-trough flex flex-wrap items-center gap-1 p-1 rounded-none">
+                            {timeframes.map((tf) => (
+                                <Button
+                                    key={tf.label}
+                                    type="button"
+                                    size="sm"
+                                    variant={timeframe === tf.value ? 'solid' : 'outline'}
+                                    colorScheme={timeframe === tf.value ? 'accent' : 'neutral'}
+                                    onClick={() => handleTimeframeChange(tf.value)}
+                                    className="font-mono"
+                                >
+                                    {tf.label}
+                                </Button>
+                            ))}
+                        </div>
+                    </div>
+                </Card>
+            </SceneStage>
+
+            <PageLayout
+                maxWidth="lg"
+                withPadding={false}
+                className="relative z-10 flex flex-col gap-6 px-6 pb-8"
+            >
+                {isLoading && rows.length === 0 ? (
                     <div className="flex flex-col gap-6" aria-busy="true">
                         <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-6 items-stretch">
                             <Skeleton variant="card" lines={4} />
@@ -104,42 +228,34 @@ export function LeaderboardPage({ initialData }: LeaderboardPageProps) {
                     </div>
                 ) : (
                     <>
-                        {/* Podium Section (Top 3) */}
-                        {models.length > 0 && <LeaderboardPodium models={models} />}
+                        {podium.length > 0 ? <LeaderboardPodium models={podium} /> : null}
 
-                        {/* Leaderboard Grid / Table */}
-                        <div className="flex flex-col gap-4">
-                            <div className="flex justify-between items-center">
-                                <h2 className="font-heading text-sm font-bold text-zinc-100 uppercase tracking-wider">
-                                    All Running Models{' '}
-                                    {isFetching && (
-                                        <span className="text-xs text-voxel-muted font-mono normal-case">
-                                            (updating...)
-                                        </span>
-                                    )}
-                                </h2>
-                            </div>
-                            <LeaderboardTable
-                                models={models}
-                                selectedModels={selectedModels}
-                                onToggleSelectModel={handleToggleSelectModel}
+                        <LeaderboardTable
+                            models={rows}
+                            selectedModels={selectedIds}
+                            currentPage={currentPage}
+                            pageSize={LEADERBOARD_PAGE_SIZE}
+                            totalCount={totalCount}
+                            sortField={sortField}
+                            sortOrder={sortOrder}
+                            isFetching={isFetching}
+                            onSortChange={handleSortChange}
+                            onPageChange={setCurrentPage}
+                            onToggleSelectModel={handleToggleSelectModel}
+                        />
+
+                        {modelA && modelB ? (
+                            <ModelComparison
+                                modelA={modelA}
+                                modelB={modelB}
+                                onClear={handleClearComparison}
                             />
-                        </div>
-
-                        {/* Model Comparison Side-by-Side */}
-                        {modelA && modelB && (
-                            <div className="mt-12 pt-12 border-t border-white/10">
-                                <ModelComparison
-                                    modelA={modelA}
-                                    modelB={modelB}
-                                    onClear={handleClearComparison}
-                                />
-                            </div>
-                        )}
+                        ) : null}
                     </>
                 )}
-            </div>
-        </PageLayout>
+            </PageLayout>
+        </div>
     );
 }
+
 export default LeaderboardPage;

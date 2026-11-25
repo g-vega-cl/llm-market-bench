@@ -1,6 +1,6 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
 import { Badge, Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { getModelDisplayInfo } from '../lib/model-helper';
+import { formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
 
 interface ModelComparisonProps {
     modelA: LLMLeaderboardRow;
@@ -9,8 +9,8 @@ interface ModelComparisonProps {
 }
 
 export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProps) {
-    const infoA = getModelDisplayInfo(modelA.model_name);
-    const infoB = getModelDisplayInfo(modelB.model_name);
+    const infoA = getLeaderboardDisplayInfo(modelA);
+    const infoB = getLeaderboardDisplayInfo(modelB);
 
     const compareMetrics = [
         {
@@ -41,9 +41,15 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
             label: 'Win Rate',
             valA: modelA.win_rate,
             valB: modelB.win_rate,
-            formattedA: `${modelA.win_rate.toFixed(1)}%`,
-            formattedB: `${modelB.win_rate.toFixed(1)}%`,
-            isHigherBetter: true,
+            formattedA: formatWinRate(modelA.win_rate),
+            formattedB: formatWinRate(modelB.win_rate),
+            isHigherBetter:
+                modelA.win_rate !== null &&
+                modelA.win_rate !== undefined &&
+                modelB.win_rate !== null &&
+                modelB.win_rate !== undefined
+                    ? true
+                    : null,
         },
         {
             label: 'Total Trades',
@@ -51,96 +57,79 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
             valB: Number(modelB.total_trades),
             formattedA: String(modelA.total_trades),
             formattedB: String(modelB.total_trades),
-            isHigherBetter: null, // neutral
+            isHigherBetter: null,
         },
         {
-            label: 'Verifier Approval',
-            valA: modelA.verifier_approval_rate,
-            valB: modelB.verifier_approval_rate,
-            formattedA:
-                modelA.verifier_approval_rate !== null &&
-                modelA.verifier_approval_rate !== undefined
-                    ? `${modelA.verifier_approval_rate.toFixed(1)}%`
-                    : '—',
-            formattedB:
-                modelB.verifier_approval_rate !== null &&
-                modelB.verifier_approval_rate !== undefined
-                    ? `${modelB.verifier_approval_rate.toFixed(1)}%`
-                    : '—',
-            isHigherBetter:
-                modelA.verifier_approval_rate !== null &&
-                modelA.verifier_approval_rate !== undefined &&
-                modelB.verifier_approval_rate !== null &&
-                modelB.verifier_approval_rate !== undefined
-                    ? true
-                    : null,
+            label: 'Consistency',
+            valA: modelA.consistency_score,
+            valB: modelB.consistency_score,
+            formattedA: `${modelA.consistency_score.toFixed(1)}%`,
+            formattedB: `${modelB.consistency_score.toFixed(1)}%`,
+            isHigherBetter: true,
         },
         {
             label: 'Conviction Score',
             valA: modelA.conviction_score,
             valB: modelB.conviction_score,
-            formattedA: `${modelA.conviction_score.toFixed(1)}`,
-            formattedB: `${modelB.conviction_score.toFixed(1)}`,
-            isHigherBetter: true,
+            formattedA:
+                modelA.conviction_score !== null && modelA.conviction_score !== undefined
+                    ? `${modelA.conviction_score.toFixed(1)}`
+                    : '—',
+            formattedB:
+                modelB.conviction_score !== null && modelB.conviction_score !== undefined
+                    ? `${modelB.conviction_score.toFixed(1)}`
+                    : '—',
+            isHigherBetter:
+                modelA.conviction_score !== null &&
+                modelA.conviction_score !== undefined &&
+                modelB.conviction_score !== null &&
+                modelB.conviction_score !== undefined
+                    ? true
+                    : null,
         },
         {
             label: 'Average Confidence',
             valA: modelA.average_confidence,
             valB: modelB.average_confidence,
-            formattedA: `${modelA.average_confidence.toFixed(1)}%`,
-            formattedB: `${modelB.average_confidence.toFixed(1)}%`,
-            isHigherBetter: null, // stated confidence is informational, not a rank signal
-        },
-        {
-            label: 'API Success Rate',
-            valA: modelA.api_success_rate,
-            valB: modelB.api_success_rate,
-            formattedA: `${modelA.api_success_rate.toFixed(1)}%`,
-            formattedB: `${modelB.api_success_rate.toFixed(1)}%`,
-            isHigherBetter: true,
-        },
-        {
-            label: 'Trading Activity',
-            valA: modelA.trading_activity_rate,
-            valB: modelB.trading_activity_rate,
-            formattedA: `${modelA.trading_activity_rate.toFixed(1)}%`,
-            formattedB: `${modelB.trading_activity_rate.toFixed(1)}%`,
-            isHigherBetter: true,
+            formattedA:
+                modelA.average_confidence !== null && modelA.average_confidence !== undefined
+                    ? `${modelA.average_confidence.toFixed(1)}%`
+                    : '—',
+            formattedB:
+                modelB.average_confidence !== null && modelB.average_confidence !== undefined
+                    ? `${modelB.average_confidence.toFixed(1)}%`
+                    : '—',
+            isHigherBetter: null,
         },
     ];
 
     return (
-        <section className="space-y-6 animate-scale-in">
-            <div className="flex justify-between items-center">
+        <section className="flex flex-col gap-6 pt-6 border-t border-voxel-bevel-hi">
+            <div className="flex flex-wrap justify-between items-center gap-4">
                 <SectionHeading>Comparative Diagnostics</SectionHeading>
-                <Button variant="outline" onClick={onClear} className="text-xs">
+                <Button type="button" variant="outline" onClick={onClear}>
                     Clear Selection
                 </Button>
             </div>
 
             <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,20rem),1fr))] gap-6 items-stretch">
-                {/* Model A Card */}
+                {/* Competitor A */}
                 <Card
                     variant="default"
                     padding="md"
-                    className="h-full flex flex-col justify-between gap-4"
+                    className="scene-scrim h-full flex flex-col justify-between gap-4 min-w-0"
                 >
-                    <div className="flex items-center gap-3 border-b border-voxel-bevel-hi pb-3">
-                        <span className="text-sm font-bold">{infoA.emoji}</span>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-bold text-voxel-ink">{infoA.name}</h3>
-                                <Badge colorScheme="neutral" variant="soft" size="xs">
-                                    Model A
-                                </Badge>
-                            </div>
-                            <span className="text-xs font-normal text-voxel-muted font-mono tracking-wider">
-                                {modelA.model_name}
-                            </span>
-                        </div>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-voxel-bevel-hi pb-3 min-w-0">
+                        <Badge colorScheme={infoA.badgeColor} variant="soft" size="xs">
+                            {infoA.categoryLabel}
+                        </Badge>
+                        <h3 className="text-sm font-bold text-voxel-ink truncate">{infoA.name}</h3>
+                        <Badge colorScheme="neutral" variant="soft" size="xs">
+                            A
+                        </Badge>
                     </div>
 
-                    <div className="space-y-2 mt-auto">
+                    <div className="flex flex-col gap-2 mt-auto">
                         {compareMetrics.map((m) => {
                             const isWin =
                                 m.isHigherBetter !== null &&
@@ -156,22 +145,22 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                             return (
                                 <div
                                     key={m.label}
-                                    className={`voxel-trough rounded-none flex justify-between items-center p-2.5 transition-all ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
+                                    className={`voxel-trough rounded-none flex justify-between items-center p-2.5 gap-2 ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
                                 >
                                     <span className="text-xs font-normal text-voxel-muted font-mono uppercase tracking-wider">
                                         {m.label}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <span
-                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-voxel-muted' : 'text-voxel-ink'}`}
+                                            className={`font-mono tabular-nums text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-voxel-muted' : 'text-voxel-ink'}`}
                                         >
                                             {m.formattedA}
                                         </span>
-                                        {isWin && (
+                                        {isWin ? (
                                             <Badge colorScheme="success" variant="solid" size="xs">
                                                 WIN
                                             </Badge>
-                                        )}
+                                        ) : null}
                                     </div>
                                 </div>
                             );
@@ -179,28 +168,23 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                     </div>
                 </Card>
 
-                {/* Model B Card */}
+                {/* Competitor B */}
                 <Card
                     variant="default"
                     padding="md"
-                    className="h-full flex flex-col justify-between gap-4"
+                    className="scene-scrim h-full flex flex-col justify-between gap-4 min-w-0"
                 >
-                    <div className="flex items-center gap-3 border-b border-voxel-bevel-hi pb-3">
-                        <span className="text-sm font-bold">{infoB.emoji}</span>
-                        <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className="text-sm font-bold text-voxel-ink">{infoB.name}</h3>
-                                <Badge colorScheme="neutral" variant="soft" size="xs">
-                                    Model B
-                                </Badge>
-                            </div>
-                            <span className="text-xs font-normal text-voxel-muted font-mono tracking-wider">
-                                {modelB.model_name}
-                            </span>
-                        </div>
+                    <div className="flex flex-wrap items-center gap-2 border-b border-voxel-bevel-hi pb-3 min-w-0">
+                        <Badge colorScheme={infoB.badgeColor} variant="soft" size="xs">
+                            {infoB.categoryLabel}
+                        </Badge>
+                        <h3 className="text-sm font-bold text-voxel-ink truncate">{infoB.name}</h3>
+                        <Badge colorScheme="neutral" variant="soft" size="xs">
+                            B
+                        </Badge>
                     </div>
 
-                    <div className="space-y-2 mt-auto">
+                    <div className="flex flex-col gap-2 mt-auto">
                         {compareMetrics.map((m) => {
                             const isWin =
                                 m.isHigherBetter !== null &&
@@ -216,22 +200,22 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
                             return (
                                 <div
                                     key={m.label}
-                                    className={`voxel-trough rounded-none flex justify-between items-center p-2.5 transition-all ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
+                                    className={`voxel-trough rounded-none flex justify-between items-center p-2.5 gap-2 ${isWin ? 'border-success/40' : isLoss ? 'opacity-80' : ''}`}
                                 >
                                     <span className="text-xs font-normal text-voxel-muted font-mono uppercase tracking-wider">
                                         {m.label}
                                     </span>
                                     <div className="flex items-center gap-2">
                                         <span
-                                            className={`font-mono text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-voxel-muted' : 'text-voxel-ink'}`}
+                                            className={`font-mono tabular-nums text-sm font-bold ${isWin ? 'text-success' : isLoss ? 'text-voxel-muted' : 'text-voxel-ink'}`}
                                         >
                                             {m.formattedB}
                                         </span>
-                                        {isWin && (
+                                        {isWin ? (
                                             <Badge colorScheme="success" variant="solid" size="xs">
                                                 WIN
                                             </Badge>
-                                        )}
+                                        ) : null}
                                     </div>
                                 </div>
                             );

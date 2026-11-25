@@ -164,7 +164,7 @@ export function BuilderChatPanel({
 
                 <div
                     data-testid="builder-stage-card"
-                    className="scene-scrim voxel-card flex w-full max-w-3xl flex-col gap-[clamp(0.75rem,1.4vw,1rem)] rounded-none p-[clamp(1rem,2.2vw,1.5rem)] min-w-0"
+                    className="scene-scrim voxel-card flex w-full max-w-3xl flex-col gap-[clamp(0.625rem,1.2vw,1rem)] rounded-none p-[clamp(0.75rem,2vw,1.5rem)] min-w-0"
                 >
                     <div
                         aria-hidden="true"
@@ -228,7 +228,10 @@ export function BuilderChatPanel({
                         >
                             talk to our AI advisor
                         </Link>
-                        .
+                        .{' '}
+                        {userId || chat.pendingIdea
+                            ? null
+                            : 'Sign in when ready to compile — drafts stay saved in this browser.'}
                     </p>
 
                     <BuilderStepper activeStep={activeStep} />

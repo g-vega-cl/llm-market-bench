@@ -97,7 +97,9 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 
 ## Cedar Ridge Layered Backdrop (`CedarRidgeBackdrop`)
 
-`/build` mounts a second, canvas-free world inside the same `SceneStage` backdrop slot: `apps/web/src/features/home/backdrop/CedarRidgeBackdrop.tsx` renders six stacked DOM/CSS/SVG planes, so the builder pays for no canvas, no GL context and no offscreen baking while still reading as a living landscape. Geometry lives in the component, colour comes from tokens (`--color-accent`, `--color-voxel-ink`, `--color-voxel-bevel-hi`) plus a small `RIDGE` paint constant for the silhouette and foliage shades.
+`/build` mounts a second, canvas-free world inside the same `SceneStage` backdrop slot: `apps/web/src/features/home/backdrop/CedarRidgeBackdrop.tsx` renders six stacked DOM/CSS/SVG planes, so the builder pays for no canvas, no GL context and no offscreen baking while still reading as a living landscape.
+
+### Composition
 
 | Plane | Contents | `--cr-depth` |
 |---|---|---|
@@ -108,13 +110,21 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 | 4 | forest floor: lit band, dot matrix, near-fade gradient, swaying grass | `0.56` |
 | 5 | meadow fauna via `CedarMeadowFauna`: lantern-bot, fox, four fireflies | `0.74` |
 
+### Component decomposition
+
+- `CedarRidgeBackdrop.tsx` — the `data-testid="cedar-ridge-backdrop"` root (`data-world="cedar-ridge"`) with the six `.cr-layer` planes, the `RIDGE` paint constant, and the `atmosphere` / `paused` / `className` props (root carries `data-atmosphere` and `data-paused`). Geometry lives in the component; surface colour comes from tokens (`--color-accent`, `--color-voxel-ink`, `--color-voxel-bevel-hi`, `--color-voxel-muted`, `--color-voxel-trough`, `bg-voxel-surface`).
+- `CedarMoon.tsx` — a stepped 14×14 pixel moon drawn as `<rect>` rows (not a circle, so the silhouette matches the pixel-art world) with three craters in `--color-accent-dark`, wrapped in a `.cr-moon-halo` soft radial halo; root is `.cr-celestial`, which the atmosphere rules move vertically.
+- `CedarMeadowFauna.tsx` — the plane-5 fauna: a left-patrolling lantern-bot (`cr-bot` + `cr-bot-glow`), a right-patrolling fox (`cr-fox` + `cr-fox-glow`), and four `.cr-firefly` dots (two solid `bg-accent`, two `cr-firefly--pale` at `bg-accent/70`) with staggered negative `animation-delay`s. Both SVGs are `aria-hidden` + `focusable="false"`.
+
 ### Drift and ambient loops
 
-- `useCedarRidgeDrift.ts` samples the pointer (and page scroll) once per `requestAnimationFrame` and writes only two custom properties, `--cr-px` / `--cr-py`, on the backdrop root. Every plane multiplies them by its own `--cr-depth` in one CSS `transform`, so six planes move from two style writes. It settles back to centre while paused, on `prefers-reduced-motion`, and when the document is hidden.
-- Ambient loops live in `.cedar-ridge` rules in `app.css`: `cr-drift` (clouds, 96s/132s/168s with negative delays so the bank never starts bunched), `cr-glide` (bird), `cr-patrol-bot` / `cr-patrol-fox` (opposed patrols with a `scaleX` turn), `cr-bob`, `cr-twinkle`, `cr-firefly`, `cr-sway`.
-- `data-paused="true"` on the root sets `animation-play-state: paused` for the whole subtree, so the existing HUD **Pause motion** control freezes the world without unmounting it. `@media (prefers-reduced-motion: reduce)` still kills the loops through the shared `.scene-backdrop` rule.
-- Atmosphere changes **exposure only** — star opacity and moon height via `.cedar-ridge[data-atmosphere=…]`, never geometry — so a sky cycle cannot reshuffle the composition.
+- `useCedarRidgeDrift.ts` samples the pointer (and page scroll) once per `requestAnimationFrame` and writes only two custom properties, `--cr-px` / `--cr-py`, on the backdrop root. Every plane multiplies them by its own `--cr-depth` in one CSS `transform`, so six planes move from two style writes. Constants: `POINTER_PX = 56` (pointer travel at depth 1, y at half strength), `SCROLL_PX = 18` (extra downward drift at full scroll), `SCROLL_RANGE_PX = 400` (scroll distance to reach full strength). It derives the offset from the last pointer sample plus the current `scrollY` instead of accumulating it, so replaying a scroll event at an unchanged `scrollY` yields the same value, and it settles back to centre while paused, on `prefers-reduced-motion`, and on `visibilitychange` when the tab is hidden.
+- Ambient loops and the plane transforms live in `apps/web/src/styles/cedar-ridge.css` (imported by `app.css` directly after Tailwind, wrapped in `@layer utilities` so the global sheet stays under the 800-line ceiling and the scene rules still outrank generated utilities): `cr-drift` (clouds, 96s/132s/168s with negative delays so the bank never starts bunched), `cr-glide` (bird), `cr-patrol-bot` / `cr-patrol-fox` (opposed patrols with a `scaleX` turn), `cr-bob`, `cr-twinkle`, `cr-firefly`, `cr-sway`.
+- Scene paint is token-derived, not retyped: `.cr-horizon-haze`, `.cr-moon-halo`, `.cr-bot-glow`, `.cr-fox-glow` build their radial/linear gradients with `color-mix(in oklab, var(--color-accent) …%, transparent)`; `.cr-near-fade` uses a fixed dark fade; `.cr-firefly` adds a `box-shadow` glow from `--color-accent` and `cr-firefly--pale` from `--color-accent-light`; `.cr-ground` paints the 24px radial dot matrix.
+- `data-paused="true"` on the root sets `animation-play-state: paused` for the whole subtree, so the existing HUD **Pause motion** control freezes the world without unmounting it; the same state also resets `.cr-layer { will-change: auto }` so a frozen scene holds no compositor backing store. `@media (prefers-reduced-motion: reduce)` still kills the loops through the shared `.scene-backdrop` rule (and drops `will-change` on `.cr-layer`).
+- Atmosphere changes **exposure only** — star opacity (`0.65` default, `0.35` dawn, `0` daylight, `1` after-hours) and moon height (`-2.625rem` after-hours, `-4.5rem` daylight) via `.cedar-ridge[data-atmosphere=…]`, never geometry — so a sky cycle cannot reshuffle the composition.
 - `.build-stage-viewport` gives the stage `min-height: calc(100dvh - 3.875rem)` (the `min-h-[…]` utility it replaced lost to `.scene-stage-hero`) and narrows the stage padding to a fluid clamp, which is what keeps the horizon band on screen below the builder card.
+- `cedar-ridge.css` also owns the builder stepper's container query: `.build-stepper { container-type: inline-size }` and `@container (max-width: 22rem) { .build-step-subtitle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap } }` — below 22rem of card width the step descriptions leave the layout but stay in the accessibility tree, so the information loss is width-driven rather than viewport-driven (the design-spec breakpoint ban).
 
 ## CSS Foundations (`apps/web/src/styles/app.css`)
 
@@ -122,7 +132,7 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 - `.scene-atmosphere-dawn` / `-daylight` / `-dusk` / `-after-hours` — layered Matcha & Cedar CSS backgrounds combining the extended top contrast vignette (to ~86% height), bottom radial horizon glow, and linear sky stops matching `ATMOSPHERE_PALETTES`.
 - `.scene-scrim` — semi-opaque Matcha backing (`rgba(20, 28, 24, 0.88)`), zero `backdrop-blur`.
 - `.scene-stage-hero` (`min-height: 20rem`) / `.scene-stage-footer` (`min-height: 11rem`).
-- `.scene-stage-hero.home-hero-viewport` and `.scene-stage-hero.build-stage-viewport` — `min-height: calc(100dvh - 3.875rem)` so the homepage hero and the `/build` stage fill the viewport below the sticky navbar; the build variant adds a `clamp()` top/bottom padding so the builder card gives the ridge band the screen space a phone cannot spare.
+- `.scene-stage-hero.home-hero-viewport` and `.scene-stage-hero.build-stage-viewport` (declared in `cedar-ridge.css`, two classes deep so they outrank `.scene-stage-hero`) — `min-height: calc(100dvh - 3.875rem)` so the homepage hero and the `/build` stage fill the viewport below the sticky navbar; the build variant adds a `clamp()` top/bottom padding so the builder card gives the ridge band the screen space a phone cannot spare.
 - `.cedar-ridge .cr-layer` — one `translate3d()` per plane built from `--cr-px` / `--cr-py` × `--cr-depth`, with a 180ms follow transition; `.cedar-ridge[data-paused='true'] *` pauses every ambient loop.
 - `@media (prefers-reduced-motion: reduce)` disables animation/transition on `.scene-backdrop` and descendants.
 
@@ -131,12 +141,13 @@ Invalid `Date` values fall back deterministically to `'dusk'` in both modes. The
 - `packages/ui-design-system/src/lib/atmosphere.test.ts` — verifies all four phases, EST/EDT boundaries, local-mode thresholds, and `NaN` fallback to `dusk`.
 - `apps/web/src/test/scene-stage.test.tsx` — verifies hero/footer landmarks, default `dusk` atmosphere, `data-motion-role`, `aria-hidden` backdrop, scrim panel without `backdrop-blur`, `HeroBackground` atmosphere/backdrop slots, and wrapped `controls` slot.
 - `apps/web/src/test/design-standardization.test.tsx` — verifies `SceneStage` containment/scrim invariants and `HeroBackground` token discipline.
+- `apps/web/src/features/home/backdrop/CedarRidgeBackdrop.test.tsx` — verifies the six `.cr-layer` planes, `data-world="cedar-ridge"` / `data-atmosphere` / `data-paused`, the moon plus bot, fox and four fireflies, atmosphere passthrough for all four phases, pause freezing (`data-paused="true"`), pointer drift written into `--cr-px` / `--cr-py`, no drift and a centred settle while paused or under reduced motion, the derived (non-accumulating) scroll term (`--cr-py` ≈ `-18` at `scrollY = 900`), and the settle-to-centre on `visibilitychange` while hidden.
 - `apps/web/src/features/home/backdrop/GardenBackdrop.test.tsx` & `garden-scene.test.ts` — verify `data-world={CEDAR_WORLD_ID}`, `data-atmosphere`, all 4 distinct `ATMOSPHERE_PALETTES`, controlled props + `showControls={false}`, reduced-motion toggle, non-zero canvas lifecycle + mid-entrance settle, listener cleanup, portrait mobile `computeCedarFraming` lowering, bounded canvas coordinates, stepped entrance reveal kinematics, and 10 offscreen canvases.
 - `apps/web/src/features/home/backdrop/garden-renderer.test.ts` — verifies `computeCloudLane` flank assignment, `cloudAlphaAt` full opacity on frame one and zero at the copy-facing lane end, outward drift direction, gap-free wrap, near clouds faster than far, and full opacity for clouds below the copy band (portrait).
 - `apps/web/src/features/home/backdrop/worlds.test.ts` — verifies panoramic `cedar-sanctuary` seed determinism, horizontal `gridToUv` span, puffy stepped cloud silhouettes, and the under→mid→top tone ramp.
 - `apps/web/src/features/home/pages/HomeCtaPage.test.tsx` — verifies the `SceneStage` hero shell, `initialAtmosphere` SSR/CSR parity, open-sky 3-CTA stack, HUD atmosphere/motion controls with no `world-switcher`, and `/personality` link.
 - `apps/web/src/features/personality/personality-data.test.ts` & `PersonalityQuizPage.test.tsx` — verify the 16-question 4-axis diagnostic scoring engine, full 16-archetype reachability, starter recipe integrity, top-2 bot matches linking to `/build?idea=`, `?archetype=` hydration, and `cedar-sanctuary` stage parity.
-- `apps/web/src/features/recipes/builder/BuilderChatPanel.test.tsx` — verifies the panel renders on `SceneStage` with `CedarRidgeBackdrop` (`cedar-ridge-backdrop` carrying `data-atmosphere`), starter chips, and the 3-step stepper.
+- `apps/web/src/features/recipes/builder/BuilderChatPanel.test.tsx` — verifies the panel renders on `SceneStage` with `CedarRidgeBackdrop` (`cedar-ridge-backdrop` carrying `data-atmosphere`), starter chips, the 3-step stepper, and the signed-out draft hint in the panel footer.
 
 ## Related
 

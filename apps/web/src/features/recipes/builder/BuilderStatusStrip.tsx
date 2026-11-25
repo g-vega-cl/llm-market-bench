@@ -117,7 +117,7 @@ export function BuilderStatusStrip({
     return (
         <div
             data-testid="builder-status"
-            className="voxel-trough bg-voxel-trough flex flex-wrap items-baseline gap-x-2 gap-y-1 p-3 min-w-0"
+            className="voxel-trough bg-voxel-trough flex flex-wrap items-baseline gap-x-2 gap-y-1 p-2 min-w-0"
         >
             <Badge variant="soft" size="sm" colorScheme={view.tone} showDot>
                 {view.label}

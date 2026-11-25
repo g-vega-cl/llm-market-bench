@@ -74,7 +74,7 @@ function BuilderStarterChips({
     return (
         <div
             data-testid="builder-starter-chips"
-            className="voxel-trough bg-voxel-trough rounded-none p-3 flex flex-col gap-2 min-w-0"
+            className="voxel-trough bg-voxel-trough rounded-none p-2 flex flex-col gap-2 min-w-0"
         >
             <span className="text-xs font-normal text-voxel-muted">
                 Start with a template idea or write your own above:
@@ -222,12 +222,6 @@ export function BuilderDescribeStep({
                 isCompiling={chat.isCompiling}
                 hasError={Boolean(chat.error)}
             />
-
-            {!userId && !chat.pendingIdea ? (
-                <p className="text-xs font-normal text-voxel-muted">
-                    Sign in when ready to compile — drafts stay saved in this browser.
-                </p>
-            ) : null}
         </>
     );
 }

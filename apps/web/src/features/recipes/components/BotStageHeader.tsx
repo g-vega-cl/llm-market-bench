@@ -253,7 +253,7 @@ export function BotStageHeader({
     onFork,
     onRequestCapacity,
 }: BotStageHeaderProps) {
-    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } =
+    const { atmosphere, motion, cycleAtmosphere, toggleMotion } =
         useDioramaStage(initialAtmosphere);
     const [now, setNow] = useState(() => new Date());
 
@@ -290,18 +290,12 @@ export function BotStageHeader({
             scrim="panel"
             aria-label={`${recipeName} header`}
             backdrop={
-                <GardenBackdrop
-                    atmosphere={atmosphere}
-                    paused={paused}
-                    onPausedChange={setPaused}
-                    showControls={false}
-                    className="h-full w-full"
-                />
+                <GardenBackdrop atmosphere={atmosphere} motion={motion} className="h-full w-full" />
             }
             controls={
                 <SceneHudControls
                     atmosphere={atmosphere}
-                    paused={paused}
+                    motion={motion}
                     onCycleAtmosphere={cycleAtmosphere}
                     onTogglePaused={toggleMotion}
                 />

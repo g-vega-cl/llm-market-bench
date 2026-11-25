@@ -75,7 +75,7 @@ export function BuilderChatPanel({
     const posthog = usePostHog();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const hintId = useId();
-    const { atmosphere, paused, cycleAtmosphere, toggleMotion } =
+    const { atmosphere, motion, cycleAtmosphere, toggleMotion } =
         useDioramaStage(initialAtmosphere);
 
     const chat = useBuilderChat({
@@ -146,14 +146,14 @@ export function BuilderChatPanel({
             backdrop={
                 <CedarRidgeBackdrop
                     atmosphere={atmosphere}
-                    paused={paused}
+                    motion={motion}
                     className="h-full w-full"
                 />
             }
             controls={
                 <SceneHudControls
                     atmosphere={atmosphere}
-                    paused={paused}
+                    motion={motion}
                     onCycleAtmosphere={cycleAtmosphere}
                     onTogglePaused={toggleMotion}
                 />

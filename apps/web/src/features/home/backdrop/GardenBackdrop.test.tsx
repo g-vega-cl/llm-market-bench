@@ -42,7 +42,7 @@ describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-
             .spyOn(HTMLCanvasElement.prototype, 'getContext')
             .mockReturnValue(null);
 
-        const { unmount } = render(<GardenBackdrop />);
+        const { unmount } = render(<GardenBackdrop atmosphere="dusk" motion="running" />);
         const canvas = screen.getByTestId('garden-backdrop') as HTMLCanvasElement;
 
         expect(canvas).toBeInTheDocument();
@@ -65,57 +65,55 @@ describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-
         expect(zenithTops.size).toBe(4);
     });
 
-    it('supports controlled atmosphere and showControls={false} when hosted inside SceneStage', () => {
+    it('implements the SceneBackdropProps contract when hosted inside SceneStage', () => {
         mockMatchMedia(true);
-        const { rerender } = render(
-            <GardenBackdrop atmosphere="dawn" showControls={false} paused={true} />,
-        );
+        const { rerender } = render(<GardenBackdrop atmosphere="dawn" motion="reduced" />);
 
         const canvas = screen.getByTestId('garden-backdrop');
         expect(canvas).toHaveAttribute('data-world', CEDAR_WORLD_ID);
         expect(canvas).toHaveAttribute('data-atmosphere', 'dawn');
+        expect(canvas).toHaveAttribute('data-motion', 'reduced');
         expect(screen.queryByRole('button')).toBeNull();
 
-        rerender(<GardenBackdrop atmosphere="after-hours" showControls={false} paused={true} />);
+        rerender(<GardenBackdrop atmosphere="after-hours" motion="reduced" />);
         expect(canvas).toHaveAttribute('data-atmosphere', 'after-hours');
     });
 
-    it('respects prefers-reduced-motion and toggles between Play motion and Pause motion', () => {
-        mockMatchMedia(true);
+    it('freezes while the host reports a non-running motion and resumes when it runs again', () => {
+        mockMatchMedia(false);
         const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
         const cancelSpy = vi.spyOn(window, 'cancelAnimationFrame').mockImplementation(() => {});
 
-        const { unmount } = render(<GardenBackdrop />);
+        // Fully controlled now: the host derives `motion`, the canvas only
+        // reacts to it. An internal Pause button would be a second owner.
+        const { rerender, unmount } = render(<GardenBackdrop atmosphere="dusk" motion="running" />);
+        expect(rafSpy).toHaveBeenCalled();
 
-        const btn = screen.getByRole('button', { name: 'Play motion' });
+        rafSpy.mockClear();
+        rerender(<GardenBackdrop atmosphere="dusk" motion="paused" />);
+        expect(cancelSpy).toHaveBeenCalled();
         expect(rafSpy).not.toHaveBeenCalled();
 
-        fireEvent.click(btn);
-        expect(screen.getByRole('button', { name: 'Pause motion' })).toBeInTheDocument();
-        expect(rafSpy).toHaveBeenCalledTimes(1);
+        rerender(<GardenBackdrop atmosphere="dusk" motion="reduced" />);
+        expect(rafSpy).not.toHaveBeenCalled();
 
-        fireEvent.click(screen.getByRole('button', { name: 'Pause motion' }));
-        expect(screen.getByRole('button', { name: 'Play motion' })).toBeInTheDocument();
-        expect(cancelSpy).toHaveBeenCalled();
+        rerender(<GardenBackdrop atmosphere="dusk" motion="running" />);
+        expect(rafSpy).toHaveBeenCalled();
 
         unmount();
     });
 
-    it('never starts RAF on mount when paused={false} races prefers-reduced-motion or when paused={true}', () => {
+    it('never starts RAF on mount when prefers-reduced-motion races a running host, or when the host is frozen', () => {
         mockMatchMedia(true);
         const rafSpy = vi.spyOn(window, 'requestAnimationFrame').mockReturnValue(1);
-        const onPausedChange = vi.fn();
 
-        const first = render(
-            <GardenBackdrop paused={false} onPausedChange={onPausedChange} showControls={false} />,
-        );
+        const first = render(<GardenBackdrop atmosphere="dusk" motion="running" />);
         expect(rafSpy).not.toHaveBeenCalled();
-        expect(onPausedChange).toHaveBeenCalledWith(true);
         first.unmount();
 
         rafSpy.mockClear();
         mockMatchMedia(false);
-        const second = render(<GardenBackdrop paused={true} showControls={false} />);
+        const second = render(<GardenBackdrop atmosphere="dusk" motion="paused" />);
         expect(rafSpy).not.toHaveBeenCalled();
         second.unmount();
     });
@@ -126,7 +124,7 @@ describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-
         const removeWinSpy = vi.spyOn(window, 'removeEventListener');
         const removeDocSpy = vi.spyOn(document, 'removeEventListener');
 
-        const { unmount } = render(<GardenBackdrop />);
+        const { unmount } = render(<GardenBackdrop atmosphere="dusk" motion="running" />);
         unmount();
 
         const removedWinEvents = removeWinSpy.mock.calls.map(([ev]) => ev);
@@ -185,7 +183,7 @@ describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-
         });
 
         const clearTimeoutSpy = vi.spyOn(window, 'clearTimeout');
-        const { unmount } = render(<GardenBackdrop />);
+        const { rerender, unmount } = render(<GardenBackdrop atmosphere="dusk" motion="running" />);
 
         const canvas = screen.getByTestId('garden-backdrop') as HTMLCanvasElement;
         const offscreenCanvases = createdOffscreenCanvases.filter((c) => c !== canvas);
@@ -200,9 +198,10 @@ describe('GardenBackdrop (Cedar Sanctuary lifecycle, atmosphere phases, reduced-
         expect(fakeCtx.clip).toHaveBeenCalled();
         expect(fakeCtx.drawImage).toHaveBeenCalled();
 
-        // Pausing mid-entrance settles the diorama completely without clip mask
+        // Freezing mid-entrance (host flips motion) settles the diorama
+        // completely, without the clip mask
         (fakeCtx.clip as ReturnType<typeof vi.fn>).mockClear();
-        fireEvent.click(screen.getByRole('button', { name: 'Pause motion' }));
+        rerender(<GardenBackdrop atmosphere="dusk" motion="paused" />);
         expect(clearTimeoutSpy).toHaveBeenCalled();
         expect(fakeCtx.clip).not.toHaveBeenCalled();
 

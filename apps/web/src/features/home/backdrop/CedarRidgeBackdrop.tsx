@@ -1,4 +1,4 @@
-import type { AtmospherePhase } from '@llm-market-bench/ui-design-system';
+import type { SceneBackdropProps } from '@llm-market-bench/ui-design-system';
 import { cn } from '@llm-market-bench/ui-design-system';
 import { CedarMeadowFauna } from './CedarMeadowFauna';
 import { CedarMoon } from './CedarMoon';
@@ -25,12 +25,8 @@ import { useCedarRidgeDrift } from './useCedarRidgeDrift';
  * opacity, moon height), never the geometry.
  */
 
-export interface CedarRidgeBackdropProps {
-    atmosphere?: AtmospherePhase;
-    /** Freezes every loop and lets the parallax settle back to centre. */
-    paused?: boolean;
-    className?: string;
-}
+/** Implements the shared `SceneBackdropProps` contract (see `SceneStage`). */
+export type CedarRidgeBackdropProps = SceneBackdropProps;
 
 /** Scene paint. The surface hues are design tokens; these are the
  *  silhouette and foliage shades that give the ridge its depth. */
@@ -48,12 +44,8 @@ const RIDGE = {
 const BEVEL = 'var(--color-voxel-bevel-hi)';
 const INK = 'var(--color-voxel-ink)';
 
-export function CedarRidgeBackdrop({
-    atmosphere = 'dusk',
-    paused = false,
-    className,
-}: CedarRidgeBackdropProps) {
-    const rootRef = useCedarRidgeDrift(paused);
+export function CedarRidgeBackdrop({ atmosphere, motion, className }: CedarRidgeBackdropProps) {
+    const rootRef = useCedarRidgeDrift(motion !== 'running');
 
     return (
         <div
@@ -61,7 +53,7 @@ export function CedarRidgeBackdrop({
             data-testid="cedar-ridge-backdrop"
             data-world="cedar-ridge"
             data-atmosphere={atmosphere}
-            data-paused={paused ? 'true' : 'false'}
+            data-motion={motion}
             className={cn(
                 'cedar-ridge pointer-events-none absolute inset-0 h-full w-full select-none',
                 className,

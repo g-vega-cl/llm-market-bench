@@ -3,6 +3,7 @@ import {
     type AtmospherePhase,
     Button,
 } from '@llm-market-bench/ui-design-system';
+import type { SceneMotion } from './useDioramaStage';
 
 export const ATMOSPHERE_LABELS: Record<AtmospherePhase, string> = {
     dawn: 'Dawn',
@@ -18,7 +19,8 @@ export function nextAtmospherePhase(current: AtmospherePhase): AtmospherePhase {
 
 export interface SceneHudControlsProps {
     atmosphere: AtmospherePhase;
-    paused: boolean;
+    /** Derived state from `useDioramaStage` — never a bare boolean. */
+    motion: SceneMotion;
     onCycleAtmosphere: () => void;
     onTogglePaused: () => void;
 }
@@ -26,13 +28,20 @@ export interface SceneHudControlsProps {
 /**
  * Accessible bottom-right HUD cluster rendered inside SceneStage's foreground
  * `controls` slot outside the aria-hidden backdrop.
+ *
+ * The motion control reports the derived state rather than guessing: under
+ * `prefers-reduced-motion` the scene is already frozen, so it reads "Motion:
+ * reduced" and is inert instead of offering a toggle that changes nothing.
  */
 export function SceneHudControls({
     atmosphere,
-    paused,
+    motion,
     onCycleAtmosphere,
     onTogglePaused,
 }: SceneHudControlsProps) {
+    const reduced = motion === 'reduced';
+    const paused = motion === 'paused';
+
     return (
         <>
             <Button
@@ -51,8 +60,12 @@ export function SceneHudControls({
                 variant="outline"
                 colorScheme="neutral"
                 size="sm"
+                disabled={reduced}
+                aria-pressed={paused}
+                data-testid="motion-toggle"
+                data-motion={motion}
             >
-                {paused ? 'Play motion' : 'Pause motion'}
+                {reduced ? 'Motion: reduced' : paused ? 'Play motion' : 'Pause motion'}
             </Button>
         </>
     );

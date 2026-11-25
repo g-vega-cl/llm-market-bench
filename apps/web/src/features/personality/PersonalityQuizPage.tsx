@@ -111,7 +111,7 @@ export function PersonalityQuizPage({
     initialAtmosphere,
     onArchetypeSearchChange,
 }: PersonalityQuizPageProps) {
-    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } =
+    const { atmosphere, motion, cycleAtmosphere, toggleMotion } =
         useDioramaStage(initialAtmosphere);
     const posthog = usePostHog();
     const startedAtRef = useRef<number>(Date.now());
@@ -430,18 +430,12 @@ export function PersonalityQuizPage({
             motionRole="reactive"
             className="min-h-[calc(100dvh-3.875rem)] flex w-full flex-col text-voxel-ink"
             backdrop={
-                <GardenBackdrop
-                    atmosphere={atmosphere}
-                    paused={paused}
-                    onPausedChange={setPaused}
-                    showControls={false}
-                    className="h-full w-full"
-                />
+                <GardenBackdrop atmosphere={atmosphere} motion={motion} className="h-full w-full" />
             }
             controls={
                 <SceneHudControls
                     atmosphere={atmosphere}
-                    paused={paused}
+                    motion={motion}
                     onCycleAtmosphere={cycleAtmosphere}
                     onTogglePaused={toggleMotion}
                 />

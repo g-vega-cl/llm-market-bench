@@ -130,9 +130,11 @@ describe('HomeCtaPage (Cedar Sanctuary SceneStage, zero-flash initialAtmosphere 
         }
         expect(seenPhases.size).toBe(4);
 
-        const motionBtn = screen.getByRole('button', { name: /play motion|pause motion/i });
-        const initialMotionText = motionBtn.textContent;
-        fireEvent.click(motionBtn);
-        expect(motionBtn.textContent).not.toBe(initialMotionText);
+        // This suite mocks `prefers-reduced-motion: reduce`, so the scene is
+        // frozen by the OS: the HUD must say so instead of offering a toggle
+        // that changes nothing.
+        const motionBtn = screen.getByTestId('motion-toggle');
+        expect(motionBtn).toHaveTextContent('Motion: reduced');
+        expect(motionBtn).toBeDisabled();
     });
 });

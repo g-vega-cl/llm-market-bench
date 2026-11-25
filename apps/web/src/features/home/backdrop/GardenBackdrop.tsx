@@ -1,4 +1,9 @@
-import { type AtmospherePhase, Button, cn } from '@llm-market-bench/ui-design-system';
+import {
+    type AtmospherePhase,
+    cn,
+    type SceneBackdropProps,
+    type SceneMotion,
+} from '@llm-market-bench/ui-design-system';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { disposeSceneCanvases, type Scene } from './garden-renderer';
 import {
@@ -19,13 +24,8 @@ import { getCedarWorldAndFaces } from './worlds';
 const IDLE_MS = 20_000;
 const FRAME_INTERVAL_MS = 1000 / 30 - 1.5;
 
-export interface GardenBackdropProps {
-    className?: string;
-    atmosphere?: AtmospherePhase;
-    paused?: boolean;
-    onPausedChange?: (paused: boolean) => void;
-    showControls?: boolean;
-}
+/** Implements the shared `SceneBackdropProps` contract (see `SceneStage`). */
+export type GardenBackdropProps = SceneBackdropProps;
 
 type MotionState = 'running' | 'idle' | 'paused';
 
@@ -63,19 +63,15 @@ function subscribeStageEvents(
 export function GardenBackdrop({
     className,
     atmosphere = 'dusk',
-    paused,
-    onPausedChange,
-    showControls = true,
+    motion = 'running',
 }: GardenBackdropProps) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    const [pausedUi, setPausedUi] = useState(false);
     const [canvasReady, setCanvasReady] = useState(false);
     const sceneRef = useRef<Scene | null>(null);
     const atmosphereRef = useRef<AtmospherePhase>(atmosphere);
     atmosphereRef.current = atmosphere;
-    const pausedPropRef = useRef<boolean | undefined>(paused);
-    const onPausedChangeRef = useRef(onPausedChange);
-    onPausedChangeRef.current = onPausedChange;
+    const motionRef = useRef<SceneMotion>(motion);
+    motionRef.current = motion;
 
     const stateRef = useRef({
         raf: 0,
@@ -193,14 +189,10 @@ export function GardenBackdrop({
                 ? window.matchMedia('(prefers-reduced-motion: reduce)')
                 : null;
         const s = stateRef.current;
-        // System reduced-motion always wins over an un-toggled initial parent `paused={false}`
-        const initialPaused = (query?.matches ?? false) || pausedPropRef.current === true;
+        // System reduced-motion always wins over a host that reports `running`
+        const initialPaused = (query?.matches ?? false) || motionRef.current !== 'running';
         s.motion = initialPaused ? 'paused' : 'idle';
         s.entrance = initialPaused ? { kind: 'settled' } : { kind: 'animating', elapsed: 0 };
-        setPausedUi(initialPaused);
-        if (initialPaused && pausedPropRef.current === false) {
-            onPausedChangeRef.current?.(true);
-        }
 
         buildLayers();
         if (!initialPaused && !document.hidden) {
@@ -236,8 +228,6 @@ export function GardenBackdrop({
             }
         };
         const onPreference = (e: MediaQueryListEvent) => {
-            setPausedUi(e.matches);
-            onPausedChangeRef.current?.(e.matches);
             if (e.matches) settleAndPause();
             else resumeMotion();
         };
@@ -266,57 +256,33 @@ export function GardenBackdrop({
         }
     }, [atmosphere, buildLayers]);
 
-    // Sync only explicit parent `paused` transitions after mount so initial reduced-motion state never races
+    // Sync the host's derived motion after mount so the initial reduced-motion
+    // state never races. `reduced` and `paused` both freeze the canvas, and the
+    // OS preference is re-read here because it can freeze the canvas even when
+    // the host still reports `running`.
     useEffect(() => {
-        if (paused === undefined) {
-            pausedPropRef.current = undefined;
-            return;
-        }
-        const prevProp = pausedPropRef.current;
-        pausedPropRef.current = paused;
-        if (prevProp === paused) return;
-
+        const prefersReduced =
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const frozen = prefersReduced || motion !== 'running';
         const isCurrentlyPaused = stateRef.current.motion === 'paused';
-        if (isCurrentlyPaused === paused) return;
-        setPausedUi(paused);
-        if (paused) settleAndPause();
+        if (isCurrentlyPaused === frozen) return;
+        if (frozen) settleAndPause();
         else resumeMotion();
-    }, [paused, resumeMotion, settleAndPause]);
-
-    const toggle = useCallback(() => {
-        const next = stateRef.current.motion !== 'paused';
-        setPausedUi(next);
-        onPausedChangeRef.current?.(next);
-        if (next) settleAndPause();
-        else resumeMotion();
-    }, [resumeMotion, settleAndPause]);
+    }, [motion, resumeMotion, settleAndPause]);
 
     return (
-        <>
-            <canvas
-                ref={canvasRef}
-                className={cn(
-                    'transition-opacity duration-200',
-                    canvasReady ? 'opacity-100' : 'opacity-0',
-                    className,
-                )}
-                data-testid="garden-backdrop"
-                data-world={CEDAR_WORLD_ID}
-                data-atmosphere={atmosphere}
-            />
-            {showControls ? (
-                <div className="pointer-events-auto absolute right-3 bottom-3 z-20">
-                    <Button
-                        type="button"
-                        onClick={toggle}
-                        variant="outline"
-                        colorScheme="neutral"
-                        size="sm"
-                    >
-                        {pausedUi ? 'Play motion' : 'Pause motion'}
-                    </Button>
-                </div>
-            ) : null}
-        </>
+        <canvas
+            ref={canvasRef}
+            className={cn(
+                'transition-opacity duration-200',
+                canvasReady ? 'opacity-100' : 'opacity-0',
+                className,
+            )}
+            data-testid="garden-backdrop"
+            data-world={CEDAR_WORLD_ID}
+            data-atmosphere={atmosphere}
+            data-motion={motion}
+        />
     );
 }

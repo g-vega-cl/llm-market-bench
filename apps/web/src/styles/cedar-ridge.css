@@ -112,7 +112,8 @@
     }
 
     /* A frozen scene needs no compositor backing store. */
-    .cedar-ridge[data-paused="true"] .cr-layer {
+    .cedar-ridge[data-motion="paused"] .cr-layer,
+    .cedar-ridge[data-motion="reduced"] .cr-layer {
         will-change: auto;
     }
 
@@ -283,7 +284,8 @@
         animation-iteration-count: infinite;
     }
 
-    .cedar-ridge[data-paused="true"] * {
+    .cedar-ridge[data-motion="paused"] *,
+    .cedar-ridge[data-motion="reduced"] * {
         animation-play-state: paused;
     }
 

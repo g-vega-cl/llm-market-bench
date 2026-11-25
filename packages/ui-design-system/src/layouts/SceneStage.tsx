@@ -19,6 +19,23 @@ import { cn } from '../lib/cn';
 
 export type SceneStageVariant = 'hero' | 'footer';
 export type SceneMotionRole = 'background' | 'reactive' | 'story';
+
+/**
+ * Who owns a scene's motion, mirrored from the host's `useDioramaStage`.
+ * `reduced` means the operating system asked for it, so the UI must not offer
+ * to un-freeze the scene.
+ */
+export type SceneMotion = 'running' | 'paused' | 'reduced';
+
+/**
+ * The contract every SceneStage backdrop implements, so a new surface picks a
+ * world rather than inventing a third prop shape.
+ */
+export interface SceneBackdropProps {
+    atmosphere: AtmospherePhase;
+    motion: SceneMotion;
+    className?: string;
+}
 export type SceneScrim = 'none' | 'panel';
 
 export interface SceneStageProps extends React.HTMLAttributes<HTMLElement> {

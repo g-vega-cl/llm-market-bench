@@ -1,7 +1,7 @@
 import { ATMOSPHERE_PHASES } from '@llm-market-bench/ui-design-system';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CedarRidgeBackdrop } from './CedarRidgeBackdrop';
+import { CedarRidgeBackdrop, type CedarRidgeBackdropProps } from './CedarRidgeBackdrop';
 
 function mockMatchMedia(matches: boolean) {
     Object.defineProperty(window, 'matchMedia', {
@@ -27,6 +27,10 @@ async function nextFrame() {
     });
 }
 
+function renderBackdrop(overrides: Partial<CedarRidgeBackdropProps> = {}) {
+    return render(<CedarRidgeBackdrop atmosphere="dusk" motion="running" {...overrides} />);
+}
+
 describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', () => {
     beforeEach(() => {
         mockMatchMedia(false);
@@ -37,12 +41,12 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
     });
 
     it('renders six depth planes with the moon and meadow fauna', () => {
-        const { container } = render(<CedarRidgeBackdrop />);
+        const { container } = renderBackdrop();
         const root = screen.getByTestId('cedar-ridge-backdrop');
 
         expect(root).toHaveAttribute('data-world', 'cedar-ridge');
         expect(root).toHaveAttribute('data-atmosphere', 'dusk');
-        expect(root).toHaveAttribute('data-paused', 'false');
+        expect(root).toHaveAttribute('data-motion', 'running');
         expect(container.querySelectorAll('.cr-layer')).toHaveLength(6);
         expect(container.querySelector('.cr-celestial')).not.toBeNull();
         expect(container.querySelector('.cr-bot')).not.toBeNull();
@@ -52,7 +56,7 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
 
     it('carries the atmosphere phase onto the root for exposure-only styling', () => {
         for (const phase of ATMOSPHERE_PHASES) {
-            const { unmount } = render(<CedarRidgeBackdrop atmosphere={phase} />);
+            const { unmount } = renderBackdrop({ atmosphere: phase });
             expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute(
                 'data-atmosphere',
                 phase,
@@ -61,16 +65,25 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
         }
     });
 
-    it('marks the subtree paused so CSS can freeze every loop', () => {
-        const { rerender } = render(<CedarRidgeBackdrop paused={false} />);
-        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute('data-paused', 'false');
+    it('carries the derived motion onto the root so CSS can freeze every loop', () => {
+        const { rerender } = renderBackdrop();
+        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute(
+            'data-motion',
+            'running',
+        );
 
-        rerender(<CedarRidgeBackdrop paused />);
-        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute('data-paused', 'true');
+        rerender(<CedarRidgeBackdrop atmosphere="dusk" motion="paused" />);
+        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute('data-motion', 'paused');
+
+        rerender(<CedarRidgeBackdrop atmosphere="dusk" motion="reduced" />);
+        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute(
+            'data-motion',
+            'reduced',
+        );
     });
 
     it('writes pointer drift into the root custom properties', async () => {
-        render(<CedarRidgeBackdrop />);
+        renderBackdrop();
         const root = screen.getByTestId('cedar-ridge-backdrop');
 
         await act(async () => {
@@ -87,7 +100,7 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
     });
 
     it('ignores pointer drift while paused and settles back to centre', async () => {
-        render(<CedarRidgeBackdrop paused />);
+        renderBackdrop({ motion: 'paused' });
         const root = screen.getByTestId('cedar-ridge-backdrop');
 
         await act(async () => {
@@ -100,9 +113,9 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
         expect(root.style.getPropertyValue('--cr-py')).toBe('0.00');
     });
 
-    it('settles without a pointer sample when reduced motion is requested', async () => {
+    it('settles without a pointer sample when the OS asks for reduced motion', async () => {
         mockMatchMedia(true);
-        render(<CedarRidgeBackdrop />);
+        renderBackdrop({ motion: 'reduced' });
         const root = screen.getByTestId('cedar-ridge-backdrop');
 
         await act(async () => {
@@ -121,7 +134,7 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
         Object.defineProperty(window, 'scrollY', { value: 900, configurable: true });
 
         try {
-            render(<CedarRidgeBackdrop />);
+            renderBackdrop();
             const root = screen.getByTestId('cedar-ridge-backdrop');
 
             await act(async () => {
@@ -142,7 +155,7 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
         Object.defineProperty(document, 'hidden', { value: true, configurable: true });
 
         try {
-            render(<CedarRidgeBackdrop />);
+            renderBackdrop();
             const root = screen.getByTestId('cedar-ridge-backdrop');
 
             await act(async () => {

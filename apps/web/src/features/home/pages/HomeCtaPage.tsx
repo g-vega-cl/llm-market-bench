@@ -14,7 +14,7 @@ export interface HomeCtaPageProps {
  * voxel diorama. Built on `SceneStage` (`variant="hero"`, `motionRole="reactive"`).
  */
 export function HomeCtaPage({ initialAtmosphere }: HomeCtaPageProps) {
-    const { atmosphere, paused, setPaused, cycleAtmosphere, toggleMotion } =
+    const { atmosphere, motion, cycleAtmosphere, toggleMotion } =
         useDioramaStage(initialAtmosphere);
 
     return (
@@ -24,18 +24,12 @@ export function HomeCtaPage({ initialAtmosphere }: HomeCtaPageProps) {
             motionRole="reactive"
             className="home-hero-viewport flex w-full flex-col text-voxel-ink"
             backdrop={
-                <GardenBackdrop
-                    atmosphere={atmosphere}
-                    paused={paused}
-                    onPausedChange={setPaused}
-                    showControls={false}
-                    className="h-full w-full"
-                />
+                <GardenBackdrop atmosphere={atmosphere} motion={motion} className="h-full w-full" />
             }
             controls={
                 <SceneHudControls
                     atmosphere={atmosphere}
-                    paused={paused}
+                    motion={motion}
                     onCycleAtmosphere={cycleAtmosphere}
                     onTogglePaused={toggleMotion}
                 />

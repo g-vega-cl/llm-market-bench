@@ -125,7 +125,7 @@ export function RecipeStudioPage({
         onRecipesChange: setUserRecipes,
         onRefreshQuota: refreshQuota,
         onEnabledNavigate: async (recipeId) => {
-            await navigate({ to: '/recipes/live/$recipeId', params: { recipeId } });
+            await navigate({ to: '/recipes/live/$recipeId/runs', params: { recipeId } });
         },
     });
 

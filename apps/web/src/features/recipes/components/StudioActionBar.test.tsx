@@ -80,9 +80,9 @@ describe('StudioActionBar', () => {
         });
 
         expect(screen.getByRole('button', { name: 'Live: ON (30m)' })).toBeInTheDocument();
-        expect(screen.getByRole('link', { name: /Live Status/i })).toHaveAttribute(
+        expect(screen.getByRole('link', { name: /Live Runs/i })).toHaveAttribute(
             'href',
-            '/recipes/live/rec-live-1',
+            '/recipes/live/rec-live-1/runs',
         );
         fireEvent.click(screen.getByRole('button', { name: /Turbo \(5m x 1h\)/i }));
         expect(onActivateTurbo).toHaveBeenCalledTimes(1);

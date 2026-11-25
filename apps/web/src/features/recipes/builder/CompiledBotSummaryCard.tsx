@@ -151,11 +151,11 @@ function NextActionCtas({
 
             {isCurrentlyScheduledLive && strategyId ? (
                 <Link
-                    to="/recipes/live/$recipeId"
+                    to="/recipes/live/$recipeId/runs"
                     params={{ recipeId: strategyId }}
                     className="text-sm font-bold text-success hover:underline underline-offset-4"
                 >
-                    Live Status →
+                    Live Runs →
                 </Link>
             ) : null}
         </div>

@@ -180,7 +180,7 @@ describe('RecipeAlertsInbox & WaitlistPledgeModal', () => {
         expect(screen.getByText(/BUY\s+NVDA/)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: 'NVDA Momentum' })).toHaveAttribute(
             'href',
-            '/recipes/live/r-1',
+            '/recipes/live/r-1/runs',
         );
         const markBtn = screen.getByRole('button', { name: 'Mark Read' });
         fireEvent.click(markBtn);

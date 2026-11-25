@@ -119,7 +119,10 @@ describe('BotCard', () => {
         expect(screen.getByTestId('bot-actions-bot-1')).not.toHaveAttribute('aria-busy');
         expect(screen.queryByText('Opening bot…')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Pause Live' })).toBeEnabled();
-        expect(screen.getByTestId('bot-live-bot-1')).toHaveAttribute('href', '/recipes/live/bot-1');
+        expect(screen.getByTestId('bot-live-bot-1')).toHaveAttribute(
+            'href',
+            '/recipes/live/bot-1/runs',
+        );
     });
 
     it('locks navigation and actions while a live or remove mutation is in flight', () => {

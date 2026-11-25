@@ -351,7 +351,7 @@ describe('CompiledBotWorkspace', () => {
                 data: { recipeId: 'saved-live-1', isLive: true },
             });
             expect(mockNavigate).toHaveBeenCalledWith({
-                to: '/recipes/live/$recipeId',
+                to: '/recipes/live/$recipeId/runs',
                 params: { recipeId: 'saved-live-1' },
             });
         });
@@ -438,7 +438,7 @@ describe('CompiledBotWorkspace', () => {
 
         await waitFor(() => {
             expect(mockNavigate).toHaveBeenCalledWith({
-                to: '/recipes/live/$recipeId',
+                to: '/recipes/live/$recipeId/runs',
                 params: { recipeId: 'new-live-2' },
             });
         });
@@ -539,9 +539,9 @@ describe('CompiledBotWorkspace', () => {
             expect(banner).toHaveTextContent(/Last turn .*completed/i);
             expect(banner).toHaveTextContent(/Equity \$10,412\.00/);
             expect(banner).toHaveTextContent(/Cash \$10,412\.00/);
-            expect(within(banner).getByRole('link', { name: /open live status/i })).toHaveAttribute(
+            expect(within(banner).getByRole('link', { name: /open live runs/i })).toHaveAttribute(
                 'href',
-                '/recipes/live/live-123',
+                '/recipes/live/live-123/runs',
             );
         });
 

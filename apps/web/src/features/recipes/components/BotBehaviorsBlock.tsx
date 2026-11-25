@@ -258,7 +258,7 @@ function LatestDecisionPanel({
                     <div className="mt-auto">
                         {latestDecision.mode === 'live_turn' ? (
                             <Link
-                                to="/recipes/live/$recipeId"
+                                to="/recipes/live/$recipeId/runs"
                                 params={{ recipeId }}
                                 className="text-xs font-normal text-accent underline underline-offset-4 hover:text-accent-hover"
                             >

@@ -57,8 +57,8 @@ type LiveScheduleState =
     | { kind: 'switching'; target: RecipeSummaryItem; conflicting: RecipeSummaryItem };
 ```
 
-- **`toggle(target, persistFirst?)`** — a plain pause or enable. When enabling and `userRecipes.filter(r => r.is_live && r.id !== target.id).length >= maxLiveRecipes`, it parks in `confirming` instead of calling the API. Otherwise it persists the target first (`persistFirst`), resolves the recipe id (`saved?.id ?? target.id`, throwing `Could not determine strategy ID to enable/pause live schedule.` when neither exists), calls `toggleLiveScheduleFn`, patches `userRecipes` through `upsertSavedRecipeSummary` (or an in-place `is_live` / `turbo_expires_at` patch when nothing was saved), and navigates to `/recipes/live/$recipeId` only when the recipe was just enabled.
-- **`confirmSwitch(persistFirst?)`** — moves `confirming` → `switching` (carrying both `target` and `conflicting`), persists the target, then calls `switchLiveScheduleFn({ pauseRecipeId: conflicting.id, enableRecipeId })`. On success it clears the old row's `is_live` and `turbo_expires_at`, upserts the saved target, returns to `idle`, and navigates to the new live page. On failure it sets `scheduleError` and returns to `idle` — never back to `confirming`.
+- **`toggle(target, persistFirst?)`** — a plain pause or enable. When enabling and `userRecipes.filter(r => r.is_live && r.id !== target.id).length >= maxLiveRecipes`, it parks in `confirming` instead of calling the API. Otherwise it persists the target first (`persistFirst`), resolves the recipe id (`saved?.id ?? target.id`, throwing `Could not determine strategy ID to enable/pause live schedule.` when neither exists), calls `toggleLiveScheduleFn`, patches `userRecipes` through `upsertSavedRecipeSummary` (or an in-place `is_live` / `turbo_expires_at` patch when nothing was saved), and navigates to `/recipes/live/$recipeId/runs` only when the recipe was just enabled.
+- **`confirmSwitch(persistFirst?)`** — moves `confirming` → `switching` (carrying both `target` and `conflicting`), persists the target, then calls `switchLiveScheduleFn({ pauseRecipeId: conflicting.id, enableRecipeId })`. On success it clears the old row's `is_live` and `turbo_expires_at`, upserts the saved target, returns to `idle`, and navigates to the new live runs page (`/recipes/live/$recipeId/runs`). On failure it sets `scheduleError` and returns to `idle` — never back to `confirming`.
 - **`cancelSwitch()`** — `confirming`/`switching` → `idle`.
 - **`isBusy`** — `toggling` or `switching`; the single mutual-exclusion latch the studio and `useBotHeaderActions` also use to block Backtest, Save, and Turbo.
 
@@ -76,14 +76,14 @@ Every server-function result on this path goes through `assertServerFnResult()` 
 
 ## Tests
 
-- `apps/web/src/features/recipes/builder/CompiledBotWorkspace.test.tsx` — save → enable live → `Enabling Live...` (disabled) → navigate to `/recipes/live/$recipeId`; a failed save surfaces exactly one `role="alert"` and never calls the toggle; `confirmSwitch` keeps `LiveSwitchConfirmation` visible with `aria-busy` and calls `switchLiveScheduleFn` once with `{ pauseRecipeId, enableRecipeId }`; a rejected save during `confirmSwitch` never pauses the existing live bot.
-- `apps/web/src/features/recipes/pages/RecipeStudioPage.runs.test.tsx` — the conflict flow calls `switchLiveScheduleFn` **once** (not two `toggleLiveScheduleFn` calls) and navigates to the new live page.
+- `apps/web/src/features/recipes/builder/CompiledBotWorkspace.test.tsx` — save → enable live → `Enabling Live...` (disabled) → navigate to `/recipes/live/$recipeId/runs`; a failed save surfaces exactly one `role="alert"` and never calls the toggle; `confirmSwitch` keeps `LiveSwitchConfirmation` visible with `aria-busy` and calls `switchLiveScheduleFn` once with `{ pauseRecipeId, enableRecipeId }`; a rejected save during `confirmSwitch` never pauses the existing live bot.
+- `apps/web/src/features/recipes/pages/RecipeStudioPage.runs.test.tsx` — the conflict flow calls `switchLiveScheduleFn` **once** (not two `toggleLiveScheduleFn` calls) and navigates to the new live runs page (`/recipes/live/$recipeId/runs`).
 - `apps/web/src/features/recipes/pages/RecipeDashboardPage.test.tsx` — mocks `switchLiveScheduleFn` alongside `toggleLiveScheduleFn` for the shared hook.
 
 ## Related
 
 - [[entities/recipe-studio]] — the studio, Bot Overview, Blueprint, and `/build` workspace that host the switch
-- [[entities/recipe-live-status]] — the live page the switch navigates to
+- [[entities/recipe-live-status]] — the live runs page the switch navigates to
 - [[concepts/recipe-turbo-mode]] — the Turbo window cleared by the pause half of the switch
 - [[concepts/state-machines]] — `LiveScheduleState` registry entry
 - [[concepts/page-surface-conventions]] — primary-action ordering that keeps the confirmation trough below the summary card

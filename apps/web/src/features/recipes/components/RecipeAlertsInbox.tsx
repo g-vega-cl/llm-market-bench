@@ -37,7 +37,7 @@ function RecipeAlertCard({
                     </Badge>
                     {alert.recipe_id ? (
                         <Link
-                            to="/recipes/live/$recipeId"
+                            to="/recipes/live/$recipeId/runs"
                             params={{ recipeId: alert.recipe_id }}
                             className="text-sm font-bold text-voxel-ink hover:text-accent underline"
                         >

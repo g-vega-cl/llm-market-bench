@@ -83,7 +83,7 @@ export function useBotHeaderActions({
         onEnabledNavigate: onNavigateAfterEnableLive
             ? async (enabledId) => {
                   await navigate({
-                      to: '/recipes/live/$recipeId',
+                      to: '/recipes/live/$recipeId/runs',
                       params: { recipeId: enabledId },
                   });
               }

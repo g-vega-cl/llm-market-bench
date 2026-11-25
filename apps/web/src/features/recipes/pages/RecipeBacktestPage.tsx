@@ -261,7 +261,7 @@ function renderUnavailableBacktestState(
                     <div>
                         {detail.job.recipe_id ? (
                             <Link
-                                to="/recipes/live/$recipeId"
+                                to="/recipes/live/$recipeId/runs"
                                 params={{ recipeId: detail.job.recipe_id }}
                                 className="voxel-btn inline-flex items-center px-3 py-1.5 text-sm font-bold border-2 border-accent text-accent"
                             >

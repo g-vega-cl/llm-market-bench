@@ -56,11 +56,11 @@ export function StudioActionBar({
             </Button>
             {isCurrentlyScheduledLive && liveRecipeId && (
                 <Link
-                    to="/recipes/live/$recipeId"
+                    to="/recipes/live/$recipeId/runs"
                     params={{ recipeId: liveRecipeId }}
                     className="voxel-btn inline-flex items-center justify-center gap-1 px-3 py-1.5 text-sm font-bold border border-success/50 bg-voxel-surface text-success hover:bg-voxel-elevated rounded-none whitespace-nowrap"
                 >
-                    Live Status →
+                    Live Runs →
                 </Link>
             )}
             {isCurrentlyScheduledLive && onActivateTurbo && (

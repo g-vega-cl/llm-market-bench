@@ -216,8 +216,9 @@ function HeaderActionButtons({
 }
 
 /**
- * Shared living-scene header across `/recipes/$recipeId`,
- * `/recipes/live/$recipeId`, and `/recipes/$recipeId/edit`.
+ * Shared living-scene header for the Overview tab (`/recipes/$recipeId`). Every
+ * other tab renders `BotSceneShell` instead: the card, its actions and Turbo are
+ * the Overview's own, and the chip row is the navigation to the rest.
  *
  * Mounts the 6-plane Cedar Ridge backdrop as a `backdropMode="page"` fixed world —
  * the scene sits behind the whole page and the tab content flows straight under

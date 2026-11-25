@@ -45,7 +45,7 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 5. **`/recipes` — My Bots Dashboard** (signed-in users only)
    - Lists the user's saved strategies with minimal per-bot cards
    - Primary CTA: "+ Build New Bot" → `/build`
-   - Each bot links to `/recipes/$recipeId` (Bot Overview), `/recipes/$recipeId/edit` (Blueprint Editor), and `/recipes/live/$recipeId` (Live Runs & Traces)
+   - Each bot links to `/recipes/$recipeId` (Bot Overview), `/recipes/$recipeId/edit` (Blueprint Editor), and `/recipes/live/$recipeId/runs` (Live Runs & Traces)
    - Live schedule toggles, Turbo boost, backtest history, and alerts inbox
    - Anonymous visitors see the **Recipe Gallery** (read-only template catalogue with a single "Start Building Your Bot →" CTA to `/build`)
 
@@ -78,7 +78,7 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 ### 3. Presentation — Shared Header & Surfaces
 
 #### Shared `BotStageHeader` + `BotStageSubNav`
-`apps/web/src/features/recipes/components/BotStageHeader.tsx` is the single living-scene header shared by Overview, Live Runs, and Blueprint. It renders a `SceneStage` (`variant="hero"`, `backdropMode="page"`, `motionRole="reactive"`, `scrim="panel"`) over `CedarRidgeBackdrop` with `SceneHudControls`: the world is a fixed full-viewport layer behind the page, the stage is content-height (card + its controls row, no band), and each page's `PageLayout` carries `relative z-10` so the tab panel starts 24 px under the card. It contains:
+`apps/web/src/features/recipes/components/BotStageHeader.tsx` is the single living-scene header shared by the Overview hub. Every other tab renders `BotSceneShell` instead: the card, its actions and Turbo are the Overview's own, and the chip row is the navigation to the rest. It renders a `SceneStage` (`variant="hero"`, `backdropMode="page"`, `motionRole="reactive"`, `scrim="panel"`) over `CedarRidgeBackdrop` with `SceneHudControls`: the world is a fixed full-viewport layer behind the page, the stage is content-height (card + its controls row, no band), and each page's `PageLayout` carries `relative z-10` so the tab panel starts 24 px under the card. It contains:
 - a `← My Bots` link and the live-state badge — `Live: PAUSED` (neutral), `Turbo: <N>m left (5m)` (solid accent, `suppressHydrationWarning`), or `Live: ON (30m)` (solid success);
 - the recipe name/description, a `Live: 30m • Backtest: <cadence> • 1 LLM call` line, and a `Next run:` label (`Paused`, `within 5m (Turbo)`, or `getNextLiveSlotLabel(now)`);
 - owner action buttons — Backtest (`resolveBacktestButtonLabel`), the live toggle (`Enabling Live...` / `Pausing Live...` in-flight labels), and `TurboButton` (only on the live tab while live);
@@ -98,11 +98,11 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 #### `/build` — 3-Step Chat Builder (`BuilderChatPanel` → `BuilderAlignmentCard` → `CompiledBotWorkspace`)
 - **Step 1 (Describe)**: `BuilderChatPanel` + `BuilderDescribeStep` + `BuilderStatusStrip` + `BuilderCompilePipeline` + `BuilderActivePrompt` + `BuilderMessageHistory` + `BuilderStepper` inside `SceneStage` (`CedarRidgeBackdrop` + `.scene-scrim .voxel-card`). No visible headline block — an `sr-only` `<h1>` carries the page name. The stage uses `build-stage-viewport` sizing and fluid `clamp()` gaps so the ridge band stays on screen below the card on a phone.
 - **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions before compiling the final bot (`status: 'ok'`). Trading ideas with offline limits compile to `ok` with a `warning`; non-trading inputs stay `declined`.
-- **Step 3 (Backtest & Go Live)**: `CompiledBotWorkspace` inside `PageLayout` over `GlobalBackground`. Its first block is `BuilderBotLiveStatus` for any saved bot, followed by `BuilderStatusStrip` (work axis), an in-flow `compiled-bot-live-warning` banner, `CompiledBotSummaryCard` (with recessed `compiled-bot-next-action` trough highlighting the primary CTA), and `BuilderStepper` (Step 3 active). **Save-then-navigate**: `handleSaveRecipe` persists an unsaved bot and then `navigate({ to: '/recipes/$recipeId', params: { recipeId: saved.id } })`; an already-saved bot stays put. Empty-prompt guard disables Save/Backtest/live.
+- **Step 3 (Backtest & Go Live)**: `CompiledBotWorkspace` inside `PageLayout` over `GlobalBackground`. Its first block is `BuilderBotLiveStatus` for any saved bot, followed by `BuilderStatusStrip` (work axis), an in-flow `compiled-bot-live-warning` banner, `CompiledBotSummaryCard` (with recessed `compiled-bot-next-action` trough highlighting the primary CTA), and `BuilderStepper` (Step 3 active). **Save-then-navigate**: `handleSaveRecipe` persists an unsaved bot and then `navigate({ to: '/recipes/$recipeId', params: { recipeId: saved.id } })`; an already-saved bot stays put. Enabling live navigates to `/recipes/live/$recipeId/runs`. Empty-prompt guard disables Save/Backtest/live.
 - Calm lower workspace (`CompiledBotBlueprintSection`) with a WAI-ARIA segmented tab bar (`Blocks & Tools` | `Prompt Preview`).
 
 #### `/recipes` — My Bots Dashboard (`RecipeDashboardPage`)
-- **Bot cards** (`BotCard`, fluid grid): the name link targets `/recipes/$recipeId` (Bot Overview) with an always-visible chevron; the live badge links to `/recipes/live/$recipeId`; owner actions (Enable/Pause Live, Remove) plus a `+ Build New Bot` CTA to `/build`.
+- **Bot cards** (`BotCard`, fluid grid): the name link targets `/recipes/$recipeId` (Bot Overview) with an always-visible chevron; the live badge links to `/recipes/live/$recipeId/runs`; owner actions (Enable/Pause Live, Remove) plus a `+ Build New Bot` CTA to `/build`.
 - **In-flight state**: the card derives the pending destination from the router via `pendingRecipeTarget(state.status, state.location)`, which now reports `workspace` for `/recipes/<id>` and `/recipes/<id>/edit` and `live` for `/recipes/live/<id>`. See [[concepts/state-machines]] §2.12.
 - **Quota strip**, **Recent backtests strip**, **Alerts inbox**, **Waitlist pledge modal**.
 
@@ -115,7 +115,7 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 #### `/recipes/backtest/$jobId` — Live Backtest View (`RecipeBacktestPage`)
 - Polls `fetchRecipeRunDetailFn` every 1.5s
 - Timeline, telemetry, portfolio, trades, session trace
-- Header links: `← Bot Overview` → `/recipes/$recipeId` and `Edit Blueprint` → `/recipes/$recipeId/edit` (a `live_turn` job links to `/recipes/live/$recipeId`)
+- Header links: `← Bot Overview` → `/recipes/$recipeId` and `Edit Blueprint` → `/recipes/$recipeId/edit` (a `live_turn` job links to `/recipes/live/$recipeId/runs`)
 
 #### `/recipes-demo` — Public Showcase
 - Pinned backtest via `recipe_showcase` table (CLI `publish_showcase`)
@@ -128,7 +128,7 @@ The Bot Overview surface renders deterministic behavioral telemetry computed ser
 
 - **`computeBotBehaviors`** (`apps/web/src/features/recipes/utils/recipe-insights.ts`): Aggregates action mix (BUY/EXIT/SELL/HOLD counts, hold selectivity), ticker focus (signal count, closed count, wins, net PnL), exit reasons, tool footprint, and the latest decision snapshot. Source is `live` when completed live turns exist, `backtest` when only backtest data is available, or `none` when neither exists.
 - **`deriveOverviewMetrics`** (`apps/web/src/features/recipes/utils/overview-metrics.ts`): Computes top-level KPIs (total equity, cash, net return %, win rate, open positions) prioritizing live paper state and falling back to the latest completed backtest before live turns begin.
-- **`BotBehaviorsBlock`**: Four equal-height recessed `.voxel-trough` panels (Action Mix & Selectivity, Ticker Focus & Exits, Tool Footprint, Latest Decision Snapshot) inside one `.voxel-card`.
+- **`BotBehaviorsBlock`**: Four equal-height recessed `.voxel-trough` panels (Action Mix & Selectivity, Ticker Focus & Exits, Tool Footprint, Latest Decision Snapshot) inside one `.voxel-card`. Its latest-decision panel links a `live_turn` decision to `/recipes/live/$recipeId/runs`.
 - **`PerformanceOverviewBlock`**: KPI strip (Total Equity, Net Return, Cash Available, Win Rate, Open Positions) plus a `PerformanceChart` with benchmark overlay, bounded to the active portfolio date range.
 - **`ClosedTradesSection`**: Closed trades ledger with in-flow `.voxel-trough` catalyst & confidence inspection (zero floating tooltips, full keyboard accessibility).
 
@@ -198,7 +198,7 @@ Compile jobs are protected against aging out between the sweep and the pop poll.
 - `/lab` = 3-block directory
 - `/build` = Primary builder entry (chat → workspace; `?recipeId=` redirects to `/recipes/$recipeId`)
 - `/recipes` = Gallery (anonymous) / Dashboard (signed-in)
-- `/recipes/$recipeId` = public-capable Bot Overview; `/recipes/$recipeId/edit` = owner Blueprint; `/recipes/live/$recipeId` = public-capable Live Runs
+- `/recipes/$recipeId` = public-capable Bot Overview; `/recipes/$recipeId/edit` = owner Blueprint; `/recipes/live/$recipeId` = public-capable Live Runs (redirects to `/recipes/live/$recipeId/runs`)
 - `/recipes-demo` = Pinned showcase backtest
 - Materialised stats only (zero frontend compute)
 

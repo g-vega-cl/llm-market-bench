@@ -123,7 +123,7 @@ describe('RecipeDashboardPage', () => {
         ).toHaveAttribute('href', '/recipes/bot-2');
         expect(screen.getByRole('link', { name: 'LIVE 30m' })).toHaveAttribute(
             'href',
-            '/recipes/live/bot-1',
+            '/recipes/live/bot-1/runs',
         );
     });
 

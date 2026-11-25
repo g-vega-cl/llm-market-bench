@@ -110,7 +110,7 @@ export function BotCard({
                 </Link>
                 {item.is_live && (
                     <Link
-                        to="/recipes/live/$recipeId"
+                        to="/recipes/live/$recipeId/runs"
                         params={{ recipeId: item.id }}
                         disabled={isActionDisabled}
                         aria-disabled={isActionDisabled || undefined}

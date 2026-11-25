@@ -237,7 +237,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
                 data: { pauseRecipeId: 'rec-old-1', enableRecipeId: 'rec-new-1' },
             });
             expect(mockNavigate).toHaveBeenCalledWith({
-                to: '/recipes/live/$recipeId',
+                to: '/recipes/live/$recipeId/runs',
                 params: { recipeId: 'rec-new-1' },
             });
         });

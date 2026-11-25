@@ -137,6 +137,6 @@ describe('SavedRecipesStrip', () => {
 
         const liveLinks = screen.getAllByRole('link', { name: /Live Status/i });
         expect(liveLinks).toHaveLength(1);
-        expect(liveLinks[0]).toHaveAttribute('href', '/recipes/live/rec-1');
+        expect(liveLinks[0]).toHaveAttribute('href', '/recipes/live/rec-1/runs');
     });
 });

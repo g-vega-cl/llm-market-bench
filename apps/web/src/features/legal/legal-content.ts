@@ -75,7 +75,9 @@ export const privacyPolicy: LegalDocument = {
         },
         {
             heading: 'Contact',
-            paragraphs: ['Questions about privacy or data deletion: privacy@benchify.dev.'],
+            paragraphs: [
+                'Benchify is run under the Benchify name by the independent llm-market-bench project, established in Ontario, Canada. Questions about privacy or data deletion: privacy@benchify.dev — this address reaches the operator directly.',
+            ],
         },
     ],
 };
@@ -85,6 +87,12 @@ export const termsOfService: LegalDocument = {
     updated: '2026-11-25',
     intro: 'These terms govern your use of benchify.dev. By creating an account or using the site, you agree to them. Benchify is a beta product, so expect rough edges and changing behavior.',
     sections: [
+        {
+            heading: 'Who runs Benchify',
+            paragraphs: [
+                'Benchify is run under the Benchify name by the independent llm-market-bench project, established in Ontario, Canada. “We” in these terms means whoever operates that project.',
+            ],
+        },
         {
             heading: 'What Benchify is',
             paragraphs: [
@@ -101,6 +109,12 @@ export const termsOfService: LegalDocument = {
             heading: 'Your account',
             paragraphs: [
                 'You are responsible for keeping your credentials secure and for activity that happens under your account. Use an email you control. If you believe your account has been compromised, contact us promptly.',
+            ],
+        },
+        {
+            heading: 'Eligibility',
+            paragraphs: [
+                'You must be at least 16 years old to create an account. If you are under the age of majority where you live, use Benchify only with the involvement of a parent or guardian.',
             ],
         },
         {
@@ -133,9 +147,27 @@ export const termsOfService: LegalDocument = {
             ],
         },
         {
+            heading: 'Consumer rights',
+            paragraphs: [
+                'Nothing in these terms removes or limits a right you have under mandatory consumer protection law in your country of residence. If a provision is unenforceable against you for that reason, it is severed to that extent and the rest of these terms stays in force.',
+            ],
+        },
+        {
             heading: 'Changes and termination',
             paragraphs: [
                 'We may suspend or terminate accounts that violate these terms or abuse the service. We may update these terms as the product evolves; the “Updated” date shows the current version. Continued use after a change means you accept the revised terms.',
+            ],
+        },
+        {
+            heading: 'Governing law and venue',
+            paragraphs: [
+                'These terms are governed by the laws of Ontario, Canada. The courts of Ontario have exclusive jurisdiction, except that if you are a consumer you may bring proceedings in the courts of your own country of residence where local law gives you that right.',
+            ],
+        },
+        {
+            heading: 'General',
+            paragraphs: [
+                'If any provision of these terms is found unenforceable, the remaining provisions stay in effect. These terms, together with the Privacy Policy and the Financial Disclaimer, are the entire agreement between you and us about the site. A failure to enforce a provision is not a waiver of it. You may not assign your rights under these terms; we may assign ours if the project changes hands.',
             ],
         },
         {

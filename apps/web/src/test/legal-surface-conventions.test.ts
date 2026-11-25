@@ -3,7 +3,7 @@ import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { privacyPolicy } from '~/features/legal/legal-content';
+import { privacyPolicy, termsOfService } from '~/features/legal/legal-content';
 
 /**
  * Legal-surface conventions.
@@ -110,5 +110,42 @@ describe('privacy policy facts', () => {
         const choices = privacyPolicy.sections.flatMap((s) => s.paragraphs ?? []).join(' ');
         expect(choices).toMatch(/respond within 30 days/i);
         expect(choices).not.toMatch(/within a reasonable period/i);
+    });
+
+    it('says who operates the site and where it is established', () => {
+        const contact = privacyPolicy.sections.find((s) => s.heading === 'Contact');
+        const text = (contact?.paragraphs ?? []).join(' ');
+        expect(text).toMatch(/llm-market-bench project/i);
+        expect(text).toMatch(/Ontario, Canada/);
+    });
+});
+
+describe('terms of service facts', () => {
+    const headings = termsOfService.sections.map((s) => s.heading);
+    const sectionText = (heading: string) =>
+        (termsOfService.sections.find((s) => s.heading === heading)?.paragraphs ?? []).join(' ');
+
+    it('names the clauses a launch reader looks for', () => {
+        expect(headings).toContain('Who runs Benchify');
+        expect(headings).toContain('Eligibility');
+        expect(headings).toContain('Consumer rights');
+        expect(headings).toContain('Governing law and venue');
+        expect(headings).toContain('General');
+    });
+
+    it('sets a 16+ floor consistent with the privacy policy', () => {
+        expect(sectionText('Eligibility')).toMatch(/at least 16 years old/);
+        const children = privacyPolicy.sections.find((s) => s.heading === 'Children');
+        expect((children?.paragraphs ?? []).join(' ')).toMatch(/under 16/);
+    });
+
+    it('preserves mandatory consumer rights instead of excluding them', () => {
+        expect(sectionText('Consumer rights')).toMatch(/mandatory consumer protection law/i);
+    });
+
+    it('names Ontario law and keeps a consumer venue exception', () => {
+        const governing = sectionText('Governing law and venue');
+        expect(governing).toMatch(/laws of Ontario, Canada/);
+        expect(governing).toMatch(/consumer/i);
     });
 });

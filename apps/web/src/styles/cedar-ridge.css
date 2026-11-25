@@ -113,6 +113,15 @@
         will-change: transform;
     }
 
+    /* The forest floor closes the bottom of the stage, so it must never lift
+       off that edge: the scroll term in `useCedarRidgeDrift` raises every layer
+       by scrollY × depth, and a plane that drifts up leaves the sky gradient
+       visible underneath it as a bright seam at the end of the page scroll.
+       Horizontal drift (pointer parallax) stays. */
+    .cedar-ridge .cr-layer.cr-anchor-bottom {
+        transform: translate3d(calc(var(--cr-px, 0) * var(--cr-depth, 0) * 1px), 0, 0);
+    }
+
     /* A frozen scene needs no compositor backing store. */
     .cedar-ridge[data-motion="paused"] .cr-layer,
     .cedar-ridge[data-motion="reduced"] .cr-layer {

@@ -202,8 +202,18 @@ export function CedarRidgeBackdrop({
                 </svg>
             </div>
 
-            {/* Plane 4 · forest floor, fading into the near foreground */}
-            <div className="cr-layer absolute inset-x-[-6%] bottom-0 h-[14%] [--cr-depth:0.56]">
+            {/* Plane 4 · forest floor, fading into the near foreground.
+                This plane closes the bottom of the stage, so it drifts
+                horizontally only (`cr-anchor-bottom`): the scroll term in
+                `useCedarRidgeDrift` lifts every layer by `scrollY × depth`, and
+                2px of lift on the floor is enough to expose the sky gradient
+                below it as a bright seam at the end of the page scroll. The
+                layer also overhangs the stage by 1px (`-bottom-px` +
+                `h-[calc(14%+1px)]`, so the top edge and bevel strip stay put)
+                for the device-pixel snapping case, which loses a row whenever
+                the stage height is not a whole device row. The stage clips the
+                overhang. */}
+            <div className="cr-layer cr-anchor-bottom absolute inset-x-[-6%] -bottom-px h-[calc(14%+1px)] [--cr-depth:0.56]">
                 <div className="absolute inset-x-0 top-0 h-3 border-t border-voxel-bevel-hi/50 bg-voxel-surface" />
                 <div className="cr-ground absolute inset-x-0 top-3 bottom-0 bg-voxel-trough" />
                 <div className="cr-near-fade absolute inset-x-0 top-3 bottom-0" />

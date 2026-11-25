@@ -15,6 +15,8 @@ export interface CompiledBotSummaryCardProps {
     isTogglingLive: boolean;
     isCurrentlyScheduledLive: boolean;
     backtestButtonLabel: string;
+    /** False once the owner has taken this bot private in My Bots. */
+    isPublic?: boolean;
     onNameChange: (name: string) => void;
     onSave: () => void;
     onBacktest: () => void;
@@ -179,6 +181,7 @@ export function CompiledBotSummaryCard({
     isTogglingLive,
     isCurrentlyScheduledLive,
     backtestButtonLabel,
+    isPublic = true,
     onNameChange,
     onSave,
     onBacktest,
@@ -220,6 +223,17 @@ export function CompiledBotSummaryCard({
                     {`· Live: 30m · Backtest: ${strategy.cadence} · one LLM call`}
                 </span>
             </div>
+
+            {/* Visibility is public by default, so say so where the bot is born
+                rather than leaving the owner to discover it in the gallery. */}
+            <p
+                data-testid="bot-visibility-notice"
+                className="text-xs font-normal text-voxel-muted leading-relaxed"
+            >
+                {isPublic
+                    ? 'Public bot — it appears in the gallery and on the leaderboard. Switch it to Private any time from My Bots.'
+                    : 'Private bot — only you can see it. Publish it from My Bots to enter the leaderboard.'}
+            </p>
 
             <div
                 data-testid="compiled-bot-next-action"

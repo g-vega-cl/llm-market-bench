@@ -53,7 +53,7 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 
 ### 1. Storage & Corpus
 - `public.recipe_news_corpus`: Point-in-time news articles with `search_tsv` and GIN indexes
-- `public.strategy_recipes`: Push v2 strategy configurations (`graph_json` with `version: "2.0-push"`, single `stages` item), cadence (default `3h`), `turbo_expires_at`, `is_public` (default `TRUE`), concurrency limits, isolated paper ledgers
+- `public.strategy_recipes`: Push v2 strategy configurations (`graph_json` with `version: "2.0-push"`, single `stages` item), cadence (default `3h`), `turbo_expires_at`, `is_public` (NOT NULL, default `TRUE`), concurrency limits, isolated paper ledgers
 - `public.recipe_intraday_bars`: Cached intraday bars for backtesting and live snapshots
 - `public.recipe_execution_queue`: Priority queue with counted dual-lane dequeue (`pop_next_recipe_job`), 3 concurrent backtests, 1 open live turn per recipe
 - `public.recipe_user_quotas`: Per-user quotas (2 backtests/day, 3 live bots, 1 Turbo/day via `activate_recipe_turbo`)
@@ -98,7 +98,7 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 #### `/build` — 3-Step Chat Builder (`BuilderChatPanel` → `BuilderAlignmentCard` → `CompiledBotWorkspace`)
 - **Step 1 (Describe)**: `BuilderChatPanel` + `BuilderDescribeStep` + `BuilderStatusStrip` + `BuilderCompilePipeline` + `BuilderActivePrompt` + `BuilderMessageHistory` + `BuilderStepper` inside `SceneStage` (`CedarRidgeBackdrop` + `.scene-scrim .voxel-card`). No visible headline block — an `sr-only` `<h1>` carries the page name. The stage uses `build-stage-viewport` sizing and fluid `clamp()` gaps so the ridge band stays on screen below the card on a phone. **Phone fold, measured at 390×664 (2026-11-25)**: document 1,270 px (606 px of scroll); "Continue to Alignment" sits at 374–414 px, well above the 664 px fold; the only element crossing the fold inside the card is the stage's "Sky: Daylight / Pause motion" strip at 745–781 px. Nothing is truncated, so no phone-fit pass is planned — scroll into the 477 px footer is expected.
 - **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions before compiling the final bot (`status: 'ok'`). Trading ideas with offline limits compile to `ok` with a `warning`; non-trading inputs stay `declined`.
-- **Step 3 (Backtest & Go Live)**: `CompiledBotWorkspace` inside `PageLayout` over `GlobalBackground`. Its first block is `BuilderBotLiveStatus` for any saved bot, followed by `BuilderStatusStrip` (work axis), an in-flow `compiled-bot-live-warning` banner, `CompiledBotSummaryCard` (with recessed `compiled-bot-next-action` trough highlighting the primary CTA), and `BuilderStepper` (Step 3 active). **Save-then-navigate**: `handleSaveRecipe` persists an unsaved bot and then `navigate({ to: '/recipes/$recipeId', params: { recipeId: saved.id } })`; an already-saved bot stays put. Enabling live navigates to `/recipes/live/$recipeId/runs`. Empty-prompt guard disables Save/Backtest/live.
+- **Step 3 (Backtest & Go Live)**: `CompiledBotWorkspace` inside `PageLayout` over `GlobalBackground`. Its first block is `BuilderBotLiveStatus` for any saved bot, followed by `BuilderStatusStrip` (work axis), an in-flow `compiled-bot-live-warning` banner, `CompiledBotSummaryCard` (with the `bot-visibility-notice` public/private disclosure, a recessed `compiled-bot-next-action` trough highlighting the primary CTA), and `BuilderStepper` (Step 3 active). **Save-then-navigate**: `handleSaveRecipe` persists an unsaved bot and then `navigate({ to: '/recipes/$recipeId', params: { recipeId: saved.id } })`; an already-saved bot stays put. Enabling live navigates to `/recipes/live/$recipeId/runs`. Empty-prompt guard disables Save/Backtest/live.
 - Calm lower workspace (`CompiledBotBlueprintSection`) with a WAI-ARIA segmented tab bar (`Blocks & Tools` | `Prompt Preview`).
 
 #### `/recipes` — My Bots Dashboard (`RecipeDashboardPage`)
@@ -153,7 +153,7 @@ The Bot Overview surface renders deterministic behavioral telemetry computed ser
 
 ## 8. Owner-Controlled Visibility (`is_public`)
 
-Each recipe carries an `is_public` boolean column (default `TRUE`) that controls:
+Each recipe carries an `is_public` boolean column (`NOT NULL DEFAULT TRUE`) that controls:
 - Whether strangers can read the bot's overview, performance, behaviour, and run-trace pages
 - Whether the bot is eligible for the leaderboard (`get_llm_leaderboard_metrics` filters user bots to `is_public = TRUE`)
 - Whether the bot appears in the public Recipe Gallery
@@ -178,15 +178,19 @@ Each recipe carries an `is_public` boolean column (default `TRUE`) that controls
 - Disabled while the mutation is in flight (`isTogglingVisibility`)
 - Deliberately low-emphasis: this is an opt-out, not a primary action
 
+**Default-on disclosure at birth**: because the default is public, a freshly compiled bot is listed in the gallery and on the leaderboard the moment it is saved. `CompiledBotSummaryCard` therefore renders a `bot-visibility-notice` line (`data-testid="bot-visibility-notice"`) directly under the identity row: a public bot reads "Public bot — it appears in the gallery and on the leaderboard. Switch it to Private any time from My Bots.", while a bot the owner already took private reads "Private bot — only you can see it. Publish it from My Bots to enter the leaderboard." `CompiledBotWorkspace` feeds the card `isPublic={currentSavedRecord?.is_public ?? true}`, so an unsaved draft is described as public (the state it will get on save) and a saved private bot never claims publication. `CompiledBotSummaryCard.test.tsx` pins both branches.
+
+`fetchUserRecipes` (`apps/web/src/features/recipes/api/recipes-quota-api.ts`) maps the column through `Boolean(row.is_public)` explicitly rather than spreading the raw database value, so the summary type never carries a raw value and a future default change cannot silently publish a row the read gate would hide.
+
 **Deliberate non-goals** (decided 2026-11-25):
 - **Privacy stays free.** It is not an entitlement and must never read a tier flag. `user_quotas.tier` (`beta_starter`) only gates live slots (`max_live_recipes`), concurrency and daily limits, and no billing integration exists in the codebase, so a private-bot paywall would have no payment rail. Revisit only if one lands — do not add a "ready for later" flag.
 - **No visibility-flip audit table.** The `console.info` line in `setRecipeVisibility` is the record. `system_audits` is not a substitute: `anon`/`authenticated` hold SELECT on every row (the public audits page reads it) and engine cleanup deletes RESOLVED/IGNORED rows after 30 days, so a flip log there would both publish which user hid which bot and silently expire. Add a dedicated table when a support or moderation flow needs per-flip history.
 
 ## 9. Fork (Copy Into Your Account)
-- `forkRecipe` copies public/template/own recipe → new row owned by caller
-- Strips live scheduling, publication, Turbo window
-- Resets paper ledger to $10,000 cash
-- **All user bots are public by default** (`is_public: true`)
+- `forkRecipe` (`apps/web/src/features/recipes/api/fork-recipe.ts`) copies a public/template/own recipe → new row owned by the caller
+- Strips live scheduling, publication, and the Turbo window (`is_live: false`, `is_template: false`)
+- Resets the paper ledger to $10,000 cash
+- **A fork inherits its source's visibility** — `is_public: Boolean(row.is_public)`. Forking a starter template (public by definition) yields a public bot; forking a bot the owner hid yields a private copy, because republishing a private strategy under a new name would leak it. `fork-recipe.test.ts` pins both branches ("keeps the fork of a private bot private" and the public template copy) alongside the unchanged `is_live: false` / `paper_cash: 10000` assertions.
 
 ## 10. Draft & Explicit Save (`useRecipeDraft`)
 - `RecipeSaveState`: `idle` → `saving` → `saved` | `error`

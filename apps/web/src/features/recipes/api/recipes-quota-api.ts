@@ -360,8 +360,9 @@ export async function fetchUserRecipes(userId: string): Promise<RecipeSummaryIte
         .limit(20);
 
     if (error) throw new Error(error.message);
-    // The column is nullable: a NULL reads as private on the read gate, so it
-    // must read as private here too rather than defaulting to public.
+    // `is_public` is NOT NULL DEFAULT TRUE, but map it explicitly so the summary
+    // type never carries a raw database value and a future default change cannot
+    // silently publish a row the read gate would hide.
     return ((data || []) as RecipeSummaryItem[]).map((row) => ({
         ...row,
         is_public: Boolean(row.is_public),

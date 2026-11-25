@@ -316,6 +316,7 @@ export function CompiledBotWorkspace({
                             strategy={strategy}
                             summary={summary}
                             preferLive={workspaceStatus.preferLive}
+                            isPublic={currentSavedRecord?.is_public ?? true}
                             isDirty={draft.isDirty}
                             isBusy={isBusy || hasEmptyPrompt}
                             saveState={draft.saveState}

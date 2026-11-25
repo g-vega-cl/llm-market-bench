@@ -59,10 +59,30 @@ describe('forkRecipe', () => {
         expect(inserted).toHaveLength(1);
         expect(inserted[0].user_id).toBe('user-1');
         expect(inserted[0].name).toBe('Copy of Chip Momentum');
-        // A fork never inherits live scheduling, and all user bots are public by default.
+        // A fork never inherits live scheduling and inherits the source's
+        // visibility; a template is public, so its copy is too.
         expect(inserted[0].is_live).toBe(false);
         expect(inserted[0].is_public).toBe(true);
         expect(inserted[0].paper_cash).toBe(10000);
+    });
+
+    it('keeps the fork of a private bot private', async () => {
+        setSource({
+            user_id: 'user-1',
+            name: 'My private edge',
+            description: 'x',
+            cadence: '3h',
+            graph_json: templateGraph,
+            is_public: false,
+            is_template: false,
+            archived_at: null,
+        });
+
+        await forkRecipe('src-private', 'user-1');
+
+        expect(inserted).toHaveLength(1);
+        // Publishing a copy of a strategy the owner hid would leak it.
+        expect(inserted[0].is_public).toBe(false);
     });
 
     it('refuses a private recipe owned by somebody else', async () => {

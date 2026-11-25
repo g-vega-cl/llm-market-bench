@@ -64,7 +64,9 @@ export async function forkRecipe(recipeId: string, userId: string) {
             description: row.description || '',
             cadence: row.cadence || '3h',
             graph_json: row.graph_json,
-            is_public: true,
+            // A fork inherits its source's visibility: copying a bot the owner
+            // kept private must not publish that strategy under a new name.
+            is_public: Boolean(row.is_public),
             is_template: false,
             is_live: false,
             concurrency_config: {

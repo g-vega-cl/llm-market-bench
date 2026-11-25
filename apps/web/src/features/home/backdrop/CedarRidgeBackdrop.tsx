@@ -5,7 +5,8 @@ import { CedarMoon } from './CedarMoon';
 import { useCedarRidgeDrift } from './useCedarRidgeDrift';
 
 /**
- * Cedar Ridge backdrop: a 2.5D pixel-art landscape behind `/build`.
+ * Cedar Ridge backdrop: a 2.5D pixel-art landscape behind `/build` and the three
+ * bot tabs (Overview, Live Runs, Blueprint).
  *
  * Six stacked planes — stars and a moon, drifting cloud slabs and a gliding
  * bird, a far mountain range, a pine ridge with a lookout tower, a forest
@@ -25,8 +26,16 @@ import { useCedarRidgeDrift } from './useCedarRidgeDrift';
  * opacity, moon height), never the geometry.
  */
 
-/** Implements the shared `SceneBackdropProps` contract (see `SceneStage`). */
-export type CedarRidgeBackdropProps = SceneBackdropProps;
+/** Implements the shared `SceneBackdropProps` contract (see `SceneStage`).
+ *
+ * `fauna` is this world's own addition: the meadow creatures walk while the bot
+ * they decorate is scheduled live, and stand still with a dimmed beacon when it
+ * is paused. It reads one fact (the schedule) and never renders status text, so
+ * the badge stays the only status owner. */
+export type CedarRidgeFauna = 'walking' | 'standby';
+export type CedarRidgeBackdropProps = SceneBackdropProps & {
+    fauna?: CedarRidgeFauna;
+};
 
 /** Scene paint. The surface hues are design tokens; these are the
  *  silhouette and foliage shades that give the ridge its depth. */
@@ -44,7 +53,12 @@ const RIDGE = {
 const BEVEL = 'var(--color-voxel-bevel-hi)';
 const INK = 'var(--color-voxel-ink)';
 
-export function CedarRidgeBackdrop({ atmosphere, motion, className }: CedarRidgeBackdropProps) {
+export function CedarRidgeBackdrop({
+    atmosphere,
+    motion,
+    fauna = 'walking',
+    className,
+}: CedarRidgeBackdropProps) {
     const rootRef = useCedarRidgeDrift(motion !== 'running');
 
     return (
@@ -54,6 +68,7 @@ export function CedarRidgeBackdrop({ atmosphere, motion, className }: CedarRidge
             data-world="cedar-ridge"
             data-atmosphere={atmosphere}
             data-motion={motion}
+            data-fauna={fauna}
             className={cn(
                 'cedar-ridge pointer-events-none absolute inset-0 h-full w-full select-none',
                 className,
@@ -175,7 +190,14 @@ export function CedarRidgeBackdrop({ atmosphere, motion, className }: CedarRidge
                         <rect x="4" y="32" width="2" height="4" fill={RIDGE.towerDark} />
                         <rect x="34" y="32" width="2" height="4" fill={RIDGE.towerDark} />
                         <rect x="0" y="8" width="40" height="6" fill={RIDGE.towerDark} />
-                        <rect x="12" y="18" width="16" height="6" fill="var(--color-accent)" />
+                        <rect
+                            x="12"
+                            y="18"
+                            width="16"
+                            height="6"
+                            className="cr-beacon"
+                            fill="var(--color-accent)"
+                        />
                     </g>
                 </svg>
             </div>

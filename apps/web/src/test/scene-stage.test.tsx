@@ -27,6 +27,40 @@ describe('SceneStage', () => {
         expect(screen.getByText('Benchify Living Hero')).toBeInTheDocument();
     });
 
+    it('mounts the world as a fixed page layer and leaves the stage band-free in page mode', () => {
+        const { container } = render(
+            <SceneStage
+                backdropMode="page"
+                atmosphere="after-hours"
+                motionRole="reactive"
+                scrim="panel"
+                backdrop={<div data-testid="page-world" />}
+                controls={<button type="button">Pause motion</button>}
+            >
+                <h1>Bot header</h1>
+            </SceneStage>,
+        );
+
+        const stage = container.querySelector('[data-slot="scene-stage"]') as HTMLElement;
+        expect(stage.getAttribute('data-backdrop-mode')).toBe('page');
+        expect(stage.className).not.toContain('scene-stage-hero');
+        expect(stage.className).not.toContain('scene-atmosphere-after-hours');
+        expect(stage.className).toContain('relative');
+        expect(stage.className).toContain('z-10');
+
+        const world = container.querySelector('[data-slot="scene-backdrop"]') as HTMLElement;
+        expect(world.getAttribute('aria-hidden')).toBe('true');
+        expect(world.className).toContain('fixed');
+        expect(world.className).toContain('pointer-events-none');
+        expect(world.className).toContain('scene-atmosphere-after-hours');
+        expect(screen.getByTestId('page-world')).toBeInTheDocument();
+
+        const controls = container.querySelector('[data-slot="scene-controls"]') as HTMLElement;
+        expect(controls.className).toContain('justify-end');
+        expect(controls.className).not.toContain('fixed');
+        expect(controls.getAttribute('aria-hidden')).toBeNull();
+    });
+
     it('renders a footer landmark for parallax footer stages with reactive motion role', () => {
         const { container } = render(
             <SceneStage variant="footer" atmosphere="after-hours" motionRole="reactive">

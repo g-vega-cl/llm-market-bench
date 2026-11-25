@@ -5,7 +5,7 @@ category: entity
 
 # Recipe Studio
 
-The **Recipe Studio** is a multi-surface experience built around a shared living-diorama header (`BotStageHeader`):
+The **Recipe Studio** is a multi-surface experience built around a shared living-scene header (`BotStageHeader`):
 
 1. **`/build` — The Chat Builder** (primary entry point)
    - Steps 1–2 render on the design-system `SceneStage` (`variant="hero"`, `motionRole="reactive"`) over the canvas-free `CedarRidgeBackdrop` (six SVG/CSS planes, pointer-and-scroll drift, patrolling lantern-bot and fox) with `SceneHudControls`, inside a `.scene-scrim .voxel-card`
@@ -16,21 +16,29 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
    - **`/build` is always a fresh describe flow**: a `/build?recipeId=<id>` request now `beforeLoad`-redirects to `/recipes/$recipeId` (the Bot Overview). After saving an unsaved compiled bot, `CompiledBotWorkspace` navigates to `/recipes/$recipeId`.
    - Accessible from `/lab` directory and the homepage CTA
 
-2. **`/recipes/$recipeId` — Bot Overview** (public-capable for `is_public`/`is_template` bots)
-   - Uses `BotStageHeader` (`SceneStage` + `GardenBackdrop` + `Overview | Live Runs | Blueprint` sub-nav) above three Matcha & Voxel blocks:
-     - **Performance & Equity** (`PerformanceOverviewBlock` + `PerformanceChart` + benchmark selector)
-     - **Behaviors & Insights** (`BotBehaviorsBlock` powered by `recipe-insights.ts` over up to 50 slimmed live turns or latest backtest)
-     - **Open Positions + Recent 5 Closed Trades** (`ClosedTradesSection` with in-flow trough inspection) + **Recent Backtests & Strategy DNA** (`OverviewBottomSection`)
+2. **`/recipes/$recipeId` — Bot Overview hub** (public-capable for `is_public`/`is_template` bots)
+   - One card, one purpose: `BotStageHeader` (`SceneStage` + `CedarRidgeBackdrop` + `Overview | Live Runs | Blueprint` sub-nav) plus `BotSummaryStrip` — Total Equity, Net Return, Win Rate, Open Positions — and a single `Performance, behaviors & positions →` link into the detail page. The hub renders **no panels**.
    - Loads via `fetchRecipeOverviewFn` (30s bounded public cache)
    - Non-owners receive a read-only view with a `Fork to My Bots` action; owner actions (Backtest, live toggle, Turbo, Blueprint) are gated on `isOwner`
 
+2a. **`/recipes/$recipeId/performance` — Overview details** (public-capable, same loader)
+   - Chrome is `BotSceneShell` (page-level Cedar Ridge world, `← <bot name>` back link, sub-nav with `markCurrent={false}`), then the three Matcha & Voxel blocks that used to sit under the hub card:
+     - **Performance & Equity** (`PerformanceOverviewBlock` + `PerformanceChart` + benchmark selector)
+     - **Behaviors & Insights** (`BotBehaviorsBlock` powered by `recipe-insights.ts` over up to 50 slimmed live turns or latest backtest)
+     - **Open Positions + Recent 5 Closed Trades** (`ClosedTradesSection` with in-flow trough inspection, trailing link to `/recipes/live/$recipeId/runs`) + **Recent Backtests & Strategy DNA** (`OverviewBottomSection`)
+
 3. **`/recipes/$recipeId/edit` — Blueprint Editor** (owner-only)
    - `RecipeEditPage` shares `BotStageHeader` (Blueprint tab active) and renders `RecipeNameField` + `CompiledBotBlueprintSection` (Blocks & Tools / Prompt Preview)
+   - Stays a single page on purpose: its below-card content is the editor (`StageBuilder` with `onStageChange`), not a data dump, so a hub/detail split would add a click before every edit
    - Reached only by the owner; a non-owner renders an `ErrorCard`
 
-4. **`/recipes/live/$recipeId` — Live Runs & Traces** (public-capable for `is_public`/`is_template` bots)
-   - `BotStageHeader` (`TurboButton` for owners) above paginated `Live Run Traces` (`RunPaginator` + `TraceInspectorBlock`), embedded `Live Paper Portfolio`, and `All Closed Live Trades`
+4. **`/recipes/live/$recipeId` — Live Runs hub** (public-capable for `is_public`/`is_template` bots)
+   - `BotStageHeader` (`TurboButton` for owners) plus `BotSummaryStrip` — Total Equity, Cash, Open Positions, Latest Run (stamp + signal count) — and one `Run traces, portfolio & closed trades →` link into the detail page
    - Moved from `/_authed/recipes/live/$recipeId` to root-level `/recipes/live/$recipeId`; non-owners may read public/template recipes
+
+4a. **`/recipes/live/$recipeId/runs` — Run traces & ledger** (public-capable, same loader)
+   - Chrome is `BotSceneShell` (`parent="live"`, back link to the Live hub), then paginated `Live Run Traces` (`RunPaginator` + `TraceInspectorBlock`), embedded `Live Paper Portfolio`, and `All Closed Live Trades`
+   - This is where the ~4,000 px of run output belongs: it was the bulk of the old Live page and made that page serve two purposes at once
 
 5. **`/recipes` — My Bots Dashboard** (signed-in users only)
    - Lists the user's saved strategies with minimal per-bot cards
@@ -68,7 +76,7 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 ### 3. Presentation — Shared Header & Surfaces
 
 #### Shared `BotStageHeader` + `BotStageSubNav`
-`apps/web/src/features/recipes/components/BotStageHeader.tsx` is the single living-diorama hero shared by Overview, Live Runs, and Blueprint. It renders a `SceneStage` (`variant="hero"`, `motionRole="reactive"`, `scrim="panel"`) over `GardenBackdrop` with `SceneHudControls`, and contains:
+`apps/web/src/features/recipes/components/BotStageHeader.tsx` is the single living-scene header shared by Overview, Live Runs, and Blueprint. It renders a `SceneStage` (`variant="hero"`, `backdropMode="page"`, `motionRole="reactive"`, `scrim="panel"`) over `CedarRidgeBackdrop` with `SceneHudControls`: the world is a fixed full-viewport layer behind the page, the stage is content-height (card + its controls row, no band), and each page's `PageLayout` carries `relative z-10` so the tab panel starts 24 px under the card. It contains:
 - a `← My Bots` link and the live-state badge — `Live: PAUSED` (neutral), `Turbo: <N>m left (5m)` (solid accent, `suppressHydrationWarning`), or `Live: ON (30m)` (solid success);
 - the recipe name/description, a `Live: 30m • Backtest: <cadence> • 1 LLM call` line, and a `Next run:` label (`Paused`, `within 5m (Turbo)`, or `getNextLiveSlotLabel(now)`);
 - owner action buttons — Backtest (`resolveBacktestButtonLabel`), the live toggle (`Enabling Live...` / `Pausing Live...` in-flight labels), and `TurboButton` (only on the live tab while live);

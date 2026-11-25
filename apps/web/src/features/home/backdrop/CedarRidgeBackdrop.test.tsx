@@ -82,6 +82,17 @@ describe('CedarRidgeBackdrop (planes, atmosphere exposure, drift and pause)', ()
         );
     });
 
+    it('walks its meadow by default and stands still when the bot is not live', () => {
+        const { rerender, container } = renderBackdrop();
+        const root = screen.getByTestId('cedar-ridge-backdrop');
+
+        expect(root).toHaveAttribute('data-fauna', 'walking');
+        expect(container.querySelectorAll('.cr-beacon')).toHaveLength(2);
+
+        rerender(<CedarRidgeBackdrop atmosphere="dusk" motion="running" fauna="standby" />);
+        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute('data-fauna', 'standby');
+    });
+
     it('writes pointer drift into the root custom properties', async () => {
         renderBackdrop();
         const root = screen.getByTestId('cedar-ridge-backdrop');

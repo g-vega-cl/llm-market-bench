@@ -11,7 +11,9 @@
 
 @layer utilities {
     /* The stage fills the viewport below the sticky navbar. Both selectors are
-       two classes deep so they outrank `.scene-stage-hero { min-height }`. */
+       two classes deep so they outrank `.scene-stage-hero { min-height }`. The bot
+       header no longer uses this: it runs `backdropMode="page"`, where the world is
+       a fixed layer and the tab content flows straight under the card. */
     .scene-stage-hero.home-hero-viewport,
     .scene-stage-hero.build-stage-viewport {
         min-height: calc(100dvh - 3.875rem);
@@ -287,6 +289,30 @@
     .cedar-ridge[data-motion="paused"] *,
     .cedar-ridge[data-motion="reduced"] * {
         animation-play-state: paused;
+    }
+
+    /* A paused bot stands still. `data-fauna` reads only the bot's schedule, so
+       the patrol freezes and the beacons drop to standby while `data-motion`
+       keeps owning the visitor's own pause. No status words live here. */
+    .cedar-ridge .cr-beacon {
+        transition: opacity 600ms ease-in-out;
+    }
+
+    /* A visitor who paused the scene gets no fade either: the beacon jumps to its
+       standby opacity instead of animating under a frozen world. */
+    .cedar-ridge[data-motion="paused"] .cr-beacon,
+    .cedar-ridge[data-motion="reduced"] .cr-beacon {
+        transition: none;
+    }
+
+    .cedar-ridge[data-fauna="standby"] .cr-bot,
+    .cedar-ridge[data-fauna="standby"] .cr-fox,
+    .cedar-ridge[data-fauna="standby"] .cr-bob {
+        animation-play-state: paused;
+    }
+
+    .cedar-ridge[data-fauna="standby"] .cr-beacon {
+        opacity: 0.35;
     }
 
     /* The builder stepper is a three-card strip. Below 22rem of card width the

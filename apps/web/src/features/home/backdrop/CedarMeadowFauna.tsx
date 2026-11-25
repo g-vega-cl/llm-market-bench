@@ -28,7 +28,14 @@ export function CedarMeadowFauna() {
                     fill="none"
                 >
                     <rect x="16" y="0" width="4" height="6" fill={BEVEL} />
-                    <rect x="16" y="0" width="4" height="3" fill="var(--color-accent)" />
+                    <rect
+                        x="16"
+                        y="0"
+                        width="4"
+                        height="3"
+                        className="cr-beacon"
+                        fill="var(--color-accent)"
+                    />
                     <rect x="8" y="6" width="20" height="16" fill={FUR.chassis} />
                     <rect x="8" y="6" width="20" height="2" fill={BEVEL} />
                     <rect x="12" y="11" width="12" height="5" fill={TROUGH} />

@@ -40,8 +40,15 @@ A page's job decides whether it carries a visible title block.
 - **Action surfaces** (`/personality`, `/build`, `/chat`) carry **no page-level title block** — no eyebrow, no title, no description above the first control. The page name survives as exactly one `sr-only` `<h1>` matching the route `<title>`, in **every render branch** the route can reach (a panel that swaps components, or a route that mounts one straight from loader data, needs its own). Section headings below the fold may keep their one-line subtitles.
 - **Browse surfaces** keep a visible title — an `h1` or a `SectionHeading` — plus at most one description line.
 
-## Primary action front & center
+## Hub and detail pages
 
+A bot surface with a header card carries **one purpose**: the hub renders the card and a summary strip, and its panels live on their own detail route reached by a single link. The rule of thumb is content, not tab count — an editor stays one page (split it and every edit costs a click), while a data dump splits (Overview → `/recipes/$recipeId/performance`, Live Runs → `/recipes/live/$recipeId/runs`).
+
+- **Hub**: `BotStageHeader` + `BotSummaryStrip` (four numbers drawn from the same fields the panels read) + exactly one `… →` link. No panels below the card.
+- **Detail**: `BotSceneShell` — the same page-level world, a `← <bot name>` back link to the hub, the sub-nav with `markCurrent={false}` (its chips link elsewhere), then the panels. The panel starts ~24 px under the sub-nav.
+- **Strip content** is per tab: Overview → equity, net return, win rate, open positions; Live Runs → equity, cash, open positions, latest run (stamp + signal count). Never invent a field the panel cannot also show.
+
+## Primary action front & center
 Putting no visible title on an action surface only works if the user's primary task actually sits at the top. On mobile (`360px`), stacking a multi-card stepper, status banner, or template catalog above a text input pushes the input and primary CTA below the fold.
 
 Section 4b of `.agents/rules/design-spec.md` therefore establishes **action-first ordering**:

@@ -16,6 +16,7 @@ export { HeroBackground } from './layouts/HeroBackground';
 export type { PageLayoutProps } from './layouts/PageLayout';
 export { PageLayout } from './layouts/PageLayout';
 export type {
+    SceneBackdropMode,
     SceneBackdropProps,
     SceneMotion,
     SceneMotionRole,

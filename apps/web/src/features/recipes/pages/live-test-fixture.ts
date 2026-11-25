@@ -1,0 +1,101 @@
+import type { LivePortfolioAndRuns } from '../types';
+
+/** Shared live fixture for the Live hub and Run-traces suites. */
+export const livePageData: LivePortfolioAndRuns = {
+    portfolio: {
+        cash: 10000,
+        total_equity: 10250,
+        open_positions: [
+            {
+                ticker: 'NVDA',
+                shares: 2,
+                entry_price: 120,
+                entry_time: '2026-04-06T09:30:00Z',
+                current_price: 135,
+                market_value: 270,
+                cost_basis: 240,
+                unrealized_pnl_net: 30,
+                unrealized_return_pct: 12.5,
+            },
+        ],
+        trades: [],
+    },
+    recentLiveRuns: [
+        {
+            id: 'job-1',
+            recipe_id: 'rec-1',
+            mode: 'live_turn',
+            status: 'pending',
+            progress_pct: 0,
+            provider: 'free-llm-proxy',
+            model: 'auto-go',
+            result_json: null,
+            error_message: null,
+            created_at: '2026-04-06T15:32:00Z',
+        },
+        {
+            id: 'job-2',
+            recipe_id: 'rec-1',
+            mode: 'live_turn',
+            status: 'completed',
+            progress_pct: 100,
+            provider: 'free-llm-proxy',
+            model: 'auto-go',
+            result_json: {
+                mode: 'live_turn',
+                as_of_utc: '2026-04-06T12:00:00Z',
+                stages: [
+                    {
+                        stage_id: 's1',
+                        prompt: 'Analyze MSFT at slot 2.',
+                        output: 'HOLD',
+                        tool_calls: [],
+                        trace: { rounds: [], forced_final_synthesis: false },
+                    },
+                ],
+                final_output: '[]',
+                signals: [],
+            },
+            error_message: null,
+            created_at: '2026-04-06T12:32:00Z',
+            started_at: '2026-04-06T12:32:00Z',
+            completed_at: '2026-04-06T12:32:05Z',
+        },
+        {
+            id: 'job-3',
+            recipe_id: 'rec-1',
+            mode: 'live_turn',
+            status: 'completed',
+            progress_pct: 100,
+            provider: 'free-llm-proxy',
+            model: 'auto-go',
+            result_json: {
+                mode: 'live_turn',
+                as_of_utc: '2026-04-06T09:30:00Z',
+                slot_label: 'SLOT-LABEL-RAW',
+                stages: [
+                    {
+                        stage_id: 's1',
+                        prompt: 'Analyze NVDA at slot 1.',
+                        output: 'BUY NVDA',
+                        tool_calls: [],
+                        trace: { rounds: [], forced_final_synthesis: false },
+                    },
+                ],
+                final_output: '[{"action":"BUY","ticker":"NVDA"}]',
+                signals: [{ action: 'BUY', ticker: 'NVDA' }],
+            },
+            error_message: null,
+            created_at: '2026-04-06T09:32:00Z',
+            started_at: '2026-04-06T09:32:00Z',
+            completed_at: '2026-04-06T09:32:05Z',
+        },
+    ],
+    liveMeta: {
+        recipeName: 'Momentum Alpha',
+        isLive: true,
+        isOwner: true,
+        turboExpiresAt: null,
+        turboUsedToday: false,
+    },
+};

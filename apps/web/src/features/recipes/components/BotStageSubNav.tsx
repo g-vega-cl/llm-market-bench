@@ -13,11 +13,16 @@ export function BotStageSubNav({
     recipeId,
     activeTab,
     isOwner,
+    markCurrent = true,
 }: {
     recipeId: string;
     activeTab: BotStageTab;
     isOwner: boolean;
+    /** Detail pages pass `false`: the chip styles as current but links to another URL. */
+    markCurrent?: boolean;
 }) {
+    const current = (tab: BotStageTab) => (markCurrent && activeTab === tab ? 'page' : undefined);
+
     return (
         <nav
             aria-label="Bot views"
@@ -26,7 +31,7 @@ export function BotStageSubNav({
             <Link
                 to="/recipes/$recipeId"
                 params={{ recipeId }}
-                aria-current={activeTab === 'overview' ? 'page' : undefined}
+                aria-current={current('overview')}
                 className={subNavClass(activeTab === 'overview')}
             >
                 Overview
@@ -34,7 +39,7 @@ export function BotStageSubNav({
             <Link
                 to="/recipes/live/$recipeId"
                 params={{ recipeId }}
-                aria-current={activeTab === 'live' ? 'page' : undefined}
+                aria-current={current('live')}
                 className={subNavClass(activeTab === 'live')}
             >
                 Live Runs
@@ -43,7 +48,7 @@ export function BotStageSubNav({
                 <Link
                     to="/recipes/$recipeId/edit"
                     params={{ recipeId }}
-                    aria-current={activeTab === 'edit' ? 'page' : undefined}
+                    aria-current={current('edit')}
                     className={subNavClass(activeTab === 'edit')}
                 >
                     Blueprint

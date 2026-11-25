@@ -5,8 +5,8 @@ import {
     SceneStage,
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import { useEffect, useState } from 'react';
-import { GardenBackdrop } from '~/features/home/backdrop/GardenBackdrop';
+import { type ReactNode, useEffect, useState } from 'react';
+import { CedarRidgeBackdrop } from '~/features/home/backdrop/CedarRidgeBackdrop';
 import { SceneHudControls } from '~/features/home/backdrop/SceneHudControls';
 import { useDioramaStage } from '~/features/home/backdrop/useDioramaStage';
 import type {
@@ -34,6 +34,8 @@ export interface BotStageHeaderProps {
     cadence: RecipeCadence;
     activeTab: BotStageTab;
     isOwner: boolean;
+    /** Hub content rendered inside the card, under the sub-nav (the summary strip). */
+    children?: ReactNode;
     isPublic?: boolean;
     isTemplate?: boolean;
     isLive: boolean;
@@ -214,11 +216,15 @@ function HeaderActionButtons({
 }
 
 /**
- * Shared living-diorama hero header across `/recipes/$recipeId`,
+ * Shared living-scene header across `/recipes/$recipeId`,
  * `/recipes/live/$recipeId`, and `/recipes/$recipeId/edit`.
  *
- * Keeps the 4-plane Cedar Sanctuary backdrop spatially clipped inside `SceneStage`
- * and protects navigation and primary CTAs with `scrim="panel"`.
+ * Mounts the 6-plane Cedar Ridge backdrop as a `backdropMode="page"` fixed world —
+ * the scene sits behind the whole page and the tab content flows straight under
+ * the card, instead of the stage reserving a band and leaving a hole between the
+ * card and the tab's own panel. Navigation and primary CTAs keep their scrim
+ * panel. The meadow patrol follows the bot's own schedule: `fauna="standby"`
+ * freezes it and dims the beacons when Live is off.
  */
 export function BotStageHeader({
     recipeId,
@@ -227,6 +233,7 @@ export function BotStageHeader({
     cadence,
     activeTab,
     isOwner,
+    children,
     isPublic = false,
     isTemplate = false,
     isLive,
@@ -285,12 +292,18 @@ export function BotStageHeader({
     return (
         <SceneStage
             variant="hero"
+            backdropMode="page"
             atmosphere={atmosphere}
             motionRole="reactive"
             scrim="panel"
             aria-label={`${recipeName} header`}
             backdrop={
-                <GardenBackdrop atmosphere={atmosphere} motion={motion} className="h-full w-full" />
+                <CedarRidgeBackdrop
+                    atmosphere={atmosphere}
+                    motion={motion}
+                    fauna={isLive ? 'walking' : 'standby'}
+                    className="h-full w-full"
+                />
             }
             controls={
                 <SceneHudControls
@@ -386,6 +399,8 @@ export function BotStageHeader({
                 ) : null}
 
                 <BotStageSubNav recipeId={recipeId} activeTab={activeTab} isOwner={isOwner} />
+
+                {children ? <div className="min-w-0">{children}</div> : null}
             </div>
         </SceneStage>
     );

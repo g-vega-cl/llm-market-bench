@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { STARTER_RECIPES } from '../starter-templates';
 import type { RecipeOverviewData } from '../types';
+import { liveOverviewData } from './overview-test-fixture';
 import { RecipeOverviewPage } from './RecipeOverviewPage';
 
 const mockNavigate = vi.fn();
@@ -91,137 +91,19 @@ beforeEach(() => {
     mockNavigate.mockResolvedValue(undefined);
 });
 
-const liveOverviewData: RecipeOverviewData = {
-    recipeId: 'rec-live-1',
-    strategy: { ...STARTER_RECIPES[0], id: 'rec-live-1', name: 'AI Capex Radar' },
-    isOwner: true,
-    isPublic: false,
-    isTemplate: false,
-    isLive: true,
-    turboExpiresAt: null,
-    turboUsedToday: false,
-    portfolio: {
-        cash: 7500,
-        total_equity: 10500,
-        open_positions: [
-            {
-                ticker: 'NVDA',
-                shares: 10,
-                entry_price: 250,
-                entry_time: '2026-11-14 09:30 ET',
-                current_price: 300,
-                market_value: 3000,
-                cost_basis: 2500,
-                unrealized_pnl_net: 500,
-                unrealized_return_pct: 20,
-            },
-        ],
-        trades: [
-            {
-                ticker: 'AVGO',
-                action: 'BUY',
-                entry_time: '2026-11-12 09:30 ET',
-                entry_price: 180,
-                exit_time: '2026-11-13 15:30 ET',
-                exit_price: 190,
-                pnl_midpoint: 100,
-                pnl_net: 96,
-                return_pct_midpoint: 5.5,
-                return_pct_net: 5.2,
-                exit_reason: 'TARGET_HIT',
-                catalyst_headline: 'Custom ASIC demand surge',
-                confidence: 86,
-            },
-        ],
-        equity_curve: [
-            { time: '2026-11-14 09:30 ET', equity: 10000 },
-            { time: '2026-11-18 15:30 ET', equity: 10500 },
-        ],
-    },
-    recentLiveRuns: [
-        {
-            id: 'live-run-1',
-            recipe_id: 'rec-live-1',
-            mode: 'live_turn',
-            status: 'completed',
-            progress_pct: 100,
-            result_json: {
-                mode: 'live_turn',
-                as_of_utc: '2026-11-18T15:30:00Z',
-                stages: [
-                    {
-                        stage_id: 's1',
-                        prompt: 'Evaluate NVDA',
-                        output: 'Maintaining NVDA long on data center strength.',
-                        tool_calls: ['get_ticker_news'],
-                    },
-                ],
-                final_output: 'Maintaining NVDA long on data center strength.',
-                signals: [{ action: 'BUY', ticker: 'NVDA' }],
-            },
-            error_message: null,
-            created_at: '2026-11-18T15:30:00Z',
-        },
-    ],
-    recentBacktests: [
-        {
-            id: 'bt-job-1',
-            recipe_id: 'rec-live-1',
-            mode: 'backtest',
-            status: 'completed',
-            progress_pct: 100,
-            result_json: {
-                mode: 'backtest',
-                window_dates: ['2026-11-01', '2026-11-14'],
-                total_return_pct_midpoint: 7.2,
-                total_return_pct_net: 6.8,
-                total_trades: 3,
-                win_rate_pct: 66.7,
-                max_drawdown_pct: 1.8,
-                equity_curve: [],
-                trades: [],
-            },
-            error_message: null,
-            created_at: '2026-11-10T10:00:00Z',
-        },
-    ],
-};
-
-describe('RecipeOverviewPage', () => {
-    it('renders living SceneStage header, 3 structured blocks, benchmark chart, behaviors, positions, and links', async () => {
-        const benchmarkFetchFn = vi.fn(
-            async (
-                tickers: string[],
-            ): Promise<Record<string, { date: string; price: number }[]>> => {
-                if (tickers[0] === 'SPY') {
-                    return {
-                        SPY: [
-                            { date: '2026-11-14', price: 500 },
-                            { date: '2026-11-18', price: 510 },
-                        ],
-                    };
-                }
-                return {
-                    QQQ: [
-                        { date: '2026-11-14', price: 400 },
-                        { date: '2026-11-18', price: 416 },
-                    ],
-                };
-            },
-        );
-
+describe('RecipeOverviewPage (hub)', () => {
+    it('renders one card with the summary strip and a single link into the detail page', () => {
         const { container } = render(
-            <RecipeOverviewPage
-                data={liveOverviewData}
-                initialAtmosphere="dusk"
-                benchmarkFetchFn={benchmarkFetchFn}
-            />,
+            <RecipeOverviewPage data={liveOverviewData} initialAtmosphere="dusk" />,
         );
 
         const stage = container.querySelector('section[data-slot="scene-stage"]');
         expect(stage).toBeInTheDocument();
         expect(stage).toHaveAttribute('data-atmosphere', 'dusk');
-        expect(screen.getByTestId('garden-backdrop')).toBeInTheDocument();
+        expect(stage).toHaveAttribute('data-backdrop-mode', 'page');
+        const world = container.querySelector('[data-slot="scene-backdrop"]');
+        expect(world).toHaveClass('fixed');
+        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute('data-fauna', 'walking');
 
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('AI Capex Radar');
         expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute(
@@ -232,82 +114,29 @@ describe('RecipeOverviewPage', () => {
             'href',
             '/recipes/live/rec-live-1',
         );
-        expect(screen.getByRole('link', { name: 'Blueprint' })).toHaveAttribute(
-            'href',
-            '/recipes/rec-live-1/edit',
-        );
 
-        expect(screen.getByTestId('bot-performance-block')).toHaveTextContent('LIVE PAPER');
-        expect(screen.getByTestId('bot-performance-block')).toHaveTextContent('$10,500.00');
-        expect(screen.getByTestId('bot-behaviors-block')).toHaveTextContent(
-            'Maintaining NVDA long on data center strength.',
-        );
-        expect(screen.getByTestId('bot-positions-dna-block')).toHaveTextContent('BUY AVGO');
-        expect(screen.getByRole('link', { name: /Edit Blueprint/i })).toHaveAttribute(
-            'href',
-            '/recipes/rec-live-1/edit',
-        );
-        expect(screen.getByRole('link', { name: /2026-11-01 → 2026-11-14/i })).toHaveAttribute(
-            'href',
-            '/recipes/backtest/bt-job-1',
-        );
+        const strip = screen.getByTestId('bot-summary-strip');
+        expect(strip).toHaveTextContent('Total Equity');
+        expect(strip).toHaveTextContent('$10,500.00');
+        expect(strip).toHaveTextContent('+5.00%');
+        expect(strip).toHaveTextContent('100.0%');
+        expect(strip).toHaveTextContent('1 / 4');
 
-        await waitFor(() => {
-            expect(benchmarkFetchFn).toHaveBeenCalledWith(['SPY'], '2026-11-14', '2026-11-18');
-            expect(screen.getByText(/\+3\.00% outperformance/i)).toBeInTheDocument();
-        });
+        expect(
+            screen.getByRole('link', { name: /Performance, behaviors & positions/i }),
+        ).toHaveAttribute('href', '/recipes/rec-live-1/performance');
 
-        fireEvent.change(screen.getByLabelText(/Benchmark/i), { target: { value: 'QQQ' } });
-        await waitFor(() => {
-            expect(benchmarkFetchFn).toHaveBeenCalledWith(['QQQ'], '2026-11-14', '2026-11-18');
-        });
+        // The hub serves one purpose: the panels live on the detail page.
+        expect(screen.queryByTestId('bot-performance-block')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('bot-behaviors-block')).not.toBeInTheDocument();
+        expect(screen.queryByTestId('bot-positions-dna-block')).not.toBeInTheDocument();
     });
 
-    it('falls back to latest backtest preview when no live turns exist yet', () => {
-        const backtestOnlyData: RecipeOverviewData = {
-            ...liveOverviewData,
-            isLive: false,
-            portfolio: {
-                cash: 10000,
-                total_equity: 10000,
-                open_positions: [],
-                trades: [],
-                equity_curve: [],
-            },
-            recentLiveRuns: [],
-            recentBacktests: [
-                {
-                    ...liveOverviewData.recentBacktests[0],
-                    result_json: {
-                        mode: 'backtest',
-                        window_dates: ['2026-11-01', '2026-11-14'],
-                        starting_capital: 10000,
-                        ending_capital_net: 10680,
-                        total_equity: 10680,
-                        cash: 10680,
-                        total_return_pct_midpoint: 7.2,
-                        total_return_pct_net: 6.8,
-                        total_trades: 3,
-                        winning_trades: 2,
-                        win_rate_pct: 66.7,
-                        max_drawdown_pct: 1.8,
-                        equity_curve: [
-                            { time: '2026-11-01', equity: 10000 },
-                            { time: '2026-11-01', equity: 10680 },
-                        ],
-                        trades: [],
-                    },
-                },
-            ],
-        };
+    it('stands the meadow still when the bot is not live', () => {
+        const pausedData: RecipeOverviewData = { ...liveOverviewData, isLive: false };
+        render(<RecipeOverviewPage data={pausedData} />);
 
-        render(<RecipeOverviewPage data={backtestOnlyData} benchmarkFetchFn={vi.fn()} />);
-
-        expect(screen.getByTestId('bot-performance-block')).toHaveTextContent('LATEST BACKTEST');
-        expect(screen.getByText(/Showing latest 2-week backtest preview/i)).toBeInTheDocument();
-        expect(
-            screen.getByText(/Benchmark comparison begins once 2\+ trading days/i),
-        ).toBeInTheDocument();
+        expect(screen.getByTestId('cedar-ridge-backdrop')).toHaveAttribute('data-fauna', 'standby');
     });
 
     it('renders read-only public mode with Fork to My Bots and hides Blueprint tab for non-owners', async () => {
@@ -317,14 +146,7 @@ describe('RecipeOverviewPage', () => {
         });
 
         render(
-            <RecipeOverviewPage
-                data={{
-                    ...liveOverviewData,
-                    isOwner: false,
-                    isPublic: true,
-                }}
-                benchmarkFetchFn={vi.fn()}
-            />,
+            <RecipeOverviewPage data={{ ...liveOverviewData, isOwner: false, isPublic: true }} />,
         );
 
         expect(screen.getByText('PUBLIC BOT')).toBeInTheDocument();

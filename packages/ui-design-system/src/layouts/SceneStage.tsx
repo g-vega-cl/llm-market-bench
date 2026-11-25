@@ -21,6 +21,19 @@ export type SceneStageVariant = 'hero' | 'footer';
 export type SceneMotionRole = 'background' | 'reactive' | 'story';
 
 /**
+ * Where the world sits relative to the page.
+ *
+ * `stage` (default) clips the backdrop inside the stage — the shape for a hero or
+ * footer band that owns a slice of the page. `page` mounts the backdrop as its own
+ * fixed, full-viewport `z-0` layer with the atmosphere sky on it, so content flows
+ * straight over the world instead of starting below a reserved band. In `page`
+ * mode the host page must keep its own content in positioned layers (`relative
+ * z-10`) so the world never paints over text — see `.agents/rules/design-spec.md`
+ * §12.2.
+ */
+export type SceneBackdropMode = 'stage' | 'page';
+
+/**
  * Who owns a scene's motion, mirrored from the host's `useDioramaStage`.
  * `reduced` means the operating system asked for it, so the UI must not offer
  * to un-freeze the scene.
@@ -41,6 +54,8 @@ export type SceneScrim = 'none' | 'panel';
 export interface SceneStageProps extends React.HTMLAttributes<HTMLElement> {
     /** Stage placement: full-bleed hero header or bounded parallax footer. */
     variant?: SceneStageVariant;
+    /** Backdrop placement: clipped inside the stage band, or fixed behind the page. */
+    backdropMode?: SceneBackdropMode;
     /** Dynamic Matcha & Cedar atmospheric sky state. */
     atmosphere?: AtmospherePhase;
     /** Semantic motion role from the living-scene taxonomy. */
@@ -66,8 +81,15 @@ const variantClassMap: Record<SceneStageVariant, string> = {
     footer: 'scene-stage-footer px-6 py-8 border-t-2 border-voxel-bevel-hi',
 };
 
+/** `page` mode owns no band, so it carries padding only — no `min-height`. */
+const pageClassMap: Record<SceneStageVariant, string> = {
+    hero: 'px-6 py-6',
+    footer: 'px-6 py-8 border-t-2 border-voxel-bevel-hi',
+};
+
 export function SceneStage({
     variant = 'hero',
+    backdropMode = 'stage',
     atmosphere = 'dusk',
     motionRole = 'background',
     scrim = 'none',
@@ -79,10 +101,67 @@ export function SceneStage({
 }: SceneStageProps) {
     const Tag = variant === 'footer' ? 'footer' : 'section';
 
+    const content = (
+        <div className="relative z-10 mx-auto w-full max-w-7xl min-w-0">
+            {scrim === 'panel' ? (
+                <div
+                    data-slot="scene-scrim"
+                    className="scene-scrim voxel-card rounded-none p-6 min-w-0"
+                >
+                    {children}
+                </div>
+            ) : (
+                children
+            )}
+        </div>
+    );
+
+    if (backdropMode === 'page') {
+        return (
+            <>
+                {backdrop ? (
+                    <div
+                        data-slot="scene-backdrop"
+                        aria-hidden="true"
+                        className={cn(
+                            'scene-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden',
+                            atmosphereClassMap[atmosphere],
+                        )}
+                    >
+                        {backdrop}
+                    </div>
+                ) : null}
+
+                <Tag
+                    data-slot="scene-stage"
+                    data-stage-variant={variant}
+                    data-backdrop-mode="page"
+                    data-atmosphere={atmosphere}
+                    data-motion-role={motionRole}
+                    className={cn('relative z-10 rounded-none', pageClassMap[variant], className)}
+                    {...rest}
+                >
+                    <div className="relative z-10 mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-3">
+                        {content}
+                        {controls ? (
+                            <div
+                                data-slot="scene-controls"
+                                className="pointer-events-auto flex flex-wrap items-center justify-end gap-2"
+                            >
+                                {controls}
+                            </div>
+                        ) : null}
+                    </div>
+                </Tag>
+            </>
+        );
+    }
+
     return (
         <Tag
             data-slot="scene-stage"
             data-stage-variant={variant}
+            data-backdrop-mode="stage"
             data-atmosphere={atmosphere}
             data-motion-role={motionRole}
             className={cn(

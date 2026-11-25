@@ -5,17 +5,18 @@ category: entity
 
 # Recipe Live Status Page (`/recipes/live/$recipeId`)
 
-The dedicated live-status page for a Push v2 strategy. It is now a **public-capable root route** (moved out of `/_authed`) that shares the `BotStageHeader` living-diorama hero with the Bot Overview and Blueprint pages, so a visitor can inspect a public/template bot's live runs while owner-only controls stay gated. The studio (`/recipes`) remains a pure editor; the live page focuses on run traces and the paper ledger without background polling or SSE.
+The dedicated live-status page for a Push v2 strategy. It is now a **public-capable root route** (moved out of `/_authed`) that shares the `BotStageHeader` living-scene hero with the Bot Overview and Blueprint pages, so a visitor can inspect a public/template bot's live runs while owner-only controls stay gated. The studio (`/recipes`) remains a pure editor; the live page focuses on run traces and the paper ledger without background polling or SSE.
 
 ## Route
 
-- **File**: `apps/web/src/routes/recipes/live/$recipeId.tsx` (root-level; previously `apps/web/src/routes/_authed/recipes/live/$recipeId.tsx`).
+- **Files**: `apps/web/src/routes/recipes/live/$recipeId/route.tsx` (Outlet layout), `index.tsx` (the hub, path `/recipes/live/$recipeId/`), and `runs.tsx` (the detail page, `/recipes/live/$recipeId/runs`). Previously a single root-level file at `apps/web/src/routes/recipes/live/$recipeId.tsx`.
+- **Hub vs detail**: the hub renders the shared card plus `BotSummaryStrip` (Total Equity, Cash, Open Positions, Latest Run) and a single `Run traces, portfolio & closed trades →` link; `runs` renders the same card-less chrome through `BotSceneShell` and holds the traces, portfolio and closed trades. Both use the same `fetchLivePortfolioAndRunsFn` fetch, so a navigation costs one load, not two.
 - **Loader**: calls `fetchLivePortfolioAndRunsFn({ data: { recipeId } })`, failing soft to `null`. It resolves `initialAtmosphere` server-side via `resolveAtmospherePhase(new Date(), 'market-et')` (zero-flash hydration), and — only when the caller is the signed-in owner — fetches `fetchRecipeQuotaStatusFn()` and `fetchUserRecipesFn()` in parallel.
 - **Access**: a non-owner may read a recipe that is `is_public` or `is_template`; the owner's `user_id` is never leaked to a non-owner. A private recipe, or a missing row, resolves to `null` and renders an `ErrorCard` with a back-to-My-Bots link. Owner actions (Backtest, live toggle, Turbo) are gated on `liveMeta.isOwner`.
 
 ## Shared header (`BotStageHeader` + `BotStageSubNav`)
 
-`apps/web/src/features/recipes/components/BotStageHeader.tsx` replaces the former `LiveStatusHeader`. It renders a `SceneStage` (`variant="hero"`, `motionRole="reactive"`, `scrim="panel"`) over `GardenBackdrop` with `SceneHudControls`, and contains:
+`apps/web/src/features/recipes/components/BotStageHeader.tsx` replaces the former `LiveStatusHeader`. It renders a `SceneStage` (`variant="hero"`, `backdropMode="page"`, `motionRole="reactive"`, `scrim="panel"`) over `CedarRidgeBackdrop` with `SceneHudControls` — the ridge world is a fixed full-viewport layer behind the page so the run traces begin directly under the card, and `fauna="standby"` freezes the patrol and dims the beacons when the bot is not live. It contains:
 
 - a `← My Bots` link and the live-state badge — `Live: PAUSED` (neutral), `Turbo: <N>m left (5m)` (solid accent, `suppressHydrationWarning`), or `Live: ON (30m)` (solid success);
 - the recipe name/description, a `Live: 30m • Backtest: <cadence> • 1 LLM call` line, and a `Next run:` label (`Paused`, `within 5m (Turbo)`, or `getNextLiveSlotLabel(now)`);
@@ -26,6 +27,8 @@ The dedicated live-status page for a Push v2 strategy. It is now a **public-capa
 All owner actions route through `useBotHeaderActions` (`apps/web/src/features/recipes/utils/use-bot-header-actions.ts`), which wraps `useLiveScheduleControl` and the backtest/fork/pledge server functions.
 
 ## Page content
+
+The hub itself carries no panels — `BotSummaryStrip` shows Total Equity, Cash, Open Positions and the Latest Run stamp with its signal count, and one link opens the detail page. Everything below lives on `/recipes/live/$recipeId/runs`:
 
 - **Live Run Traces** (`LiveRunTracesSection`) — a Card describing the 30m/5m cadence, a run-stamp badge (Eastern `as_of_utc`, falling back to `created_at`) plus signal count, `RunPaginator` one-at-a-time paging (`← Older · N of M · Newer →`, boundary buttons inert via `aria-disabled` but focusable), and one recessed `.voxel-trough` per stage rendered through `TraceInspectorBlock` under a fixed `LLM Call` label. A queued/failed run with no `result_json` renders `no trace output yet (status: …)` plus its `error_message`.
 - **Live Paper Portfolio + Closed Trades** — when a portfolio snapshot exists, a Card renders `RecipePortfolioBlock` (`embedded`, so no duplicate metric tiles) titled `Live Paper Portfolio`, followed by `ClosedTradesSection` titled `All Closed Live Trades` (in-flow `.voxel-trough` catalyst/confidence inspection, zero floating tooltips).

@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { activateRecipeTurboFn } from '../api/recipes-quota-api';
-import type { LivePortfolioAndRuns } from '../types';
+import { livePageData } from './live-test-fixture';
 import { RecipeLivePage } from './RecipeLivePage';
 
 const mockNavigate = vi.fn();
@@ -89,201 +89,43 @@ beforeAll(() => {
     }
 });
 
-const initialData: LivePortfolioAndRuns = {
-    portfolio: {
-        cash: 10000,
-        total_equity: 10250,
-        open_positions: [
-            {
-                ticker: 'NVDA',
-                shares: 2,
-                entry_price: 120,
-                entry_time: '2026-04-06T09:30:00Z',
-                current_price: 135,
-                market_value: 270,
-                cost_basis: 240,
-                unrealized_pnl_net: 30,
-                unrealized_return_pct: 12.5,
-            },
-        ],
-        trades: [],
-    },
-    recentLiveRuns: [
-        {
-            id: 'job-1',
-            recipe_id: 'rec-1',
-            mode: 'live_turn',
-            status: 'pending',
-            progress_pct: 0,
-            provider: 'free-llm-proxy',
-            model: 'auto-go',
-            result_json: null,
-            error_message: null,
-            created_at: '2026-04-06T15:32:00Z',
-        },
-        {
-            id: 'job-2',
-            recipe_id: 'rec-1',
-            mode: 'live_turn',
-            status: 'completed',
-            progress_pct: 100,
-            provider: 'free-llm-proxy',
-            model: 'auto-go',
-            result_json: {
-                mode: 'live_turn',
-                as_of_utc: '2026-04-06T12:00:00Z',
-                stages: [
-                    {
-                        stage_id: 's1',
-                        prompt: 'Analyze MSFT at slot 2.',
-                        output: 'HOLD',
-                        tool_calls: [],
-                        trace: { rounds: [], forced_final_synthesis: false },
-                    },
-                ],
-                final_output: '[]',
-                signals: [],
-            },
-            error_message: null,
-            created_at: '2026-04-06T12:32:00Z',
-            started_at: '2026-04-06T12:32:00Z',
-            completed_at: '2026-04-06T12:32:05Z',
-        },
-        {
-            id: 'job-3',
-            recipe_id: 'rec-1',
-            mode: 'live_turn',
-            status: 'completed',
-            progress_pct: 100,
-            provider: 'free-llm-proxy',
-            model: 'auto-go',
-            result_json: {
-                mode: 'live_turn',
-                as_of_utc: '2026-04-06T09:30:00Z',
-                slot_label: 'SLOT-LABEL-RAW',
-                stages: [
-                    {
-                        stage_id: 's1',
-                        prompt: 'Analyze NVDA at slot 1.',
-                        output: 'BUY NVDA',
-                        tool_calls: [],
-                        trace: { rounds: [], forced_final_synthesis: false },
-                    },
-                ],
-                final_output: '[{"action":"BUY","ticker":"NVDA"}]',
-                signals: [{ action: 'BUY', ticker: 'NVDA' }],
-            },
-            error_message: null,
-            created_at: '2026-04-06T09:32:00Z',
-            started_at: '2026-04-06T09:32:00Z',
-            completed_at: '2026-04-06T09:32:05Z',
-        },
-    ],
-    liveMeta: {
-        recipeName: 'Momentum Alpha',
-        isLive: true,
-        isOwner: true,
-        turboExpiresAt: null,
-        turboUsedToday: false,
-    },
-};
-
-describe('RecipeLivePage', () => {
-    it('renders empty state inside the living SceneStage header when no live state is available', () => {
-        const { container } = render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+describe('RecipeLivePage (hub)', () => {
+    it('renders one card with the live summary strip and a single link into the run traces', () => {
+        const { container } = render(
+            <RecipeLivePage recipeId="rec-1" initialData={livePageData} />,
+        );
 
         expect(container.querySelector('section[data-slot="scene-stage"]')).toBeInTheDocument();
+        expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Momentum Alpha');
+
+        const strip = screen.getByTestId('bot-summary-strip');
+        expect(strip).toHaveTextContent('Total Equity');
+        expect(strip).toHaveTextContent('$10,250.00');
+        expect(strip).toHaveTextContent('$10,000.00');
+        expect(strip).toHaveTextContent('1 / 4');
+        expect(strip).toHaveTextContent(/Apr 6 • 11:32 AM ET/);
+
+        expect(
+            screen.getByRole('link', { name: /Run traces, portfolio & closed trades/i }),
+        ).toHaveAttribute('href', '/recipes/live/rec-1/runs');
+
+        // Hub serves one purpose: traces, portfolio and closed trades moved out.
+        expect(screen.queryByText(/Live Run Traces/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/Live Paper Portfolio/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/All Closed Live Trades/i)).not.toBeInTheDocument();
+    });
+
+    it('renders empty-state placeholders with no live state', () => {
+        render(<RecipeLivePage recipeId="rec-1" initialData={null} />);
+
         expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/Live Runs · rec-1/i);
-        expect(screen.getByText(/No live runs yet/i)).toBeInTheDocument();
+        const strip = screen.getByTestId('bot-summary-strip');
+        expect(strip).toHaveTextContent('—');
         expect(screen.queryByText(/Live Paper Portfolio/i)).not.toBeInTheDocument();
     });
 
-    it('renders live paper portfolio, closed trades section, and the trace of the run being viewed', () => {
-        render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
-
-        expect(screen.getByRole('heading', { name: 'Momentum Alpha' })).toBeInTheDocument();
-        expect(screen.getByText(/Live Paper Portfolio/i)).toBeInTheDocument();
-        expect(screen.getByText(/All Closed Live Trades/i)).toBeInTheDocument();
-        expect(screen.getAllByText(/NVDA/i).length).toBeGreaterThan(0);
-        expect(screen.getByText(/Live Run Traces/i)).toBeInTheDocument();
-
-        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
-
-        expect(screen.getByText('LLM Call')).toBeInTheDocument();
-        expect(screen.getByText(/Analyze NVDA at slot 1/i)).toBeInTheDocument();
-        expect(screen.getAllByText(/BUY NVDA/i).length).toBeGreaterThan(0);
-    });
-
-    it('lands on the newest run and swaps the mounted trace when paging older', () => {
-        render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
-
-        expect(screen.queryByText(/Recent Live Turns/i)).not.toBeInTheDocument();
-        expect(screen.getByRole('status')).toHaveTextContent('1 of 3');
-
-        expect(screen.getByText(/Apr 6 • 11:32 AM ET/)).toBeInTheDocument();
-        expect(screen.getByText(/no trace output yet/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Analyze MSFT at slot 2/i)).not.toBeInTheDocument();
-        expect(screen.queryByText(/Analyze NVDA at slot 1/i)).not.toBeInTheDocument();
-        expect(screen.getByRole('button', { name: 'Newer' })).toHaveAttribute(
-            'aria-disabled',
-            'true',
-        );
-
-        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
-
-        expect(screen.getByRole('status')).toHaveTextContent('2 of 3');
-        expect(screen.getByText(/Apr 6 • 8:00 AM ET/)).toBeInTheDocument();
-        expect(screen.getByText(/Analyze MSFT at slot 2/i)).toBeInTheDocument();
-        expect(screen.queryByText(/no trace output yet/i)).not.toBeInTheDocument();
-    });
-
-    it('walks to the oldest run, names it in the trace header, and stops at the end', () => {
-        render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
-
-        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Older' }));
-
-        expect(screen.getByRole('status')).toHaveTextContent('3 of 3');
-        expect(screen.getByText(/Apr 6 • 5:30 AM ET/)).toBeInTheDocument();
-        expect(screen.queryByText(/SLOT-LABEL-RAW/)).not.toBeInTheDocument();
-        expect(screen.getByText(/Analyze NVDA at slot 1/i)).toBeInTheDocument();
-        expect(screen.queryByText(/Analyze MSFT at slot 2/i)).not.toBeInTheDocument();
-
-        const older = screen.getByRole('button', { name: 'Older' });
-        expect(older).toHaveAttribute('aria-disabled', 'true');
-        expect(older).not.toBeDisabled();
-        older.focus();
-        fireEvent.click(older);
-        expect(document.activeElement).toBe(older);
-        expect(screen.getByRole('status')).toHaveTextContent('3 of 3');
-
-        fireEvent.click(screen.getByRole('button', { name: 'Newer' }));
-        expect(screen.getByRole('status')).toHaveTextContent('2 of 3');
-        expect(screen.getByText(/Analyze MSFT at slot 2/i)).toBeInTheDocument();
-    });
-
-    it('surfaces a failed run as terminal rather than "yet", with its error', () => {
-        const withFailure: typeof initialData = {
-            ...initialData,
-            recentLiveRuns: [
-                {
-                    ...initialData.recentLiveRuns[0],
-                    status: 'failed',
-                    error_message: 'LLM timeout',
-                },
-                ...initialData.recentLiveRuns.slice(1),
-            ],
-        };
-        render(<RecipeLivePage recipeId="rec-1" initialData={withFailure} />);
-
-        expect(screen.getByText(/failed — no trace output/i)).toBeInTheDocument();
-        expect(screen.queryByText(/no trace output yet/i)).not.toBeInTheDocument();
-        expect(screen.getByText('LLM timeout')).toBeInTheDocument();
-    });
-
-    it('links to Overview and Blueprint in the shared BotStageHeader sub-nav', () => {
-        render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
+    it('links to Overview and Blueprint in the shared sub-nav', () => {
+        render(<RecipeLivePage recipeId="rec-1" initialData={livePageData} />);
 
         expect(screen.getByRole('link', { name: 'Overview' })).toHaveAttribute(
             'href',
@@ -358,7 +200,7 @@ describe('RecipeLivePage', () => {
                 enqueuedJobId: 'job-turbo-1',
             });
 
-            render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
+            render(<RecipeLivePage recipeId="rec-1" initialData={livePageData} />);
 
             fireEvent.click(screen.getByRole('button', { name: /Turbo \(5m x 1h\)/i }));
 
@@ -375,7 +217,7 @@ describe('RecipeLivePage', () => {
                 <RecipeLivePage
                     recipeId="rec-1"
                     initialData={{
-                        ...initialData,
+                        ...livePageData,
                         liveMeta: {
                             recipeName: 'Momentum',
                             isLive: false,
@@ -396,7 +238,7 @@ describe('RecipeLivePage', () => {
             vi.useFakeTimers();
             vi.setSystemTime(new Date('2026-11-21T11:00:00-05:00'));
 
-            render(<RecipeLivePage recipeId="rec-1" initialData={initialData} />);
+            render(<RecipeLivePage recipeId="rec-1" initialData={livePageData} />);
 
             expect(screen.getByRole('button', { name: /Turbo \(Market Closed\)/i })).toBeDisabled();
         });

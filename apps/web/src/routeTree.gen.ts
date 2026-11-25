@@ -49,12 +49,16 @@ import { Route as PortfoliosIndexRouteImport } from './routes/portfolios/index'
 import { Route as PortfoliosPortfolioIdRouteImport } from './routes/portfolios/$portfolioId'
 import { Route as ReasoningIndexRouteImport } from './routes/reasoning/index'
 import { Route as RecipesIndexRouteImport } from './routes/recipes/index'
+import { Route as RecipesRecipeIdRouteRouteImport } from './routes/recipes/$recipeId/route'
 import { Route as MemoriesChainMemoryIdRouteImport } from './routes/memories/chain/$memoryId'
 import { Route as PersonalityTCodeRouteImport } from './routes/personality.t.$code'
 import { Route as RecipesRecipeIdIndexRouteImport } from './routes/recipes/$recipeId/index'
-import { Route as RecipesLiveRecipeIdRouteImport } from './routes/recipes/live/$recipeId'
+import { Route as RecipesRecipeIdPerformanceRouteImport } from './routes/recipes/$recipeId/performance'
+import { Route as RecipesLiveRecipeIdRouteRouteImport } from './routes/recipes/live/$recipeId/route'
 import { Route as AuthedRecipesRecipeIdEditRouteImport } from './routes/_authed/recipes/$recipeId/edit'
 import { Route as AuthedRecipesBacktestJobIdRouteImport } from './routes/_authed/recipes/backtest/$jobId'
+import { Route as RecipesLiveRecipeIdIndexRouteImport } from './routes/recipes/live/$recipeId/index'
+import { Route as RecipesLiveRecipeIdRunsRouteImport } from './routes/recipes/live/$recipeId/runs'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -256,6 +260,11 @@ const RecipesIndexRoute = RecipesIndexRouteImport.update({
   path: '/recipes/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecipesRecipeIdRouteRoute = RecipesRecipeIdRouteRouteImport.update({
+  id: '/recipes/$recipeId',
+  path: '/recipes/$recipeId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MemoriesChainMemoryIdRoute = MemoriesChainMemoryIdRouteImport.update({
   id: '/memories/chain/$memoryId',
   path: '/memories/chain/$memoryId',
@@ -267,15 +276,22 @@ const PersonalityTCodeRoute = PersonalityTCodeRouteImport.update({
   getParentRoute: () => PersonalityRoute,
 } as any)
 const RecipesRecipeIdIndexRoute = RecipesRecipeIdIndexRouteImport.update({
-  id: '/recipes/$recipeId/',
-  path: '/recipes/$recipeId/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => RecipesRecipeIdRouteRoute,
 } as any)
-const RecipesLiveRecipeIdRoute = RecipesLiveRecipeIdRouteImport.update({
-  id: '/recipes/live/$recipeId',
-  path: '/recipes/live/$recipeId',
-  getParentRoute: () => rootRouteImport,
-} as any)
+const RecipesRecipeIdPerformanceRoute =
+  RecipesRecipeIdPerformanceRouteImport.update({
+    id: '/performance',
+    path: '/performance',
+    getParentRoute: () => RecipesRecipeIdRouteRoute,
+  } as any)
+const RecipesLiveRecipeIdRouteRoute =
+  RecipesLiveRecipeIdRouteRouteImport.update({
+    id: '/recipes/live/$recipeId',
+    path: '/recipes/live/$recipeId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthedRecipesRecipeIdEditRoute =
   AuthedRecipesRecipeIdEditRouteImport.update({
     id: '/recipes/$recipeId/edit',
@@ -288,6 +304,17 @@ const AuthedRecipesBacktestJobIdRoute =
     path: '/recipes/backtest/$jobId',
     getParentRoute: () => AuthedRoute,
   } as any)
+const RecipesLiveRecipeIdIndexRoute =
+  RecipesLiveRecipeIdIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => RecipesLiveRecipeIdRouteRoute,
+  } as any)
+const RecipesLiveRecipeIdRunsRoute = RecipesLiveRecipeIdRunsRouteImport.update({
+  id: '/runs',
+  path: '/runs',
+  getParentRoute: () => RecipesLiveRecipeIdRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -312,6 +339,7 @@ export interface FileRoutesByFullPath {
   '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
+  '/recipes/$recipeId': typeof RecipesRecipeIdRouteRouteWithChildren
   '/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/companies/$ticker': typeof CompaniesTickerRoute
@@ -329,12 +357,15 @@ export interface FileRoutesByFullPath {
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
   '/recipes/': typeof RecipesIndexRoute
+  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRouteRouteWithChildren
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
-  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRoute
+  '/recipes/$recipeId/performance': typeof RecipesRecipeIdPerformanceRoute
   '/recipes/$recipeId/': typeof RecipesRecipeIdIndexRoute
   '/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
+  '/recipes/live/$recipeId/runs': typeof RecipesLiveRecipeIdRunsRoute
+  '/recipes/live/$recipeId/': typeof RecipesLiveRecipeIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -377,10 +408,12 @@ export interface FileRoutesByTo {
   '/recipes': typeof RecipesIndexRoute
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
-  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRoute
+  '/recipes/$recipeId/performance': typeof RecipesRecipeIdPerformanceRoute
   '/recipes/$recipeId': typeof RecipesRecipeIdIndexRoute
   '/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
   '/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
+  '/recipes/live/$recipeId/runs': typeof RecipesLiveRecipeIdRunsRoute
+  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -407,6 +440,7 @@ export interface FileRoutesById {
   '/retired-agents': typeof RetiredAgentsRoute
   '/signup': typeof SignupRoute
   '/today': typeof TodayRoute
+  '/recipes/$recipeId': typeof RecipesRecipeIdRouteRouteWithChildren
   '/_authed/profile': typeof AuthedProfileRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/companies/$ticker': typeof CompaniesTickerRoute
@@ -424,12 +458,15 @@ export interface FileRoutesById {
   '/portfolios/': typeof PortfoliosIndexRoute
   '/reasoning/': typeof ReasoningIndexRoute
   '/recipes/': typeof RecipesIndexRoute
+  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRouteRouteWithChildren
   '/memories/chain/$memoryId': typeof MemoriesChainMemoryIdRoute
   '/personality/t/$code': typeof PersonalityTCodeRoute
-  '/recipes/live/$recipeId': typeof RecipesLiveRecipeIdRoute
+  '/recipes/$recipeId/performance': typeof RecipesRecipeIdPerformanceRoute
   '/recipes/$recipeId/': typeof RecipesRecipeIdIndexRoute
   '/_authed/recipes/$recipeId/edit': typeof AuthedRecipesRecipeIdEditRoute
   '/_authed/recipes/backtest/$jobId': typeof AuthedRecipesBacktestJobIdRoute
+  '/recipes/live/$recipeId/runs': typeof RecipesLiveRecipeIdRunsRoute
+  '/recipes/live/$recipeId/': typeof RecipesLiveRecipeIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -456,6 +493,7 @@ export interface FileRouteTypes {
     | '/retired-agents'
     | '/signup'
     | '/today'
+    | '/recipes/$recipeId'
     | '/profile'
     | '/auth/callback'
     | '/companies/$ticker'
@@ -473,12 +511,15 @@ export interface FileRouteTypes {
     | '/portfolios/'
     | '/reasoning/'
     | '/recipes/'
+    | '/recipes/live/$recipeId'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
-    | '/recipes/live/$recipeId'
+    | '/recipes/$recipeId/performance'
     | '/recipes/$recipeId/'
     | '/recipes/$recipeId/edit'
     | '/recipes/backtest/$jobId'
+    | '/recipes/live/$recipeId/runs'
+    | '/recipes/live/$recipeId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -521,10 +562,12 @@ export interface FileRouteTypes {
     | '/recipes'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
-    | '/recipes/live/$recipeId'
+    | '/recipes/$recipeId/performance'
     | '/recipes/$recipeId'
     | '/recipes/$recipeId/edit'
     | '/recipes/backtest/$jobId'
+    | '/recipes/live/$recipeId/runs'
+    | '/recipes/live/$recipeId'
   id:
     | '__root__'
     | '/'
@@ -550,6 +593,7 @@ export interface FileRouteTypes {
     | '/retired-agents'
     | '/signup'
     | '/today'
+    | '/recipes/$recipeId'
     | '/_authed/profile'
     | '/auth/callback'
     | '/companies/$ticker'
@@ -567,12 +611,15 @@ export interface FileRouteTypes {
     | '/portfolios/'
     | '/reasoning/'
     | '/recipes/'
+    | '/recipes/live/$recipeId'
     | '/memories/chain/$memoryId'
     | '/personality/t/$code'
-    | '/recipes/live/$recipeId'
+    | '/recipes/$recipeId/performance'
     | '/recipes/$recipeId/'
     | '/_authed/recipes/$recipeId/edit'
     | '/_authed/recipes/backtest/$jobId'
+    | '/recipes/live/$recipeId/runs'
+    | '/recipes/live/$recipeId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -599,6 +646,7 @@ export interface RootRouteChildren {
   RetiredAgentsRoute: typeof RetiredAgentsRoute
   SignupRoute: typeof SignupRoute
   TodayRoute: typeof TodayRoute
+  RecipesRecipeIdRouteRoute: typeof RecipesRecipeIdRouteRouteWithChildren
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
   AiPredictionsIndexRoute: typeof AiPredictionsIndexRoute
   AuditsIndexRoute: typeof AuditsIndexRoute
@@ -612,9 +660,8 @@ export interface RootRouteChildren {
   PortfoliosIndexRoute: typeof PortfoliosIndexRoute
   ReasoningIndexRoute: typeof ReasoningIndexRoute
   RecipesIndexRoute: typeof RecipesIndexRoute
+  RecipesLiveRecipeIdRouteRoute: typeof RecipesLiveRecipeIdRouteRouteWithChildren
   MemoriesChainMemoryIdRoute: typeof MemoriesChainMemoryIdRoute
-  RecipesLiveRecipeIdRoute: typeof RecipesLiveRecipeIdRoute
-  RecipesRecipeIdIndexRoute: typeof RecipesRecipeIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -899,6 +946,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RecipesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recipes/$recipeId': {
+      id: '/recipes/$recipeId'
+      path: '/recipes/$recipeId'
+      fullPath: '/recipes/$recipeId'
+      preLoaderRoute: typeof RecipesRecipeIdRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/memories/chain/$memoryId': {
       id: '/memories/chain/$memoryId'
       path: '/memories/chain/$memoryId'
@@ -915,16 +969,23 @@ declare module '@tanstack/react-router' {
     }
     '/recipes/$recipeId/': {
       id: '/recipes/$recipeId/'
-      path: '/recipes/$recipeId'
+      path: '/'
       fullPath: '/recipes/$recipeId/'
       preLoaderRoute: typeof RecipesRecipeIdIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof RecipesRecipeIdRouteRoute
+    }
+    '/recipes/$recipeId/performance': {
+      id: '/recipes/$recipeId/performance'
+      path: '/performance'
+      fullPath: '/recipes/$recipeId/performance'
+      preLoaderRoute: typeof RecipesRecipeIdPerformanceRouteImport
+      parentRoute: typeof RecipesRecipeIdRouteRoute
     }
     '/recipes/live/$recipeId': {
       id: '/recipes/live/$recipeId'
       path: '/recipes/live/$recipeId'
       fullPath: '/recipes/live/$recipeId'
-      preLoaderRoute: typeof RecipesLiveRecipeIdRouteImport
+      preLoaderRoute: typeof RecipesLiveRecipeIdRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authed/recipes/$recipeId/edit': {
@@ -940,6 +1001,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/recipes/backtest/$jobId'
       preLoaderRoute: typeof AuthedRecipesBacktestJobIdRouteImport
       parentRoute: typeof AuthedRoute
+    }
+    '/recipes/live/$recipeId/': {
+      id: '/recipes/live/$recipeId/'
+      path: '/'
+      fullPath: '/recipes/live/$recipeId/'
+      preLoaderRoute: typeof RecipesLiveRecipeIdIndexRouteImport
+      parentRoute: typeof RecipesLiveRecipeIdRouteRoute
+    }
+    '/recipes/live/$recipeId/runs': {
+      id: '/recipes/live/$recipeId/runs'
+      path: '/runs'
+      fullPath: '/recipes/live/$recipeId/runs'
+      preLoaderRoute: typeof RecipesLiveRecipeIdRunsRouteImport
+      parentRoute: typeof RecipesLiveRecipeIdRouteRoute
     }
   }
 }
@@ -995,6 +1070,35 @@ const PersonalityRouteWithChildren = PersonalityRoute._addFileChildren(
   PersonalityRouteChildren,
 )
 
+interface RecipesRecipeIdRouteRouteChildren {
+  RecipesRecipeIdPerformanceRoute: typeof RecipesRecipeIdPerformanceRoute
+  RecipesRecipeIdIndexRoute: typeof RecipesRecipeIdIndexRoute
+}
+
+const RecipesRecipeIdRouteRouteChildren: RecipesRecipeIdRouteRouteChildren = {
+  RecipesRecipeIdPerformanceRoute: RecipesRecipeIdPerformanceRoute,
+  RecipesRecipeIdIndexRoute: RecipesRecipeIdIndexRoute,
+}
+
+const RecipesRecipeIdRouteRouteWithChildren =
+  RecipesRecipeIdRouteRoute._addFileChildren(RecipesRecipeIdRouteRouteChildren)
+
+interface RecipesLiveRecipeIdRouteRouteChildren {
+  RecipesLiveRecipeIdRunsRoute: typeof RecipesLiveRecipeIdRunsRoute
+  RecipesLiveRecipeIdIndexRoute: typeof RecipesLiveRecipeIdIndexRoute
+}
+
+const RecipesLiveRecipeIdRouteRouteChildren: RecipesLiveRecipeIdRouteRouteChildren =
+  {
+    RecipesLiveRecipeIdRunsRoute: RecipesLiveRecipeIdRunsRoute,
+    RecipesLiveRecipeIdIndexRoute: RecipesLiveRecipeIdIndexRoute,
+  }
+
+const RecipesLiveRecipeIdRouteRouteWithChildren =
+  RecipesLiveRecipeIdRouteRoute._addFileChildren(
+    RecipesLiveRecipeIdRouteRouteChildren,
+  )
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
@@ -1019,6 +1123,7 @@ const rootRouteChildren: RootRouteChildren = {
   RetiredAgentsRoute: RetiredAgentsRoute,
   SignupRoute: SignupRoute,
   TodayRoute: TodayRoute,
+  RecipesRecipeIdRouteRoute: RecipesRecipeIdRouteRouteWithChildren,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
   AiPredictionsIndexRoute: AiPredictionsIndexRoute,
   AuditsIndexRoute: AuditsIndexRoute,
@@ -1032,9 +1137,8 @@ const rootRouteChildren: RootRouteChildren = {
   PortfoliosIndexRoute: PortfoliosIndexRoute,
   ReasoningIndexRoute: ReasoningIndexRoute,
   RecipesIndexRoute: RecipesIndexRoute,
+  RecipesLiveRecipeIdRouteRoute: RecipesLiveRecipeIdRouteRouteWithChildren,
   MemoriesChainMemoryIdRoute: MemoriesChainMemoryIdRoute,
-  RecipesLiveRecipeIdRoute: RecipesLiveRecipeIdRoute,
-  RecipesRecipeIdIndexRoute: RecipesRecipeIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

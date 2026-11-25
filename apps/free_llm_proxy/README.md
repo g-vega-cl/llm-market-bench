@@ -139,8 +139,8 @@ proxy therefore clamps to a per-provider ceiling instead of a single global numb
 
 | Knob | Default | Effect |
 | :--- | :--- | :--- |
-| `providers.json` → `max_output_tokens` | gemini `65536`, all other cloud providers `32768` | Provider's own output/thinking ceiling. The clamp is `min(requested, ceiling)` and only ever lowers a caller's budget. |
-| `CLOUD_MAX_OUTPUT_TOKENS` | `32768` | Fallback ceiling for providers that declare none. Strata is exempt (keeps its 128k+ budget). |
+| `providers.json` → `max_output_tokens` | gemini/nous/kilo/openrouter/nvidia/opencode-go `65536`, groq `32768`, strata `65536` | Provider's own output/thinking ceiling. The clamp is `min(requested, ceiling)` and only ever lowers a caller's budget. 64k is verified per provider: groq rejects 65536 with HTTP 400, the rest accept it. |
+| `CLOUD_MAX_OUTPUT_TOKENS` | `65536` | Fallback ceiling for providers that declare none. |
 | `CLOUD_REQUEST_TIMEOUT_SECONDS` | `90.0` | Wall-clock cap per non-Strata attempt; also the httpx read window (`client.build_timeout`), so there is no second hidden cap. Non-streaming only — a streaming response returns its generator as soon as headers arrive. |
 | `FREE_ATTEMPT_TIMEOUT_SECONDS` | `45.0` | Tighter per-attempt cap for free candidates (non-streaming), clamped further by what is left of the free budget. |
 | `PAID_ATTEMPT_TIMEOUT_SECONDS` | `45.0` | Per-attempt cap for the paid last resort, so one metered call cannot pin the pass. |

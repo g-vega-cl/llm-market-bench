@@ -7,6 +7,21 @@ category: entity
 
 `apps/engine/auto_wiki.py` (invoked by `scripts/auto-wiki.sh`) generates and updates wiki documentation from staged git diffs. It runs as a blocking pre-commit step: if documentation generation fails, the commit is blocked.
 
+## LLM Tier Chain
+
+`generate_with_fallback(prompt, args, api_key)` runs three tiers in order and returns the first usable result:
+
+1. **free-llm-proxy (`auto-go`)** — the in-repo proxy (see [[entities/free-llm-proxy]]). `_proxy_available()` calls `get_proxy_config()`; when that raises `RuntimeError` (no `FREE_PROXY_MASTER_KEY` while `FREE_LLM_PROXY_URL` points at a remote proxy) the tier is skipped with a stderr note instead of aborting, so a fresh clone holding only an OpenRouter key still documents. Model: `WIKI_DOC_PROXY_MODEL` / `--proxy-model` (default `auto-go`).
+2. **OpenRouter primary** — `WIKI_DOC_MODEL` / `--model` (default `~deepseek/deepseek-flash-latest`), used only when `OPENROUTER_API_KEY` resolves from the environment or the macOS keychain item `openrouter-api-key`.
+3. **OpenRouter free backup** — `WIKI_DOC_FREE_MODEL` / `--free-model` (default `openrouter/free`), skipped when it equals the primary model.
+
+The proxy leads because its `auto-go` alias walks free providers before the paid `opencode-go` tail, making it the cheap path; OpenRouter is the backup. If all three tiers fail, `generate_with_fallback` prints an error and calls `sys.exit(1)` — the commit is blocked because documentation is required.
+
+### Budgets and timeouts
+
+- `MAX_OUTPUT_TOKENS = 65536` is the `max_tokens` sent on both the proxy and OpenRouter calls. The proxy clamps it down per provider (groq stays at 32k), so asking for 64k only raises what the larger providers may return.
+- `PROXY_TIMEOUT_SECONDS` (env `WIKI_DOC_PROXY_TIMEOUT_SECONDS`, default `60`) bounds the proxy tier's HTTP request. A healthy `auto-go` answers a documentation prompt in seconds; a saturated free pool walks every provider and takes minutes, and this runs inside the pre-commit hook, so the tier fails over to OpenRouter fast instead of stalling the commit.
+
 ## Staging Contract
 
 The script tracks exactly which files it writes and re-stages only those files, avoiding accidental inclusion of unrelated concurrent wiki edits.
@@ -27,3 +42,5 @@ This prevents a commit from capturing unrelated wiki edits made concurrently in 
 - [[concepts/wiki-synchronization]] — keeping wiki pages in sync with code
 - [[entities/wiki-linter]] — structural lint on commits
 - [[concepts/code-reference-validation]] — validating code references in docs
+- [[entities/free-llm-proxy]] — the `auto-go` alias that serves the primary documentation tier
+- [[concepts/auto-go-utility-llm]] — the engine-side consolidation that routes utility LLM calls through the same proxy

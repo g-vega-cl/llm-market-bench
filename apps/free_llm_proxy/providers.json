@@ -43,7 +43,7 @@
       "tier": 1,
       "requires_auth": false,
       "models_endpoint": "/models",
-      "max_output_tokens": 32768,
+      "max_output_tokens": 65536,
       "allowed_model_patterns": [
         "*:free",
         "*-free",
@@ -83,7 +83,7 @@
       "tier": 2,
       "requires_auth": true,
       "models_endpoint": "/models",
-      "max_output_tokens": 32768,
+      "max_output_tokens": 65536,
       "thinking_params": ["reasoning"],
       "allowed_model_patterns": [
         "*:free",
@@ -109,7 +109,7 @@
       "tier": 2,
       "requires_auth": true,
       "models_endpoint": "/models",
-      "max_output_tokens": 32768,
+      "max_output_tokens": 65536,
       "preferred_patterns": [
         "*nemotron-3.5-super-vl-120b*",
         "*nemotron-3-ultra-550b*",
@@ -128,6 +128,7 @@
       "requires_auth": false,
       "enabled_in_auto": false,
       "models_endpoint": "/models",
+      "max_output_tokens": 65536,
       "preferred_patterns": [
         "*"
       ]
@@ -141,7 +142,7 @@
       "auto_aliases": ["auto-go", "auto-strata-go", "strata-auto-go"],
       "requires_auth": true,
       "models_endpoint": "/models",
-      "max_output_tokens": 32768,
+      "max_output_tokens": 65536,
       "extra_headers": {
         "User-Agent": "free-llm-proxy/1.0 (llm.clvg.uk)"
       },

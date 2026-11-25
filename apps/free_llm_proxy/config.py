@@ -23,7 +23,7 @@ ENABLE_STRATA = os.environ.get("ENABLE_STRATA", "true").lower() not in {
     "false",
     "no",
 }
-CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "32768"))
+CLOUD_MAX_OUTPUT_TOKENS = int(os.environ.get("CLOUD_MAX_OUTPUT_TOKENS", "65536"))
 # Wall clock per cloud attempt. Must stay below the tightest caller's patience so
 # failover can finish inside the caller's window (live trader: 200s, engine
 # instructor clients: 180s). Streaming is not bounded by this.

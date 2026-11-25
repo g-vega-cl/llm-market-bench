@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """Auto-document staged code changes into the wiki.
 
-Reads git diff --cached, sends it to an LLM (OpenRouter → free-llm-proxy
+Reads git diff --cached, sends it to an LLM (free-llm-proxy `auto-go` → OpenRouter
 fallback), and writes new wiki pages, log entries, and index updates.
 
 Usage:
     python apps/engine/auto_wiki.py --diff-file /tmp/diff.txt
 
 Env / keychain:
-    OPENROUTER_API_KEY        — preferred
+    FREE_LLM_PROXY_URL        — preferred OpenAI-compatible proxy
+                                (default: https://llm.clvg.uk/v1)
+    FREE_PROXY_MASTER_KEY     — bearer key for a remote proxy; when absent and the
+                                URL is remote, this tier is skipped
+    WIKI_DOC_PROXY_MODEL      — proxy model (default: auto-go)
+    OPENROUTER_API_KEY        — paid fallback tier
     macOS keychain item
       "openrouter-api-key"    — fallback (security find-generic-password)
-    WIKI_DOC_MODEL            — override default model
+    WIKI_DOC_MODEL            — override the OpenRouter fallback model
     WIKI_DOC_FREE_MODEL       — OpenRouter free backup model
-    FREE_LLM_PROXY_URL        — last-resort OpenAI-compatible proxy
-                                (default: https://llm.clvg.uk/v1)
-    FREE_PROXY_MASTER_KEY     — bearer key for a remote proxy
-    WIKI_DOC_PROXY_MODEL      — proxy model (default: auto-go)
 
 Exit code 0 = no changes needed or success. Non-zero = error (printed to stderr).
 """
@@ -44,6 +45,13 @@ LOCAL_PROXY_HOSTS = ("127.0.0.1", "localhost", "::1")
 DEFAULT_MODEL = "~deepseek/deepseek-flash-latest"
 DEFAULT_FREE_BACKUP_MODEL = "openrouter/free"
 DEFAULT_PROXY_MODEL = "auto-go"
+# Output budget for every tier. The proxy clamps it down per provider (groq stays
+# at 32k), so asking for 64k only raises what the larger providers may return.
+MAX_OUTPUT_TOKENS = 65536
+# Wall clock for the proxy tier. A healthy auto-go answers a documentation prompt
+# in seconds; a saturated free pool walks every provider and takes minutes, and
+# this runs inside the pre-commit hook, so fail over to OpenRouter fast instead.
+PROXY_TIMEOUT_SECONDS = int(os.getenv("WIKI_DOC_PROXY_TIMEOUT_SECONDS", "60"))
 
 
 def get_api_key() -> str | None:
@@ -311,7 +319,7 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 32768,
+        "max_tokens": MAX_OUTPUT_TOKENS,
         "reasoning": {
             "max_tokens": 4096,
         },
@@ -383,7 +391,7 @@ def call_free_proxy(prompt: str, model: str | None = None) -> dict:
             {"role": "user", "content": prompt},
         ],
         "temperature": 0.2,
-        "max_tokens": 32768,
+        "max_tokens": MAX_OUTPUT_TOKENS,
         "response_format": {"type": "json_object"},
     }
 
@@ -392,7 +400,12 @@ def call_free_proxy(prompt: str, model: str | None = None) -> dict:
         "Content-Type": "application/json",
     }
 
-    resp = requests.post(f"{base_url}/chat/completions", json=payload, headers=headers, timeout=180)
+    resp = requests.post(
+        f"{base_url}/chat/completions",
+        json=payload,
+        headers=headers,
+        timeout=PROXY_TIMEOUT_SECONDS,
+    )
     resp.raise_for_status()
     content = resp.json()["choices"][0]["message"]["content"]
     if content is None:
@@ -680,6 +693,83 @@ def apply_changes(result: dict, recorded_paths: list[str] | None = None) -> None
         _ACTIVE_RECORDED_PATHS = prev_recorded
 
 
+def _proxy_available() -> bool:
+    """True when the free-llm-proxy has both a base URL and a bearer key."""
+    try:
+        get_proxy_config()
+    except RuntimeError as exc:
+        print(f"  [auto-wiki] free-llm-proxy unavailable ({exc})", file=sys.stderr)
+        return False
+    return True
+
+
+def generate_with_fallback(prompt: str, args, api_key: str | None) -> dict:
+    """Run the tier chain and return the first usable result.
+
+    Order: free-llm-proxy (`auto-go`) → OpenRouter primary → OpenRouter free.
+    The proxy leads because its alias walks free providers before the paid
+    `opencode-go` tail; a missing proxy key skips that tier instead of aborting,
+    so a fresh clone with only an OpenRouter key still documents.
+    """
+    result = None
+
+    # Tier 1: in-repo free-llm-proxy (auto-go)
+    if _proxy_available():
+        print(f"  [auto-wiki] using free-llm-proxy model: {args.proxy_model}", file=sys.stderr)
+        try:
+            result = call_free_proxy(prompt, args.proxy_model)
+            print(f"  [auto-wiki] free-llm-proxy ({args.proxy_model}) succeeded", file=sys.stderr)
+        except (requests.RequestException, json.JSONDecodeError, RuntimeError) as exc:
+            print(
+                f"  [auto-wiki] free-llm-proxy error ({args.proxy_model}): {exc}",
+                file=sys.stderr,
+            )
+
+    # Tier 2: OpenRouter primary
+    if result is None:
+        if api_key:
+            print(f"  [auto-wiki] falling back to OpenRouter model: {args.model}", file=sys.stderr)
+            try:
+                result = call_openrouter(prompt, args.model, api_key)
+                print(f"  [auto-wiki] OpenRouter ({args.model}) succeeded", file=sys.stderr)
+            except requests.RequestException as exc:
+                print(f"  [auto-wiki] OpenRouter error ({args.model}): {exc}", file=sys.stderr)
+            except (json.JSONDecodeError, RuntimeError) as exc:
+                print(
+                    f"  [auto-wiki] OpenRouter response error ({args.model}): {exc}",
+                    file=sys.stderr,
+                )
+        else:
+            print("  [auto-wiki] no OPENROUTER_API_KEY found (env or keychain)", file=sys.stderr)
+
+    # Tier 3: OpenRouter free backup
+    if result is None and api_key and args.free_model and args.free_model != args.model:
+        print(
+            f"  [auto-wiki] falling back to OpenRouter free backup ({args.free_model})...",
+            file=sys.stderr,
+        )
+        try:
+            result = call_openrouter(prompt, args.free_model, api_key)
+            print(f"  [auto-wiki] OpenRouter free backup ({args.free_model}) succeeded", file=sys.stderr)
+        except requests.RequestException as exc:
+            print(f"  [auto-wiki] OpenRouter free backup error ({args.free_model}): {exc}", file=sys.stderr)
+        except (json.JSONDecodeError, RuntimeError) as exc:
+            print(
+                f"  [auto-wiki] OpenRouter free backup response error ({args.free_model}): {exc}",
+                file=sys.stderr,
+            )
+
+    if result is None:
+        print(
+            "  [auto-wiki] ERROR: All LLM tiers (free-llm-proxy, OpenRouter primary, "
+            "and OpenRouter free) failed. Documentation is required.",
+            file=sys.stderr,
+        )
+        sys.exit(1)  # BLOCK the commit
+
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser(description="Auto-document staged changes in wiki")
     parser.add_argument(
@@ -690,7 +780,7 @@ def main():
     parser.add_argument(
         "--model",
         default=os.getenv("WIKI_DOC_MODEL", DEFAULT_MODEL),
-        help=f"OpenRouter model (default: {DEFAULT_MODEL})",
+        help=f"OpenRouter fallback model (default: {DEFAULT_MODEL})",
     )
     parser.add_argument(
         "--free-model",
@@ -700,7 +790,7 @@ def main():
     parser.add_argument(
         "--proxy-model",
         default=os.getenv("WIKI_DOC_PROXY_MODEL", DEFAULT_PROXY_MODEL),
-        help=f"free-llm-proxy fallback model (default: {DEFAULT_PROXY_MODEL})",
+        help=f"free-llm-proxy primary model (default: {DEFAULT_PROXY_MODEL})",
     )
     parser.add_argument(
         "--dry-run",
@@ -741,55 +831,7 @@ def main():
 """
 
     api_key = get_api_key()
-    result = None
-
-    # Tier 1: Try Primary OpenRouter model
-    if api_key:
-        model = args.model
-        print(f"  [auto-wiki] using OpenRouter model: {model}", file=sys.stderr)
-        try:
-            result = call_openrouter(prompt, model, api_key)
-        except requests.RequestException as e:
-            print(f"  [auto-wiki] OpenRouter error ({model}): {e}", file=sys.stderr)
-        except (json.JSONDecodeError, RuntimeError) as e:
-            print(f"  [auto-wiki] OpenRouter response error ({model}): {e}", file=sys.stderr)
-
-        # Tier 2: Try OpenRouter Free backup model before the free-llm-proxy
-        if result is None and args.free_model and args.free_model != model:
-            print(
-                f"  [auto-wiki] primary model failed, falling back to OpenRouter free backup ({args.free_model})...",
-                file=sys.stderr,
-            )
-            try:
-                result = call_openrouter(prompt, args.free_model, api_key)
-                print(f"  [auto-wiki] OpenRouter free backup ({args.free_model}) succeeded", file=sys.stderr)
-            except requests.RequestException as e:
-                print(f"  [auto-wiki] OpenRouter free backup error ({args.free_model}): {e}", file=sys.stderr)
-            except (json.JSONDecodeError, RuntimeError) as e:
-                print(
-                    f"  [auto-wiki] OpenRouter free backup response error ({args.free_model}): {e}",
-                    file=sys.stderr,
-                )
-    else:
-        print("  [auto-wiki] no OPENROUTER_API_KEY found (env or keychain)", file=sys.stderr)
-
-    # Tier 3: Fall back to the in-repo free-llm-proxy (remote, zero local RAM)
-    if result is None:
-        print(
-            f"  [auto-wiki] falling back to free-llm-proxy ({args.proxy_model}) as last resort...",
-            file=sys.stderr,
-        )
-        try:
-            result = call_free_proxy(prompt, args.proxy_model)
-            print(f"  [auto-wiki] free-llm-proxy ({args.proxy_model}) succeeded", file=sys.stderr)
-        except (requests.RequestException, json.JSONDecodeError, RuntimeError) as e:
-            print(f"  [auto-wiki] free-llm-proxy error: {e}", file=sys.stderr)
-            print(
-                "  [auto-wiki] ERROR: All LLM tiers (OpenRouter primary, OpenRouter free, and free-llm-proxy) "
-                "failed. Documentation is required.",
-                file=sys.stderr,
-            )
-            sys.exit(1)  # BLOCK the commit
+    result = generate_with_fallback(prompt, args, api_key)
 
     if not result or not result.get("should_update"):
         print("  [auto-wiki] no wiki changes needed", file=sys.stderr)

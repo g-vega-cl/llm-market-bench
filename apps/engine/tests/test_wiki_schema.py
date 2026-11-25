@@ -212,3 +212,138 @@ index 123..456 100644
     context = aw.collect_wiki_context(diff)
     assert "future-forces-portfolio.md" in context
     assert "PRESERVE ALL INVARIANTS" in context
+
+
+# ---------------------------------------------------------------------------
+# Tier chain: free-llm-proxy (auto-go) is tier 1, OpenRouter is the fallback
+# ---------------------------------------------------------------------------
+
+
+def _tier_args(**overrides):
+    import types
+
+    base = {"model": "or-primary", "free_model": "or-free", "proxy_model": "auto-go"}
+    base.update(overrides)
+    return types.SimpleNamespace(**base)
+
+
+def test_auto_wiki_calls_the_proxy_first(monkeypatch):
+    """The in-repo proxy must be tier 1: auto-go walks free providers before the
+    paid tail, so it is the cheap path and OpenRouter is the backup."""
+    import apps.engine.auto_wiki as aw
+
+    calls = []
+    monkeypatch.setattr(aw, "get_proxy_config", lambda: ("http://proxy/v1", "key"))
+    monkeypatch.setattr(
+        aw,
+        "call_free_proxy",
+        lambda prompt, model=None: calls.append(("proxy", model)) or {"should_update": False},
+    )
+    monkeypatch.setattr(
+        aw,
+        "call_openrouter",
+        lambda prompt, model, api_key: calls.append(("openrouter", model)) or {"should_update": True},
+    )
+
+    result = aw.generate_with_fallback("prompt", _tier_args(), "or-key")
+
+    assert calls == [("proxy", "auto-go")]
+    assert result == {"should_update": False}
+
+
+def test_auto_wiki_falls_back_to_openrouter_when_the_proxy_fails(monkeypatch):
+    import apps.engine.auto_wiki as aw
+    import requests
+
+    calls = []
+
+    def failing_proxy(prompt, model=None):
+        calls.append(("proxy", model))
+        raise requests.RequestException("proxy down")
+
+    monkeypatch.setattr(aw, "get_proxy_config", lambda: ("http://proxy/v1", "key"))
+    monkeypatch.setattr(aw, "call_free_proxy", failing_proxy)
+    monkeypatch.setattr(
+        aw,
+        "call_openrouter",
+        lambda prompt, model, api_key: calls.append(("openrouter", model)) or {"should_update": True},
+    )
+
+    result = aw.generate_with_fallback("prompt", _tier_args(), "or-key")
+
+    assert calls == [("proxy", "auto-go"), ("openrouter", "or-primary")]
+    assert result == {"should_update": True}
+
+
+def test_auto_wiki_skips_the_proxy_when_it_has_no_key(monkeypatch):
+    """A clone with only an OpenRouter key must still document instead of aborting."""
+    import apps.engine.auto_wiki as aw
+
+    calls = []
+
+    def unconfigured():
+        raise RuntimeError("FREE_PROXY_MASTER_KEY is required")
+
+    monkeypatch.setattr(aw, "get_proxy_config", unconfigured)
+    monkeypatch.setattr(
+        aw,
+        "call_free_proxy",
+        lambda prompt, model=None: calls.append(("proxy", model)) or {"should_update": True},
+    )
+    monkeypatch.setattr(
+        aw,
+        "call_openrouter",
+        lambda prompt, model, api_key: calls.append(("openrouter", model)) or {"should_update": True},
+    )
+
+    aw.generate_with_fallback("prompt", _tier_args(), "or-key")
+
+    assert calls == [("openrouter", "or-primary")]
+
+
+def test_auto_wiki_proxy_timeout_is_bounded_for_the_hook(monkeypatch):
+    """A saturated free pool must not stall a commit: the proxy tier is capped."""
+    import importlib
+
+    import apps.engine.auto_wiki as aw
+
+    monkeypatch.setenv("WIKI_DOC_PROXY_TIMEOUT_SECONDS", "15")
+    reloaded = importlib.reload(aw)
+    try:
+        assert reloaded.PROXY_TIMEOUT_SECONDS == 15
+    finally:
+        monkeypatch.delenv("WIKI_DOC_PROXY_TIMEOUT_SECONDS", raising=False)
+        importlib.reload(aw)
+
+
+def test_auto_wiki_proxy_timeout_defaults_below_four_minutes():
+    import apps.engine.auto_wiki as aw
+
+    assert aw.PROXY_TIMEOUT_SECONDS <= 120, (
+        "the proxy tier runs inside the pre-commit hook; an exhausted free pool "
+        "walks every provider in minutes and would block the commit"
+    )
+
+
+def test_auto_wiki_free_backup_runs_last_and_failure_blocks_the_commit(monkeypatch):
+    import apps.engine.auto_wiki as aw
+    import requests
+
+    calls = []
+
+    def failing_proxy(prompt, model=None):
+        raise requests.RequestException("proxy down")
+
+    def failing_openrouter(prompt, model, api_key):
+        calls.append(("openrouter", model))
+        raise RuntimeError(f"tier failed: {model}")
+
+    monkeypatch.setattr(aw, "get_proxy_config", lambda: ("http://proxy/v1", "key"))
+    monkeypatch.setattr(aw, "call_free_proxy", failing_proxy)
+    monkeypatch.setattr(aw, "call_openrouter", failing_openrouter)
+
+    with pytest.raises(SystemExit) as exc:
+        aw.generate_with_fallback("prompt", _tier_args(), "or-key")
+
+    assert exc.value.code == 1
+    assert calls == [("openrouter", "or-primary"), ("openrouter", "or-free")]

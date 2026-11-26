@@ -136,6 +136,11 @@
 }
 
 @layer base {
+    :root {
+        /* Sticky navbar height: py-3 (1.5rem) + h-9 (2.25rem) + border-b-2 (2px) */
+        --nav-height: calc(3.75rem + 2px);
+    }
+
     html {
         color-scheme: dark;
         font-family: var(--font-body);
@@ -225,12 +230,6 @@
         transform: translate(3px, 3px);
         box-shadow: 1px 1px 0px var(--color-voxel-bevel-lo),
             0 0 0 2px var(--color-accent-dark);
-    }
-
-    /* Homepage single-screen twilight hero: fills viewport below sticky nav (62px)
-       with zero phantom scroll and paints the exact dusk sky gradient on SSR. */
-    .home-hero-viewport {
-        min-height: calc(100dvh - 3.875rem);
     }
 
     .home-twilight-sky {
@@ -380,6 +379,10 @@
 
     .scene-stage-hero {
         min-height: 20rem;
+    }
+
+    .viewport-below-nav {
+        min-height: calc(100svh - var(--nav-height));
     }
 
 

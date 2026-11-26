@@ -428,7 +428,7 @@ export function PersonalityQuizPage({
             variant="hero"
             atmosphere={atmosphere}
             motionRole="reactive"
-            className="min-h-[calc(100dvh-3.875rem)] flex w-full flex-col text-voxel-ink"
+            className="flex w-full flex-col text-voxel-ink"
             backdrop={
                 <GardenBackdrop atmosphere={atmosphere} motion={motion} className="h-full w-full" />
             }

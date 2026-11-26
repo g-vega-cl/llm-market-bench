@@ -56,6 +56,8 @@ export interface SceneStageProps extends React.HTMLAttributes<HTMLElement> {
     variant?: SceneStageVariant;
     /** Backdrop placement: clipped inside the stage band, or fixed behind the page. */
     backdropMode?: SceneBackdropMode;
+    /** Fill initial small viewport height below the sticky navbar (`viewport-below-nav`) instead of `.scene-stage-hero`. */
+    viewport?: boolean;
     /** Dynamic Matcha & Cedar atmospheric sky state. */
     atmosphere?: AtmospherePhase;
     /** Semantic motion role from the living-scene taxonomy. */
@@ -90,6 +92,7 @@ const pageClassMap: Record<SceneStageVariant, string> = {
 export function SceneStage({
     variant = 'hero',
     backdropMode = 'stage',
+    viewport = false,
     atmosphere = 'dusk',
     motionRole = 'background',
     scrim = 'none',
@@ -157,17 +160,23 @@ export function SceneStage({
         );
     }
 
+    const isViewportStage = variant === 'hero' && viewport;
+    const stageVariantClass = isViewportStage
+        ? 'viewport-below-nav px-6 py-12'
+        : variantClassMap[variant];
+
     return (
         <Tag
             data-slot="scene-stage"
             data-stage-variant={variant}
+            data-stage-viewport={isViewportStage ? 'true' : undefined}
             data-backdrop-mode="stage"
             data-atmosphere={atmosphere}
             data-motion-role={motionRole}
             className={cn(
                 'relative isolate overflow-hidden rounded-none',
                 atmosphereClassMap[atmosphere],
-                variantClassMap[variant],
+                stageVariantClass,
                 className,
             )}
             {...rest}

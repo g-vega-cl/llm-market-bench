@@ -127,4 +127,17 @@ describe('SceneStage', () => {
         expect(controls.className).toContain('justify-end');
         expect(screen.getByRole('button', { name: 'Sky: Dusk' })).toBeInTheDocument();
     });
+
+    it('replaces .scene-stage-hero with .viewport-below-nav when viewport={true}', () => {
+        const { container } = render(
+            <SceneStage viewport backdrop={<div data-testid="vp-canvas" />}>
+                <h1>Viewport Hero</h1>
+            </SceneStage>,
+        );
+
+        const stage = container.querySelector('[data-slot="scene-stage"]') as HTMLElement;
+        expect(stage).toHaveAttribute('data-stage-viewport', 'true');
+        expect(stage.className).toContain('viewport-below-nav');
+        expect(stage.className).not.toContain('scene-stage-hero');
+    });
 });

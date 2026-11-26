@@ -22,6 +22,8 @@ describe('Auth — layout and disclaimers', () => {
 
         expect(outer.className).not.toContain('fixed');
         expect(outer.className).not.toContain('bg-black/80');
+        expect(outer.className).toContain('viewport-below-nav');
+        expect(outer.className).not.toContain('dvh');
         expect(outer.querySelector('.voxel-card')).toBeInTheDocument();
         expect(screen.getByText('Research & paper trading only')).toBeInTheDocument();
         expect(

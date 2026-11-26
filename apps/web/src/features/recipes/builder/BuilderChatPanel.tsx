@@ -140,6 +140,7 @@ export function BuilderChatPanel({
     return (
         <SceneStage
             variant="hero"
+            viewport
             atmosphere={atmosphere}
             motionRole="reactive"
             className="build-stage-viewport flex w-full flex-col text-voxel-ink"

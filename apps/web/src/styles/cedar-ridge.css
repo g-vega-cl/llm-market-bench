@@ -10,20 +10,11 @@
  */
 
 @layer utilities {
-    /* The stage fills the viewport below the sticky navbar. Both selectors are
-       two classes deep so they outrank `.scene-stage-hero { min-height }`. The bot
-       header no longer uses this: it runs `backdropMode="page"`, where the world is
-       a fixed layer and the tab content flows straight under the card. */
-    .scene-stage-hero.home-hero-viewport,
-    .scene-stage-hero.build-stage-viewport {
-        min-height: calc(100dvh - 3.875rem);
-    }
-
-    /* The build workbench trades stage padding for world: on a phone the card
-       owns the viewport, so the stage gives back its 48px top/bottom inset and
-       the ridge band stays on screen below the card. */
-    .scene-stage-hero.build-stage-viewport {
-        padding-block: clamp(0.75rem, 3vw, 3rem) clamp(1.5rem, 6vh, 3rem);
+    /* The build stage trades vertical stage padding for world so on a phone the
+       ridge band stays on screen below the card while SceneStage `viewport` owns
+       min-height via `.viewport-below-nav`. */
+    .build-stage-viewport {
+        padding-block: clamp(0.75rem, 3vw, 3rem) clamp(1.5rem, 6svh, 3rem);
     }
 
     /* Per-atmosphere exposure, so the same silhouettes read as pre-dawn,

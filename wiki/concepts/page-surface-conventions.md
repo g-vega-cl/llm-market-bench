@@ -5,7 +5,7 @@ category: concept
 
 # Page Surface Conventions
 
-Two structural rules from `.agents/rules/design-spec.md` govern how a page owns its outer surface: how it opts into or out of `PageLayout` padding (§3.4), and whether it carries a visible page title (§4a). Both decay silently when left as prose, so both are enforced by `apps/web/src/test/page-surface-conventions.test.tsx`.
+Three structural rules from `.agents/rules/design-spec.md` govern how a page owns its outer surface: how it opts into or out of `PageLayout` padding (§3.4), whether it carries a visible page title (§4a), and which viewport unit it sizes a full-height band against. All three decay silently when left as prose, so all three are enforced by `apps/web/src/test/page-surface-conventions.test.tsx`.
 
 ## PageLayout rhythm is opted out, never overridden
 
@@ -81,6 +81,14 @@ Section 4b of `.agents/rules/design-spec.md` therefore establishes **action-firs
 - `apps/web/src/features/recipes/builder/CompiledBotWorkspace.tsx`
 - `apps/web/src/features/chat/ChatPage.tsx`
 
+## Viewport sizing: `svh`, never `dvh`
+
+A full-height surface sizes against the **small** viewport height, never a dynamic one. `dvh` re-resolves as mobile browser toolbars collapse and expand during scroll, so a stage sized with it grows and shrinks under the user's thumb — a layout shift by another name ([[concepts/cumulative-layout-shift]]).
+
+- **Use the shared class.** `.viewport-below-nav` (`min-height: calc(100svh - var(--nav-height))`, with `--nav-height: calc(3.75rem + 2px)` — sticky navbar `py-3` + `h-9` + `border-b-2` — declared on `:root` in `apps/web/src/styles/app.css`) is the single full-height-below-the-navbar primitive. `SceneStage` emits it when `viewport` is `true`; `Auth` applies it directly.
+- **Never hand-roll the height.** The retired `.home-hero-viewport` class and the inline `min-h-[calc(100dvh-3.875rem)]` utilities on `PersonalityQuizPage` and `Auth` are gone. A page that needs the full band passes `viewport` to `SceneStage` or applies `.viewport-below-nav`; it does not compute a viewport height itself.
+- **`svh` over `dvh` everywhere.** `dvh`, `dvb`, `dvi`, `dvmin`, and `dvmax` — and their `min-h-` / `max-h-` / `h-` / `w-` / `size-` utility forms — are banned across `apps/web` and `packages/ui-design-system/src`. See [[concepts/living-scene-backdrops]] for the `SceneStage` `viewport` prop that replaces the old per-page classes.
+
 ## Enforcement
 
 `apps/web/src/test/page-surface-conventions.test.tsx` walks every non-test `.tsx` file under `apps/web` and asserts:
@@ -88,6 +96,7 @@ Section 4b of `.agents/rules/design-spec.md` therefore establishes **action-firs
 1. **Padding opt-out** — every `<PageLayout>` opening tag that sets a padding token (`p-*`/`px-*`/`py-*`/`pt-*`/`pr-*`/`pb-*`/`pl-*`, variant prefixes stripped) also passes `withPadding={false}`, and re-declares horizontal padding when it does.
 2. **No base-padding collision** — rendering `<PageLayout withPadding={false} className="px-6 md:px-12 py-6">` emits `px-6`/`py-6` and never `py-8`/`md:py-12`.
 3. **Action-surface titles** — each file in `ACTION_SURFACE_FILES` contains exactly one `<h1>` and its class tokens include `sr-only` (exact match, so `not-sr-only` cannot pass).
+4. **No dynamic viewport units** — every non-test `.tsx`/`.ts`/`.css` file under `apps/web` **and** `packages/ui-design-system/src` is scanned (comments stripped first, so a doc comment may still name the banned unit) for `dvh`/`dvb`/`dvi`/`dvmin`/`dvmax` tokens, including the `min-h-dvh` / `max-h-dvh` / `h-dvh` / `w-dvh` / `size-dvh` utility forms; any match fails the build.
 
 The source scan reads class strings from `className="..."`, `className={cn(...)}`, and template literals; unquoted identifiers (`styles.shell`) are invisible to it, so the spec forbids composing padding that way.
 
@@ -95,6 +104,7 @@ The source scan reads class strings from `className="..."`, `className={cn(...)}
 
 - [[entities/design-system]] — `PageLayout`, `SectionHeading`, and the typography tiers
 - [[concepts/cumulative-layout-shift]] — zero-flash hydration and reserved-dimension guarantees
+- [[concepts/living-scene-backdrops]] — the `SceneStage` `viewport` prop and `.viewport-below-nav`
 - [[entities/web-app]] — the routes these surfaces live on
 - [[entities/recipe-studio]] — the bot hub, detail tabs, and `/build` that these rules govern
 - [[concepts/fluent-responsive-design]] — the intrinsic grid `BotSummaryStrip` uses instead of a `lg:` breakpoint

@@ -122,7 +122,7 @@ export function Auth({
     };
 
     return (
-        <div className="min-h-[calc(100dvh-3.875rem)] flex items-center justify-center px-6 py-8">
+        <div className="viewport-below-nav flex items-center justify-center px-6 py-8">
             <Card variant="default" padding="lg" className="w-full max-w-md flex flex-col gap-6">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">

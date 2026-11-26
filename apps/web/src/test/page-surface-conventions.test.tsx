@@ -26,6 +26,13 @@ import { describe, expect, it } from 'vitest';
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB = join(TEST_DIR, '..');
 const REPO_ROOT = join(TEST_DIR, '..', '..', '..', '..');
+const DESIGN_SYSTEM = join(REPO_ROOT, 'packages', 'ui-design-system', 'src');
+const DYNAMIC_VIEWPORT_PATTERN =
+    /\b(?:\d*\.?\d+dv(?:h|b|i|min|max)|(?:min-|max-)?(?:h|w|size)-dv(?:h|b|i|min|max))\b/gi;
+
+function stripComments(source: string): string {
+    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
+}
 
 const ACTION_SURFACE_FILES = [
     join(WEB, 'features', 'personality', 'PersonalityQuizPage.tsx'),
@@ -146,5 +153,20 @@ describe('PageLayout padding is opted out, never overridden', () => {
         expect(shell.className).toContain('py-6');
         expect(shell.className).not.toContain('py-8');
         expect(shell.className).not.toContain('md:py-12');
+    });
+});
+
+describe('Viewport sizing avoids dynamic viewport units (dvh) to prevent mobile scroll jumps', () => {
+    it('contains zero dynamic viewport units across web and design-system source and stylesheets', () => {
+        const files = [...walk(WEB), ...walk(DESIGN_SYSTEM)].filter(
+            (file) => /\.(tsx?|css)$/.test(file) && !file.includes('.test.'),
+        );
+        const violations = files.flatMap((file) => {
+            const source = stripComments(readFileSync(file, 'utf8'));
+            const matches = source.match(DYNAMIC_VIEWPORT_PATTERN);
+            return matches ? [`${relative(REPO_ROOT, file)}: ${matches.join(', ')}`] : [];
+        });
+
+        expect(violations).toEqual([]);
     });
 });

@@ -56,7 +56,9 @@ describe('HomeCtaPage (Cedar Sanctuary SceneStage, zero-flash initialAtmosphere 
         expect(section).toHaveAttribute('data-atmosphere', 'after-hours');
         expect(section?.className).toContain('scene-atmosphere-after-hours');
         expect(section?.className).not.toContain('home-twilight-sky');
-        expect(section?.className).toContain('home-hero-viewport');
+        expect(section).toHaveAttribute('data-stage-viewport', 'true');
+        expect(section?.className).toContain('viewport-below-nav');
+        expect(section?.className).not.toContain('scene-stage-hero');
         expect(section?.className).not.toContain('min-h-dvh');
 
         const canvas = screen.getByTestId('garden-backdrop');

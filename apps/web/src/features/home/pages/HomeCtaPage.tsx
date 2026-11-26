@@ -20,9 +20,10 @@ export function HomeCtaPage({ initialAtmosphere }: HomeCtaPageProps) {
     return (
         <SceneStage
             variant="hero"
+            viewport
             atmosphere={atmosphere}
             motionRole="reactive"
-            className="home-hero-viewport flex w-full flex-col text-voxel-ink"
+            className="flex w-full flex-col text-voxel-ink"
             backdrop={
                 <GardenBackdrop atmosphere={atmosphere} motion={motion} className="h-full w-full" />
             }

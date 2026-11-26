@@ -13,7 +13,7 @@ Files with high churn and high bug fix density represent code where changes freq
 
 | File | Churn | Bug Fixes | Fix Ratio | LOC | Hotspot Score | Risk Level |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| `apps/web/src/routes/__root.tsx` | 22 | 13 | 59.1% | 429 | 286 | **CRITICAL** |
+| `apps/web/src/routes/__root.tsx` | 22 | 13 | 59.1% | 431 | 286 | **CRITICAL** |
 | `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx` | 20 | 8 | 40.0% | 331 | 160 | **CRITICAL** |
 | `apps/web/src/routes/-__root.test.tsx` | 16 | 9 | 56.2% | 582 | 144 | **CRITICAL** |
 | `apps/engine/recipes/test_worker.py` | 18 | 7 | 38.9% | 598 | 126 | **CRITICAL** |
@@ -80,7 +80,7 @@ Team forensics over the same scoped window (commits analyzed: **356**, months: *
 | 2026-08 | 114 | ▇▇▇▇ |
 | 2026-09 | 96 | ▇▇▇ |
 | 2026-10 | 113 | ▇▇▇▇ |
-| 2026-11 | 227 | ▇▇▇▇▇▇▇▇ |
+| 2026-11 | 228 | ▇▇▇▇▇▇▇▇ |
 
 ### Crisis Cadence
 

@@ -21,6 +21,7 @@ export type {
     SceneMotion,
     SceneMotionRole,
     SceneScrim,
+    SceneStagePadding,
     SceneStageProps,
     SceneStageVariant,
 } from './layouts/SceneStage';

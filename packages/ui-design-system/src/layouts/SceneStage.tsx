@@ -18,6 +18,7 @@ import { cn } from '../lib/cn';
  */
 
 export type SceneStageVariant = 'hero' | 'footer';
+export type SceneStagePadding = 'default' | 'compact';
 export type SceneMotionRole = 'background' | 'reactive' | 'story';
 
 /**
@@ -56,8 +57,10 @@ export interface SceneStageProps extends React.HTMLAttributes<HTMLElement> {
     variant?: SceneStageVariant;
     /** Backdrop placement: clipped inside the stage band, or fixed behind the page. */
     backdropMode?: SceneBackdropMode;
-    /** Fill initial small viewport height below the sticky navbar (`viewport-below-nav`) instead of `.scene-stage-hero`. */
+    /** Fill initial small viewport height (`min-h-svh`) instead of `min-h-80` on hero stages. */
     viewport?: boolean;
+    /** Vertical spacing preset (`compact` narrows mobile top inset so hero CTAs stay above the fold). */
+    padding?: SceneStagePadding;
     /** Dynamic Matcha & Cedar atmospheric sky state. */
     atmosphere?: AtmospherePhase;
     /** Semantic motion role from the living-scene taxonomy. */
@@ -78,9 +81,14 @@ const atmosphereClassMap: Record<AtmospherePhase, string> = {
     'after-hours': 'scene-atmosphere-after-hours',
 };
 
+const heroPaddingClassMap: Record<SceneStagePadding, string> = {
+    default: 'px-6 py-12',
+    compact: 'px-6 pt-4 pb-6',
+};
+
 const variantClassMap: Record<SceneStageVariant, string> = {
-    hero: 'scene-stage-hero px-6 py-12',
-    footer: 'scene-stage-footer px-6 py-8 border-t-2 border-voxel-bevel-hi',
+    hero: 'min-h-80 px-6 py-12',
+    footer: 'min-h-44 px-6 py-8 border-t-2 border-voxel-bevel-hi',
 };
 
 /** `page` mode owns no band, so it carries padding only — no `min-height`. */
@@ -93,6 +101,7 @@ export function SceneStage({
     variant = 'hero',
     backdropMode = 'stage',
     viewport = false,
+    padding = 'default',
     atmosphere = 'dusk',
     motionRole = 'background',
     scrim = 'none',
@@ -161,9 +170,10 @@ export function SceneStage({
     }
 
     const isViewportStage = variant === 'hero' && viewport;
-    const stageVariantClass = isViewportStage
-        ? 'viewport-below-nav px-6 py-12'
-        : variantClassMap[variant];
+    const stageVariantClass =
+        variant === 'hero'
+            ? cn(isViewportStage ? 'min-h-svh' : 'min-h-80', heroPaddingClassMap[padding])
+            : variantClassMap[variant];
 
     return (
         <Tag

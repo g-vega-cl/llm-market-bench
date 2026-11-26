@@ -141,9 +141,10 @@ export function BuilderChatPanel({
         <SceneStage
             variant="hero"
             viewport
+            padding="compact"
             atmosphere={atmosphere}
             motionRole="reactive"
-            className="build-stage-viewport flex w-full flex-col text-voxel-ink"
+            className="flex w-full flex-col text-voxel-ink"
             backdrop={
                 <CedarRidgeBackdrop
                     atmosphere={atmosphere}

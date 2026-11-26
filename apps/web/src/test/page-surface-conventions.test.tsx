@@ -27,8 +27,11 @@ const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const WEB = join(TEST_DIR, '..');
 const REPO_ROOT = join(TEST_DIR, '..', '..', '..', '..');
 const DESIGN_SYSTEM = join(REPO_ROOT, 'packages', 'ui-design-system', 'src');
+const STYLES_DIR = join(WEB, 'styles');
 const DYNAMIC_VIEWPORT_PATTERN =
     /\b(?:\d*\.?\d+dv(?:h|b|i|min|max)|(?:min-|max-)?(?:h|w|size)-dv(?:h|b|i|min|max))\b/gi;
+const CUSTOM_LAYOUT_CSS_PATTERN =
+    /--nav-height|\b(?:viewport-below-nav|scene-stage-hero|scene-stage-footer|build-stage-viewport|home-hero-viewport)\b|\b(?:min-height|max-height|margin|padding-block|padding-inline)\s*:|calc\([^)]*(?:vh|svh|lvh|dvh)\b/gi;
 
 function stripComments(source: string): string {
     return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
@@ -164,6 +167,17 @@ describe('Viewport sizing avoids dynamic viewport units (dvh) to prevent mobile 
         const violations = files.flatMap((file) => {
             const source = stripComments(readFileSync(file, 'utf8'));
             const matches = source.match(DYNAMIC_VIEWPORT_PATTERN);
+            return matches ? [`${relative(REPO_ROOT, file)}: ${matches.join(', ')}`] : [];
+        });
+
+        expect(violations).toEqual([]);
+    });
+
+    it('keeps custom stylesheets free of layout sizing rules and viewport calc arithmetic', () => {
+        const cssFiles = walk(STYLES_DIR).filter((file) => file.endsWith('.css'));
+        const violations = cssFiles.flatMap((file) => {
+            const source = stripComments(readFileSync(file, 'utf8'));
+            const matches = source.match(CUSTOM_LAYOUT_CSS_PATTERN);
             return matches ? [`${relative(REPO_ROOT, file)}: ${matches.join(', ')}`] : [];
         });
 

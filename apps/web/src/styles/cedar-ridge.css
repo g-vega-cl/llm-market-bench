@@ -10,13 +10,6 @@
  */
 
 @layer utilities {
-    /* The build stage trades vertical stage padding for world so on a phone the
-       ridge band stays on screen below the card while SceneStage `viewport` owns
-       min-height via `.viewport-below-nav`. */
-    .build-stage-viewport {
-        padding-block: clamp(0.75rem, 3vw, 3rem) clamp(1.5rem, 6svh, 3rem);
-    }
-
     /* Per-atmosphere exposure, so the same silhouettes read as pre-dawn,
        midday, golden hour and night without a second scene. */
     .cedar-ridge .cr-stars {

@@ -81,13 +81,13 @@ Section 4b of `.agents/rules/design-spec.md` therefore establishes **action-firs
 - `apps/web/src/features/recipes/builder/CompiledBotWorkspace.tsx`
 - `apps/web/src/features/chat/ChatPage.tsx`
 
-## Viewport sizing: `svh`, never `dvh`
+## Proven Layout Flow: Standard Tailwind (`flex-1`, `min-h-svh`), Never Custom CSS or `dvh`
 
-A full-height surface sizes against the **small** viewport height, never a dynamic one. `dvh` re-resolves as mobile browser toolbars collapse and expand during scroll, so a stage sized with it grows and shrinks under the user's thumb — a layout shift by another name ([[concepts/cumulative-layout-shift]]).
+Because `packages/ui-design-system/src/lib/cn.ts` uses plain `clsx` (without `tailwind-merge`), hand-written layout classes in `.css` files silently collide with component Tailwind classes based on selector specificity and stylesheet order. Layout sizing must use standard Tailwind flow and design-system props rather than custom CSS rules:
 
-- **Use the shared class.** `.viewport-below-nav` (`min-height: calc(100svh - var(--nav-height))`, with `--nav-height: calc(3.75rem + 2px)` — sticky navbar `py-3` + `h-9` + `border-b-2` — declared on `:root` in `apps/web/src/styles/app.css`) is the single full-height-below-the-navbar primitive. `SceneStage` emits it when `viewport` is `true`; `Auth` applies it directly.
-- **Never hand-roll the height.** The retired `.home-hero-viewport` class and the inline `min-h-[calc(100dvh-3.875rem)]` utilities on `PersonalityQuizPage` and `Auth` are gone. A page that needs the full band passes `viewport` to `SceneStage` or applies `.viewport-below-nav`; it does not compute a viewport height itself.
-- **`svh` over `dvh` everywhere.** `dvh`, `dvb`, `dvi`, `dvmin`, and `dvmax` — and their `min-h-` / `max-h-` / `h-` / `w-` / `size-` utility forms — are banned across `apps/web` and `packages/ui-design-system/src`. See [[concepts/living-scene-backdrops]] for the `SceneStage` `viewport` prop that replaces the old per-page classes.
+- **Flex-column page shell (`flex-1`)**: `RootDocument` (`apps/web/src/routes/__root.tsx`) wraps `<body className="min-h-svh flex flex-col">` and `<main id="main-content" className="flex-1 flex flex-col">` above `<SiteFooter />`. Short centered pages like `Auth` (`apps/web/src/shared/auth/components/Auth.tsx`) simply use `flex-1 flex items-center justify-center px-6 py-8` — no `--nav-height` arithmetic, no custom wrapper classes, and zero mobile scroll jumps.
+- **Stage height & spacing via closed props**: Full-screen living stages (`HomeCtaPage`, `BuilderChatPanel`) pass `viewport` (and `padding="compact"` for tight mobile vertical spacing) on `SceneStage`, which emits built-in Tailwind utilities (`min-h-svh` / `min-h-80`, `pt-4 pb-6` / `py-12`) instead of `.viewport-below-nav`, `.scene-stage-hero`, or `.build-stage-viewport`.
+- **Custom stylesheets stay non-layout only**: `apps/web/src/styles/*.css` are restricted to `@theme inline` tokens, `.voxel-*` hardware bevels, multi-stop `.scene-atmosphere-*` gradients, and `@keyframes` animations. Custom layout CSS (`--nav-height`, `min-height:`, `max-height:`, `margin:`, `padding-block:`, `padding-inline:`, `calc(...vh...)`) and dynamic viewport units (`dvh`/`dvb`/`dvi`/`dvmin`/`dvmax`) are banned across `apps/web` and `packages/ui-design-system/src`. See [[concepts/living-scene-backdrops]].
 
 ## Enforcement
 
@@ -96,7 +96,7 @@ A full-height surface sizes against the **small** viewport height, never a dynam
 1. **Padding opt-out** — every `<PageLayout>` opening tag that sets a padding token (`p-*`/`px-*`/`py-*`/`pt-*`/`pr-*`/`pb-*`/`pl-*`, variant prefixes stripped) also passes `withPadding={false}`, and re-declares horizontal padding when it does.
 2. **No base-padding collision** — rendering `<PageLayout withPadding={false} className="px-6 md:px-12 py-6">` emits `px-6`/`py-6` and never `py-8`/`md:py-12`.
 3. **Action-surface titles** — each file in `ACTION_SURFACE_FILES` contains exactly one `<h1>` and its class tokens include `sr-only` (exact match, so `not-sr-only` cannot pass).
-4. **No dynamic viewport units** — every non-test `.tsx`/`.ts`/`.css` file under `apps/web` **and** `packages/ui-design-system/src` is scanned (comments stripped first, so a doc comment may still name the banned unit) for `dvh`/`dvb`/`dvi`/`dvmin`/`dvmax` tokens, including the `min-h-dvh` / `max-h-dvh` / `h-dvh` / `w-dvh` / `size-dvh` utility forms; any match fails the build.
+4. **No dynamic viewport units or custom layout CSS** — every non-test `.tsx`/`.ts`/`.css` file under `apps/web` **and** `packages/ui-design-system/src` is scanned (comments stripped) for dynamic viewport units (`dvh`/`dvb`/`dvi`/`dvmin`/`dvmax`), and `apps/web/src/styles/*.css` is scanned to fail the build on custom layout properties (`min-height`, `max-height`, `margin`, `padding-block`, `padding-inline`, `--nav-height`, `calc(...vh...)`) or legacy custom layout selectors.
 
 The source scan reads class strings from `className="..."`, `className={cn(...)}`, and template literals; unquoted identifiers (`styles.shell`) are invisible to it, so the spec forbids composing padding that way.
 
@@ -104,7 +104,7 @@ The source scan reads class strings from `className="..."`, `className={cn(...)}
 
 - [[entities/design-system]] — `PageLayout`, `SectionHeading`, and the typography tiers
 - [[concepts/cumulative-layout-shift]] — zero-flash hydration and reserved-dimension guarantees
-- [[concepts/living-scene-backdrops]] — the `SceneStage` `viewport` prop and `.viewport-below-nav`
+- [[concepts/living-scene-backdrops]] — the `SceneStage` `viewport` and `padding` props using Tailwind `min-h-svh`
 - [[entities/web-app]] — the routes these surfaces live on
 - [[entities/recipe-studio]] — the bot hub, detail tabs, and `/build` that these rules govern
 - [[concepts/fluent-responsive-design]] — the intrinsic grid `BotSummaryStrip` uses instead of a `lg:` breakpoint

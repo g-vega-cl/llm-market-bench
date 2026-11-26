@@ -374,7 +374,7 @@ export function RootDocument({ children }: { children: ReactNode }) {
                     />
                 </noscript>
             </head>
-            <body>
+            <body className="min-h-svh flex flex-col">
                 <PostHogProvider
                     apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN || ''}
                     options={{
@@ -453,7 +453,9 @@ export function RootDocument({ children }: { children: ReactNode }) {
                         </div>
                     </nav>
                     <GlobalBackground />
-                    <main id="main-content">{children}</main>
+                    <main id="main-content" className="flex-1 flex flex-col">
+                        {children}
+                    </main>
                     <SiteFooter />
                     <TanStackRouterDevtools position="bottom-right" />
                     <Scripts />

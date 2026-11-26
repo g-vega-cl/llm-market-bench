@@ -136,11 +136,6 @@
 }
 
 @layer base {
-    :root {
-        /* Sticky navbar height: py-3 (1.5rem) + h-9 (2.25rem) + border-b-2 (2px) */
-        --nav-height: calc(3.75rem + 2px);
-    }
-
     html {
         color-scheme: dark;
         font-family: var(--font-body);
@@ -230,19 +225,6 @@
         transform: translate(3px, 3px);
         box-shadow: 1px 1px 0px var(--color-voxel-bevel-lo),
             0 0 0 2px var(--color-accent-dark);
-    }
-
-    .home-twilight-sky {
-        background: linear-gradient(
-            180deg,
-            #0c1715 0%,
-            #142622 24%,
-            #23413b 45%,
-            #45675f 64%,
-            #819587 78%,
-            #b59a78 88%,
-            #22332e 100%
-        );
     }
 
     .home-hero-heading {
@@ -376,20 +358,6 @@
     .scene-scrim {
         background-color: rgba(20, 28, 24, 0.88);
     }
-
-    .scene-stage-hero {
-        min-height: 20rem;
-    }
-
-    .viewport-below-nav {
-        min-height: calc(100svh - var(--nav-height));
-    }
-
-
-    .scene-stage-footer {
-        min-height: 11rem;
-    }
-
 
     @media (prefers-reduced-motion: reduce) {
         .scene-backdrop,

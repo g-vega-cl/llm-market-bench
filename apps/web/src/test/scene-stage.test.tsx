@@ -43,6 +43,8 @@ describe('SceneStage', () => {
 
         const stage = container.querySelector('[data-slot="scene-stage"]') as HTMLElement;
         expect(stage.getAttribute('data-backdrop-mode')).toBe('page');
+        expect(stage.className).not.toContain('min-h-80');
+        expect(stage.className).not.toContain('min-h-svh');
         expect(stage.className).not.toContain('scene-stage-hero');
         expect(stage.className).not.toContain('scene-atmosphere-after-hours');
         expect(stage.className).toContain('relative');
@@ -128,16 +130,19 @@ describe('SceneStage', () => {
         expect(screen.getByRole('button', { name: 'Sky: Dusk' })).toBeInTheDocument();
     });
 
-    it('replaces .scene-stage-hero with .viewport-below-nav when viewport={true}', () => {
+    it('uses min-h-svh and compact padding via explicit props instead of custom stylesheet classes', () => {
         const { container } = render(
-            <SceneStage viewport backdrop={<div data-testid="vp-canvas" />}>
+            <SceneStage viewport padding="compact" backdrop={<div data-testid="vp-canvas" />}>
                 <h1>Viewport Hero</h1>
             </SceneStage>,
         );
 
         const stage = container.querySelector('[data-slot="scene-stage"]') as HTMLElement;
         expect(stage).toHaveAttribute('data-stage-viewport', 'true');
-        expect(stage.className).toContain('viewport-below-nav');
-        expect(stage.className).not.toContain('scene-stage-hero');
+        expect(stage.className).toContain('min-h-svh');
+        expect(stage.className).toContain('pt-4');
+        expect(stage.className).toContain('pb-6');
+        expect(stage.className).not.toContain('min-h-80');
+        expect(stage.className).not.toContain('py-12');
     });
 });

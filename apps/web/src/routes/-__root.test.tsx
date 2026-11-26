@@ -701,4 +701,25 @@ describe('RootDocument PostHog identity synchronization', () => {
         expect(preloadSpy).not.toHaveBeenCalled();
         expect(loaderSpy).not.toHaveBeenCalled();
     });
+
+    it('declares favicon and apple-touch-icon links in Route head', async () => {
+        const headResult = await Route.options.head?.({} as never);
+        const links = headResult?.links ?? [];
+
+        expect(links).toContainEqual({
+            rel: 'icon',
+            href: '/favicon.ico',
+            sizes: '16x16 32x32 48x48',
+        });
+        expect(links).toContainEqual({
+            rel: 'icon',
+            href: '/icon.svg',
+            type: 'image/svg+xml',
+        });
+        expect(links).toContainEqual({
+            rel: 'apple-touch-icon',
+            href: '/apple-touch-icon.png',
+            sizes: '180x180',
+        });
+    });
 });

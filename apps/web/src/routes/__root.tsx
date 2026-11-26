@@ -97,7 +97,12 @@ export const Route = createRootRoute({
                     'trading bot builder, LLM benchmark, backtesting, paper trading, Benchify',
             }),
         ],
-        links: [{ rel: 'stylesheet', href: appCss }],
+        links: [
+            { rel: 'stylesheet', href: appCss },
+            { rel: 'icon', href: '/favicon.ico', sizes: '16x16 32x32 48x48' },
+            { rel: 'icon', href: '/icon.svg', type: 'image/svg+xml' },
+            { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
+        ],
     }),
     errorComponent: (props) => {
         return (

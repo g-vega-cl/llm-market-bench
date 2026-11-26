@@ -113,6 +113,7 @@
 
 ## Concepts
 
+- [[concepts/qmd-wiki-skill]] — Pi-runtime skill making QMD search the mandatory first step for project questions
 - [[concepts/privacy-policy]] — platform privacy policy governing data collection, storage, and user rights
 - [[concepts/atomic-live-schedule-switch]] — single-transaction `switch_live_schedule` RPC that pauses one live bot and enables another
 - [[concepts/google-only-auth]] — Google OAuth is the sole sign-in path, with sanitised return paths and a single `auth_completed` event

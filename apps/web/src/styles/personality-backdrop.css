@@ -1,0 +1,137 @@
+/**
+ * Personality backdrop (`/personality`): act-shift diorama paint.
+ *
+ * Everything here belongs to one backdrop and nothing else imports it:
+ * per-plane depth parallax, act focus opacity, atmosphere exposure, and
+ * freeze-on-pause/reduced-motion. Kept out of `app.css` so the global sheet
+ * stays inside the repo's 800-line ceiling.
+ *
+ * Imported by `app.css` directly after Tailwind, wrapped in `@layer utilities`
+ * so it still outranks generated utilities on equal specificity.
+ */
+
+@layer utilities {
+    /* Per-plane parallax depth, read from `data-axis` rather than inline styles. */
+    .personality-compass .pb-celestial {
+        --pb-depth: 0.05;
+    }
+
+    .personality-compass .pb-landmark[data-axis="horizon"] {
+        --pb-depth: 0.2;
+    }
+
+    .personality-compass .pb-landmark[data-axis="signal"] {
+        --pb-depth: 0.36;
+    }
+
+    .personality-compass .pb-landmark[data-axis="crowd"] {
+        --pb-depth: 0.56;
+    }
+
+    .personality-compass .pb-landmark[data-axis="cadence"] {
+        --pb-depth: 0.74;
+    }
+
+    /* One transform per plane, all reading `--cr-px`/`--cr-py` written by
+       `useCedarRidgeDrift`. Floors anchored to the stage bottom suppress
+       vertical drift so no bright sky seam appears on page scroll. */
+    .personality-compass .pb-layer {
+        transform: translate3d(
+            calc(var(--cr-px, 0) * var(--pb-depth, 0) * 1px),
+            calc(var(--cr-py, 0) * var(--pb-depth, 0) * 1px),
+            0
+        );
+        transition:
+            transform 180ms cubic-bezier(0.2, 0, 0, 1),
+            opacity 300ms ease;
+        will-change: transform;
+    }
+
+    /* Floor-anchored planes never lift off the bottom edge; horizontal pointer
+       parallax stays. */
+    .personality-compass .pb-layer.pb-anchor-bottom {
+        transform: translate3d(calc(var(--cr-px, 0) * var(--pb-depth, 0) * 1px), 0, 0);
+    }
+
+    /* Act focus: exactly one landmark is fully lit per act; all four on result. */
+    .personality-compass .pb-landmark[data-active="false"] {
+        opacity: 0.3;
+    }
+
+    .personality-compass .pb-landmark[data-active="true"] {
+        opacity: 1;
+    }
+
+    /* A frozen scene holds no compositor backing store and no transitions. */
+    .personality-compass[data-motion="paused"] .pb-layer,
+    .personality-compass[data-motion="reduced"] .pb-layer {
+        will-change: auto;
+        transition: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .personality-compass .pb-layer {
+            will-change: auto;
+            transition: none;
+        }
+    }
+
+    /* Staggered star twinkle without square-bracket animation escapes. */
+    .personality-compass .pb-star {
+        animation-name: pb-twinkle;
+        animation-duration: 4.6s;
+        animation-timing-function: ease-in-out;
+        animation-iteration-count: infinite;
+    }
+
+    .personality-compass .pb-star:nth-child(1) {
+        animation-delay: 0s;
+    }
+    .personality-compass .pb-star:nth-child(2) {
+        animation-delay: -1.4s;
+    }
+    .personality-compass .pb-star:nth-child(3) {
+        animation-delay: -2.6s;
+    }
+    .personality-compass .pb-star:nth-child(4) {
+        animation-delay: -0.9s;
+    }
+    .personality-compass .pb-star:nth-child(5) {
+        animation-delay: -3.1s;
+    }
+    .personality-compass .pb-star:nth-child(6) {
+        animation-delay: -1.8s;
+    }
+    .personality-compass .pb-star:nth-child(7) {
+        animation-delay: -2.2s;
+    }
+
+    @keyframes pb-twinkle {
+        0%,
+        100% {
+            opacity: 0.25;
+        }
+        50% {
+            opacity: 1;
+        }
+    }
+
+    /* Atmosphere exposure only — stars and moon height respond to time of day,
+       never geometry. Mirrors Cedar Ridge so all worlds share one sky. */
+    .personality-compass .pb-stars {
+        opacity: 0.65;
+        transition: opacity 600ms ease-in-out;
+    }
+
+    .personality-compass[data-atmosphere="dawn"] .pb-stars {
+        opacity: 0.35;
+    }
+
+    .personality-compass[data-atmosphere="daylight"] .pb-stars {
+        opacity: 0;
+    }
+
+    .personality-compass[data-atmosphere="after-hours"] .pb-stars {
+        opacity: 1;
+    }
+}

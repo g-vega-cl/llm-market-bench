@@ -1,6 +1,5 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { CEDAR_WORLD_ID } from '../home/backdrop/voxel-world';
 import { PersonalityQuizPage } from './PersonalityQuizPage';
 import { type ArchetypeId, PERSONALITY_QUESTIONS } from './personality-data';
 
@@ -68,11 +67,15 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
     it('steps through all 16 questions with back navigation, live style updates, and reveals top-2 bots', () => {
         render(<PersonalityQuizPage initialAtmosphere="daylight" />);
 
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', CEDAR_WORLD_ID);
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute(
+        expect(screen.getByTestId('personality-backdrop')).toHaveAttribute(
+            'data-world',
+            'personality-compass',
+        );
+        expect(screen.getByTestId('personality-backdrop')).toHaveAttribute(
             'data-atmosphere',
             'daylight',
         );
+        expect(screen.queryByTestId('garden-backdrop')).toBeNull();
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
         expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
 
@@ -124,11 +127,51 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
     });
 
+    it('shifts the act landmark without moving the sky or the stage (zero CLS)', () => {
+        render(<PersonalityQuizPage initialAtmosphere="daylight" />);
+
+        const stage = document.querySelector('[data-slot="scene-stage"]') as HTMLElement;
+        expect(stage).toBeInstanceOf(HTMLElement);
+        const before = stage.getBoundingClientRect();
+
+        const backdrop = screen.getByTestId('personality-backdrop');
+        expect(backdrop).toHaveAttribute('data-act', '0');
+        expect(backdrop).toHaveAttribute('data-atmosphere', 'daylight');
+
+        // Close Act 1: answer Q1-Q4, the checkpoint plaque shows and the
+        // backdrop still lights the act that just settled.
+        for (let i = 0; i < 4; i += 1) {
+            fireEvent.click(
+                screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[i].options[0].id}`),
+            );
+        }
+        expect(screen.getByTestId('act-checkpoint')).toBeInTheDocument();
+        expect(backdrop).toHaveAttribute('data-act', '0');
+
+        // Continue into Act 2: backdrop lights Act 2, sky untouched, stage box unchanged.
+        fireEvent.click(screen.getByTestId('continue-act'));
+        expect(backdrop).toHaveAttribute('data-act', '1');
+        expect(backdrop).toHaveAttribute('data-atmosphere', 'daylight');
+
+        const after = stage.getBoundingClientRect();
+        expect(after.width).toBeCloseTo(before.width, 0);
+        expect(after.height).toBeCloseTo(before.height, 0);
+    });
+
+    it('lights all four landmarks on the result screen', () => {
+        render(<PersonalityQuizPage initialAtmosphere="dusk" />);
+        answerAll();
+
+        const backdrop = screen.getByTestId('personality-backdrop');
+        expect(backdrop).toHaveAttribute('data-act', 'result');
+        expect(screen.queryByTestId('garden-backdrop')).toBeNull();
+    });
+
     it('hydrates shared ?archetype= links directly with Cedar backdrop and zero nested cards', () => {
         render(<PersonalityQuizPage initialArchetype="contrarian-diver" />);
 
-        const canvas = screen.getByTestId('garden-backdrop');
-        expect(canvas).toHaveAttribute('data-world', CEDAR_WORLD_ID);
+        const backdrop = screen.getByTestId('personality-backdrop');
+        expect(backdrop).toHaveAttribute('data-world', 'personality-compass');
         expect(screen.getByTestId('archetype-title')).toHaveTextContent('The Contrarian Diver');
         expect(screen.queryByTestId('apply-homepage-world')).toBeNull();
 
@@ -151,7 +194,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
 
         rerender(<PersonalityQuizPage initialArchetype="news-surfer" />);
         expect(screen.getByTestId('archetype-title')).toHaveTextContent('The Headline Surfer');
-        expect(screen.getByTestId('garden-backdrop')).toHaveAttribute('data-world', CEDAR_WORLD_ID);
+        expect(screen.getByTestId('personality-backdrop')).toHaveAttribute(
+            'data-world',
+            'personality-compass',
+        );
     });
 
     it('anchors the 5-archetype switcher at the top and keeps card badge counts & structure invariant across switches', () => {

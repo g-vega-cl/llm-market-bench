@@ -9,7 +9,7 @@ A **16-question** investing-personality diagnostic, played in four acts of four,
 
 > **Grid status:** complete. All 16 cells own an archetype and a starter recipe, the result panel and recipe studio both render the shared 4x4 `TypeCodeGrid`, and the rule-metric vocabulary is validated at load (`RULE_METRIC_LABELS`).
 
-The route lives at `apps/web/src/routes/personality.tsx` and renders `PersonalityQuizPage` (`apps/web/src/features/personality/PersonalityQuizPage.tsx`) on a design-system `SceneStage` (`variant="hero"`, `motionRole="reactive"`) backed by the panoramic **Cedar Sanctuary** [[concepts/living-scene-backdrops]] diorama and an SSR-resolved `initialAtmosphere` from the route `loader` to eliminate SSR/CSR visual flashes ([[concepts/cumulative-layout-shift]]).
+The route lives at `apps/web/src/routes/personality.tsx` and renders `PersonalityQuizPage` (`apps/web/src/features/personality/PersonalityQuizPage.tsx`) on a design-system `SceneStage` (`variant="hero"`, `motionRole="reactive"`) backed by the canvas-free **personality-compass** diorama [[concepts/living-scene-backdrops]] (`PersonalityBackdrop`, `apps/web/src/features/home/backdrop/PersonalityBackdrop.tsx`) — one abstract landmark per act (ridge · signal · fork · gate), one lit at a time, all four lit on result — plus an SSR-resolved `initialAtmosphere` from the route `loader` to eliminate SSR/CSR visual flashes ([[concepts/cumulative-layout-shift]]).
 
 The page carries **no visible headline block** — no eyebrow, page title or description precedes the first question, because that copy pushed Act 1 down ~143 px and made the page read as a landing page instead of a test. The first question card starts directly under the scene's top padding (110 px card top at 1600×1000), and the accessible name comes from the route `<title>` plus an `sr-only` `<h1>` — "Investing style diagnostic: discover your best trading bot" on the quiz route, and the archetype title whenever the route names one (`ARCHETYPES[initialArchetype]`, or the live result after a retake), so a shared link's heading names the result the visitor is looking at instead of repeating the generic tool name.
 
@@ -133,7 +133,7 @@ Selecting the last option calls `scorePersonalityQuiz`, updates the `?archetype=
 
 ## Components
 
-- `PersonalityQuizPage.tsx` — non-destructive `'quiz_match' | 'inspect'` state machine, router-synced search params, race-guarded clipboard handling, and `Cedar Sanctuary` stage composition (`text-sm font-bold` + `text-xs font-normal`, no visible `h1` — an `sr-only` heading carries the page name).
+- `PersonalityQuizPage.tsx` — non-destructive `'quiz_match' | 'inspect'` state machine, router-synced search params, race-guarded clipboard handling, per-act `personality-compass` world composition (`text-sm font-bold` + `text-xs font-normal`, no visible `h1` — an `sr-only` heading carries the page name).
 - `PersonalityQuizStep.tsx` — single-question card (`data-testid="personality-quiz-card"`) with an `Act N of 4` badge, the act title, a four-pip act track (`data-testid="quiz-act-track"`), the `Question NN / 16` counter with its scenario label, `quiz-live-world-hint`, an accessible `role="progressbar"`, four full-width option buttons inheriting `text-voxel-trough` contrast on `bg-accent` selection, `Previous question`, and `Browse all 16 types`.
 - `PersonalityResultPanel.tsx` — the result plaque: 4x4 `TypeCodeGrid` at the top, code/title/summary header, 4-axis readout annotated with each letter, one matched bot card, and the **one-letter-away neighbour** trough (`data-testid="neighbour-type"`) that replaces the old distance-based runner-up.
 - `apps/web/src/components/ui/TypeCodeGrid.tsx` — shared 4x4 code grid (16 cells, row/column headers, `aria-pressed` active cell, in-flow description). Used by the result panel and by `TemplatePickerBar`, so the recipe studio's template picker shows codes instead of sixteen full-name buttons.
@@ -170,7 +170,7 @@ Three engagement mechanisms sit on top of the 16-question flow:
 
 ## Related
 
-- [[concepts/living-scene-backdrops]] — panoramic Cedar Sanctuary diorama and `SceneStage` HUD controls
+- [[concepts/living-scene-backdrops]] — `personality-compass` diorama, `Cedar Ridge` layered backdrop, and `SceneStage` HUD controls
 - [[concepts/cumulative-layout-shift]] — SSR loader parity and zero-flash hydration guarantee
 - [[entities/recipe-studio]] — the starter templates the archetypes map onto and the `/build` builder the CTA targets
 - [[entities/web-app]] — the dashboard that hosts the `/personality` route

@@ -10,6 +10,7 @@
 
 @import "tailwindcss";
 @import "./cedar-ridge.css";
+@import "./personality-backdrop.css";
 @source "../../../../packages/ui-design-system/src";
 
 @theme inline {

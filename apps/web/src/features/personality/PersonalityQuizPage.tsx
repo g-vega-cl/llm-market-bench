@@ -2,7 +2,10 @@ import { type AtmospherePhase, Button, SceneStage } from '@llm-market-bench/ui-d
 import { usePostHog } from '@posthog/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { track } from '~/lib/analytics';
-import { GardenBackdrop } from '../home/backdrop/GardenBackdrop';
+import {
+    PersonalityBackdrop,
+    type PersonalitySceneAct,
+} from '../home/backdrop/PersonalityBackdrop';
 import { SceneHudControls } from '../home/backdrop/SceneHudControls';
 import { syncUrlSearchParam, useDioramaStage } from '../home/backdrop/useDioramaStage';
 import { ActCheckpointPlaque } from './ActCheckpointPlaque';
@@ -397,6 +400,14 @@ export function PersonalityQuizPage({
         : 0;
     const currentAct = QUIZ_ACTS[currentActIndex];
 
+    // The backdrop follows the quiz, never the sky: the Sky HUD stays the sole
+    // owner of atmosphere. A checkpoint holds the just-settled act; the result
+    // lights all four landmarks. A zero-act fallback guards an act-less render.
+    const sceneAct: PersonalitySceneAct =
+        session.phase === 'result'
+            ? 'result'
+            : ((session.checkpoint ?? currentActIndex) as PersonalitySceneAct);
+
     const checkpointAct =
         session.phase === 'answering' && session.checkpoint !== null
             ? QUIZ_ACTS[session.checkpoint]
@@ -430,7 +441,12 @@ export function PersonalityQuizPage({
             motionRole="reactive"
             className="flex w-full flex-col text-voxel-ink"
             backdrop={
-                <GardenBackdrop atmosphere={atmosphere} motion={motion} className="h-full w-full" />
+                <PersonalityBackdrop
+                    atmosphere={atmosphere}
+                    motion={motion}
+                    act={sceneAct}
+                    className="h-full w-full"
+                />
             }
             controls={
                 <SceneHudControls

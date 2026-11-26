@@ -19,9 +19,21 @@ vi.mock('posthog-node', () => {
 describe('posthog-server getPostHogClient', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        vi.resetModules();
     });
 
-    it('initializes and returns a PostHog singleton client', async () => {
+    it('returns null without constructing PostHog when no project token is set', async () => {
+        vi.stubEnv('VITE_PUBLIC_POSTHOG_PROJECT_TOKEN', '');
+        vi.stubEnv('PUBLIC_POSTHOG_PROJECT_TOKEN', '');
+        const { getPostHogClient } = await import('./posthog-server');
+
+        expect(getPostHogClient()).toBeNull();
+        expect(mockPostHogConstructor).not.toHaveBeenCalled();
+        vi.unstubAllEnvs();
+    });
+
+    it('initializes and returns a PostHog singleton client when configured', async () => {
+        vi.stubEnv('VITE_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_server_test');
         const { getPostHogClient } = await import('./posthog-server');
         const client1 = getPostHogClient();
         const client2 = getPostHogClient();
@@ -30,11 +42,12 @@ describe('posthog-server getPostHogClient', () => {
         expect(client1).toBe(client2);
         expect(mockPostHogConstructor).toHaveBeenCalledTimes(1);
         expect(mockPostHogConstructor).toHaveBeenCalledWith(
-            expect.any(String),
+            'phc_server_test',
             expect.objectContaining({
                 flushAt: 1,
                 flushInterval: 0,
             }),
         );
+        vi.unstubAllEnvs();
     });
 });

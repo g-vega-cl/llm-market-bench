@@ -407,6 +407,8 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
 
         const pendingCard = await screen.findByTestId('builder-pending-idea');
         expect(screen.getByTestId('builder-status')).toHaveTextContent('SIGN IN TO BUILD');
+        expect(pendingCard).toHaveTextContent(/free google sign-in is required/i);
+        expect(pendingCard).toHaveTextContent(/return right here with this draft loaded/i);
         expect(screen.getByRole('button', { name: 'Sign in to continue' })).toBeInTheDocument();
         expect(
             pendingCard.compareDocumentPosition(

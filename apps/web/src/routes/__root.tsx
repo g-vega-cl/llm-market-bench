@@ -12,11 +12,14 @@ import {
 } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import { createServerFn } from '@tanstack/react-start';
+import type { PostHog } from 'posthog-js';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
 import { SiteFooter } from '~/features/legal/SiteFooter';
-import { getAuthServerClient } from '~/lib/auth';
+import { getAuthServerClient, getPublicAuthConfig } from '~/lib/auth';
+import { setRuntimeAuthConfig } from '~/lib/auth-client';
+import { getPublicArchiveDbConfig, setRuntimeArchiveDbConfig } from '~/lib/db';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { canonicalUrl, seo } from '~/lib/seo';
 import { consumePendingGoogleAuth } from '~/shared/auth/pending-auth';
@@ -53,32 +56,95 @@ export type AuthUser = {
     email: string;
 };
 
-const fetchUser = createServerFn({ method: 'GET' }).handler(async (): Promise<AuthUser | null> => {
-    try {
-        const authClient = getAuthServerClient();
-        const { data, error } = await authClient.auth.getUser();
+export type PublicRuntimeConfig = {
+    archiveDbUrl: string;
+    archiveDbAnonKey: string;
+    authUrl: string;
+    authAnonKey: string;
+    posthogProjectToken: string;
+    posthogHost: string;
+};
 
-        if (error || !data?.user?.id || !data?.user?.email) {
-            return null;
-        }
-
-        return {
-            id: data.user.id,
-            email: data.user.email,
+const fetchRootContext = createServerFn({ method: 'GET' }).handler(
+    async (): Promise<{ user: AuthUser | null; publicConfig: PublicRuntimeConfig }> => {
+        const archiveConfig = getPublicArchiveDbConfig();
+        const authConfig = getPublicAuthConfig();
+        const publicConfig: PublicRuntimeConfig = {
+            archiveDbUrl: archiveConfig.url,
+            archiveDbAnonKey: archiveConfig.anonKey,
+            authUrl: authConfig.url,
+            authAnonKey: authConfig.anonKey,
+            posthogProjectToken:
+                process.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN ||
+                process.env.PUBLIC_POSTHOG_PROJECT_TOKEN ||
+                '',
+            posthogHost:
+                process.env.VITE_PUBLIC_POSTHOG_HOST ||
+                process.env.PUBLIC_POSTHOG_HOST ||
+                'https://us.i.posthog.com',
         };
-    } catch (err) {
-        console.warn('[fetchUser] Failed to resolve auth user; defaulting to guest:', err);
-        return null;
-    }
-});
+
+        try {
+            const authClient = getAuthServerClient();
+            const { data, error } = await authClient.auth.getUser();
+
+            if (error || !data?.user?.id || !data?.user?.email) {
+                return { user: null, publicConfig };
+            }
+
+            return {
+                user: {
+                    id: data.user.id,
+                    email: data.user.email,
+                },
+                publicConfig,
+            };
+        } catch (err) {
+            console.warn('[fetchUser] Failed to resolve auth user; defaulting to guest:', err);
+            return { user: null, publicConfig };
+        }
+    },
+);
+
+function hydrateBrowserPublicConfig(publicConfig?: PublicRuntimeConfig) {
+    if (typeof window === 'undefined' || !publicConfig) return;
+    setRuntimeArchiveDbConfig({
+        url: publicConfig.archiveDbUrl,
+        anonKey: publicConfig.archiveDbAnonKey,
+    });
+    setRuntimeAuthConfig({
+        url: publicConfig.authUrl,
+        anonKey: publicConfig.authAnonKey,
+    });
+}
+
+/**
+ * Silent no-op PostHog client passed when no project token is configured so
+ * `usePostHog()` consumers never hit `posthog-js` uninitialized console errors.
+ */
+const NOOP_POSTHOG_CLIENT = {
+    __loaded: false,
+    capture: () => undefined,
+    captureException: () => undefined,
+    identify: () => undefined,
+    reset: () => undefined,
+    get_distinct_id: () => '',
+    reloadFeatureFlags: () => undefined,
+    isFeatureEnabled: () => undefined,
+    getFeatureFlag: () => undefined,
+    getFeatureFlagResult: () => undefined,
+    onFeatureFlags: () => () => undefined,
+    featureFlags: {
+        hasLoadedFlags: false,
+        getFlags: () => [],
+    },
+} as unknown as PostHog;
 
 export const Route = createRootRoute({
     beforeLoad: async () => {
-        const user = await fetchUser();
-
-        return {
-            user,
-        };
+        const rootContext = await fetchRootContext();
+        hydrateBrowserPublicConfig(rootContext.publicConfig);
+        return rootContext;
     },
     head: () => ({
         meta: [
@@ -350,10 +416,78 @@ export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } =
 }
 
 export function RootDocument({ children }: { children: ReactNode }) {
-    const context = Route.useRouteContext();
+    const context = Route.useRouteContext() as
+        | { user?: AuthUser | null; publicConfig?: PublicRuntimeConfig }
+        | undefined;
     const user = context?.user;
+    const publicConfig = context?.publicConfig;
     const router = useRouter();
     const canonical = canonicalUrl(router.state.location.pathname);
+
+    hydrateBrowserPublicConfig(publicConfig);
+
+    const posthogApiKey =
+        import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN ||
+        publicConfig?.posthogProjectToken ||
+        '';
+    const posthogHost =
+        import.meta.env.VITE_PUBLIC_POSTHOG_HOST ||
+        publicConfig?.posthogHost ||
+        'https://us.i.posthog.com';
+
+    const appShell = (
+        <>
+            <nav
+                className={cn(
+                    'flex items-center gap-3 px-6 py-3',
+                    'bg-voxel-surface border-b-2 border-voxel-bevel-lo shadow-md',
+                    'sticky top-0 z-50',
+                    'text-sm font-bold uppercase tracking-widest',
+                )}
+            >
+                <div className="flex items-center gap-2">
+                    {navItems.map((item) => (
+                        <NavLink
+                            key={item.to}
+                            to={item.to}
+                            label={item.label}
+                            ariaLabel={item.ariaLabel}
+                            exact={item.exact}
+                        />
+                    ))}
+                </div>
+
+                <div className="ml-auto flex items-center shrink-0">
+                    {user ? (
+                        <Link
+                            to="/logout"
+                            aria-label="Logout"
+                            title="Logout"
+                            className="voxel-btn inline-flex items-center justify-center h-9 w-9 shrink-0 bg-voxel-trough text-danger hover:bg-danger/10"
+                        >
+                            <LogoutIcon />
+                        </Link>
+                    ) : (
+                        <Link
+                            to="/login"
+                            aria-label="Login"
+                            title="Login"
+                            className="voxel-btn inline-flex items-center justify-center h-9 w-9 shrink-0 bg-accent text-voxel-trough hover:bg-accent-hover"
+                        >
+                            <LoginIcon />
+                        </Link>
+                    )}
+                </div>
+            </nav>
+            <GlobalBackground />
+            <main id="main-content" className="flex-1 flex flex-col">
+                {children}
+            </main>
+            <SiteFooter />
+            <TanStackRouterDevtools position="bottom-right" />
+            <Scripts />
+        </>
+    );
 
     return (
         <html lang="en">
@@ -380,91 +514,46 @@ export function RootDocument({ children }: { children: ReactNode }) {
                 </noscript>
             </head>
             <body className="min-h-svh flex flex-col">
-                <PostHogProvider
-                    apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN || ''}
-                    options={{
-                        api_host:
-                            typeof window !== 'undefined'
-                                ? '/p'
-                                : import.meta.env.VITE_PUBLIC_POSTHOG_HOST ||
-                                  'https://us.i.posthog.com',
-                        ui_host: 'https://us.posthog.com',
-                        defaults: '2025-05-24',
-                        autocapture: true,
-                        // No PostHog cookie or localStorage: analytics state lives
-                        // in page memory, so nothing persistent is written before a
-                        // visitor asks us to. Signed-in users stay whole because
-                        // PostHogAuthSync re-identifies on every load.
-                        persistence: 'memory',
-                        capture_exceptions: {
-                            capture_unhandled_errors: true,
-                            capture_unhandled_rejections: true,
-                            capture_console_errors: true,
-                        },
-                        enable_recording_console_log: true,
-                        logs: {
-                            captureConsoleLogs: true,
-                        },
-                        debug: import.meta.env.DEV,
-                        session_recording: {
-                            maskAllInputs: true,
-                            maskTextSelector: '[data-ph-mask]',
-                        },
-                        disable_surveys: true,
-                        before_send: posthogBeforeSend,
-                    }}
-                >
-                    <PostHogAuthSync user={user} />
-                    <nav
-                        className={cn(
-                            'flex items-center gap-3 px-6 py-3',
-                            'bg-voxel-surface border-b-2 border-voxel-bevel-lo shadow-md',
-                            'sticky top-0 z-50',
-                            'text-sm font-bold uppercase tracking-widest',
-                        )}
+                {posthogApiKey ? (
+                    <PostHogProvider
+                        apiKey={posthogApiKey}
+                        options={{
+                            api_host: typeof window !== 'undefined' ? '/p' : posthogHost,
+                            ui_host: 'https://us.posthog.com',
+                            defaults: '2025-05-24',
+                            autocapture: true,
+                            // No PostHog cookie or localStorage: analytics state lives
+                            // in page memory, so nothing persistent is written before a
+                            // visitor asks us to. Signed-in users stay whole because
+                            // PostHogAuthSync re-identifies on every load.
+                            persistence: 'memory',
+                            capture_exceptions: {
+                                capture_unhandled_errors: true,
+                                capture_unhandled_rejections: true,
+                                capture_console_errors: true,
+                            },
+                            enable_recording_console_log: true,
+                            logs: {
+                                captureConsoleLogs: true,
+                            },
+                            debug: import.meta.env.DEV,
+                            session_recording: {
+                                maskAllInputs: true,
+                                maskTextSelector: '[data-ph-mask]',
+                            },
+                            disable_surveys: true,
+                            before_send: posthogBeforeSend,
+                        }}
                     >
-                        <div className="flex items-center gap-2">
-                            {navItems.map((item) => (
-                                <NavLink
-                                    key={item.to}
-                                    to={item.to}
-                                    label={item.label}
-                                    ariaLabel={item.ariaLabel}
-                                    exact={item.exact}
-                                />
-                            ))}
-                        </div>
-
-                        <div className="ml-auto flex items-center shrink-0">
-                            {user ? (
-                                <Link
-                                    to="/logout"
-                                    aria-label="Logout"
-                                    title="Logout"
-                                    className="voxel-btn inline-flex items-center justify-center h-9 w-9 shrink-0 bg-voxel-trough text-danger hover:bg-danger/10"
-                                >
-                                    <LogoutIcon />
-                                </Link>
-                            ) : (
-                                <Link
-                                    to="/login"
-                                    aria-label="Login"
-                                    title="Login"
-                                    className="voxel-btn inline-flex items-center justify-center h-9 w-9 shrink-0 bg-accent text-voxel-trough hover:bg-accent-hover"
-                                >
-                                    <LoginIcon />
-                                </Link>
-                            )}
-                        </div>
-                    </nav>
-                    <GlobalBackground />
-                    <main id="main-content" className="flex-1 flex flex-col">
-                        {children}
-                    </main>
-                    <SiteFooter />
-                    <TanStackRouterDevtools position="bottom-right" />
-                    <Scripts />
-                </PostHogProvider>
+                        <PostHogAuthSync user={user} />
+                        {appShell}
+                    </PostHogProvider>
+                ) : (
+                    <PostHogProvider client={NOOP_POSTHOG_CLIENT}>
+                        <PostHogAuthSync user={user} />
+                        {appShell}
+                    </PostHogProvider>
+                )}
             </body>
         </html>
     );

@@ -34,6 +34,12 @@ Every starter recipe shares the same JSON shape:
 - **`STARTER_RECIPES[0]` is the default template.** The studio opens on it, and `fallbackReply()` in the [[concepts/recipe-builder-compiler]] validates it as the `CLOSEST WORKING TEMPLATE` returned whenever a model reply cannot be parsed into a runnable recipe. The current first entry is `Claude Agent Portfolio Mirror`.
 - **The public gallery deep-links by exact name.** Each card in `RecipeGalleryPage` (`apps/web/src/features/recipes/pages/RecipeGalleryPage.tsx`) is a whole-card `Link` to `/login?redirect=/build?starter=<encoded name>`, so an anonymous visitor who clicks a template signs in and lands directly in `CompiledBotWorkspace` with that deterministic strategy — no LLM re-compilation. `/build?starter=<name>` resolves the name against this catalog and falls back to the describe flow when it does not match.
 
+### Locked-Card Signalling
+
+Because every gallery action funnels through Google sign-in, each card states that up front instead of after the click: the name row carries a soft `neutral` `Sign in` badge with an inline lock SVG (`aria-hidden`, no emoji), and the card footer ends with an accent `Sign in to customize & run backtest →` line pinned by `mt-auto`. There is still no per-card "Sign in to fork" button — the whole card remains the single affordance. The gallery intro copy matches: click any locked starter to sign in with Google and customize it, or build your own bot from one sentence.
+
+The matching copy on the other side of the redirect lives in the auth gate: a `/build?starter=<name>` return path renders `Starter recipe selected — sign in to open` instead of the browser-draft callout (see [[concepts/google-only-auth]]).
+
 Because the catalog is addressed by name rather than index, tests and deep links reference templates by their exact `name` string (e.g. `Trump & Chips News Momentum`), so reordering the array never silently changes which strategy a link or a test exercises.
 
 ## The `2.0-push` Recipe Family
@@ -72,4 +78,5 @@ The `2.0-push` recipes are deterministic, push-based templates: each one pre-com
 - [[concepts/recipe-turbo-mode]] — accelerated recipe execution
 - [[entities/recipe-studio]] — recipe authoring UI
 - [[entities/recipe-playground]] — recipe experimentation surface
+- [[concepts/google-only-auth]] — the sign-in gate every locked gallery card funnels into
 - [[concepts/modular-prompt-blocks]] — prompt block catalog

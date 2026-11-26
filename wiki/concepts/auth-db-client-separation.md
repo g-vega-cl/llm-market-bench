@@ -19,9 +19,9 @@ The platform migrated its data layer to a self-hosted PostgreSQL + PostgREST sta
 - **`apps/web/src/lib/auth-client.ts`** — `getAuthBrowserClient()` builds a `createBrowserClient` from `VITE_SUPABASE_AUTH_URL` (falling back to `VITE_SUPABASE_URL`) and `VITE_SUPABASE_AUTH_ANON_KEY` (falling back to `VITE_SUPABASE_ANON_KEY`).
 - **`assertValidAuthUrl(url, envVarName)`** — shared guard that throws if the URL is missing or contains `benchify-archive-db`, with an explicit message telling the operator to point the variable at the Supabase Cloud project URL (`https://<project-ref>.supabase.co`).
 
-Auth consumers: `__root.tsx` (`fetchUser`), `auth_.callback.tsx` (`exchangeCodeFn`), `logout.tsx` (`logoutFn`), `shared/auth/components/Auth.tsx` (Google OAuth), and the chat server's `auth.getUser()` calls.
+Auth consumers: `__root.tsx` (`fetchRootContext`), `auth_.callback.tsx` (`exchangeCodeFn`), `logout.tsx` (`logoutFn`), `shared/auth/components/Auth.tsx` (Google OAuth), and the chat server's `auth.getUser()` calls.
 
-`fetchUser` in `__root.tsx` wraps `auth.getUser()` in a `try/catch` and returns `null` (guest) on any thrown error, missing user, or missing email, logging a `console.warn` instead of propagating. A transient Auth-service failure therefore degrades to an unauthenticated render rather than crashing the root route. `RootDocument` reads the route context defensively (`context?.user`) so it renders safely even when the router is in an error state and the context is undefined.
+`fetchRootContext` in `__root.tsx` wraps `auth.getUser()` in a `try/catch` and returns `user: null` (guest) on any thrown error, missing user, or missing email, logging a `console.warn` instead of propagating. A transient Auth-service failure therefore degrades to an unauthenticated render rather than crashing the root route. `RootDocument` reads the route context defensively (`context?.user`, `context?.publicConfig`) so it renders safely even when the router is in an error state and the context is undefined.
 
 ### DB client — self-hosted PostgREST archive only
 
@@ -33,9 +33,11 @@ Auth consumers: `__root.tsx` (`fetchUser`), `auth_.callback.tsx` (`exchangeCodeF
   - All clients are **stateless**: `auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }`. The DB client never manages sessions — auth is the Auth client's job.
   - Throws `Missing Archive DB credentials (ARCHIVE_DB_ANON_KEY)` / `(VITE_ARCHIVE_DB_ANON_KEY)` when the key is absent.
 
-#### Isomorphic SSR resolution in `getDbBrowserClient()`
+#### Isomorphic SSR resolution and runtime public config hydration
 
 `getDbBrowserClient()` is the isomorphic fetcher used by both route loaders and the browser. When `typeof window === 'undefined'` (i.e. during SSR in a route loader or server function) it first delegates to `getDbServerClient()` so the runtime server env (`ARCHIVE_DB_URL` / `ARCHIVE_DB_ANON_KEY`) is used — those values are **not** baked into `import.meta.env`. If that throws (missing runtime credentials), it falls through to the build-time `VITE_ARCHIVE_DB_URL` / `VITE_ARCHIVE_DB_ANON_KEY` path. Without this, SSR loaders could resolve an empty/unauthenticated client and return empty data, causing the page to flash a "no data found" state until the client refetched.
+
+In addition, `fetchRootContext` in `apps/web/src/routes/__root.tsx` passes public anon-tier runtime config (`getPublicArchiveDbConfig()` and `getPublicAuthConfig()`) down in root route context so `RootDocument` hydrates `setRuntimeArchiveDbConfig` and `setRuntimeAuthConfig` in the browser (`typeof window !== 'undefined'`). This keeps browser PostgREST queries (such as `/autoresearch` actual returns in `useActualReturns.ts`) and Google OAuth working even when `VITE_*` variables were not baked into the client bundle at build time, while `getPublicArchiveDbConfig()` enforces HTTPS/localhost URLs so internal Docker hosts never leak to browsers.
 
 DB consumers: every data fetcher across `features/*/api/*` (portfolios, memories, reasoning, today, leaderboard, market-overview, cause-and-effect, earnings, generated-newsletters, daily-predictions, ai-predictions, home barometer/tape/agent-queue, concepts, audits, autoresearch). Privileged server functions like `handleSubmitAgentQueueQuestion` and `chat-server.ts` use `getDbAdminClient()` for schema introspection, `agent_chat_queue` inserts, and `chat_memories` writes/reads.
 

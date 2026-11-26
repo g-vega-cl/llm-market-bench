@@ -5,7 +5,7 @@
     "type": "module",
     "scripts": {
         "dev": "NODE_OPTIONS=\"--no-deprecation\" vite dev",
-        "build": "NODE_OPTIONS=\"--no-deprecation\" vite build && tsc --noEmit",
+        "build": "NODE_OPTIONS=\"--no-deprecation\" vite build && node scripts/verify-build-assets.mjs && tsc --noEmit",
         "typecheck": "tsc --noEmit",
         "preview": "vite preview",
         "start": "srvx --prod -s ../client dist/server/server.js",

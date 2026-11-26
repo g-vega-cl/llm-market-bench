@@ -208,6 +208,13 @@ export function BuilderDescribeStep({
                             {isInitialStep ? 'Continue to Alignment →' : 'Send Answer →'}
                         </Button>
                     </div>
+                    {!userId && !chat.pendingIdea ? (
+                        <p className="text-xs font-normal text-voxel-muted leading-relaxed">
+                            Next step asks for a free Google sign-in to prevent AI compile abuse and
+                            save your bot &amp; paper backtests (2 free backtests/day). Your draft
+                            stays saved in this browser and returns right here afterward.
+                        </p>
+                    ) : null}
                 </form>
             ) : null}
 

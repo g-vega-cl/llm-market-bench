@@ -40,7 +40,8 @@ function reportBoundaryError(params: {
     if (!error) return;
 
     const err = error instanceof Error ? error : new Error(String(error));
-    const hasCaptureException = typeof posthog?.captureException === 'function';
+    const isLoaded = (posthog as { __loaded?: boolean } | null | undefined)?.__loaded !== false;
+    const hasCaptureException = isLoaded && typeof posthog?.captureException === 'function';
 
     if (hasCaptureException && trackedErrorRef.current !== error) {
         trackedErrorRef.current = error;

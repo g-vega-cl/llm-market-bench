@@ -1,6 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getDbAdminClient, getDbBrowserClient, getDbServerClient } from './db';
+import {
+    DEFAULT_ARCHIVE_DB_URL,
+    getDbAdminClient,
+    getDbBrowserClient,
+    getDbServerClient,
+    getPublicArchiveDbConfig,
+    setRuntimeArchiveDbConfig,
+} from './db';
 
 vi.mock('@supabase/supabase-js', () => ({
     createClient: vi.fn((url, key, options) => ({
@@ -13,6 +20,7 @@ vi.mock('@supabase/supabase-js', () => ({
 describe('db client (Local PostgREST Archive DB Only)', () => {
     beforeEach(() => {
         vi.clearAllMocks();
+        setRuntimeArchiveDbConfig(null);
         delete process.env.ARCHIVE_DB_URL;
         delete process.env.ARCHIVE_DB_ANON_KEY;
         delete process.env.ARCHIVE_DB_SERVICE_ROLE_KEY;
@@ -146,5 +154,36 @@ describe('db client (Local PostgREST Archive DB Only)', () => {
         delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
         expect(() => getDbAdminClient()).toThrow(/Missing Archive DB service role key/);
+    });
+
+    it('should hydrate browser db client from runtime public config when VITE_ARCHIVE_DB_ANON_KEY is absent', () => {
+        setRuntimeArchiveDbConfig({
+            url: 'https://benchify-archive-db.clvg.uk',
+            anonKey: 'ssr-hydrated-anon-jwt',
+        });
+
+        getDbBrowserClient();
+        expect(createClient).toHaveBeenCalledWith(
+            'https://benchify-archive-db.clvg.uk',
+            'ssr-hydrated-anon-jwt',
+            expect.anything(),
+        );
+    });
+
+    it('getPublicArchiveDbConfig avoids internal docker/private URLs and service-role keys', () => {
+        process.env.ARCHIVE_DB_URL = 'http://archive-proxy:80';
+        process.env.ARCHIVE_DB_ANON_KEY = 'public-anon-jwt';
+        process.env.ARCHIVE_DB_SERVICE_ROLE_KEY = 'secret-service-role';
+
+        expect(getPublicArchiveDbConfig()).toEqual({
+            url: DEFAULT_ARCHIVE_DB_URL,
+            anonKey: 'public-anon-jwt',
+        });
+
+        process.env.ARCHIVE_DB_URL = 'http://192.168.88.7:3001';
+        expect(getPublicArchiveDbConfig().url).toBe(DEFAULT_ARCHIVE_DB_URL);
+
+        process.env.ARCHIVE_DB_URL = 'http://localhost.evil:3001';
+        expect(getPublicArchiveDbConfig().url).toBe(DEFAULT_ARCHIVE_DB_URL);
     });
 });

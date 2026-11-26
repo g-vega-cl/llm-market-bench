@@ -501,4 +501,39 @@ describe('DailyScoreDisplay', () => {
         expect(screen.getByText(/Audited Settlement:/i)).toBeInTheDocument();
         expect(screen.queryByText(/PROVISIONAL LIVE TRACKING BENCHMARK/i)).not.toBeInTheDocument();
     });
+
+    it('displays a visible alert with retry when loading actual returns fails', async () => {
+        const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+        mockSupabaseClient.from.mockImplementationOnce(() => ({
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            in: vi.fn().mockReturnThis(),
+            gte: vi.fn().mockReturnThis(),
+            lte: vi.fn().mockReturnThis(),
+            order: vi.fn().mockRejectedValue(new Error('DB connection refused')),
+        }));
+
+        const mockExperiment = {
+            variant_tag: 'V1.0-err',
+            week_start: '2026-06-01',
+            week_end: '2026-06-05',
+            metrics: {
+                portfolio_return_pct: 2.0,
+                spy_return_pct: 1.0,
+                do_nothing_return_pct: 1.5,
+                score: 0.6,
+                portfolio_details: {
+                    p1: { owner_id: 'gemini-3.5-flash-lite', do_nothing_return_pct: 1.5 },
+                },
+            },
+        } as unknown as PromptExperiment;
+
+        render(<DailyScoreDisplay experiment={mockExperiment} />);
+
+        const alert = await screen.findByRole('alert');
+        expect(alert).toHaveTextContent(/live portfolio returns unavailable/i);
+        expect(alert).toHaveTextContent(/DB connection refused/);
+        expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+        errSpy.mockRestore();
+    });
 });

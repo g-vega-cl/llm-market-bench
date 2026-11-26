@@ -1,9 +1,11 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
+import { seo } from '~/lib/seo';
+import { Auth } from '~/shared/auth';
 import { sanitizePostAuthRedirect, sanitizeRedirectPath } from '~/shared/auth/redirect';
 
 /**
- * Legacy signup entry point kept as a 307 redirect to `/login`, normalizing
- * `?next=` into `?redirect=`.
+ * Dedicated `/signup` page so new visitors land on an explicit account-creation
+ * view rather than being bounced straight to "Sign in to Benchify".
  */
 export const Route = createFileRoute('/signup')({
     validateSearch: (
@@ -19,13 +21,21 @@ export const Route = createFileRoute('/signup')({
         if (context.user) {
             throw redirect({ href: sanitizePostAuthRedirect(target), replace: true });
         }
-        throw redirect({
-            to: '/login',
-            search: {
-                redirect: target,
-                error: search.error,
-            },
-            replace: true,
-        });
     },
+    head: () => ({
+        meta: [
+            ...seo({
+                title: 'Create account | Benchify',
+                description:
+                    'Create a free Benchify account with Google to build trading bots, run paper backtests, and track live results.',
+            }),
+        ],
+    }),
+    component: SignupRouteComponent,
 });
+
+export function SignupRouteComponent() {
+    const { next, redirect: redirectParam, error } = Route.useSearch();
+    const redirectPath = redirectParam ?? next;
+    return <Auth mode="signup" redirectPath={redirectPath} errorCode={error} />;
+}

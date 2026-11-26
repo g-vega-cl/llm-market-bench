@@ -230,10 +230,7 @@ export function BuilderChatPanel({
                         >
                             talk to our AI advisor
                         </Link>
-                        .{' '}
-                        {userId || chat.pendingIdea
-                            ? null
-                            : 'Sign in when ready to compile — drafts stay saved in this browser.'}
+                        .
                     </p>
 
                     <BuilderStepper activeStep={activeStep} />

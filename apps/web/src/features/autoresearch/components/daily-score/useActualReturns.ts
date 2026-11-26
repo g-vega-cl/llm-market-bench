@@ -1,5 +1,5 @@
 import modelsConfig from '@repo/config/models.json';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getDbBrowserClient } from '~/lib/db';
 import {
     type ActualReturns,
@@ -7,6 +7,16 @@ import {
     getProcessedActualReturns,
     type PortfolioDetail,
 } from './daily-score-math';
+
+/**
+ * Single discriminated union for /autoresearch live returns so stale data and
+ * errors (data != null && error != null) are unrepresentable.
+ */
+export type ActualsState =
+    | { status: 'idle' }
+    | { status: 'loading' }
+    | { status: 'ready'; actualReturns: ActualReturns | null; actualSpyReturn: number | null }
+    | { status: 'error'; error: string };
 
 export async function fetchPortfolioPerformanceData(
     portfolioIds: string[],
@@ -44,7 +54,7 @@ export async function fetchActiveWeekData(
     ownerIds?: string[],
 ) {
     const supabase = getDbBrowserClient();
-    return Promise.all([
+    const [portfolioRows, spyRes] = await Promise.all([
         fetchPortfolioPerformanceData(portfolioIds, weekStart, weekEnd, ownerIds),
         isActive
             ? supabase
@@ -56,32 +66,48 @@ export async function fetchActiveWeekData(
                   .order('fetched_at', { ascending: true })
             : Promise.resolve({ data: null, error: null }),
     ]);
+
+    if (spyRes.error) {
+        throw spyRes.error;
+    }
+    return [portfolioRows, spyRes] as const;
 }
 
-export function processSpyResponse(
-    spyRes: { data: unknown[] | null },
-    isMounted: boolean,
-    setActualSpyReturn: (r: number) => void,
-) {
-    if (spyRes.data && spyRes.data.length >= 2) {
-        const computedReturn = calculateSpyReturn(spyRes.data as { price: number | string }[]);
-        if (isMounted) {
-            setActualSpyReturn(computedReturn);
-        }
-    }
+async function fetchResolvedActuals(args: {
+    portfolioIds: string[];
+    weekStart: string;
+    weekEnd: string;
+    isActive: boolean;
+    trackId?: string | null;
+}): Promise<{ actualReturns: ActualReturns | null; actualSpyReturn: number | null }> {
+    const tracks =
+        (modelsConfig as { AUTORESEARCH_TRACKS?: Record<string, string[]> }).AUTORESEARCH_TRACKS ||
+        {};
+    const ownerIds =
+        args.portfolioIds.length === 0 ? tracks[args.trackId || 'track_default'] || [] : [];
+
+    const [data, spyRes] = await fetchActiveWeekData(
+        args.portfolioIds,
+        args.weekStart,
+        args.weekEnd,
+        args.isActive,
+        ownerIds,
+    );
+
+    const actualSpyReturn =
+        spyRes.data && spyRes.data.length >= 2
+            ? calculateSpyReturn(spyRes.data as { price: number | string }[])
+            : null;
+    const actualReturns = data && data.length > 0 ? getProcessedActualReturns(data) : null;
+
+    return { actualReturns, actualSpyReturn };
 }
 
-export function processPortfolioData(
-    data: unknown[] | null,
-    isMounted: boolean,
-    setActualReturns: (r: ActualReturns) => void,
-) {
-    if (data && data.length > 0) {
-        const results = getProcessedActualReturns(data);
-        if (isMounted) {
-            setActualReturns(results);
-        }
+function extractErrorMessage(err: unknown): string {
+    if (err instanceof Error && err.message) {
+        return err.message;
     }
+    return 'Unable to load live portfolio and benchmark returns.';
 }
 
 export function useActualReturns(
@@ -91,49 +117,64 @@ export function useActualReturns(
     isActive?: boolean,
     trackId?: string | null,
 ) {
-    const [actualReturns, setActualReturns] = useState<ActualReturns | null>(null);
-    const [actualSpyReturn, setActualSpyReturn] = useState<number | null>(null);
-    // Start as loading when a fetch will fire, so frame 1 never shows the empty state.
-    const [isLoadingActuals, setIsLoadingActuals] = useState(Boolean(weekStart && weekEnd));
+    const [state, setState] = useState<ActualsState>(() =>
+        weekStart && weekEnd ? { status: 'loading' } : { status: 'idle' },
+    );
+    const requestSeqRef = useRef(0);
+    const isMountedRef = useRef(true);
+
+    const portfolioIdsKey = Object.keys(portfolioDetails || {})
+        .sort()
+        .join(',');
+
+    const loadActuals = useCallback(async () => {
+        const requestSeq = ++requestSeqRef.current;
+        if (!weekStart || !weekEnd) {
+            setState({ status: 'idle' });
+            return;
+        }
+
+        const isCurrent = () => isMountedRef.current && requestSeqRef.current === requestSeq;
+        const portfolioIds = portfolioIdsKey ? portfolioIdsKey.split(',') : [];
+
+        setState({ status: 'loading' });
+
+        try {
+            const resolved = await fetchResolvedActuals({
+                portfolioIds,
+                weekStart,
+                weekEnd,
+                isActive: Boolean(isActive),
+                trackId,
+            });
+            if (isCurrent()) {
+                setState({ status: 'ready', ...resolved });
+            }
+        } catch (e) {
+            console.error('Failed to load actual returns:', e);
+            if (isCurrent()) {
+                setState({ status: 'error', error: extractErrorMessage(e) });
+            }
+        }
+    }, [weekStart, weekEnd, portfolioIdsKey, isActive, trackId]);
 
     useEffect(() => {
-        if (!weekStart || !weekEnd) return;
-        const details = portfolioDetails || {};
-        const portfolioIds = Object.keys(details);
-        const tracks =
-            (modelsConfig as { AUTORESEARCH_TRACKS?: Record<string, string[]> })
-                .AUTORESEARCH_TRACKS || {};
-        const ownerIds = portfolioIds.length === 0 ? tracks[trackId || 'track_default'] || [] : [];
-
-        let isMounted = true;
-        setIsLoadingActuals(true);
-
-        const loadActuals = async () => {
-            try {
-                const [data, spyRes] = await fetchActiveWeekData(
-                    portfolioIds,
-                    weekStart,
-                    weekEnd,
-                    Boolean(isActive),
-                    ownerIds,
-                );
-
-                processSpyResponse(spyRes, isMounted, setActualSpyReturn);
-                processPortfolioData(data, isMounted, setActualReturns);
-            } catch (e) {
-                console.error('Failed to load actual returns:', e);
-            } finally {
-                if (isMounted) {
-                    setIsLoadingActuals(false);
-                }
-            }
-        };
-
-        loadActuals();
+        isMountedRef.current = true;
+        void loadActuals();
         return () => {
-            isMounted = false;
+            isMountedRef.current = false;
         };
-    }, [weekStart, weekEnd, portfolioDetails, isActive, trackId]);
+    }, [loadActuals]);
 
-    return { actualReturns, actualSpyReturn, isLoadingActuals };
+    const retryActuals = useCallback(() => {
+        void loadActuals();
+    }, [loadActuals]);
+
+    return {
+        actualReturns: state.status === 'ready' ? state.actualReturns : null,
+        actualSpyReturn: state.status === 'ready' ? state.actualSpyReturn : null,
+        isLoadingActuals: state.status === 'loading',
+        actualsError: state.status === 'error' ? state.error : null,
+        retryActuals,
+    };
 }

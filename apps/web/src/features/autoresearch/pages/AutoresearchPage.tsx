@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { EmptyState, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -112,8 +112,13 @@ export function AutoresearchPage({ initialData, fetchFn }: AutoresearchPageProps
                                     }
                                 />
                             </div>
+                        ) : filteredExperiments.length === 0 ? (
+                            <EmptyState
+                                title="No prompt experiments recorded yet"
+                                subtitle="No Auto-Research experiments have been logged for this track yet. Weekly runs appear here after the next scheduled evaluation."
+                            />
                         ) : (
-                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-200 border-zinc-800 rounded-none text-xs font-normal text-zinc-400">
+                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-800 rounded-none text-xs font-normal text-zinc-400">
                                 Select an experiment to view details
                             </div>
                         )}

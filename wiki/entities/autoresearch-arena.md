@@ -10,17 +10,19 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 ## Features
 - **Track Navigation Tabs**: Responsive tab bar (`TrackTabs.tsx`) allowing users to dynamically toggle between isolated optimization tracks. All three canonical tracks (`track_default`, `track_claude`, `track_openai`) are **always rendered** from the static `KNOWN_TRACKS` constant (mirroring `models.json`), showing a `0` experiment badge for tracks not yet bootstrapped. Any additional track IDs found in experiment data are merged in for forward-compatibility.
 - **Scoped View**: Strictly filters and displays only portfolio prompt experiments (`CORE_ANALYSIS_SYSTEM_PROMPT`), decoupled from the Sector Predictor experiments.
+- **Empty Tracks Explain Themselves**: when the selected track has no experiments, `AutoresearchPage` renders the design-system `EmptyState` (`No prompt experiments recorded yet` — weekly runs appear here after the next scheduled evaluation) instead of the "Select an experiment to view details" placeholder. `BacktestAutoresearchPage` does the same with `No backtest runs recorded yet`.
 - **Experiment List**: Sortable table showing each variant’s tag, type (baseline/radical), score, active period, and status.
-- **Experiment Details**: Deep-dive view with portfolio vs. SPY returns, max drawdown, change description, meta-researcher hypothesis, and the full prompt text.
+- **Experiment Details**: Deep-dive view with portfolio vs. SPY returns, max drawdown, change description, meta-researcher hypothesis, and the full prompt text. `DailyScoreDisplay` is keyed by `experiment.id`, so switching experiments remounts the live-returns hook instead of carrying the previous experiment’s actuals.
 - **Segmented Trading Prompt Display**: Visually breaks down "The Trading Prompt" card into 3 distinct sections using `splitPromptSections`: Header (`[FROZEN / SYSTEM MANAGED]`), Mutable Strategy (`[MUTABLE / EVOLVED BY AUTORESEARCH]`), and Footer (`[FROZEN / SYSTEM MANAGED]`), making it immediately obvious which system rules are frozen and which strategies are mutated by autoresearch.
 - **Prompt Changes (Diff View)**: Interactive inline diff view displaying precise additions and deletions compared to the parent prompt. Diffs **only the mutable strategies section** (extracted via `splitPromptSections`) so the massive identical header/footer does not drown out real changes. Falls back to full-content diff if section markers are absent. Displays only changed lines by default with a toggle to show the full mutable diff. The subtitle reads *"mutable strategies section only"* to make the scope explicit.
 - **Daily Autoresearch Score**: Displays real-time daily evaluation of prompt performance against benchmark parameters. Refactored into isolated vertical-slice sub-primitives (`DailyScoreDisplay.tsx` reduced from 982 LOC to 96 LOC):
   - `DailyScoreOverview.tsx`: Headline ratchet score, baseline comparison badge, week range, and live tracking warnings (`Provisional Do-Nothing (0.00%)`).
   - `DailyProgressionGrid.tsx`: Weekday checkpoint cards (Monday–Friday) with live tracking status ring and interactive day selection.
-  - `DailyAuditLedger.tsx`: Collapsible deep-dive math audit exposing exact constituent model returns, audited settlement timestamp (`evaluated_at`), and provisional warning callouts during active mid-week tracking.
+  - `DailyAuditLedger.tsx`: Collapsible deep-dive math audit exposing exact constituent model returns, audited settlement timestamp (`evaluated_at`), and provisional warning callouts during active mid-week tracking. Its constituent-return section renders in strict order — loading (`Loading individual actual portfolio returns...`) → error (`Failed to load constituent portfolio returns (<error>).`) → resolved returns → pending-session note.
   - `ScoreBreakdown.tsx`: Granular asset and portfolio auditor displaying the audited settlement timestamp and `100% Cash at Week Start (0.0000% Return)` badge when starting holdings are all cash.
   - `daily-score-math.ts`: Pure helper functions for compounding, daily ratchet scoring, and portfolio returns.
-  - `useActualReturns.ts`: Hermetic hook for fetching actual asset prices and compounding returns.
+  - `useActualReturns.ts`: Hermetic hook for fetching actual asset prices and compounding returns. It exposes a single `ActualsState` union (`idle` | `loading` | `ready` | `error`) plus `retryActuals()`; a failed read clears the previous experiment’s returns and benchmark (no stale numbers survive a track/week switch). See [[concepts/state-machines]] §2.14.
+- **Live Actuals Failure Surface**: when the archive-DB read fails, `DailyScoreDisplay` renders a `role="alert"` `.voxel-trough` banner at the top of the card — `Live portfolio returns unavailable`, the error text, a note that stored/provisional metrics are shown instead, and a neutral outline `Retry` button wired to `retryActuals()` (disabled while a retry is in flight). The rest of the score card keeps rendering stored summary metrics rather than blanking.
 - **Multi-Week Lookback & Stochastic Cold-Start Scoring Features**:
   - **4-Week (28-Day) Lookback Context**: Ingests 28 days of trade postmortems, compliance rejection audits, and macro newsletters for hypothesis generation and prompt mutations, while keeping weekly ratchet score evaluation strictly scoped to the 7-day deployment week.
   - **Per-Track Stochastic Dice**: Evaluates an independent 1-in-6 stochastic cold-start dice roll (`roll_cold_start_dice(sides=6)`) per track across portfolio, daily SPY, and sector predictor loops, preventing local optima convergence while preserving distinct track lineages (see [[concepts/stochastic-cold-start]]).
@@ -54,7 +56,7 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 - **Route**: `apps/web/src/routes/autoresearch/index.tsx`
 - **Feature modules**: `apps/web/src/features/autoresearch/` containing components, API fetchers, and query options
 - **Database types**: `PromptExperiment` extracted from Supabase schema in `packages/database/`
-- **Design System**: Reuses primitives (`Card`, `MetricTile`, `Table`, `Badge`) from the shared UI library
+- **Design System**: Reuses primitives (`Card`, `MetricTile`, `Table`, `Badge`, `EmptyState`) from the shared UI library
 
 ## Related
 - [[entities/autoresearch]] — the Python engine that produces the experiments
@@ -63,5 +65,6 @@ The **Auto-Research Arena** is a TanStack Start page (`/autoresearch`) that visu
 - [[concepts/pending-settlement-state]] — live provisional states vs settled evaluations
 - [[concepts/stochastic-cold-start]] — independent 1-in-6 dice resets and "From 0" lineage
 - [[concepts/multi-track-autoresearch]] — parallel isolated model tracks
+- [[concepts/state-machines]] — the `ActualsState` union behind the live-returns hook
 - [[concepts/system-heavy-prompt]] — the architecture that determines what is displayed
 - [[entities/web-app]] — the parent dashboard

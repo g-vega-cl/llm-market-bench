@@ -6,7 +6,7 @@ import {
     RouterProvider,
 } from '@tanstack/react-router';
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     BeakerIcon,
     BriefcaseIcon,
@@ -234,6 +234,61 @@ describe('Root layout navigation', () => {
 });
 
 describe('RootDocument PostHog configuration', () => {
+    beforeEach(() => {
+        mockPostHogProvider.mockClear();
+        vi.stubEnv('VITE_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test_token');
+    });
+
+    afterEach(() => {
+        vi.unstubAllEnvs();
+    });
+
+    it('uses a silent no-op PostHog client without apiKey or options when no project token is configured', async () => {
+        mockPostHogProvider.mockClear();
+        vi.stubEnv('VITE_PUBLIC_POSTHOG_PROJECT_TOKEN', '');
+        vi.spyOn(Route, 'useRouteContext').mockReturnValue({
+            user: null,
+            publicConfig: {
+                archiveDbUrl: 'https://benchify-archive-db.clvg.uk',
+                archiveDbAnonKey: '',
+                authUrl: '',
+                authAnonKey: '',
+                posthogProjectToken: '',
+                posthogHost: 'https://us.i.posthog.com',
+            },
+        } as never);
+
+        const testRoute = createRootRoute({
+            component: () => (
+                <RootDocument>
+                    <div>No Token Content</div>
+                </RootDocument>
+            ),
+        });
+
+        const router = createRouter({
+            routeTree: testRoute,
+            history: createMemoryHistory({ initialEntries: ['/'] }),
+        });
+
+        render(<RouterProvider router={router} />, {
+            container: document.documentElement.parentNode as HTMLElement,
+        });
+
+        await screen.findByText('No Token Content');
+        expect(mockPostHogProvider).toHaveBeenCalledTimes(1);
+        const props = mockPostHogProvider.mock.calls[0][0] as {
+            apiKey?: string;
+            options?: unknown;
+            client?: { __loaded?: boolean; capture?: () => void };
+        };
+        expect(props.apiKey).toBeUndefined();
+        expect(props.options).toBeUndefined();
+        expect(props.client?.__loaded).toBe(false);
+        expect(() => props.client?.capture?.()).not.toThrow();
+        vi.unstubAllEnvs();
+    });
+
     it('should initialize PostHogProvider with the stealthy reverse proxy /p api_host', async () => {
         vi.spyOn(Route, 'useRouteContext').mockReturnValue({ user: null });
 

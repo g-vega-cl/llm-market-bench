@@ -282,6 +282,17 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
   - `pageshow` (`event.persisted`) resets `redirecting` to `idle` and clears `benchify_auth_started` without re-deriving a stale URL `errorCode`.
   - URL `?error=` parameters map strictly through bounded error codes (`access_denied`, `exchange_failed`, `oauth_failed`) rather than reflecting arbitrary query strings.
 
+### 2.14 `/autoresearch` Live Actual Returns (`ActualsState`)
+
+- **Source Files**: [`apps/web/src/features/autoresearch/components/daily-score/useActualReturns.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/daily-score/useActualReturns.ts), [`apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/DailyScoreDisplay.tsx), [`apps/web/src/features/autoresearch/components/daily-score/DailyAuditLedger.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/autoresearch/components/daily-score/DailyAuditLedger.tsx)
+- **Entity Page**: [[entities/autoresearch-arena]]
+- **States**:
+  - `ActualsState = { status: 'idle' } | { status: 'loading' } | { status: 'ready'; actualReturns: ActualReturns | null; actualSpyReturn: number | null } | { status: 'error'; error: string }`.
+- **Invariants**:
+  - Every week/experiment change or retry immediately resets `ActualsState` to `{ status: 'loading' }` (clearing any prior experiment's `actualReturns` and `actualSpyReturn`), and a missing week range resets to `{ status: 'idle' }`.
+  - `data` and `error` cannot coexist; stale cross-experiment telemetry cannot leak onto an errored or pending experiment.
+  - Monotonic `requestSeqRef` + `isMountedRef` ensures superseded responses never overwrite a newer selection.
+
 ---
 
 ## 3. Implicit State Debt & Refactoring Backlog

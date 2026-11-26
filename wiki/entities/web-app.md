@@ -60,9 +60,9 @@ The web app uses two strictly separated Supabase client families (see [[concepts
 
 All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from `~/lib/db`; auth routes import `getAuthServerClient` from `~/lib/auth`.
 
-### Auth resilience in the root route
+### Auth resilience and dedicated `/signup`
 
-`fetchUser` (the root route's `createServerFn`) wraps `auth.getUser()` in a `try/catch` and returns `null` (guest) on any thrown error, missing user, or missing email, logging a `console.warn` rather than propagating. `RootDocument` reads the route context defensively (`context?.user`) so it renders safely even when the router is in an error state.
+`fetchRootContext` (the root route's `createServerFn` in `apps/web/src/routes/__root.tsx`) wraps `auth.getUser()` in a `try/catch` and returns `user: null` (guest) alongside `publicConfig` on any thrown error, missing user, or missing email, logging a `console.warn` rather than propagating. `RootDocument` reads the route context defensively (`context?.user`, `context?.publicConfig`) so it renders safely even when the router is in an error state. `apps/web/src/routes/signup.tsx` renders `<Auth mode="signup" />` directly (rather than redirecting anonymous visitors to `/login`) with explicit Google account-creation copy and `/login` cross-links.
 
 ## Related
 

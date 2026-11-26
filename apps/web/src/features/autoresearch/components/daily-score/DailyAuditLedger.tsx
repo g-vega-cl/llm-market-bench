@@ -27,6 +27,7 @@ interface DailyAuditLedgerProps {
     portfolioDetails?: Record<string, PortfolioDetail>;
     actualReturns?: ActualReturns | null;
     isLoadingActuals?: boolean;
+    actualsError?: string | null;
     isPending?: boolean;
     isActive?: boolean;
     evaluatedAt?: string | null;
@@ -97,12 +98,14 @@ function PortfolioReturnSection({
     multiplier,
     actualReturns,
     isLoadingActuals,
+    actualsError,
     isPending,
 }: {
     portfolioReturn: number;
     multiplier: number;
     actualReturns?: ActualReturns | null;
     isLoadingActuals?: boolean;
+    actualsError?: string | null;
     isPending?: boolean;
 }) {
     return (
@@ -116,7 +119,15 @@ function PortfolioReturnSection({
                     </span>
                 </span>
             </div>
-            {actualReturns && Object.keys(actualReturns).length > 0 ? (
+            {isLoadingActuals ? (
+                <div className="pl-3 border-l-2 border-voxel-bevel-hi text-xs font-normal text-voxel-muted animate-pulse">
+                    Loading individual actual portfolio returns...
+                </div>
+            ) : actualsError ? (
+                <div className="pl-3 border-l-2 border-danger text-xs font-normal text-danger">
+                    Failed to load constituent portfolio returns ({actualsError}).
+                </div>
+            ) : actualReturns && Object.keys(actualReturns).length > 0 ? (
                 <div className="pl-3 border-l-2 border-voxel-bevel-hi text-xs font-normal text-voxel-muted flex flex-col gap-1">
                     <div className="text-sm font-bold uppercase tracking-wider text-voxel-ink">
                         Constituent Portfolios (Actual Returns for the Week):
@@ -132,10 +143,6 @@ function PortfolioReturnSection({
                             </span>
                         </div>
                     ))}
-                </div>
-            ) : isLoadingActuals ? (
-                <div className="pl-3 border-l-2 border-voxel-bevel-hi text-xs font-normal text-voxel-muted animate-pulse">
-                    Loading individual actual portfolio returns...
                 </div>
             ) : isPending ? (
                 <div className="pl-3 border-l-2 border-amber-800/60 text-xs font-normal text-amber-400 italic">
@@ -259,6 +266,7 @@ export function DailyAuditLedger({
     portfolioDetails,
     actualReturns,
     isLoadingActuals,
+    actualsError,
     isPending = false,
     isActive = false,
     evaluatedAt,
@@ -360,6 +368,7 @@ export function DailyAuditLedger({
                     multiplier={multiplier}
                     actualReturns={actualReturns}
                     isLoadingActuals={isLoadingActuals}
+                    actualsError={actualsError}
                     isPending={isPending}
                 />
 

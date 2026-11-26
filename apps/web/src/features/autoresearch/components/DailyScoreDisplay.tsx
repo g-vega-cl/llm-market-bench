@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { Card } from '@llm-market-bench/ui-design-system';
+import { Button, Card } from '@llm-market-bench/ui-design-system';
 import { useState } from 'react';
 import { DailyAuditLedger } from './daily-score/DailyAuditLedger';
 import { DailyProgressionGrid } from './daily-score/DailyProgressionGrid';
@@ -21,13 +21,14 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
     const isActive = metrics.score === null || metrics.score === undefined;
 
     const [selectedDayName, setSelectedDayName] = useState<string | null>(null);
-    const { actualReturns, actualSpyReturn, isLoadingActuals } = useActualReturns(
-        experiment.week_start,
-        experiment.week_end,
-        metrics.portfolio_details as Record<string, PortfolioDetail>,
-        isActive,
-        experiment.track_id,
-    );
+    const { actualReturns, actualSpyReturn, isLoadingActuals, actualsError, retryActuals } =
+        useActualReturns(
+            experiment.week_start,
+            experiment.week_end,
+            metrics.portfolio_details as Record<string, PortfolioDetail>,
+            isActive,
+            experiment.track_id,
+        );
 
     const {
         portfolioReturn,
@@ -66,6 +67,36 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                 dailyDrawdownPenalty={dailyDrawdownPenalty}
             />
 
+            {actualsError ? (
+                <div
+                    role="alert"
+                    className="relative z-10 voxel-trough p-3 border-l-2 border-l-danger flex flex-wrap items-center justify-between gap-3"
+                >
+                    <div className="flex flex-col gap-0.5 min-w-0">
+                        <span className="text-sm font-bold text-danger">
+                            Live portfolio returns unavailable
+                        </span>
+                        <span className="text-xs font-normal text-voxel-muted break-words">
+                            Could not refresh constituent returns from the archive database (
+                            {actualsError}).{' '}
+                            {isActive && metrics.portfolio_return_pct == null
+                                ? 'Showing provisional baseline metrics instead.'
+                                : 'Showing stored summary metrics instead.'}
+                        </span>
+                    </div>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        colorScheme="neutral"
+                        onClick={retryActuals}
+                        disabled={isLoadingActuals}
+                    >
+                        Retry
+                    </Button>
+                </div>
+            ) : null}
+
             <DailyProgressionGrid
                 checkpoints={checkpoints}
                 isActive={isActive}
@@ -92,6 +123,7 @@ export function DailyScoreDisplay({ experiment }: DailyScoreDisplayProps) {
                     portfolioDetails={metrics.portfolio_details as Record<string, PortfolioDetail>}
                     actualReturns={actualReturns}
                     isLoadingActuals={isLoadingActuals}
+                    actualsError={actualsError}
                     isPending={isPending}
                     isActive={isActive}
                     evaluatedAt={metrics.evaluated_at || (isActive ? null : experiment.created_at)}

@@ -20,6 +20,7 @@ export type AnalyticsEvent =
 
 type CaptureClient =
     | {
+          __loaded?: boolean;
           capture?: (event: string, props?: Record<string, unknown>) => void;
       }
     | null
@@ -49,6 +50,7 @@ export function track(
     event: AnalyticsEvent,
     props?: Record<string, unknown>,
 ): void {
+    if (client?.__loaded === false) return;
     client?.capture?.(event, props);
     if (event === 'run_queued') captureActivationOnce(client, props);
 }

@@ -10,7 +10,7 @@ const STATELESS_DB_OPTIONS = {
     },
 };
 
-function ensureEnvLoaded() {
+export function ensureEnvLoaded() {
     if (process.env.NODE_ENV === 'test' || process.env.VITEST) {
         return;
     }
@@ -66,6 +66,54 @@ export function getDbServerClient(options?: { useServiceRole?: boolean }) {
     return createClient(dbUrl, anonKey, STATELESS_DB_OPTIONS);
 }
 
+export interface PublicArchiveDbConfig {
+    url: string;
+    anonKey: string;
+}
+
+const runtimeArchiveDbConfig: { url?: string; anonKey?: string } = {};
+
+/**
+ * Hydrates public Archive DB credentials delivered by SSR root context so
+ * browser reads still work when VITE_ARCHIVE_DB_* was not baked at build time.
+ * Only mutates state in the browser so concurrent SSR requests stay isolated.
+ */
+export function setRuntimeArchiveDbConfig(config: { url?: string; anonKey?: string } | null) {
+    if (typeof window === 'undefined') return;
+    runtimeArchiveDbConfig.url = config?.url || undefined;
+    runtimeArchiveDbConfig.anonKey = config?.anonKey || undefined;
+}
+
+export function isPublicBrowserUrl(url: string): boolean {
+    try {
+        const parsed = new URL(url);
+        if (parsed.protocol === 'https:') return true;
+        return (
+            parsed.protocol === 'http:' &&
+            (parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1')
+        );
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Server-side helper returning only public (anon-tier) Archive DB config for
+ * browser hydration. Never exposes service-role keys or internal Docker hosts.
+ */
+export function getPublicArchiveDbConfig(): PublicArchiveDbConfig {
+    ensureEnvLoaded();
+    const rawUrl = process.env.VITE_ARCHIVE_DB_URL || process.env.ARCHIVE_DB_URL || '';
+    const url = rawUrl && isPublicBrowserUrl(rawUrl) ? rawUrl : DEFAULT_ARCHIVE_DB_URL;
+    const anonKey =
+        process.env.VITE_ARCHIVE_DB_ANON_KEY ||
+        process.env.ARCHIVE_DB_ANON_KEY ||
+        process.env.VITE_SUPABASE_ANON_KEY ||
+        process.env.SUPABASE_ANON_KEY ||
+        '';
+    return { url, anonKey };
+}
+
 export function getDbBrowserClient() {
     // During SSR (route loaders / server functions) prefer runtime server env, which
     // is not baked into `import.meta.env`; otherwise loaders can return empty data
@@ -77,9 +125,12 @@ export function getDbBrowserClient() {
             // Fall through to build-time VITE env below.
         }
     }
-    const dbUrl = import.meta.env.VITE_ARCHIVE_DB_URL || DEFAULT_ARCHIVE_DB_URL;
+    const dbUrl =
+        import.meta.env.VITE_ARCHIVE_DB_URL || runtimeArchiveDbConfig.url || DEFAULT_ARCHIVE_DB_URL;
     const dbAnonKey =
-        import.meta.env.VITE_ARCHIVE_DB_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
+        import.meta.env.VITE_ARCHIVE_DB_ANON_KEY ||
+        import.meta.env.VITE_SUPABASE_ANON_KEY ||
+        runtimeArchiveDbConfig.anonKey;
 
     if (!dbUrl || !dbAnonKey) {
         throw new Error('Missing Archive DB credentials (VITE_ARCHIVE_DB_ANON_KEY)');

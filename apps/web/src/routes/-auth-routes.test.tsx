@@ -68,7 +68,7 @@ describe('auth route guards & callback isolation', () => {
         expect(authRoute?.children).toBeUndefined();
     });
 
-    it('redirects anonymous /auth and /signup visitors to /login with unified ?redirect= and ?error=', async () => {
+    it('redirects anonymous /auth visitors to /login and lets /signup render its own page', async () => {
         const authThrown = await runBeforeLoad(
             AuthRoute,
             { user: null },
@@ -81,13 +81,8 @@ describe('auth route guards & callback isolation', () => {
             replace: true,
         });
 
-        const signupThrown = await runBeforeLoad(SignupRoute, { user: null }, { next: '/chat' });
-        expect(isRedirect(signupThrown)).toBe(true);
-        expect((signupThrown as { options: Record<string, unknown> }).options).toMatchObject({
-            to: '/login',
-            search: { redirect: '/chat', error: undefined },
-            replace: true,
-        });
+        const signupResult = await runBeforeLoad(SignupRoute, { user: null }, { next: '/chat' });
+        expect(signupResult).toBeNull();
     });
 
     it('redirects signed-in visitors away from /login, /auth, and /signup without self-redirect loops', async () => {

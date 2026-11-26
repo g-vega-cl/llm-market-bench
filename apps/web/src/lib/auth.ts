@@ -1,8 +1,28 @@
 import { createServerClient } from '@supabase/ssr';
 import { getCookies, setCookie } from '@tanstack/react-start/server';
-import { assertValidAuthUrl, getAuthBrowserClient } from './auth-client';
+import { assertValidAuthUrl } from './auth-client';
+import { ensureEnvLoaded, isPublicBrowserUrl } from './db';
 
-export { assertValidAuthUrl, getAuthBrowserClient };
+export { assertValidAuthUrl, getAuthBrowserClient, type PublicAuthConfig } from './auth-client';
+
+export function getPublicAuthConfig(): { url: string; anonKey: string } {
+    ensureEnvLoaded();
+    const rawUrl =
+        process.env.VITE_SUPABASE_AUTH_URL ||
+        process.env.SUPABASE_AUTH_URL ||
+        process.env.VITE_SUPABASE_URL ||
+        process.env.SUPABASE_URL ||
+        '';
+    return {
+        url: rawUrl && isPublicBrowserUrl(rawUrl) ? rawUrl : '',
+        anonKey:
+            process.env.VITE_SUPABASE_AUTH_ANON_KEY ||
+            process.env.SUPABASE_AUTH_ANON_KEY ||
+            process.env.VITE_SUPABASE_ANON_KEY ||
+            process.env.SUPABASE_ANON_KEY ||
+            '',
+    };
+}
 
 export function getAuthServerClient() {
     const authUrl =

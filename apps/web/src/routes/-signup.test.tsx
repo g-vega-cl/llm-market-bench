@@ -1,6 +1,7 @@
 import { isRedirect } from '@tanstack/react-router';
-import { describe, expect, it } from 'vitest';
-import { Route as SignupRoute } from './signup';
+import { render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Route as SignupRoute, SignupRouteComponent } from './signup';
 
 type GuardContext = { user: { id: string; email: string } | null };
 
@@ -24,21 +25,34 @@ async function runSignupBeforeLoad(
     }
 }
 
-describe('/signup redirect route', () => {
-    it('redirects anonymous visitors to /login and normalizes ?next= into ?redirect=', async () => {
-        const thrown = await runSignupBeforeLoad(
+afterEach(() => vi.restoreAllMocks());
+
+describe('/signup route', () => {
+    it('does not redirect anonymous visitors to /login so /signup renders an explicit create-account view', async () => {
+        const result = await runSignupBeforeLoad(
             { user: null },
             { next: '/recipes?recipeId=rec-1', error: 'access_denied' },
         );
-        expect(isRedirect(thrown)).toBe(true);
-        expect((thrown as { options: Record<string, unknown> }).options).toMatchObject({
-            to: '/login',
-            search: {
-                redirect: '/recipes?recipeId=rec-1',
-                error: 'access_denied',
-            },
-            replace: true,
-        });
+        expect(result).toBeNull();
+    });
+
+    it('renders the dedicated signup heading, Google signup CTA, and sign-in cross-link', () => {
+        vi.spyOn(SignupRoute, 'useSearch').mockReturnValue({
+            next: '/build',
+            redirect: undefined,
+            error: undefined,
+        } as never);
+
+        render(<SignupRouteComponent />);
+
+        expect(
+            screen.getByRole('heading', { name: /create your benchify account/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /sign up with google/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
+            'href',
+            '/login?redirect=%2Fbuild',
+        );
     });
 
     it('redirects signed-in visitors straight to their sanitized target without bouncing through /login', async () => {

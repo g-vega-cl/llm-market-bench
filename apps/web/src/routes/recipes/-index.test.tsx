@@ -50,10 +50,14 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
 type HeadTag = { name?: string; content?: string; title?: string };
 
 describe('Recipe gallery (public /recipes)', () => {
-    it('shows read-only example templates without per-card Sign in to fork buttons', () => {
+    it('shows read-only example templates with lock cues and without per-card Sign in to fork buttons', () => {
         render(<RecipeGalleryPage />);
         expect(screen.getByText('Trump & Chips News Momentum')).toBeInTheDocument();
         expect(screen.queryByText('Sign in to fork')).not.toBeInTheDocument();
+        expect(screen.getAllByText('Sign in').length).toBeGreaterThan(0);
+        expect(screen.getAllByText(/Sign in to customize & run backtest/i).length).toBeGreaterThan(
+            0,
+        );
     });
 
     it('makes each recipe card a link to /login carrying the starter redirect', () => {

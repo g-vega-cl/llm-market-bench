@@ -177,7 +177,7 @@ Three engagement mechanisms sit on top of the 16-question flow:
 ## Analytics and share paths
 
 - Events: `quiz_started`, `quiz_question_answered{index, act, option}`, `quiz_act_completed{act, letter, strength}`, `quiz_completed{code, strength, seconds}` — emitted through `track()` and no-ops outside a PostHog provider.
-- Canonical share path: `/personality/t/CODE` (`routes/personality.t.$code.tsx`). Lowercase codes are normalised, unknown codes throw `notFound()`. The copy-link button emits this path. Routing shape: `personality.tsx` is a layout that owns `validateSearch`, `personality.index.tsx` is the quiz, `personality.t.$code.tsx` is the shared result — no `_`-suffix filename tricks.
+- Canonical share path: `/personality/t/CODE` (`routes/personality/t/$code.tsx`). Lowercase codes are normalised, unknown codes throw `notFound()`. The copy-link button emits this path. Routing shape: `personality.tsx` is a layout that owns `validateSearch`, `personality/index.tsx` is the quiz, `personality/t/$code.tsx` is the shared result — using nested directories so Vite emits clean `_code` chunks without `._` segments.
 - Legacy `?archetype=<slug>` renders inspect mode **in place**, deliberately without redirecting to the canonical path: that navigation remounts the page and drops in-progress result state (the Act-4 words were lost this way until it was caught in the visual pass).
 
 ## Related

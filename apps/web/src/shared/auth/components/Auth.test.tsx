@@ -66,6 +66,35 @@ describe('Auth — recipe beta panel', () => {
             screen.queryByText('Strategy Recipe Studio — Free Beta Access'),
         ).not.toBeInTheDocument();
     });
+
+    it('shows the draft-preserved panel when redirecting back to /build and links to /signup from login', () => {
+        render(<Auth redirectPath="/build" />);
+        expect(screen.getByText('Your draft stays saved in this browser')).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /create an account/i })).toHaveAttribute(
+            'href',
+            '/signup?redirect=%2Fbuild',
+        );
+    });
+
+    it('shows starter-specific copy instead of draft copy when redirecting to /build?starter=', () => {
+        render(<Auth redirectPath="/build?starter=Trump%20%26%20Chips" />);
+        expect(screen.getByText('Starter recipe selected — sign in to open')).toBeInTheDocument();
+        expect(
+            screen.queryByText('Your draft stays saved in this browser'),
+        ).not.toBeInTheDocument();
+    });
+
+    it('renders explicit create-account copy and Google signup button in signup mode', () => {
+        render(<Auth mode="signup" redirectPath="/build" />);
+        expect(
+            screen.getByRole('heading', { name: /create your benchify account/i }),
+        ).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /sign up with google/i })).toBeInTheDocument();
+        expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute(
+            'href',
+            '/login?redirect=%2Fbuild',
+        );
+    });
 });
 
 describe('Auth — uses design system', () => {

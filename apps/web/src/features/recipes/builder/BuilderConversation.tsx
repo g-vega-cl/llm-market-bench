@@ -55,6 +55,13 @@ function PendingIdeaCard({
                 Saved in this browser
             </span>
             <p className="text-xs font-normal text-voxel-ink break-words">{idea}</p>
+            {!isSignedIn ? (
+                <p className="text-xs font-normal text-voxel-muted leading-relaxed">
+                    Free Google sign-in is required to compile with AI and save your bot (2 free
+                    backtests/day, 3 live paper bots). You&apos;ll return right here with this draft
+                    loaded to finish alignment and backtest.
+                </p>
+            ) : null}
             <div>
                 <Button
                     variant="solid"

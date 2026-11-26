@@ -1,5 +1,5 @@
 import type { PromptExperiment } from '@llm-market-bench/database';
-import { PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
+import { EmptyState, PageLayout, SectionHeading } from '@llm-market-bench/ui-design-system';
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
@@ -107,8 +107,13 @@ export function BacktestAutoresearchPage({ initialData, fetchFn }: BacktestAutor
                                     }
                                 />
                             </div>
+                        ) : experiments.length === 0 ? (
+                            <EmptyState
+                                title="No backtest runs recorded yet"
+                                subtitle="No simulation runs have been logged yet. New backtest prompt evaluations will appear here once completed."
+                            />
                         ) : (
-                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-200 border-zinc-800 rounded-none text-xs font-normal text-zinc-400">
+                            <div className="h-full flex items-center justify-center p-12 border-2 border-dashed border-zinc-800 rounded-none text-xs font-normal text-zinc-400">
                                 Select a backtest run to view prompt details and mutation reasoning
                             </div>
                         )}

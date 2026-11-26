@@ -5,6 +5,24 @@ import type { PushStrategy } from '../types';
 
 const BLOCK_ORDER = ['prompt', 'news', 'memories', 'technicals', 'output_format'] as const;
 
+function LockIcon() {
+    return (
+        <svg
+            className="w-3.5 h-3.5 shrink-0"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+    );
+}
+
 function promptExcerpt(strategy: PushStrategy): string {
     const prompt = strategy.stages[0]?.blocks.find((block) => block.type === 'prompt');
     if (!prompt || prompt.type !== 'prompt') return 'Trades on the block filters alone.';
@@ -33,8 +51,8 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                     <SectionHeading className="text-sm">Strategy recipes</SectionHeading>
                     <p className="text-xs font-normal text-voxel-muted max-w-prose">
                         Each recipe is a single LLM call over point-in-time news, memories and
-                        technical filters. Describe your own bot in plain English and run it live on
-                        paper cash every 30 minutes during market hours.
+                        technical filters. Click any locked starter below to sign in with Google and
+                        customize it, or build your own bot from one sentence.
                     </p>
                     <div className="flex flex-wrap items-center gap-4">
                         <Link
@@ -64,9 +82,20 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                         >
                             <Card padding="md" className="h-full min-w-0 flex flex-col gap-3">
                                 <div className="flex flex-col gap-1 pb-2 border-b-2 border-voxel-bevel-hi">
-                                    <span className="text-sm font-bold text-voxel-ink break-words">
-                                        {template.name}
-                                    </span>
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className="text-sm font-bold text-voxel-ink break-words">
+                                            {template.name}
+                                        </span>
+                                        <Badge
+                                            colorScheme="neutral"
+                                            variant="soft"
+                                            size="sm"
+                                            className="shrink-0 inline-flex items-center gap-1"
+                                        >
+                                            <LockIcon />
+                                            <span>Sign in</span>
+                                        </Badge>
+                                    </div>
                                     <span className="text-xs font-normal text-voxel-muted">
                                         Live: 30m · Backtest: {template.cadence} · one LLM call
                                     </span>
@@ -86,6 +115,9 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                                 <p className="voxel-trough p-2 text-xs font-normal text-voxel-muted whitespace-pre-wrap break-words line-clamp-3">
                                     {promptExcerpt(template)}
                                 </p>
+                                <span className="mt-auto text-xs font-normal text-accent">
+                                    Sign in to customize &amp; run backtest →
+                                </span>
                             </Card>
                         </Link>
                     ))}

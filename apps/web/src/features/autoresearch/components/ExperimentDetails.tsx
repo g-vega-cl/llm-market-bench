@@ -70,7 +70,7 @@ export function ExperimentDetails({ experiment, parentExperiment }: ExperimentDe
                 <MetricTile icon="📉" label="Max Drawdown" value={maxDrawdownVal} />
             </div>
 
-            <DailyScoreDisplay experiment={experiment} />
+            <DailyScoreDisplay key={experiment.id} experiment={experiment} />
 
             <ScoreBreakdown experiment={experiment} />
 

@@ -31,6 +31,27 @@ function isRecipesPath(path: string): boolean {
     return pathname === '/recipes' || pathname.startsWith('/recipes/');
 }
 
+function isBuildPath(path: string): boolean {
+    const pathname = path.split(/[?#]/)[0]?.replace(/\/+$/, '') || '/';
+    return pathname === '/build';
+}
+
+function hasStarterParam(path: string): boolean {
+    const query = path.split('?')[1]?.split('#')[0] ?? '';
+    return new URLSearchParams(query).has('starter');
+}
+
+function resolveAuthSubtitle(isSignup: boolean, isRecipesGate: boolean): string {
+    if (isSignup) {
+        return isRecipesGate
+            ? 'Create a free Benchify account with Google to run backtests and live paper sessions in Strategy Recipe Studio. No separate username or password needed.'
+            : 'Create a free Benchify account with Google to build trading bots, run backtests, and track live paper results. Your account is created automatically on first sign-in.';
+    }
+    return isRecipesGate
+        ? 'Sign in with Google to run backtests and live paper sessions in Strategy Recipe Studio.'
+        : 'Sign in with Google to run backtests, save trading bots, and track live paper results.';
+}
+
 function GoogleIcon() {
     return (
         <svg className="w-5 h-5 shrink-0" aria-hidden="true" viewBox="0 0 24 24">
@@ -54,11 +75,46 @@ function GoogleIcon() {
     );
 }
 
+function resolveGateCallout(returnPath: string): { title: string; body: string } | null {
+    if (isRecipesPath(returnPath)) {
+        return {
+            title: 'Strategy Recipe Studio — Free Beta Access',
+            body: 'Sign in with Google to get 2 free 2-week backtests/day (strata-auto-go) and 3 live paper turns/day (auto-go).',
+        };
+    }
+    if (!isBuildPath(returnPath)) {
+        return null;
+    }
+    if (hasStarterParam(returnPath)) {
+        return {
+            title: 'Starter recipe selected — sign in to open',
+            body: 'Sign in with Google to load this starter bot directly in Strategy Recipe Studio with 2 free paper backtests/day and 3 live paper bots.',
+        };
+    }
+    return {
+        title: 'Your draft stays saved in this browser',
+        body: "After signing in, you'll return directly to the builder to align your strategy and run up to 2 free paper backtests/day.",
+    };
+}
+
+function AuthGateCallout({ returnPath }: { returnPath: string }) {
+    const callout = resolveGateCallout(returnPath);
+    if (!callout) return null;
+    return (
+        <div className="voxel-trough p-4 flex flex-col gap-2 text-xs font-normal text-voxel-muted">
+            <span className="text-sm font-bold text-voxel-ink">{callout.title}</span>
+            <span className="leading-relaxed">{callout.body}</span>
+        </div>
+    );
+}
+
 export function Auth({
-    actionText = 'Sign in to Benchify',
+    mode = 'login',
+    actionText,
     redirectPath,
     errorCode,
 }: {
+    mode?: 'login' | 'signup';
     actionText?: string;
     redirectPath?: string;
     errorCode?: string;
@@ -66,6 +122,9 @@ export function Auth({
     const [browserReturnPath, setBrowserReturnPath] = useState('/');
     const [phase, setPhase] = useState<AuthPhase>(() => initialPhaseFromErrorCode(errorCode));
     const prevErrorCodeRef = useRef(errorCode);
+    const isSignup = mode === 'signup';
+    const headingText =
+        actionText ?? (isSignup ? 'Create your Benchify account' : 'Sign in to Benchify');
 
     useEffect(() => {
         setBrowserReturnPath(resolveCurrentReturnPath());
@@ -93,6 +152,9 @@ export function Auth({
     const returnPath = redirectPath ?? browserReturnPath;
     const isRecipesGate = isRecipesPath(returnPath);
     const isRedirecting = phase.kind === 'redirecting';
+    const alternateAuthHref = `${isSignup ? '/login' : '/signup'}${
+        returnPath && returnPath !== '/' ? `?redirect=${encodeURIComponent(returnPath)}` : ''
+    }`;
 
     const handleGoogleLogin = async () => {
         if (phase.kind === 'redirecting') return;
@@ -126,12 +188,10 @@ export function Auth({
             <Card variant="default" padding="lg" className="w-full max-w-md flex flex-col gap-6">
                 <div className="flex flex-col gap-2">
                     <h1 className="text-sm font-bold font-display uppercase tracking-wider text-voxel-ink">
-                        {actionText}
+                        {headingText}
                     </h1>
                     <p className="text-xs font-normal leading-relaxed text-voxel-muted">
-                        {isRecipesGate
-                            ? 'Sign in with Google to run backtests and live paper sessions in Strategy Recipe Studio.'
-                            : 'Sign in with Google to run backtests, save trading bots, and track live paper results.'}
+                        {resolveAuthSubtitle(isSignup, isRecipesGate)}
                     </p>
                 </div>
 
@@ -140,7 +200,9 @@ export function Auth({
                         role="alert"
                         className="voxel-trough p-4 border-l-2 border-l-danger flex flex-col gap-1"
                     >
-                        <span className="text-sm font-bold text-danger">Sign-in failed</span>
+                        <span className="text-sm font-bold text-danger">
+                            {isSignup ? 'Sign-up failed' : 'Sign-in failed'}
+                        </span>
                         <span className="text-xs font-normal leading-relaxed text-voxel-muted">
                             {phase.message}
                         </span>
@@ -156,20 +218,14 @@ export function Auth({
                     leftIcon={<GoogleIcon />}
                     onClick={handleGoogleLogin}
                 >
-                    {isRedirecting ? 'Redirecting to Google...' : 'Continue with Google'}
+                    {isRedirecting
+                        ? 'Redirecting to Google...'
+                        : isSignup
+                          ? 'Sign up with Google'
+                          : 'Continue with Google'}
                 </Button>
 
-                {isRecipesGate && (
-                    <div className="voxel-trough p-4 flex flex-col gap-2 text-xs font-normal text-voxel-muted">
-                        <span className="text-sm font-bold text-voxel-ink">
-                            Strategy Recipe Studio — Free Beta Access
-                        </span>
-                        <span className="leading-relaxed">
-                            Sign in with Google to get 2 free 2-week backtests/day (strata-auto-go)
-                            and 3 live paper turns/day (auto-go).
-                        </span>
-                    </div>
-                )}
+                <AuthGateCallout returnPath={returnPath} />
 
                 <div className="voxel-trough p-4 flex flex-col gap-2 text-xs font-normal text-voxel-muted">
                     <span className="text-sm font-bold text-voxel-ink">
@@ -179,6 +235,12 @@ export function Auth({
                 </div>
 
                 <div className="flex flex-col gap-2 text-xs font-normal leading-relaxed text-voxel-muted text-center">
+                    <p>
+                        {isSignup ? 'Already have an account?' : 'New to Benchify?'}{' '}
+                        <a href={alternateAuthHref} className="text-accent hover:underline">
+                            {isSignup ? 'Sign in →' : 'Create an account →'}
+                        </a>
+                    </p>
                     <p>
                         By continuing you agree to the{' '}
                         <a href="/terms" className="text-accent hover:underline">

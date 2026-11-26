@@ -29,6 +29,7 @@ from core.llm.max_pain_prompts import (
     MAX_PAIN_JEV_QUESTION_KEY,
     MAX_PAIN_JEV_QUESTION_TYPE,
 )
+from core.llm.openrouter_calls import DECISIONS_URL, post_decisions
 from execution.max_pain import (
     DEFAULT_ADVERSE_STOP_PCT,
     DEFAULT_MAX_HOLDINGS,
@@ -178,7 +179,15 @@ async def evaluate_candidate_with_jev(
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:
-            resp = await client.post("https://openrouter.ai/api/alpha/decisions", headers=headers, json=payload)
+            resp = await post_decisions(
+                client,
+                url=DECISIONS_URL,
+                headers=headers,
+                payload=payload,
+                model=model_name,
+                purpose="engine:jev_decisions:max_pain",
+                preview=ticker,
+            )
             if resp.status_code != 200:
                 logger.warning(f"OpenRouter Decisions error {resp.status_code} for {ticker}: {resp.text}")
                 return {

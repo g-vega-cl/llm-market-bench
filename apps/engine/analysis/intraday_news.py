@@ -18,6 +18,7 @@ from core.config import (
 )
 from core.db import get_supabase_client
 from core.economic_releases import fetch_economic_calendar_events
+from core.llm.openrouter_calls import post_decisions
 
 JEV_DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
 DEFAULT_SYNC_COOLDOWN_SECONDS = 900  # 15 minutes cache freshness guard
@@ -81,7 +82,15 @@ async def evaluate_news_with_jev(
 
     try:
         async with httpx.AsyncClient(timeout=20.0) as client:
-            resp = await client.post(JEV_DECISIONS_URL, headers=headers, json=payload)
+            resp = await post_decisions(
+                client,
+                url=JEV_DECISIONS_URL,
+                headers=headers,
+                payload=payload,
+                model=model_name,
+                purpose="engine:jev_decisions:intraday_news",
+                preview=headline,
+            )
             if resp.status_code != 200:
                 logger.warning(
                     "OpenRouter Decisions API error %s for '%s': %s", resp.status_code, headline[:60], resp.text[:200]

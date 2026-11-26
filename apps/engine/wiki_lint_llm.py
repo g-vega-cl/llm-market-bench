@@ -19,12 +19,14 @@ import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import requests
 
 # Configure logging using the centralized engine logger
 from core.config import logger
+from core.llm.openrouter_calls import log_requests_call
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"
@@ -265,7 +267,15 @@ def call_openrouter(
     }
 
     logger.info(f"Calling OpenRouter model: {model}")
+    started = time.perf_counter()
     resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=60)
+    log_requests_call(
+        purpose="engine:wiki_lint_llm",
+        model=model,
+        preview=content,
+        response=resp,
+        latency_ms=(time.perf_counter() - started) * 1000,
+    )
     if not resp.ok:
         try:
             err_data = resp.json()

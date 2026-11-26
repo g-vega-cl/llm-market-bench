@@ -14,6 +14,7 @@ import httpx
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import JEV_MODEL, OPENROUTER_API_KEY
+from core.llm.openrouter_calls import post_decisions
 from local_autoresearch.manifest import (
     DataManifest,
     JevCriteriaConfig,
@@ -53,7 +54,15 @@ async def evaluate_single_day(
         should_close_client = True
 
     try:
-        resp = await client.post(OPENROUTER_DECISIONS_URL, headers=headers, json=payload)
+        resp = await post_decisions(
+            client,
+            url=OPENROUTER_DECISIONS_URL,
+            headers=headers,
+            payload=payload,
+            model=model_name,
+            purpose="engine:jev_decisions:jev_evaluator",
+            preview=ticker,
+        )
         if resp.status_code != 200:
             raise RuntimeError(f"OpenRouter Decisions API error {resp.status_code}: {resp.text}")
         data = resp.json()

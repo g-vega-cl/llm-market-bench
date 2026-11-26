@@ -90,6 +90,10 @@ services:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
       FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1
       FREE_PROXY_MODEL: ${FREE_PROXY_MODEL:-auto-go}
+    # Shared SQLite call log: the engine writes the same call_logs table the proxy owns,
+    # so direct OpenRouter generations land in one local store instead of PostHog.
+    volumes:
+      - free_llm_proxy_data:/app/apps/free_llm_proxy/data
     deploy:
       resources:
         limits:
@@ -110,6 +114,8 @@ services:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
       FREE_LLM_PROXY_URL: https://llm.clvg.uk/v1
       ARCHIVE_DB_URL: http://archive-proxy:80
+    volumes:
+      - free_llm_proxy_data:/app/apps/free_llm_proxy/data
     deploy:
       resources:
         limits:

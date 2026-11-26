@@ -33,6 +33,8 @@ Authorization: Bearer <FREE_PROXY_MASTER_KEY>
 
 `AuditDB.get_logs()` in `apps/free_llm_proxy/db.py` implements the query: it clamps the paging arguments, builds static `WHERE` clauses for the active filters, runs a `COUNT(*)` for `total`, and parses the stored `failover_chain` JSON string into a list (falling back to `[]` on malformed JSON or a non-list value) so the client never has to decode it.
 
+The table has two writers: the proxy itself and the engine (`apps/engine/core/llm/call_log.py`, see [[entities/free-llm-proxy]] § Shared Write Paths). Engine-originated rows carry a `purpose` prefixed `engine:` (`engine:jev_decisions:daily_predictor`, `engine:auto_wiki`, `engine:wiki_lint_llm`, `engine:recipe_llm`) and a `routed_provider` of `openrouter`, `free-proxy`, or `strata`, so they are filterable without a separate endpoint.
+
 ## Data Flow
 
 `LlmLogsRouteComponent` owns the query state; `LlmLogsPage` (`apps/web/src/features/llm-logs/LlmLogsPage.tsx`) is a pure presentation component.

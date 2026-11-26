@@ -229,3 +229,38 @@ async def test_run_tool_loop_sanitizes_force_refresh_and_clamps_limit():
     assert mock_execute.await_count == 2
     assert mock_execute.await_args_list[0].args[1] == {"force_refresh": False, "limit": 25}
     assert mock_execute.await_args_list[1].args[1] == {"limit": 25}
+
+
+def test_recipe_call_log_skips_proxy_lane_because_the_proxy_already_logs_it(tmp_path, monkeypatch):
+    """One call must produce one row: the proxy records its own traffic in the same table."""
+    from recipes.llm_caller import _log_endpoint_call
+
+    db_file = tmp_path / "calls.db"
+    monkeypatch.setenv("SQLITE_DB_PATH", str(db_file))
+
+    _log_endpoint_call("https://llm.clvg.uk/v1", "auto-go", "prompt", 0.0, status_code=200)
+
+    assert not db_file.exists()
+
+
+def test_recipe_call_log_records_direct_lanes(tmp_path, monkeypatch):
+    """Strata and OpenRouter bypass the proxy, so nobody else can record them."""
+    import sqlite3
+
+    from recipes.llm_caller import _log_endpoint_call
+
+    db_file = tmp_path / "calls.db"
+    monkeypatch.setenv("SQLITE_DB_PATH", str(db_file))
+
+    _log_endpoint_call("https://openrouter.ai/api/v1", "jev/model", "prompt", 0.0, status_code=200)
+    _log_endpoint_call("http://primary-workstation:3001/strata/v1", "strata", "prompt", 0.0, status_code=200)
+
+    conn = sqlite3.connect(db_file)
+    try:
+        rows = conn.execute(
+            "SELECT routed_provider, billing FROM call_logs ORDER BY rowid"
+        ).fetchall()
+    finally:
+        conn.close()
+
+    assert rows == [("openrouter", "paid"), ("strata", "free")]

@@ -7,6 +7,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+BUSY_TIMEOUT_MS = 5000
+
 
 class AuditDB:
     def __init__(self, db_path: str = "data/free_llm_proxy.db"):
@@ -22,8 +24,13 @@ class AuditDB:
     def _get_connection(self) -> sqlite3.Connection:
         if self._persistent_conn is not None:
             return self._persistent_conn
-        conn = sqlite3.connect(self.db_path, check_same_thread=False)
+        # The engine writes this same file from the trader and recipe-worker containers,
+        # so a concurrent write must wait for the lock instead of raising. WAL is stored
+        # in the file header, so these readers and the proxy's own writes share it.
+        conn = sqlite3.connect(self.db_path, timeout=BUSY_TIMEOUT_MS / 1000, check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        conn.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
+        conn.execute("PRAGMA journal_mode = WAL")
         return conn
 
     def _init_schema(self) -> None:

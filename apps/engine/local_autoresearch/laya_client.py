@@ -12,6 +12,7 @@ import httpx
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.config import JEV_MODEL, OPENROUTER_API_KEY, logger
+from core.llm.openrouter_calls import post_decisions
 from local_autoresearch.manifest import JevCriteriaConfig
 
 DEFAULT_LAYA_URL = os.getenv("LAYA_SERVER_URL", "http://127.0.0.1:8081/v1/systemone")
@@ -106,7 +107,15 @@ async def evaluate_with_laya(
                 "Authorization": f"Bearer {key}",
                 "Content-Type": "application/json",
             }
-            jev_resp = await client.post(OPENROUTER_DECISIONS_URL, headers=jev_headers, json=payload)
+            jev_resp = await post_decisions(
+                client,
+                url=OPENROUTER_DECISIONS_URL,
+                headers=jev_headers,
+                payload=payload,
+                model=JEV_MODEL,
+                purpose="engine:jev_decisions:laya_fallback",
+                preview=ticker,
+            )
             if jev_resp.status_code != 200:
                 raise RuntimeError(
                     f"Fallback OpenRouter Jev API error {jev_resp.status_code}: {jev_resp.text}"

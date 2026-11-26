@@ -37,6 +37,7 @@ from core.llm.daily_predictor_prompts import (
     split_daily_predictor_prompt,
 )
 from core.llm.minimax import MiniMaxClient
+from core.llm.openrouter_calls import DECISIONS_URL, post_decisions
 from local_autoresearch.document_builder import (
     DEFAULT_INGESTION_SYSTEM_PROMPT,
     generate_daily_document,
@@ -90,7 +91,15 @@ async def predict_daily_with_jev(
     }
 
     async with httpx.AsyncClient(timeout=60.0) as client:
-        resp = await client.post("https://openrouter.ai/api/alpha/decisions", headers=headers, json=payload)
+        resp = await post_decisions(
+            client,
+            url=DECISIONS_URL,
+            headers=headers,
+            payload=payload,
+            model=model_name,
+            purpose="engine:jev_decisions:daily_predictor",
+            preview=context,
+        )
         if resp.status_code != 200:
             raise RuntimeError(f"OpenRouter Decisions API error {resp.status_code}: {resp.text}")
         data = resp.json()

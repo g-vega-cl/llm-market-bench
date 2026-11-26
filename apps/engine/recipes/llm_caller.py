@@ -6,12 +6,14 @@ import inspect
 import json
 import os
 import re
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
 from openai import AsyncOpenAI
 
 from core.config import logger
+from core.llm import call_log
 from core.llm.handlers.base import execute_tool
 from core.llm.tools import CANONICAL_TOOLS_REGISTRY
 from recipes.pit_tools import PIT_SAFE_TOOL_NAMES
@@ -87,6 +89,45 @@ def _build_assistant_history_entry(msg: Any, tool_calls: list[Any]) -> dict[str,
 
 _LIVE_PROXY_ONLY_ALIASES = frozenset({"auto-go", "free-auto", "free-fast", "free-reasoning"})
 _PROXY_ROUTER_ALIASES = frozenset({"strata-auto-go", "auto-strata-go", "strata-auto"})
+
+
+def _provider_for(base_url: str) -> str:
+    """Label the lane so the shared call log can be filtered per provider."""
+    if "openrouter" in base_url:
+        return "openrouter"
+    if "/strata" in base_url:
+        return "strata"
+    if "llm.clvg.uk" in base_url or ":8086" in base_url:
+        return "free-proxy"
+    return "other"
+
+
+def _log_endpoint_call(
+    base_url: str,
+    model_id: str,
+    prompt: str,
+    started: float,
+    *,
+    status_code: int,
+    error: BaseException | None = None,
+) -> None:
+    """Record one recipe endpoint attempt in the shared SQLite call log."""
+    provider = _provider_for(base_url)
+    if provider == "free-proxy":
+        # The proxy writes its own row for this call into the same table; a second
+        # row here would double every recipe request in the metrics.
+        return
+    call_log.log_call(
+        requested_model=model_id,
+        routed_provider=provider,
+        routed_model=model_id,
+        latency_ms=(time.perf_counter() - started) * 1000,
+        status_code=status_code,
+        error_message=None if error is None else f"{type(error).__name__}: {error}",
+        purpose="engine:recipe_llm",
+        prompt_preview=call_log.preview(prompt),
+        billing="paid" if provider == "openrouter" else "free",
+    )
 
 
 def llm_endpoints(openrouter_key: str | None, model: str) -> list[tuple[str, str, str]]:
@@ -289,9 +330,10 @@ async def default_llm_caller(
     endpoints = llm_endpoints(openrouter_key, model)
     last_exc: Exception | None = None
     for idx, (base_url, api_key, model_id) in enumerate(endpoints):
+        started = time.perf_counter()
         try:
             async with AsyncOpenAI(api_key=api_key, base_url=base_url, timeout=90) as client:
-                return await run_tool_loop(
+                result = await run_tool_loop(
                     client,
                     model_id,
                     prompt,
@@ -300,8 +342,11 @@ async def default_llm_caller(
                     as_of_utc=as_of_utc,
                     allowed_tools=set(allowed_names),
                 )
+            _log_endpoint_call(base_url, model_id, prompt, started, status_code=200)
+            return result
         except Exception as exc:
             last_exc = exc
+            _log_endpoint_call(base_url, model_id, prompt, started, status_code=0, error=exc)
             if idx + 1 < len(endpoints):
                 logger.warning("Recipe LLM endpoint %s failed (%s); failing over to next endpoint", base_url, exc)
                 continue

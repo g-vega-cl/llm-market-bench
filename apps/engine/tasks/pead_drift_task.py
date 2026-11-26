@@ -21,6 +21,7 @@ import httpx
 
 from core.config import FMP_API_KEY, JEV_MODEL, OPENROUTER_API_KEY, logger
 from core.db import get_supabase_client
+from core.llm.openrouter_calls import DECISIONS_URL, post_decisions
 from core.llm.pead_prompts import (
     PEAD_DEFAULT_CRITERIA,
     PEAD_JEV_INSTRUCTIONS,
@@ -111,7 +112,15 @@ async def evaluate_candidate_with_jev(
     }
 
     async with httpx.AsyncClient(timeout=30.0) as client:
-        resp = await client.post("https://openrouter.ai/api/alpha/decisions", headers=headers, json=payload)
+        resp = await post_decisions(
+            client,
+            url=DECISIONS_URL,
+            headers=headers,
+            payload=payload,
+            model=model_name,
+            purpose="engine:jev_decisions:pead",
+            preview=ticker,
+        )
         if resp.status_code != 200:
             logger.warning(f"OpenRouter Decisions error {resp.status_code} for {ticker}: {resp.text}")
             return {

@@ -123,3 +123,15 @@ def test_legacy_rows_backfill_usage_available(tmp_path):
     assert call["is_stream"] == 0
     assert call["duration_ms"] == 42.0
     assert call["total_tokens"] == 10
+
+
+def test_connection_waits_for_locks_and_uses_wal(tmp_path):
+    """The engine now writes this same file from two more containers: wait on a lock, never
+    raise, and let readers proceed during a write."""
+    db = AuditDB(db_path=str(tmp_path / "calls.db"))
+    conn = db._get_connection()
+    try:
+        assert conn.execute("PRAGMA busy_timeout").fetchone()[0] == 5000
+        assert conn.execute("PRAGMA journal_mode").fetchone()[0].lower() == "wal"
+    finally:
+        conn.close()

@@ -27,6 +27,7 @@ from core.llm.earnings_predictor_prompts import (
     EARNINGS_PREDICTOR_PROMPT,
     EarningsPredictionOutput,
 )
+from core.llm.openrouter_calls import DECISIONS_URL, post_decisions
 
 FMP_BASE_URL = "https://financialmodelingprep.com/stable"
 
@@ -193,7 +194,15 @@ async def predict_with_jev(
 
     try:
         async with httpx.AsyncClient(timeout=45.0) as client:
-            resp = await client.post("https://openrouter.ai/api/alpha/decisions", headers=headers, json=payload)
+            resp = await post_decisions(
+                client,
+                url=DECISIONS_URL,
+                headers=headers,
+                payload=payload,
+                model=model_name,
+                purpose="engine:jev_decisions:earnings",
+                preview=ticker,
+            )
             if resp.status_code != 200:
                 raise RuntimeError(f"OpenRouter Decisions API error {resp.status_code}: {resp.text}")
             data = resp.json()

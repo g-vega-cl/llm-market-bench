@@ -171,11 +171,11 @@ async def test_market_status_is_fetched_once_for_concurrent_callers():
 
     manager = MarketDataManager()
 
-    # The delegate itself: three concurrent reads, one SDK call (calendar cache).
+    # Three concurrent reads, one SDK call (calendar cache).
     results = await asyncio.gather(
-        manager.session.is_market_open(),
-        manager.session.is_market_open(),
-        manager.session.is_market_open(),
+        manager.is_market_open(),
+        manager.is_market_open(),
+        manager.is_market_open(),
     )
     assert len(results) == 3
     assert client.get_clock.call_count == 1
@@ -193,23 +193,20 @@ async def test_is_premarket():
 
     # Pre-market time: Wednesday 8:00 AM ET
     wed_8am = datetime.datetime(2026, 8, 19, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))
-    with patch("datetime.datetime") as mock_dt:
+    with patch("trading.market_calendar.datetime") as mock_dt:
         mock_dt.now.return_value = wed_8am
-        mock_dt.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
         assert await manager.is_premarket() is True
 
     # Market hours: Wednesday 10:30 AM ET
     wed_1030am = datetime.datetime(2026, 8, 19, 10, 30, 0, tzinfo=ZoneInfo("America/New_York"))
-    with patch("datetime.datetime") as mock_dt:
+    with patch("trading.market_calendar.datetime") as mock_dt:
         mock_dt.now.return_value = wed_1030am
-        mock_dt.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
         assert await manager.is_premarket() is False
 
     # Weekend: Saturday 8:00 AM ET
     sat_8am = datetime.datetime(2026, 8, 22, 8, 0, 0, tzinfo=ZoneInfo("America/New_York"))
-    with patch("datetime.datetime") as mock_dt:
+    with patch("trading.market_calendar.datetime") as mock_dt:
         mock_dt.now.return_value = sat_8am
-        mock_dt.side_effect = lambda *args, **kw: datetime.datetime(*args, **kw)
         assert await manager.is_premarket() is False
 
 

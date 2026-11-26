@@ -15,7 +15,6 @@ from typing import Any
 from core.config import logger
 from core.db import get_supabase_client
 from core.time_utils import EASTERN_TZ
-from execution.market_session import MarketSessionManager
 from recipes.intraday_bars import snapshot_live_intraday_bars
 from recipes.news_corpus import sync_live_news_to_corpus
 from recipes.portfolio_engine import DEFAULT_CONCURRENCY_CONFIG
@@ -547,9 +546,9 @@ async def _is_trading_day_et(now_utc: datetime) -> bool:
     if dt_et.weekday() >= 5 or _is_us_holiday_fallback(dt_et.date()):
         return False
     try:
-        return await MarketSessionManager().is_trading_day(dt_et.date())
+        return await asyncio.to_thread(get_market_calendar().is_session_day, dt_et.date())
     except Exception:
-        logger.debug("MarketSessionManager trading-day lookup failed; using fallback", exc_info=True)
+        logger.debug("MarketCalendar trading-day lookup failed; using fallback", exc_info=True)
         return True
 
 

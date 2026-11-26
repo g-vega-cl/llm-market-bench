@@ -201,6 +201,9 @@ async def test_execute_intraday_agent_step_end_to_end_hermetic():
     )
     mock_table.insert.return_value.execute.return_value = MagicMock(data=[{"id": "mf-001"}])
     mock_sb.table.return_value = mock_table
+    mock_sb.rpc.return_value.execute.return_value = MagicMock(
+        data={"trade_id": "trade-001", "cash_balance": 8000.0, "position_quantity": 3, "position_avg_cost": 582.3}
+    )
 
     # Mock HTTP client
     mock_http = AsyncMock()
@@ -368,13 +371,14 @@ async def test_execute_intraday_agent_step_persists_reasoning_trace():
     assert result["reasoning_tokens"] == 412
 
     inserts = [call.args[0] for call in mock_table.insert.call_args_list if call.args]
-    trade_payloads = [p for p in inserts if p.get("signal") in ("BUY", "SELL")]
     feeling_payloads = [p for p in inserts if "why_explanation" in p]
 
-    assert trade_payloads, "expected the fill to be written to trades"
-    assert trade_payloads[0]["reasoning_trace"] == trace
+    assert mock_sb.rpc.called, "expected the fill to be written via execute_portfolio_trade RPC"
+    rpc_fn, rpc_params = mock_sb.rpc.call_args[0]
+    assert rpc_fn == "execute_portfolio_trade"
+    assert rpc_params["p_reasoning_trace"] == trace
     # The short thought stays the human-facing field.
-    assert trade_payloads[0]["reasoning"] == "Scaling in long."
+    assert rpc_params["p_reason"] == "Scaling in long."
 
     assert feeling_payloads, "expected the turn to be written to market_feeling"
     summary = feeling_payloads[0]["trades_summary"]

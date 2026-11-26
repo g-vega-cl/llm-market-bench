@@ -5,15 +5,23 @@ and data transforms through a modular, unified facade.
 """
 
 import asyncio
+import datetime
 import math
 import os
 
 import core.config as cfg
-from core.config import FMP_API_KEY, logger
+from core.config import logger
 from core.db import get_supabase_client
+from trading.market_calendar import (
+    ET,
+    get_market_calendar,
+    is_known_us_market_holiday,
+)
+from trading.market_calendar import (
+    is_premarket as calendar_is_premarket,
+)
 
 from .market_cache import MarketDataCache
-from .market_session import MarketSessionManager
 from .market_transforms import (
     compute_premarket_quote,
     compute_reference_quote,
@@ -27,28 +35,11 @@ _validate_date_coverage = validate_date_coverage
 MARKET_DATA_RETRIES = getattr(cfg, "MARKET_DATA_RETRIES", 2)
 
 
-class _LockProxy:
-    """Descriptor that transparently proxies class-level lock access to MarketSessionManager."""
-
-    def __init__(self, target_attr: str):
-        self.target_attr = target_attr
-
-    def __get__(self, instance, owner=None):
-        return getattr(MarketSessionManager, self.target_attr)
-
-    def __set__(self, instance, value):
-        setattr(MarketSessionManager, self.target_attr, value)
-
-
 class MarketDataManager:
     """Manages market data retrieval with database-backed caching and provider fallback."""
 
-    _market_status_cache: dict = MarketSessionManager._market_status_cache
-    _market_status_lock = _LockProxy("_market_status_lock")
-
-    _holidays_cache: dict = MarketSessionManager._holidays_cache
-    _holidays_lock = _LockProxy("_holidays_lock")
-
+    _market_status_cache: dict = {}
+    _holidays_cache: dict = {}
     _screener_cache: dict = {}
 
     def __init__(self, cache_ttl_seconds: int | None = None):
@@ -57,7 +48,6 @@ class MarketDataManager:
             cache_ttl_seconds if cache_ttl_seconds is not None else cfg.MARKET_DATA_CACHE_TTL_SECONDS
         )
         self.cache = MarketDataCache(client=self._client, cache_ttl_seconds=self._cache_ttl_seconds)
-        self.session = MarketSessionManager(fmp_api_key=FMP_API_KEY)
         self.providers = [get_financial_provider(cfg.FINANCIAL_PROVIDER)]
 
     @property
@@ -99,23 +89,39 @@ class MarketDataManager:
 
     async def is_market_open(self) -> bool:
         """Checks if the US stock market (NASDAQ/NYSE) is currently open."""
-        return await self.session.is_market_open(fmp_api_key=FMP_API_KEY)
+        return await asyncio.to_thread(get_market_calendar().is_open)
 
     async def get_market_holidays(self) -> list[dict]:
-        """Fetch US market holidays from FMP API with in-memory caching."""
-        return await self.session.get_market_holidays(fmp_api_key=FMP_API_KEY)
+        """Non-session weekdays for the next 30 days, derived from the calendar."""
+        calendar = get_market_calendar()
+        today = datetime.datetime.now(ET).date()
+        days = [today + datetime.timedelta(days=offset) for offset in range(1, 31)]
+        sessions = await asyncio.gather(*(asyncio.to_thread(calendar.session_for, day) for day in days))
+        return [
+            {"date": day.isoformat(), "exchange": "NYSE", "isClosed": True}
+            for day, session in zip(days, sessions, strict=True)
+            if day.weekday() < 5 and session is None
+        ]
 
     def _is_known_us_market_holiday_fallback(self, date_obj) -> bool:
         """Rule-based fallback for US stock exchange holidays when API data is unavailable."""
-        return MarketSessionManager.is_known_us_market_holiday_fallback(date_obj)
+        return is_known_us_market_holiday(date_obj)
 
     async def is_trading_day(self, target_date=None) -> bool:
         """Checks if a given date is an active US equity trading day (non-weekend, non-holiday)."""
-        return await self.session.is_trading_day(target_date=target_date, fmp_api_key=FMP_API_KEY)
+        if target_date is None:
+            date_obj = datetime.datetime.now(ET).date()
+        elif isinstance(target_date, str):
+            date_obj = datetime.date.fromisoformat(target_date[:10])
+        elif isinstance(target_date, datetime.datetime):
+            date_obj = target_date.date()
+        else:
+            date_obj = target_date
+        return await asyncio.to_thread(get_market_calendar().is_session_day, date_obj)
 
     async def is_premarket(self) -> bool:
         """Checks if currently in US pre-market trading session (Mon-Fri 04:00 - 09:30 ET)."""
-        return await MarketSessionManager.is_premarket()
+        return calendar_is_premarket()
 
     async def get_quote(self, ticker: str, force_refresh: bool = False) -> TickerData | None:
         """Fetch stock quote, checking cache first unless force_refresh is True."""

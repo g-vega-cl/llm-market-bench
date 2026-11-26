@@ -114,6 +114,8 @@
 - [[entities/market-calendar]] — authoritative US equity session calendar (Alpaca /v2/clock + /v2/calendar, offline holiday fallback)
 ## Concepts
 
+- [[concepts/intraday-atomic-rpc-execution]] — intraday BUY/SELL fills committed atomically via the execute_portfolio_trade RPC with idempotency keys
+- [[concepts/market-session-consolidation]] — MarketCalendar as the single market-session implementation after MarketSessionManager removal
 - [[concepts/qmd-wiki-skill]] — Pi-runtime skill making QMD search the mandatory first step for project questions
 - [[concepts/privacy-policy]] — platform privacy policy governing data collection, storage, and user rights
 - [[concepts/atomic-live-schedule-switch]] — single-transaction `switch_live_schedule` RPC that pauses one live bot and enables another

@@ -5,7 +5,7 @@ category: entity
 
 # Market Calendar
 
-`apps/engine/trading/market_calendar.py` is the authoritative US equity session calendar. `MarketCalendar.is_open()` answers "is the regular session running right now"; `MarketCalendar.session_for(day)` answers "is `day` a session day, and when does it open and close". Every clock gate in the engine reads from it — the live trader daemon's session gate, `MarketSessionManager` (see [[entities/market-data]]), the recipe runner, the systematic-strategy hooks window, and the 30-minute audit harness.
+`apps/engine/trading/market_calendar.py` is the authoritative US equity session calendar. `MarketCalendar.is_open()` answers "is the regular session running right now"; `MarketCalendar.session_for(day)` answers "is `day` a session day, and when does it open and close". Every clock gate in the engine reads from it — the live trader daemon's session gate, `MarketDataManager` (see [[entities/market-data]]), the recipe runner, the systematic-strategy hooks window, and the 30-minute audit harness.
 
 It exists because weekday + 09:30–16:00 ET arithmetic does not know about market holidays, half-day early closes, or ad-hoc closures, and reported the market as open on Thanksgiving.
 
@@ -43,6 +43,7 @@ The clock answer is cached for `ttl_seconds` (default `60`) because the daemon's
 | `get_market_calendar()` | Read the current instance |
 | `is_market_session_active(now_dt=None)` | Shorthand for `_default_calendar.is_open(now_dt)` |
 | `seconds_to_next_open(now_dt=None)` | Shorthand for `_default_calendar.seconds_to_next_open(now_dt)` |
+| `is_premarket(now_dt=None)` | Whether it is 04:00–09:30 ET on a weekday. Pure clock arithmetic (no calendar lookup, no client): `now_dt` is normalized through `_as_et` and converted to ET, weekends return `False`, and the window is `[04:00, 09:30)` ET. Consumed by `MarketDataManager.is_premarket()` (see [[entities/market-data]]). |
 
 Because the instance is a module-level singleton, `apps/engine/conftest.py` installs an autouse `_reset_market_calendar` fixture that calls `configure_market_calendar(None)` after every test — a test that ran the daemon would otherwise leak its (possibly mocked) client into every test that follows.
 
@@ -52,7 +53,7 @@ Because the instance is a module-level singleton, `apps/engine/conftest.py` inst
 
 `_local_is_open`, `_local_is_session_day`, and `_local_seconds_to_next_open` combine those rules with `REGULAR_OPEN_MINUTES = 570` (09:30 ET). `_local_close_time(day)` supplies the close: **13:00 ET** on the scheduled half days (the day after Thanksgiving, July 3, December 24) and 16:00 otherwise, so a keyless lane no longer trades three hours past a half-day bell.
 
-Every consumer delegates here: the live trader (`is_market_session_active`), the hooks window, the marks refresh, the recipe lane, `MarketDataManager` via `MarketSessionManager`, and the 30-minute audit harness. The recipe runner's private Good Friday/09:30-16:00 arithmetic was deleted in favour of this module. `due_trading_slot` now stops at the real close: on a 13:00 half day the 13:00 slot still fires at the bell (the same 20-minute window the 16:00 slot has always had), but 13:30 onward is never scheduled, so six recipe turns and their mirrored limit orders no longer run after the close. The recipe daemon does not call `configure_market_calendar`, so it sees these offline rules rather than the exchange calendar and cannot know an ad-hoc closure.
+Every consumer delegates here: the live trader (`is_market_session_active`), the hooks window, the marks refresh, the recipe lane, `MarketDataManager`, and the 30-minute audit harness. The recipe runner's private Good Friday/09:30-16:00 arithmetic was deleted in favour of this module. `due_trading_slot` now stops at the real close: on a 13:00 half day the 13:00 slot still fires at the bell (the same 20-minute window the 16:00 slot has always had), but 13:30 onward is never scheduled, so six recipe turns and their mirrored limit orders no longer run after the close. The recipe daemon does not call `configure_market_calendar`, so it sees these offline rules rather than the exchange calendar and cannot know an ad-hoc closure.
 
 ## Threading and Timeouts
 
@@ -65,13 +66,14 @@ Session lookups cache failures too (`_session_error_at`, TTL-scoped): an Alpaca 
 ## Consumers
 
 - `apps/engine/trading/runner.py` — `is_market_session_active()`, `calculate_seconds_to_market_open()`, and `_is_hooks_window()` (regular session plus the 5-minute closing-print tail via `session_for`). See [[entities/live-agent-trader]] and [[concepts/systematic-strategy-hooks]].
-- `apps/engine/execution/market_session.py` — the async `MarketSessionManager` adapter consumed by `MarketDataManager` and `recipes/runner.py` (see [[entities/market-data]]).
+- `apps/engine/execution/market_data.py` — `MarketDataManager` calls `get_market_calendar()` directly for `is_market_open()`, `is_trading_day()`, and `get_market_holidays()`, and the synchronous `is_premarket()` for pre-market detection (see [[entities/market-data]]).
+- `apps/engine/recipes/runner.py` — `_is_trading_day_et` calls `get_market_calendar().is_session_day` on a worker thread, after its own weekend/holiday fallback check.
 - `apps/engine/scripts/audit_30min_trader.py` — wires the calendar from `AlpacaBroker.client` before the audit run.
 
 ## Related
 
 - [[entities/live-agent-trader]] — the daemon whose session gate and hooks window delegate here
-- [[entities/market-data]] — `MarketSessionManager`, the async adapter over this calendar
+- [[entities/market-data]] — `MarketDataManager`, which delegates its session checks here
 - [[concepts/systematic-strategy-hooks]] — the hooks window derived from `session_for`
 - [[entities/secondary-minipc-edge]] — the host running the trader daemon
 - [[concepts/alpaca-order-sync]] — the broker whose clock is authoritative when wired

@@ -136,6 +136,36 @@ def _build_sb_client(cash: float = 10000.0, shares: int | None = None):
         "trades": mock_trades_table,
     }.get(name, MagicMock())
 
+    def _rpc_router(fn_name: str, params: dict):
+        assert fn_name == "execute_portfolio_trade"
+        qty = int(params["p_quantity"])
+        price = float(params["p_price"])
+        sig = params["p_signal"]
+        if sig == "BUY":
+            new_cash = cash - qty * price
+            cur_shares = shares or 0
+            new_shares = cur_shares + qty
+            avg_cost = price
+            realized = None
+        else:
+            new_cash = cash + qty * price
+            new_shares = 0
+            avg_cost = 0.0
+            realized = (price - 500.0) * qty
+        res = MagicMock()
+        res.execute.return_value = MagicMock(
+            data={
+                "trade_id": "trade-abc-1",
+                "cash_balance": new_cash,
+                "position_quantity": new_shares,
+                "position_avg_cost": avg_cost,
+                "realized_pnl": realized,
+            }
+        )
+        return res
+
+    mock_sb.rpc.side_effect = _rpc_router
+
     return mock_sb, {"trades": mock_trades_table, "positions": mock_pos_table}
 
 
@@ -187,7 +217,11 @@ async def test_execute_intraday_portfolio_turn_buy_success():
     assert summary["total_equity"] == 10000.0
     assert summary["order_id"] == "alpaca-buy-999"
     assert summary["alpaca_status"] == "SUBMITTED"
-    assert mocks["trades"].insert.called
+    assert mock_sb.rpc.called
+    rpc_fn, rpc_params = mock_sb.rpc.call_args[0]
+    assert rpc_fn == "execute_portfolio_trade"
+    assert rpc_params["p_reasoning_trace"] == ""
+    assert rpc_params["p_idempotency_key"]
 
     kwargs = broker.submit_market_order.await_args.kwargs
     assert kwargs["signal"] == "BUY"

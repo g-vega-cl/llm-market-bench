@@ -13,21 +13,31 @@ The subsystem was decomposed into vertical modules so that caching, session logi
 
 ### `market_data.py` — `MarketDataManager` (facade)
 
-The public entry point used by the pipeline. It wires together the cache, session manager, and provider, and exposes the high-level retrieval API:
+The public entry point used by the pipeline. It wires together the cache and provider, and exposes the high-level retrieval API:
 
 - `get_quote(ticker, force_refresh=False)` — single quote with cache-first lookup, provider fetch with backoff, and a last-known-price fallback.
 - `get_quotes(tickers, force_refresh=False)` — batch retrieval: cache batch → provider batch → individual pass for anything still missing.
 - `get_history(ticker, days=14, force_refresh=False)` — historical bars, local DB first, then provider.
 - `get_premarket_quote(ticker)` — synthesizes a pre-market quote from aftermarket data, standard quotes, and history fallback.
 - `get_reference_quote(ticker, force_refresh=False, session="close", history=None, target_date=None)` — fetches regular session closing quote or pre-market reference quote with verified 1D price and percentage change vs prior trading day's close, preventing after-hours drift from corrupting daily performance metrics in evening synthesis pipelines.
-- `is_market_open()`, `is_premarket()`, `is_trading_day(target_date)`, `get_market_holidays()` — session checks delegated to the session manager.
+- `is_market_open()`, `is_premarket()`, `is_trading_day(target_date)`, `get_market_holidays()` — session checks delegated directly to `trading.market_calendar` (see below).
 - `screen_stocks(...)` — provider screening with an in-memory screener cache keyed on the sorted parameter set.
 - Provider passthroughs: `get_key_metrics`, `get_earnings_history`, `get_analyst_estimates`, `get_financial_growth`, `get_company_profile`.
 - Technical indicator computation: `get_technical_indicators` (`apps/engine/tools/technicals.py`) computes RSI-14, MACD, 20D VWAP, SMA-20/50, RVOL, and 52-week range % with optional point-in-time `cutoff_date`.
 
 The manager exposes `client`, `cache_ttl_seconds`, and `provider` as properties with setters, so overrides propagate into the underlying `MarketDataCache`. `_validate_date_coverage` remains as a backward-compatibility alias for `market_transforms.validate_date_coverage`.
 
-`is_market_open()` and `get_market_holidays()` are thin delegations to `self.session` — the facade no longer copies caches or locks back and forth around the call. Shared state lives on `MarketSessionManager` and is reached through the lock proxy described below.
+#### Session checks (direct calendar delegation)
+
+There is no session adapter module: `MarketDataManager` calls the process-wide `MarketCalendar` (`get_market_calendar()`, see [[entities/market-calendar]]) itself, so the facade and the live trader can never disagree about whether the market is open.
+
+- `is_market_open()` — `await asyncio.to_thread(get_market_calendar().is_open)`. Holiday-, half-day- and ad-hoc-closure-aware when a trading client is wired; weekday + 09:30–16:00 ET plus the offline holiday rules otherwise. A client whose clock cannot be read reports **closed**, so a network blip skips a session instead of trading into a holiday.
+- `is_trading_day(target_date=None)` — normalizes `None` (today ET), an ISO string (`target_date[:10]`), a `datetime`, or a `date`, then `await asyncio.to_thread(get_market_calendar().is_session_day, date_obj)`.
+- `get_market_holidays()` — derives non-session weekdays for the next 30 days by gathering `calendar.session_for(day)` on worker threads and keeping weekdays whose session is `None`, returning `{"date", "exchange": "NYSE", "isClosed": True}` dicts. No FMP fetch.
+- `is_premarket()` — calls the synchronous `trading.market_calendar.is_premarket()` (Mon–Fri 04:00–09:30 ET) directly.
+- `_is_known_us_market_holiday_fallback(date_obj)` — delegates to `trading.market_calendar.is_known_us_market_holiday`, which includes Good Friday (computus).
+
+The facade keeps empty `_market_status_cache` / `_holidays_cache` class attributes for attribute compatibility only; the calendar owns the caching.
 
 #### `get_reference_quote` — Session-Anchored Reference Pricing
 
@@ -51,20 +61,6 @@ Database-backed persistence layer. It owns all Supabase reads/writes for market 
 - **Live quotes** in `market_data_cache`, TTL-aware (`MARKET_DATA_CACHE_TTL_SECONDS`). `get_quote` / `get_quotes_batch` return only fresh rows; `save_quote` / `save_quotes_batch` upsert, skipping NaN prices and deriving `today_pct_change` from `change_pct` or `previous_close`.
 - **Historical bars** in `price_history`. `get_history` returns OHLCV rows only when coverage passes validation; `save_history` batch-upserts on `(ticker, fetched_at)`, defaulting `close` to `price` for EOD bars.
 - **Last-known price** via `get_last_known_price`, which rejects entries older than 24 hours.
-
-### `market_session.py` — `MarketSessionManager`
-
-A thin async adapter over `trading.market_calendar` (see [[entities/market-calendar]]). It used to own its own holiday knowledge — an FMP `exchange-market-hours` fetch plus hand-rolled rules — which duplicated and disagreed with the Alpaca-backed gate the live trader uses. `MarketCalendar` is now the single implementation: `/v2/clock` and `/v2/calendar` when a trading client is wired, the same rule set as the offline fallback otherwise.
-
-The async surface is kept because `execution/market_data.py` and `recipes/runner.py` await it; each call runs the bounded calendar lookup on a worker thread (`asyncio.to_thread`) so callers never block their event loop.
-
-- `is_market_open()` — `get_market_calendar().is_open()` on a worker thread. Holiday-, half-day- and ad-hoc-closure-aware when a client is wired; weekday + 09:30–16:00 ET plus the offline holiday rules otherwise. A client whose clock cannot be read reports **closed**, so a network blip skips a session instead of trading into a holiday.
-- `get_market_holidays()` — derives non-session weekdays for the next 30 days from `MarketCalendar.session_for`, returning `{"date", "exchange": "NYSE", "isClosed": True}` dicts. No FMP fetch.
-- `is_trading_day(target_date)` — `session_for(date_obj) is not None`; accepts `date`, `datetime`, ISO string, or `None` (today ET).
-- `is_known_us_market_holiday_fallback(date)` — delegates to `trading.market_calendar.is_known_us_market_holiday`, which now includes Good Friday (computus).
-- `is_premarket()` — unchanged: Mon–Fri 04:00–09:30 ET.
-
-`_market_status_cache`, `_holidays_cache`, `_market_status_lock`, and `_holidays_lock` remain as class attributes for attribute compatibility (`MarketDataManager` proxies them through its `_LockProxy` descriptor), but they are empty/`None` and no longer cache anything — the calendar owns the cache. `fmp_api_key` stays in the constructor signature and is unused.
 
 ### `market_transforms.py` — pure functions
 
@@ -91,7 +87,7 @@ Stateless helpers with no I/O:
 
 - [[entities/engine]]
 - [[entities/pipeline]]
-- [[entities/market-calendar]] — the authoritative session calendar this adapter delegates to
+- [[entities/market-calendar]] — the authoritative session calendar this facade delegates to
 - [[concepts/execution]]
 - [[concepts/vertical-slice-islands]]
 - [[concepts/ingestion]]

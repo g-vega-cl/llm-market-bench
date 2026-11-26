@@ -352,3 +352,13 @@ def is_market_session_active(now_dt: datetime | None = None) -> bool:
 def seconds_to_next_open(now_dt: datetime | None = None) -> float:
     """Seconds until the next regular session open (holiday-aware when wired)."""
     return _default_calendar.seconds_to_next_open(now_dt)
+
+
+def is_premarket(now_dt: datetime | None = None) -> bool:
+    """Whether it is 04:00-09:30 ET on a weekday."""
+    now_et = _as_et(now_dt).astimezone(ET) if now_dt is not None else datetime.now(ET)
+    if now_et.weekday() >= 5:
+        return False
+    premarket_start = now_et.replace(hour=4, minute=0, second=0, microsecond=0)
+    market_open = now_et.replace(hour=9, minute=30, second=0, microsecond=0)
+    return premarket_start <= now_et < market_open

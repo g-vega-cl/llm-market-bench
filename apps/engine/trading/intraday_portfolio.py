@@ -9,6 +9,7 @@ Manages the persistent paper portfolio for the live intraday homepage trader:
 """
 
 import asyncio
+import uuid
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -363,77 +364,45 @@ async def execute_intraday_portfolio_turn(
 
     today_str = date.today().isoformat()
 
-    # 4. Handle BUY
-    if trade_signal == "BUY" and shares > 0:
-        cost = float(shares * current_price)
-        cash_balance -= cost
-        new_shares = current_shares + shares
-        new_cost_basis = ((current_shares * cost_basis) + cost) / new_shares
-
-        # Ledger trade
-        trade_data = {
-            "portfolio_id": portfolio_id,
-            "ticker": ticker,
-            "signal": "BUY",
-            "quantity": shares,
-            "price": current_price,
-            "total_cost": cost,
-            "reasoning": thought,
-            "reasoning_trace": reasoning_trace,
-        }
-        res_trade = sb_client.table("trades").insert(trade_data).execute()
-        if res_trade.data:
-            trade_id = str(res_trade.data[0].get("id"))
-
-        # Upsert position
-        sb_client.table("portfolio_positions").upsert(
-            {
-                "portfolio_id": portfolio_id,
-                "ticker": ticker,
-                "quantity": new_shares,
-                "average_cost_basis": new_cost_basis,
-            },
-            on_conflict="portfolio_id,ticker",
-        ).execute()
-
-        current_shares = new_shares
-        cost_basis = new_cost_basis
-
-        # Mirror to Alpaca for external audit evidence (ledger already committed)
-        order_id, alpaca_status = await _mirror_to_alpaca(
-            sb_client, alpaca_broker, trade_id, ticker, shares, "BUY", owner_id
+    # 4. Handle BUY / SELL atomically via execute_portfolio_trade RPC
+    if trade_signal in ("BUY", "SELL") and shares > 0:
+        idem_key = str(
+            uuid.uuid5(
+                uuid.NAMESPACE_URL,
+                f"intraday:{portfolio_id}:{ticker}:{trade_signal}:{shares}:{datetime.now(UTC).strftime('%Y%m%dT%H%M')}",
+            )
         )
-
-    # 5. Handle SELL
-    elif trade_signal == "SELL" and shares > 0:
-        proceeds = float(shares * current_price)
-        realized_pnl = (current_price - cost_basis) * shares
-        cash_balance += proceeds
-
-        trade_data = {
-            "portfolio_id": portfolio_id,
-            "ticker": ticker,
-            "signal": "SELL",
-            "quantity": shares,
-            "price": current_price,
-            "total_cost": proceeds,
-            "realized_pnl": realized_pnl,
-            "reasoning": thought,
-            "reasoning_trace": reasoning_trace,
-        }
-        res_trade = sb_client.table("trades").insert(trade_data).execute()
-        if res_trade.data:
-            trade_id = str(res_trade.data[0].get("id"))
-
-        # Clean position from portfolio_positions
-        sb_client.table("portfolio_positions").delete().eq("portfolio_id", portfolio_id).eq("ticker", ticker).execute()
-
-        current_shares = 0
-        cost_basis = 0.0
-
-        # Mirror to Alpaca for external audit evidence (ledger already committed)
+        rpc_res = sb_client.rpc(
+            "execute_portfolio_trade",
+            {
+                "p_portfolio_id": portfolio_id,
+                "p_ticker": ticker,
+                "p_signal": trade_signal,
+                "p_quantity": shares,
+                "p_price": current_price,
+                "p_reason": thought,
+                "p_reasoning_trace": reasoning_trace,
+                "p_idempotency_key": idem_key,
+                "p_mark_prices": {ticker: current_price},
+            },
+        ).execute()
+        rpc_payload = rpc_res.data[0] if isinstance(rpc_res.data, list) and rpc_res.data else (rpc_res.data or {})
+        if isinstance(rpc_payload, dict) and rpc_payload:
+            trade_id = str(rpc_payload.get("trade_id")) if rpc_payload.get("trade_id") is not None else None
+            if rpc_payload.get("cash_balance") is not None:
+                cash_balance = float(rpc_payload["cash_balance"])
+            if rpc_payload.get("position_quantity") is not None:
+                current_shares = int(rpc_payload["position_quantity"])
+            elif trade_signal == "SELL":
+                current_shares = 0
+            if rpc_payload.get("position_avg_cost") is not None:
+                cost_basis = float(rpc_payload["position_avg_cost"])
+            elif trade_signal == "SELL":
+                cost_basis = 0.0
+            if rpc_payload.get("realized_pnl") is not None:
+                realized_pnl = float(rpc_payload["realized_pnl"])
         order_id, alpaca_status = await _mirror_to_alpaca(
-            sb_client, alpaca_broker, trade_id, ticker, shares, "SELL", owner_id
+            sb_client, alpaca_broker, trade_id, ticker, shares, trade_signal, owner_id
         )
 
     # 6. Mark to market & persist portfolio metrics

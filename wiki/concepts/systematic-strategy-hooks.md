@@ -9,9 +9,9 @@ A single orchestrating function — `run_systematic_strategy_hooks()` in `apps/e
 
 ## Why It Exists
 
-The hooks are driven by the `live-spy-trader` daemon on the MiniPC, not by GitHub Actions. `trading/runner.py` runs `run_systematic_hooks_loop` every 300 seconds while `_is_hooks_window()` is true (weekday 09:30–16:05 ET), and that is the **only** caller of the hook function: the price-update script no longer invokes it, so two schedulers can never execute the same strategy against the same portfolio at once.
+The hooks are driven by the `live-spy-trader` daemon on the MiniPC, not by GitHub Actions. `trading/runner.py` runs `run_systematic_hooks_loop` every 300 seconds while `_is_hooks_window()` is true, and that is the **only** caller of the hook function: the price-update script no longer invokes it, so two schedulers can never execute the same strategy against the same portfolio at once.
 
-The hooks window extends one tick past the 16:00 bell to 16:05 ET so close-print strategies (the daily stock pick portfolios) can exit on the official closing price, which only exists after the bell.
+`_is_hooks_window()` is derived from the exchange calendar (`MarketCalendar.session_for`, see [[entities/market-calendar]]) rather than the wall clock: it is true from the session open through five minutes past the session close. Holidays return no session, so no hook runs; a half day ends at 13:00 ET and the closing-print tail moves with it. The five-minute tail exists so close-print strategies (the daily stock pick portfolios) can exit on the official closing price, which only exists after the bell. `_is_price_refresh_window` delegates to the same window, so portfolio marks and the hooks can never disagree about whether the market is open.
 
 All time-gated strategy triggers live behind one function that is called **before** portfolios are marked. This ordering matters: the hooks may liquidate positions or spend cash, and those effects must be reflected in the portfolio snapshots taken immediately afterward. Inside the daemon the hooks and the marks loop share a single `asyncio.Lock`, which preserves that guarantee instead of relying on task scheduling luck.
 
@@ -61,6 +61,7 @@ Strategies invoked through these hooks (Max Pain, PEAD) now fully refresh and pe
 ## Related
 
 - [[entities/pipeline]]
+- [[entities/market-calendar]] — the session calendar the hooks window is derived from
 - [[concepts/max-pain-pinning]]
 - [[concepts/pead-drift]]
 - [[entities/sector-trading]]

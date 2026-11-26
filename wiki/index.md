@@ -111,6 +111,7 @@
 - [[entities/llm-leaderboard]] — LLM ranking and diagnostic screening system (composite scoring, verifier rates, and consistency metrics)
 - [[entities/agent-rules]] — Canonical agent instructions, precedence directives, and GEMINI.md pointer
 
+- [[entities/market-calendar]] — authoritative US equity session calendar (Alpaca /v2/clock + /v2/calendar, offline holiday fallback)
 ## Concepts
 
 - [[concepts/qmd-wiki-skill]] — Pi-runtime skill making QMD search the mandatory first step for project questions
@@ -119,6 +120,7 @@
 - [[concepts/google-only-auth]] — Google OAuth is the sole sign-in path, with sanitised return paths and a single `auth_completed` event
 - [[concepts/page-surface-conventions]] — PageLayout padding opt-out (`withPadding={false}`) and action-vs-browse page title rules, enforced by `page-surface-conventions.test.tsx`
 - [[concepts/starter-recipes]] — catalog of pre-built recipe templates in packages/config/starter-recipes.json
+- [[concepts/external-order-attestation]] — Alpaca as the external, un-editable record that an order was really sent; paper-account caveats and the cryptographic-ledger candidate
 - [[concepts/recipe-compile-queue]] — Auto-indexed page
 - [[concepts/server-fn-envelope-guard]] — TanStack Start server-function envelope guard (`assertServerFnResult`)
 - [[concepts/visual-work-alignment]] — postmortem of the reverted playground: artistic work needs a human eye on a static artifact before any animation code exists

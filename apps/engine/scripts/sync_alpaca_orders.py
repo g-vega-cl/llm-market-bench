@@ -38,6 +38,98 @@ TERMINAL_STATUSES = {
     OrderStatus.EXPIRED.value: "EXPIRED",
 }
 
+# A row with a NULL alpaca_status only means "no mirror status was ever written".
+# Repair therefore looks at the recent window where a failed write is plausible,
+# newest-first ordering is explicit (PostgREST has no implicit order), and the
+# update is a compare-and-set so it can never clobber a status written by a
+# concurrent sync run.
+REPAIR_MAX_AGE_HOURS = 24
+REPAIR_LIMIT = 100
+OPEN_ORDER_STATUSES = {"new", "accepted", "pending_new", "accepted_for_bidding", "partially_filled", "held"}
+
+
+def _repair_missing_order_ids(supabase, client, counts: dict) -> int:
+    """Re-attach the broker order id to trades whose row update failed.
+
+    `client_order_id` is deterministic (`{agent_id}__{ticker}__{signal}__{trade_id}`),
+    so an order Alpaca accepted can be found again without re-submitting
+    anything — this path must never place an order.
+
+    Writes `alpaca_submitted_at` alongside the status: the reconciler filters on
+    it, and a SUBMITTED row without it could never advance to a terminal state.
+    """
+    repair_cutoff = (datetime.now(UTC) - timedelta(hours=REPAIR_MAX_AGE_HOURS)).isoformat()
+    result = (
+        supabase.table("trades")
+        .select("id,portfolio_id,ticker,signal,executed_at")
+        .is_("alpaca_status", "null")
+        .gte("executed_at", repair_cutoff)
+        .order("executed_at", desc=True)
+        .limit(REPAIR_LIMIT)
+        .execute()
+    )
+    rows = result.data if isinstance(getattr(result, "data", None), list) else []
+    if not rows:
+        return 0
+
+    portfolio_ids = sorted({row["portfolio_id"] for row in rows if row.get("portfolio_id")})
+    portfolio_rows = supabase.table("portfolios").select("id,owner_id").in_("id", portfolio_ids).execute()
+    portfolios = portfolio_rows.data if isinstance(getattr(portfolio_rows, "data", None), list) else []
+    owners = {p["id"]: p["owner_id"] for p in portfolios}
+
+    repaired = 0
+    for row in rows:
+        agent_id = owners.get(row.get("portfolio_id"))
+        if not agent_id:
+            continue
+
+        client_order_id = f"{agent_id}__{row['ticker']}__{row['signal']}__{row['id']}"
+        try:
+            order = client.get_order_by_client_id(client_order_id)
+        except APIError as exc:
+            if getattr(exc, "status_code", None) == 404:
+                logger.debug(f"  repair {row['id']}: no broker order for this client_order_id")
+                counts["skipped"] += 1
+                continue
+            logger.error(f"  repair {row['id']}: Alpaca API error: {exc}")
+            counts["errors"] += 1
+            continue
+        except Exception as exc:
+            logger.error(f"  repair {row['id']}: unexpected error: {exc}")
+            counts["errors"] += 1
+            continue
+
+        order_id = getattr(order, "id", None)
+        status = getattr(order, "status", "") or ""
+        if not order_id or (status not in TERMINAL_STATUSES and status not in OPEN_ORDER_STATUSES):
+            logger.warning(f"  repair {row['id']}: order {order_id} in unmapped state '{status}', leaving row")
+            counts["skipped"] += 1
+            continue
+
+        payload = {
+            "alpaca_order_id": str(order_id),
+            "alpaca_status": TERMINAL_STATUSES.get(status, "SUBMITTED"),
+            "alpaca_submitted_at": datetime.now(UTC).isoformat(),
+        }
+        try:
+            updated = (
+                supabase.table("trades").update(payload).eq("id", row["id"]).is_("alpaca_status", "null").execute()
+            )
+        except Exception as exc:
+            logger.error(f"  repair {row['id']}: could not persist: {exc}")
+            counts["errors"] += 1
+            continue
+
+        if isinstance(getattr(updated, "data", None), list) and not updated.data:
+            # Another writer got there first; nothing was overwritten.
+            counts["skipped"] += 1
+            continue
+
+        repaired += 1
+        logger.info(f"  repair {row['id']}: re-attached order {order_id} ({status})")
+
+    return repaired
+
 
 def sync_orders() -> dict:
     """Query SUBMITTED trades, check Alpaca, update status.
@@ -78,7 +170,14 @@ def sync_orders() -> dict:
         "expired": 0,
         "errors": 0,
         "skipped": 0,
+        "repaired": 0,
     }
+
+    try:
+        counts["repaired"] = _repair_missing_order_ids(supabase, client, counts)
+    except Exception as exc:
+        # A repair failure must never take down the reconciliation that follows.
+        logger.error(f"Order-id repair pass failed; continuing with sync: {exc}")
 
     if not trades:
         logger.info("No SUBMITTED orders to sync.")

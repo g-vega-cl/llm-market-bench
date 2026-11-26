@@ -520,7 +520,7 @@ def build_session_context(
 
 async def execute_intraday_agent_step(
     alpaca_data_client: Any = None,
-    alpaca_trading_client: Any = None,
+    alpaca_broker: Any = None,
     sb_client: Any = None,
     http_client: httpx.AsyncClient | None = None,
     ticker: str = "SPY",
@@ -628,7 +628,7 @@ async def execute_intraday_agent_step(
         is_market_open=is_market_open,
         thought=decision.get("thought", ""),
         reasoning_trace=reasoning_trace,
-        alpaca_trading_client=alpaca_trading_client,
+        alpaca_broker=alpaca_broker,
         ticker=ticker,
     )
     order_id = portfolio_summary.get("order_id")
@@ -649,6 +649,7 @@ async def execute_intraday_agent_step(
         "action": decision.get("action"),
         "allocation_pct": decision.get("allocation_pct"),
         "order_id": str(order_id) if order_id else None,
+        "alpaca_status": portfolio_summary.get("alpaca_status"),
         "technicals": technicals,
         "memories_consulted": decision.get("memories_consulted", []),
         "reasoning_trace": reasoning_trace,
@@ -693,6 +694,7 @@ async def execute_intraday_agent_step(
         "reasoning_trace": reasoning_trace,
         "reasoning_tokens": reasoning_tokens,
         "order_id": str(order_id) if order_id else None,
+        "alpaca_status": portfolio_summary.get("alpaca_status"),
         "technicals": technicals,
         "session_state": session_context["state"],
         "session_phase": session_context["phase"],

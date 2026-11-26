@@ -54,24 +54,17 @@ Database-backed persistence layer. It owns all Supabase reads/writes for market 
 
 ### `market_session.py` — `MarketSessionManager`
 
-US equity session, calendar, and trading-hours logic with in-memory locking and caching:
+A thin async adapter over `trading.market_calendar` (see [[entities/market-calendar]]). It used to own its own holiday knowledge — an FMP `exchange-market-hours` fetch plus hand-rolled rules — which duplicated and disagreed with the Alpaca-backed gate the live trader uses. `MarketCalendar` is now the single implementation: `/v2/clock` and `/v2/calendar` when a trading client is wired, the same rule set as the offline fallback otherwise.
 
-- `is_market_open()` — FMP `exchange-market-hours` (NASDAQ) as the primary source, with a time-based override during the 9:30–9:50 AM ET open buffer on weekdays, and a Mon–Fri 09:30–16:00 ET fallback. Results cached for 30 minutes.
-- `get_market_holidays()` — FMP `holidays-by-exchange`, cached for 24 hours.
-- `is_trading_day(target_date)` — weekend check, FMP holiday check, then a rule-based holiday fallback.
-- `is_known_us_market_holiday_fallback(date)` — static rule set covering New Year's, MLK, Presidents', Memorial, Juneteenth, Independence, Labor, Thanksgiving, and Christmas with observed-date handling.
-- `is_premarket()` — Mon–Fri 04:00–09:30 ET.
+The async surface is kept because `execution/market_data.py` and `recipes/runner.py` await it; each call runs the bounded calendar lookup on a worker thread (`asyncio.to_thread`) so callers never block their event loop.
 
-#### Event-Loop-Safe Lock Lifecycle
+- `is_market_open()` — `get_market_calendar().is_open()` on a worker thread. Holiday-, half-day- and ad-hoc-closure-aware when a client is wired; weekday + 09:30–16:00 ET plus the offline holiday rules otherwise. A client whose clock cannot be read reports **closed**, so a network blip skips a session instead of trading into a holiday.
+- `get_market_holidays()` — derives non-session weekdays for the next 30 days from `MarketCalendar.session_for`, returning `{"date", "exchange": "NYSE", "isClosed": True}` dicts. No FMP fetch.
+- `is_trading_day(target_date)` — `session_for(date_obj) is not None`; accepts `date`, `datetime`, ISO string, or `None` (today ET).
+- `is_known_us_market_holiday_fallback(date)` — delegates to `trading.market_calendar.is_known_us_market_holiday`, which now includes Good Friday (computus).
+- `is_premarket()` — unchanged: Mon–Fri 04:00–09:30 ET.
 
-Both caches are guarded by class-level `asyncio.Lock` singletons (`_market_status_lock`, `_holidays_lock`) that prevent thundering-herd refetches. Because a lock created in one event loop cannot be awaited from another (it raises `RuntimeError: ... is bound to a different event loop`), the manager never instantiates them directly. Instead it resolves them through two classmethods:
-
-- `_get_market_status_lock()` — returns `_market_status_lock`, recreating it when it is `None` or when its `_loop` attribute is bound to a different (or dead) event loop than `asyncio.get_running_loop()`.
-- `_get_holidays_lock()` — same contract for the holidays lock.
-
-`is_market_open()` and `get_market_holidays()` call the relevant accessor and then `async with lock:` for the double-checked cache refill. This makes the caches safe to share across the long-lived runner loop, short-lived CLI invocations, and per-test event loops without stale-lock deadlocks.
-
-`MarketDataManager` mirrors both locks as class attributes through the `_LockProxy` descriptor, which transparently reads and writes the corresponding `MarketSessionManager` class attribute. Assigning `MarketDataManager._market_status_lock = None` (as tests do to reset state) therefore resets the session manager's lock too, and reading it always returns the live lock object rather than a stale copy.
+`_market_status_cache`, `_holidays_cache`, `_market_status_lock`, and `_holidays_lock` remain as class attributes for attribute compatibility (`MarketDataManager` proxies them through its `_LockProxy` descriptor), but they are empty/`None` and no longer cache anything — the calendar owns the cache. `fmp_api_key` stays in the constructor signature and is unused.
 
 ### `market_transforms.py` — pure functions
 
@@ -98,6 +91,7 @@ Stateless helpers with no I/O:
 
 - [[entities/engine]]
 - [[entities/pipeline]]
+- [[entities/market-calendar]] — the authoritative session calendar this adapter delegates to
 - [[concepts/execution]]
 - [[concepts/vertical-slice-islands]]
 - [[concepts/ingestion]]

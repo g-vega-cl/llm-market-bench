@@ -26,6 +26,13 @@ from trading.live_intraday_agent import (
 ET = ZoneInfo("America/New_York")
 
 
+def _fake_broker(order_id: str | None = "alpaca-ord-123", status: str = "SUBMITTED") -> MagicMock:
+    """Broker double whose mirror call resolves like AlpacaBroker.submit_market_order."""
+    broker = MagicMock()
+    broker.submit_market_order = AsyncMock(return_value={"status": status, "order_id": order_id})
+    return broker
+
+
 def test_calculate_technical_snapshot():
     # Synthetic 25 bars
     bars = []
@@ -184,11 +191,7 @@ async def test_execute_intraday_agent_step_end_to_end_hermetic():
     mock_bar.volume = 5000.0
     mock_alpaca_data.get_stock_bars.return_value = MagicMock(data={"SPY": [mock_bar] * 25})
 
-    mock_alpaca_trade = MagicMock()
-    mock_account = MagicMock()
-    mock_account.cash = "25000.00"
-    mock_alpaca_trade.get_account.return_value = mock_account
-    mock_alpaca_trade.submit_order.return_value = MagicMock(id="alpaca-ord-123", status="accepted")
+    mock_alpaca_trade = _fake_broker()
 
     # Mock Supabase
     mock_sb = MagicMock()
@@ -225,7 +228,7 @@ async def test_execute_intraday_agent_step_end_to_end_hermetic():
     with patch("trading.live_intraday_agent.aggregate_intraday_news", new=AsyncMock(return_value=[])):
         result = await execute_intraday_agent_step(
             alpaca_data_client=mock_alpaca_data,
-            alpaca_trading_client=mock_alpaca_trade,
+            alpaca_broker=mock_alpaca_trade,
             sb_client=mock_sb,
             http_client=mock_http,
             ticker="SPY",
@@ -237,7 +240,7 @@ async def test_execute_intraday_agent_step_end_to_end_hermetic():
     assert "portfolio" in result
     assert result["portfolio"]["signal"] == "BUY"
     assert result["portfolio"]["shares"] > 0
-    assert mock_alpaca_trade.submit_order.called
+    assert mock_alpaca_trade.submit_market_order.await_count == 1
     assert mock_sb.table.called
 
 
@@ -317,11 +320,7 @@ async def test_execute_intraday_agent_step_persists_reasoning_trace():
     mock_bar.volume = 5000.0
     mock_alpaca_data.get_stock_bars.return_value = MagicMock(data={"SPY": [mock_bar] * 25})
 
-    mock_alpaca_trade = MagicMock()
-    mock_account = MagicMock()
-    mock_account.cash = "25000.00"
-    mock_alpaca_trade.get_account.return_value = mock_account
-    mock_alpaca_trade.submit_order.return_value = MagicMock(id="alpaca-ord-123", status="accepted")
+    mock_alpaca_trade = _fake_broker()
 
     mock_sb = MagicMock()
     mock_table = MagicMock()
@@ -359,7 +358,7 @@ async def test_execute_intraday_agent_step_persists_reasoning_trace():
     with patch("trading.live_intraday_agent.aggregate_intraday_news", new=AsyncMock(return_value=[])):
         result = await execute_intraday_agent_step(
             alpaca_data_client=mock_alpaca_data,
-            alpaca_trading_client=mock_alpaca_trade,
+            alpaca_broker=mock_alpaca_trade,
             sb_client=mock_sb,
             http_client=mock_http,
             ticker="SPY",
@@ -512,7 +511,7 @@ async def test_execute_intraday_agent_step_isolated_from_audience_queue():
 
         result = await execute_intraday_agent_step(
             alpaca_data_client=mock_alpaca_data,
-            alpaca_trading_client=mock_alpaca_trade,
+            alpaca_broker=mock_alpaca_trade,
             sb_client=mock_sb,
             http_client=mock_http,
             ticker="SPY",
@@ -629,7 +628,7 @@ async def _run_step_capturing_prompt(is_market_open: bool) -> dict[str, str]:
     ):
         await execute_intraday_agent_step(
             alpaca_data_client=mock_alpaca_data,
-            alpaca_trading_client=None,
+            alpaca_broker=None,
             sb_client=mock_sb,
             http_client=mock_http,
             ticker="SPY",

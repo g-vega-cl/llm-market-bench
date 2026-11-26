@@ -26,6 +26,7 @@ from recipes.worker import (
     fail_stale_compile_jobs,
     process_next_recipe_job,
 )
+from trading.market_calendar import get_market_calendar, is_known_us_market_holiday
 
 ANONYMOUS_USER_ID = "00000000-0000-0000-0000-000000000000"
 LIVE_SLOTS_ET: tuple[tuple[int, int], ...] = (
@@ -67,47 +68,34 @@ def _to_et(now_dt: datetime) -> datetime:
     return now_dt.astimezone(EASTERN_TZ) if now_dt.tzinfo else now_dt.replace(tzinfo=UTC).astimezone(EASTERN_TZ)
 
 
-def _good_friday_date(year: int) -> date:
-    """Compute Good Friday using the Anonymous Gregorian Easter algorithm."""
-    a = year % 19
-    b = year // 100
-    c = year % 100
-    d = b // 4
-    e = b % 4
-    f = (b + 8) // 25
-    g = (b - f + 1) // 3
-    h = (19 * a + b - d - g + 15) % 30
-    i = c // 4
-    k = c % 4
-    el = (32 + 2 * e + 2 * i - h - k) % 7
-    m = (a + 11 * h + 22 * el) // 451
-    month = (h + el - 7 * m + 114) // 31
-    day = ((h + el - 7 * m + 114) % 31) + 1
-    return date(year, month, day) - timedelta(days=2)
-
-
 def _is_us_holiday_fallback(day_et: date) -> bool:
-    return day_et == _good_friday_date(day_et.year) or MarketSessionManager.is_known_us_market_holiday_fallback(day_et)
+    """Holiday check delegated to the single session implementation."""
+    return is_known_us_market_holiday(day_et)
 
 
 def is_us_market_hours_et(now_dt: datetime) -> bool:
-    """True during regular Mon-Fri 09:30-16:00 ET equity market hours (excluding US holidays)."""
-    dt_et = _to_et(now_dt)
-    if dt_et.weekday() >= 5 or _is_us_holiday_fallback(dt_et.date()):
-        return False
-    market_open = dt_et.replace(hour=9, minute=30, second=0, microsecond=0)
-    market_close = dt_et.replace(hour=16, minute=0, second=0, microsecond=0)
-    return market_open <= dt_et <= market_close
+    """True inside the real session (holidays and 13:00 half-day closes included)."""
+    return get_market_calendar().is_open(_to_et(now_dt))
 
 
 def due_trading_slot(now_dt: datetime, last_slot_key: str | None = None) -> str | None:
-    """Return 'YYYY-MM-DDTHH:MM' ET key when now_dt falls inside a 30-min market slot (09:30-16:00 ET)."""
+    """Return 'YYYY-MM-DDTHH:MM' ET key when now_dt falls inside a 30-min market slot (09:30-close ET).
+
+    The slot grid is fixed at 30 minutes, but the last slot follows the real
+    session close: on a 13:00 half day no slot after 13:00 ET is ever due.
+    """
     dt_et = _to_et(now_dt)
     if dt_et.weekday() >= 5 or _is_us_holiday_fallback(dt_et.date()):
         return None
+    session = get_market_calendar().session_for(dt_et.date())
+    if session is None:
+        return None
+    close_et = session[1]
     day_str = dt_et.date().isoformat()
     for hour_et, minute_et in LIVE_SLOTS_ET:
         slot_start = dt_et.replace(hour=hour_et, minute=minute_et, second=0, microsecond=0)
+        if slot_start > close_et:
+            return None
         delta_sec = (dt_et - slot_start).total_seconds()
         if 0 <= delta_sec < SLOT_WINDOW_SECONDS:
             slot_key = f"{day_str}T{hour_et:02d}:{minute_et:02d}"

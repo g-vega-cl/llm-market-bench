@@ -4,10 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 
+from execution.alpaca_broker import AlpacaBroker
+from trading.market_calendar import configure_market_calendar
 from trading.runner import (
     _create_clients,
     calculate_seconds_to_market_open,
@@ -19,48 +23,76 @@ from trading.runner import (
 
 
 def test_is_market_session_active():
-    with patch("trading.runner.datetime") as mock_dt:
-        mock_now = MagicMock()
-        mock_now.weekday.return_value = 2  # Wednesday
-        mock_now.hour = 10
-        mock_now.minute = 15
-        mock_dt.now.return_value = mock_now
-        assert is_market_session_active() is True
+    """Regular hours come from the calendar; holidays are now excluded offline too."""
+    et = ZoneInfo("America/New_York")
 
-        # Sunday -> Inactive
-        mock_now.weekday.return_value = 6
-        assert is_market_session_active() is False
+    # Wednesday 10:15 ET -> open
+    assert is_market_session_active(datetime(2026, 11, 25, 10, 15, tzinfo=et)) is True
+    # Sunday -> closed
+    assert is_market_session_active(datetime(2026, 11, 29, 10, 15, tzinfo=et)) is False
+    # Wednesday 08:00 ET (pre-market) -> closed
+    assert is_market_session_active(datetime(2026, 11, 25, 8, 0, tzinfo=et)) is False
+    # Thanksgiving 2026-11-26 10:15 ET -> closed by the offline holiday rules
+    assert is_market_session_active(datetime(2026, 11, 26, 10, 15, tzinfo=et)) is False
 
-        # Wednesday 08:00 AM ET (pre-market) -> Inactive
-        mock_now.weekday.return_value = 2
-        mock_now.hour = 8
-        assert is_market_session_active() is False
+
+def test_is_market_session_active_delegates_to_configured_clock():
+    """The daemon gate must consult the Alpaca clock once it is wired."""
+    client = MagicMock()
+    client.get_clock.return_value.is_open = False
+    configure_market_calendar(client)
+
+    # 10:00 ET on a Friday would be open under weekday arithmetic alone.
+    now = datetime(2026, 11, 27, 10, 0, tzinfo=ZoneInfo("America/New_York"))
+    assert is_market_session_active(now) is False
+
+
+def test_is_hooks_window_skips_market_holidays():
+    """Thanksgiving: /v2/calendar returns no session, so no strategy hook runs."""
+    client = MagicMock()
+    client.get_calendar.return_value = []
+    configure_market_calendar(client)
+
+    from trading.runner import _is_hooks_window
+
+    assert _is_hooks_window(datetime(2026, 11, 26, 10, 0, tzinfo=ZoneInfo("America/New_York"))) is False
+
+
+def test_is_hooks_window_follows_half_day_close():
+    """On the 13:00 early close, the closing-print tail ends at 13:05."""
+    from datetime import time
+
+    from trading.runner import _is_hooks_window
+
+    entry = MagicMock()
+    entry.date = datetime(2026, 11, 27).date()
+    entry.open = time(9, 30)
+    entry.close = time(13, 0)
+
+    client = MagicMock()
+    client.get_calendar.return_value = [entry]
+    configure_market_calendar(client)
+
+    et = ZoneInfo("America/New_York")
+    assert _is_hooks_window(datetime(2026, 11, 27, 13, 4, tzinfo=et)) is True
+    assert _is_hooks_window(datetime(2026, 11, 27, 13, 6, tzinfo=et)) is False
 
 
 def test_calculate_seconds_to_market_open():
-    with patch("trading.runner.datetime") as mock_dt:
-        mock_now = MagicMock()
-        mock_now.weekday.return_value = 2  # Wednesday 08:30 AM ET
-        mock_now.hour = 8
-        mock_now.minute = 30
-        mock_now.second = 0
-        mock_dt.now.return_value = mock_now
+    """Offline math now skips holidays, not just weekends."""
+    et = ZoneInfo("America/New_York")
 
-        secs = calculate_seconds_to_market_open()
-        assert secs == 3600.0
-
-        # Friday after close (weekday 4, 17:00)
-        mock_now.weekday.return_value = 4
-        mock_now.hour = 17
-        mock_now.minute = 0
-        mock_now.second = 0
-        secs_weekend = calculate_seconds_to_market_open()
-        assert secs_weekend > 86400
-
-        # Saturday (weekday 5)
-        mock_now.weekday.return_value = 5
-        secs_sat = calculate_seconds_to_market_open()
-        assert secs_sat > 0
+    # Wednesday 08:30 ET -> 09:30 today
+    assert calculate_seconds_to_market_open(datetime(2026, 11, 25, 8, 30, tzinfo=et)) == 3600.0
+    # Friday 17:00 ET (half day) -> Monday 09:30
+    assert calculate_seconds_to_market_open(datetime(2026, 11, 27, 17, 0, tzinfo=et)) > 86400
+    # Saturday -> positive
+    assert calculate_seconds_to_market_open(datetime(2026, 11, 28, 12, 0, tzinfo=et)) > 0
+    # Thanksgiving morning -> next session is Friday 09:30, not "today at 09:30"
+    secs = calculate_seconds_to_market_open(datetime(2026, 11, 26, 0, 30, tzinfo=et))
+    assert secs == pytest.approx(
+        (datetime(2026, 11, 27, 9, 30, tzinfo=et) - datetime(2026, 11, 26, 0, 30, tzinfo=et)).total_seconds()
+    )
 
 
 @pytest.mark.asyncio
@@ -78,7 +110,7 @@ async def test_run_daemon_turn_calls_step_and_candle():
     ):
         result = await run_daemon_turn(
             alpaca_data_client=mock_alpaca_data,
-            alpaca_trading_client=mock_alpaca_trade,
+            alpaca_broker=mock_alpaca_trade,
             sb_client=mock_sb,
             ticker="SPY",
             strata_url="http://primary-workstation:8080/v1",
@@ -123,7 +155,7 @@ async def test_run_agent_loop_publishes_turn_to_broadcaster():
             cheap_proxy_url="http://mock:8086",
             continuous_24_7=True,
             data_client=mock_data,
-            trading_client=mock_trade,
+            broker=mock_trade,
             sb_client=mock_sb,
             broadcaster=mock_broadcaster,
         )
@@ -136,11 +168,14 @@ def test_create_clients_handles_missing_keys():
     with (
         patch("trading.runner.ALPACA_API_KEY", ""),
         patch("trading.runner.ALPACA_SECRET_KEY", ""),
+        patch("execution.alpaca_broker.ALPACA_API_KEY", ""),
+        patch("execution.alpaca_broker.ALPACA_SECRET_KEY", ""),
         patch("trading.runner.get_supabase_client", return_value=MagicMock()),
     ):
-        data, trade, sb = _create_clients()
+        data, broker, sb = _create_clients()
         assert data is None
-        assert trade is None
+        assert isinstance(broker, AlpacaBroker)
+        assert broker._client is None
         assert sb is not None
 
 
@@ -150,11 +185,12 @@ def test_create_clients_initializes_when_keys_present():
         patch("trading.runner.ALPACA_SECRET_KEY", "test_secret"),
         patch("trading.runner.get_supabase_client", return_value=MagicMock()),
         patch("alpaca.data.historical.StockHistoricalDataClient") as mock_data_cls,
-        patch("alpaca.trading.client.TradingClient") as mock_trade_cls,
+        patch("execution.alpaca_broker.TradingClient") as mock_trade_cls,
     ):
-        data, trade, sb = _create_clients()
+        data, broker, sb = _create_clients()
         assert mock_data_cls.called
         assert mock_trade_cls.called
+        assert isinstance(broker, AlpacaBroker)
         assert sb is not None
 
 
@@ -177,6 +213,10 @@ async def test_run_loop_executes_turn_when_open():
         patch("trading.runner.is_market_session_active", side_effect=[False, True]),
         patch("trading.runner.calculate_seconds_to_market_open", return_value=120.0),
         patch("trading.runner.run_daemon_turn", new=AsyncMock(return_value={"action": "HOLD", "conviction": 50})),
+        patch("trading.runner.run_market_data_loop", new=AsyncMock()),
+        patch("trading.runner.run_systematic_hooks_loop", new=AsyncMock()),
+        patch("trading.runner.run_qa_worker_loop", new=AsyncMock()),
+        patch("trading.runner.run_news_synthesis_worker_loop", new=AsyncMock()),
         patch("asyncio.sleep", side_effect=mock_sleep),
         pytest.raises(asyncio.CancelledError),
     ):
@@ -203,15 +243,19 @@ async def test_run_loop_executes_in_24_7_off_hours_mode():
         patch(
             "trading.runner.run_daemon_turn", new=AsyncMock(return_value={"action": "HOLD", "conviction": 50})
         ) as mock_turn,
+        patch("trading.runner.run_market_data_loop", new=AsyncMock()),
+        patch("trading.runner.run_systematic_hooks_loop", new=AsyncMock()),
+        patch("trading.runner.run_qa_worker_loop", new=AsyncMock()),
+        patch("trading.runner.run_news_synthesis_worker_loop", new=AsyncMock()),
         patch("asyncio.sleep", side_effect=mock_sleep),
         pytest.raises(asyncio.CancelledError),
     ):
         await run_loop(ticker="SPY", interval_seconds=10, continuous_24_7=True)
 
         assert mock_turn.called
-        # Verify trading client was passed as None during off hours
+        # Verify the broker was passed as None during off hours
         call_kwargs = mock_turn.call_args[1]
-        assert call_kwargs["alpaca_trading_client"] is None
+        assert call_kwargs["alpaca_broker"] is None
 
 
 @pytest.mark.asyncio

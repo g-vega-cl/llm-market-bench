@@ -155,44 +155,33 @@ class TestCacheTTL:
 
 
 @pytest.mark.asyncio
-async def test_market_status_lock_prevents_thundering_herd():
-    """Test that concurrent is_market_open calls are serialized and make only 1 request."""
+async def test_market_status_is_fetched_once_for_concurrent_callers():
+    """Concurrent is_market_open calls share one calendar lookup, not three."""
     import asyncio
 
     from execution.market_data import MarketDataManager
-    from execution.market_session import MarketSessionManager
+    from trading.market_calendar import configure_market_calendar
 
-    # Reset cache
-    MarketDataManager._market_status_cache = {
-        "is_open": None,
-        "fetched_at": None,
-        "ttl_seconds": 300,
-    }
-    MarketDataManager._market_status_lock = None
-    MarketSessionManager._market_status_lock = None
+    client = MagicMock()
+    clock = MagicMock()
+    clock.is_open = True
+    clock.next_close = None
+    client.get_clock.return_value = clock
+    configure_market_calendar(client)
 
-    mock_resp = MagicMock()
-    mock_resp.status_code = 200
-    mock_resp.json.return_value = [{"isMarketOpen": True}]
+    manager = MarketDataManager()
 
-    call_count = 0
+    # The delegate itself: three concurrent reads, one SDK call (calendar cache).
+    results = await asyncio.gather(
+        manager.session.is_market_open(),
+        manager.session.is_market_open(),
+        manager.session.is_market_open(),
+    )
+    assert len(results) == 3
+    assert client.get_clock.call_count == 1
 
-    async def slow_get(*args, **kwargs):
-        nonlocal call_count
-        call_count += 1
-        await asyncio.sleep(0)
-        return mock_resp
-
-    with (
-        patch("execution.market_data.FMP_API_KEY", "dummy_key"),
-        patch("httpx.AsyncClient.get", new_callable=AsyncMock, side_effect=slow_get),
-    ):
-        manager = MarketDataManager()
-
-        results = await asyncio.gather(manager.is_market_open(), manager.is_market_open(), manager.is_market_open())
-
-        assert all(results)
-        assert call_count == 1
+    # And the manager's own entry point returns the delegated value.
+    assert await manager.is_market_open() is True
 
 
 @pytest.mark.asyncio

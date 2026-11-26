@@ -37,7 +37,7 @@ The database is organized into several functional areas:
 - `portfolio_snapshots` — Point-in-time portfolio state
 - `position_actions` — Delta-based position change queue (buy/sell/hold)
 - `sector_predictions` — Weekly sector ranking predictions
-- `trades` — Executed trade records with attribution; `reasoning` holds the short decision rationale, `reasoning_trace` (migration `20261117140000_add_trades_reasoning_trace.sql`, nullable) the live trader's full model chain of thought. `idempotency_key UUID` (migration `20261119050000_atomic_execute_portfolio_trade_rpc.sql`) makes retried trade submissions safe — see the `execute_portfolio_trade` RPC below. Indexes: partial unique `trades_idempotency_key_uidx (idempotency_key) WHERE idempotency_key IS NOT NULL`, `trades_portfolio_executed_idx (portfolio_id, executed_at DESC)`, and `trades_portfolio_signal_executed_idx (portfolio_id, signal, executed_at DESC)`.
+- `trades` — Executed trade records with attribution; `reasoning` holds the short decision rationale, `reasoning_trace` (migration `20261117140000_add_trades_reasoning_trace.sql`, nullable) the live trader's full model chain of thought. `alpaca_note TEXT` (migration `20261126000000_add_alpaca_note_to_trades.sql`, nullable) carries free-text mirror audit detail — e.g. `BROKER_POSITION_MISMATCH (ledger 2, broker 1)` — deliberately separate from `alpaca_status`, which carries the order outcome. `idempotency_key UUID` (migration `20261119050000_atomic_execute_portfolio_trade_rpc.sql`) makes retried trade submissions safe — see the `execute_portfolio_trade` RPC below. Indexes: partial unique `trades_idempotency_key_uidx (idempotency_key) WHERE idempotency_key IS NOT NULL`, `trades_portfolio_executed_idx (portfolio_id, executed_at DESC)`, and `trades_portfolio_signal_executed_idx (portfolio_id, signal, executed_at DESC)`.
 
 ### Daily Stock Picker Tables
 
@@ -171,5 +171,6 @@ Migrations live in `supabase/migrations/` and follow the Supabase naming convent
 - [[concepts/private-memory-vault]]
 - [[concepts/supabase-grant-convention]]
 - [[entities/live-agent-trader]]
+- [[entities/alpaca-audit]] — the mirror contract that writes `alpaca_status` / `alpaca_note`
 - [[entities/engine]]
 - [[entities/llm-leaderboard]]

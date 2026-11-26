@@ -701,3 +701,17 @@ def test_insert_live_jobs_idempotent_falls_back_on_duplicate_key():
 
     inserted = _insert_live_jobs_idempotent(sb, [{"recipe_id": "r1"}, {"recipe_id": "r2"}])
     assert inserted == 1
+
+
+def test_due_trading_slot_stops_at_half_day_close():
+    """Post-Thanksgiving 2026-11-27 closes at 13:00 ET; no later slot is ever due."""
+    from zoneinfo import ZoneInfo
+
+    from recipes.runner import due_trading_slot
+
+    et = ZoneInfo("America/New_York")
+    assert due_trading_slot(datetime(2026, 11, 27, 12, 35, tzinfo=et), last_slot_key=None) == "2026-11-27T12:30"
+    assert due_trading_slot(datetime(2026, 11, 27, 13, 0, tzinfo=et), last_slot_key=None) == "2026-11-27T13:00"
+    for hour in (13, 14, 15):
+        later = datetime(2026, 11, 27, hour, 35, tzinfo=et)
+        assert due_trading_slot(later, last_slot_key=None) is None, f"slot fired at {later:%H:%M} on a half day"

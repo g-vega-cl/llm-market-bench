@@ -35,29 +35,28 @@ from core.config import (
     logger,
 )
 from core.db import get_supabase_client
+from execution.alpaca_broker import AlpacaBroker
 from trading.live_intraday_agent import (
     DEFAULT_CHEAP_PROXY_URL,
     DEFAULT_STRATA_URL,
     execute_intraday_agent_step,
     fetch_active_candle,
 )
+from trading.market_calendar import configure_market_calendar
 from trading.runner import is_market_session_active
 
 
 def _init_clients() -> tuple[Any, Any, Any]:
-    """Initialize Alpaca and Supabase clients."""
+    """Initialize Alpaca data client, paper broker, and Supabase client."""
     data_client = None
-    trading_client = None
 
     if ALPACA_API_KEY and ALPACA_SECRET_KEY:
         from alpaca.data.historical import StockHistoricalDataClient
-        from alpaca.trading.client import TradingClient
 
         data_client = StockHistoricalDataClient(ALPACA_API_KEY, ALPACA_SECRET_KEY)
-        trading_client = TradingClient(ALPACA_API_KEY, ALPACA_SECRET_KEY, paper=True)
 
     sb_client = get_supabase_client()
-    return data_client, trading_client, sb_client
+    return data_client, AlpacaBroker(sb_client=sb_client), sb_client
 
 
 async def run_single_audit_turn(
@@ -65,7 +64,7 @@ async def run_single_audit_turn(
     total_turns: int,
     ticker: str,
     data_client: Any,
-    trading_client: Any,
+    broker: Any,
     sb_client: Any,
     http_client: httpx.AsyncClient,
     strata_url: str,
@@ -91,12 +90,13 @@ async def run_single_audit_turn(
     t0_step = time.perf_counter()
     step_result = await execute_intraday_agent_step(
         alpaca_data_client=data_client,
-        alpaca_trading_client=trading_client,
+        alpaca_broker=broker,
         sb_client=sb_client,
         http_client=http_client,
         ticker=ticker,
         strata_url=strata_url,
         cheap_proxy_url=cheap_proxy_url,
+        is_market_open=await asyncio.to_thread(is_market_session_active),
     )
     dur_step = time.perf_counter() - t0_step
 
@@ -168,7 +168,8 @@ async def run_30min_audit(
     print(f"  Tier 2 Free Proxy: {cheap_proxy_url}")
     print("═════════════════════════════════════════════════════════════════")
 
-    data_client, trading_client, sb_client = _init_clients()
+    data_client, broker, sb_client = _init_clients()
+    configure_market_calendar(broker.client)
     results: list[dict[str, Any]] = []
 
     async with httpx.AsyncClient(timeout=35.0) as http_client:
@@ -179,7 +180,7 @@ async def run_30min_audit(
                     total_turns=total_turns,
                     ticker=ticker,
                     data_client=data_client,
-                    trading_client=trading_client,
+                    broker=broker,
                     sb_client=sb_client,
                     http_client=http_client,
                     strata_url=strata_url,

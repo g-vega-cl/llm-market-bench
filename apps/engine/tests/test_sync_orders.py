@@ -52,11 +52,12 @@ def test_sync_orders_queries_with_correct_cutoff():
         "expired": 0,
         "errors": 0,
         "skipped": 0,
+        "repaired": 0,
     }
 
     # Verify query structure
     mock_supabase.table.assert_called_with("trades")
-    mock_table.select.assert_called_with("id", "alpaca_order_id", "alpaca_status")
+    mock_table.select.assert_any_call("id", "alpaca_order_id", "alpaca_status")
     mock_select.eq.assert_called_with("alpaca_status", "SUBMITTED")
     mock_not.is_.assert_called_with("alpaca_order_id", "null")
     mock_is.gte.assert_called()  # Verifies gte was called with cutoff
@@ -131,6 +132,7 @@ def test_sync_orders_updates_terminal_and_skips_non_terminal():
         "expired": 0,
         "errors": 0,
         "skipped": 1,
+        "repaired": 0,
     }
 
     # Verify update calls
@@ -142,3 +144,64 @@ def test_sync_orders_updates_terminal_and_skips_non_terminal():
 
     # The third (non-terminal) order should not have triggered an update call
     assert mock_table.update.call_count == 2
+
+
+def test_sync_repairs_trade_missing_its_order_id():
+    """A NULL alpaca_order_id is re-attached via the deterministic client_order_id."""
+    mock_supabase = MagicMock()
+    mock_alpaca = MagicMock()
+
+    trades_table = MagicMock()
+    portfolios_table = MagicMock()
+    mock_supabase.table.side_effect = lambda name: {
+        "trades": trades_table,
+        "portfolios": portfolios_table,
+    }.get(name, MagicMock())
+
+    # Repair pass: one trade with a null status; the SUBMITTED pass finds nothing.
+    repair_chain = (
+        trades_table.select.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value
+    )
+    repair_chain.execute.return_value = MagicMock(
+        data=[{"id": "trade-x", "portfolio_id": "pf-1", "ticker": "SPY", "signal": "BUY"}],
+    )
+    (
+        trades_table.select.return_value.eq.return_value.not_.is_.return_value.gte.return_value.execute.return_value
+    ) = MagicMock(data=[])
+    portfolios_table.select.return_value.in_.return_value.execute.return_value = MagicMock(
+        data=[{"id": "pf-1", "owner_id": "live-spy-trader"}]
+    )
+
+    order = MagicMock()
+    order.id = "alpaca-order-9"
+    order.status = "filled"
+    mock_alpaca.get_order_by_client_id.return_value = order
+
+    with (
+        patch("scripts.sync_alpaca_orders.ALPACA_API_KEY", "mock-key"),
+        patch("scripts.sync_alpaca_orders.ALPACA_SECRET_KEY", "mock-secret"),
+        patch("scripts.sync_alpaca_orders.get_supabase_client", return_value=mock_supabase),
+        patch("scripts.sync_alpaca_orders.TradingClient", return_value=mock_alpaca),
+    ):
+        result = sync_orders()
+
+    assert result["repaired"] == 1
+    mock_alpaca.get_order_by_client_id.assert_called_once_with("live-spy-trader__SPY__BUY__trade-x")
+
+    updates = [call.args[0] for call in trades_table.update.call_args_list if call.args]
+    assert any(
+        payload.get("alpaca_order_id") == "alpaca-order-9"
+        and payload.get("alpaca_status") == "FILLED"
+        and payload.get("alpaca_submitted_at")
+        for payload in updates
+    )
+
+
+def test_sync_workflow_runs_intraday():
+    """The sync job must run during the session, not once after the close."""
+    from pathlib import Path
+
+    workflow = Path(__file__).resolve().parents[3] / ".github" / "workflows" / "sync-alpaca.yml"
+    cron_lines = [line.strip() for line in workflow.read_text().splitlines() if line.strip().startswith("- cron:")]
+
+    assert '- cron: "*/15 13-21 * * 1-5"' in cron_lines

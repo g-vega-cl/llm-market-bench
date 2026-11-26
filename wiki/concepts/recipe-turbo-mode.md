@@ -50,9 +50,9 @@ NEWS_SYNC_MIN_INTERVAL_SECONDS  300
 PUBLIC_STATS_MIN_INTERVAL_SECONDS 60
 ```
 
-- **`is_us_market_hours_et(now)`** — `Mon–Fri 09:30 <= t <= 16:00 ET`, excluding weekends and the rule-based US holiday fallback. The fallback (`_is_us_holiday_fallback`) combines `MarketSessionManager.is_known_us_market_holiday_fallback` with `_good_friday_date` computed from the Anonymous Gregorian Easter algorithm, so Good Friday is a closed session on both sides of the stack.
+- **`is_us_market_hours_et(now)`** — delegates to `get_market_calendar().is_open(...)` (see [[entities/market-calendar]]), so it is true only inside a real session: weekends, holidays, 13:00 half-day early closes and ad-hoc closures are all excluded, not just weekends. `_is_us_holiday_fallback` is a thin alias over `trading.market_calendar.is_known_us_market_holiday` (Good Friday included via the Easter computus), so the recipe scheduler and the live trader share one holiday rule set instead of two copies.
 - **`due_trading_slot(now, last_slot_key)`** — matches any of the 14 slots inside the 20-minute window, deduplicates via `last_slot_key`, and returns `None` on weekends, holidays, pre-open, and after the `16:00` window.
-- **`_is_trading_day_et(now)`** — weekend/holiday fallback first, then FMP-backed `MarketSessionManager().is_trading_day(...)`; a lookup failure logs at debug level and allows the day.
+- **`_is_trading_day_et(now)`** — weekend/holiday fallback first, then `MarketSessionManager().is_trading_day(...)` (itself a thin adapter over the same calendar); a lookup failure logs at debug level and allows the day.
 - **`_fetch_active_turbo_recipes(sb)`** — pages every `is_live = true`, `archived_at IS NULL`, `turbo_expires_at > now` recipe.
 - **`enqueue_turbo_recipes(sb, now_utc=...)`** — returns `0` outside market hours; otherwise skips recipes that already hold a job since `now - 5 minutes`, skips invalid single-stage graphs, and inserts `live_turn` jobs through `_insert_live_jobs_idempotent`.
 - **`run_live_lane_tick(sb, now_utc, state)`** — the single per-tick decision function over a `LiveLaneState` dataclass (`last_slot_key`, `last_news_sync_utc`, `last_turbo_poll_utc`, `last_stats_refresh_utc`). Priority order: (1) a due 30-minute slot runs `run_scheduled_slot`; (2) otherwise, during market hours and at most once per 30s, `enqueue_turbo_recipes`, with a news sync only when at least one Turbo job was enqueued *and* `NEWS_SYNC_MIN_INTERVAL_SECONDS` elapsed; (3) always drain the `live_turn` lane, refreshing public stats at most once per `PUBLIC_STATS_MIN_INTERVAL_SECONDS` when something ran. `_live_lane_loop` is a thin `while True` around it at `POLL_INTERVAL_SECONDS = 5`.
@@ -113,6 +113,7 @@ Turbo can never outlive the live schedule:
 
 - [[entities/recipe-studio]] — the studio, its runner daemon, and the live-turn lane this mode rides on
 - [[entities/recipe-live-status]] — the live page that hosts the Turbo control and countdown
+- [[entities/market-calendar]] — the authoritative session calendar `is_us_market_hours_et` now delegates to
 - [[entities/database]] — `strategy_recipes`, `recipe_user_quotas`, `recipe_execution_queue`, and the `activate_recipe_turbo` RPC
 - [[concepts/recipe-ops-telemetry]] — enqueue counters, including `skipped_recent_turbo`
 - [[concepts/recipe-backtest-concurrency]] — the sibling lane guard for backtests

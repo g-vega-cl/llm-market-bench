@@ -13,6 +13,7 @@ NO real API keys or network calls are used. All external dependencies are mocked
 """
 
 import asyncio
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -587,7 +588,9 @@ class TestUpdateTrade:
             # Verify update payload
             update_call = mock_table.update.call_args[0][0]
             assert update_call["alpaca_status"] == "SUBMITTED"
-            assert update_call["alpaca_submitted_at"] == "now()"
+            submitted_at = update_call["alpaca_submitted_at"]
+            assert isinstance(submitted_at, str) and submitted_at != "now()"
+            assert datetime.fromisoformat(submitted_at).tzinfo is not None
             assert update_call["alpaca_order_id"] == "alpaca-order-456"
 
             # Verify WHERE clause uses stringified UUID
@@ -649,3 +652,151 @@ class TestFireAndForget:
         # Immediate return — task is running in background
         assert not task.done()
         await task  # Clean up
+
+
+# ---------------------------------------------------------------------------
+# Market order return values — the caller records what the mirror reported
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestMarketOrderReporting:
+    async def test_returns_submitted_status_and_order_id(self, mock_trading_client):
+        """submit_market_order reports the broker order id back to the caller."""
+        broker = AlpacaBroker(client=mock_trading_client, sb_client=MagicMock())
+
+        result = await broker.submit_market_order(
+            trade_id=uuid4(),
+            ticker="SPY",
+            quantity=2,
+            signal="BUY",
+            agent_id="live-spy-trader",
+        )
+
+        assert result == {"status": "SUBMITTED", "order_id": "alpaca-order-123", "persisted": True}
+
+    async def test_returns_error_status_when_alpaca_raises(self, mock_trading_client):
+        """A rejected submission is reported as ERROR instead of disappearing."""
+        mock_trading_client.submit_order.side_effect = Exception("403 insufficient buying power")
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(broker, "_update_trade", new_callable=AsyncMock):
+            result = await broker.submit_market_order(
+                trade_id=uuid4(),
+                ticker="SPY",
+                quantity=2,
+                signal="BUY",
+                agent_id="live-spy-trader",
+            )
+
+        assert result == {"status": "ERROR", "order_id": None, "persisted": True}
+
+    async def test_returns_disabled_when_client_missing(self):
+        """No client (missing keys / disabled) reports DISABLED, never a fake success."""
+        broker = AlpacaBroker()
+        broker._client = None
+
+        result = await broker.submit_market_order(
+            trade_id=uuid4(),
+            ticker="SPY",
+            quantity=2,
+            signal="BUY",
+            agent_id="live-spy-trader",
+        )
+
+        assert result == {"status": "DISABLED", "order_id": None}
+
+
+# ---------------------------------------------------------------------------
+# guard_sells=False — the live trader mirrors the ledger attempt, guard off
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+class TestUnguardedSell:
+    async def test_sell_attempted_without_position_when_guard_disabled(self, mock_trading_client):
+        """With guard_sells=False the SELL is submitted even when Alpaca holds nothing."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(broker, "get_alpaca_position", return_value=0.0) as mock_pos:
+            result = await broker.submit_market_order(
+                trade_id=uuid4(),
+                ticker="SPY",
+                quantity=2,
+                signal="SELL",
+                agent_id="live-spy-trader",
+                guard_sells=False,
+            )
+
+        mock_pos.assert_not_called()
+        request = mock_trading_client.submit_order.call_args[0][0]
+        assert request.side == OrderSide.SELL
+        assert request.qty == 2
+        assert result["status"] == "SUBMITTED"
+
+    async def test_guard_still_default_for_other_lanes(self, mock_trading_client):
+        """Omitting guard_sells keeps the short-prevention behaviour for every other caller."""
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with (
+            patch.object(broker, "get_alpaca_position", return_value=0.0),
+            patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update,
+        ):
+            result = await broker.submit_market_order(
+                trade_id=uuid4(),
+                ticker="SPY",
+                quantity=2,
+                signal="SELL",
+                agent_id="sys-daily-spy",
+            )
+
+        mock_trading_client.submit_order.assert_not_called()
+        assert result == {"status": "SKIPPED_NO_POSITION", "order_id": None}
+        mock_update.assert_awaited_once()
+
+
+class TestTryGetAlpacaPosition:
+    """try_get_alpaca_position separates 'flat' from 'could not ask' (evidence-grade)."""
+
+    def _broker(self, client):
+        return AlpacaBroker(client=client, sb_client=MagicMock())
+
+    def test_returns_quantity_when_position_exists(self):
+        client = MagicMock()
+        client.get_open_position.return_value = MagicMock(qty="3")
+        assert self._broker(client).try_get_alpaca_position("SPY") == 3.0
+
+    def test_returns_none_without_client(self):
+        # `client=None` means "not injected", which builds a real TradingClient from
+        # ALPACA_API_KEY; clear it explicitly so this stays hermetic.
+        broker = AlpacaBroker(sb_client=MagicMock())
+        broker._client = None
+        assert broker.try_get_alpaca_position("SPY") is None
+
+    def test_returns_zero_only_for_404(self):
+        from alpaca.common.exceptions import APIError
+
+        mock_http_error = MagicMock()
+        mock_http_error.response.status_code = 404
+        client = MagicMock()
+        client.get_open_position.side_effect = APIError(
+            error={"message": "position does not exist"}, http_error=mock_http_error
+        )
+        assert self._broker(client).try_get_alpaca_position("SPY") == 0.0
+
+    def test_returns_none_on_api_failure(self):
+        from alpaca.common.exceptions import APIError
+
+        mock_http_error = MagicMock()
+        mock_http_error.response.status_code = 500
+        client = MagicMock()
+        client.get_open_position.side_effect = APIError(error={"message": "boom"}, http_error=mock_http_error)
+        assert self._broker(client).try_get_alpaca_position("SPY") is None
+
+    def test_returns_none_on_unexpected_failure(self):
+        client = MagicMock()
+        client.get_open_position.side_effect = TimeoutError("hung")
+        assert self._broker(client).try_get_alpaca_position("SPY") is None

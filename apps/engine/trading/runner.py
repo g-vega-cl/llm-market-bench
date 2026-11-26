@@ -10,7 +10,7 @@ import argparse
 import asyncio
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -22,6 +22,7 @@ from core.config import (
     logger,
 )
 from core.db import get_supabase_client
+from execution.alpaca_broker import AlpacaBroker
 from trading.conversational_explainer import process_pending_queue_item
 from trading.live_intraday_agent import (
     DEFAULT_CHEAP_PROXY_URL,
@@ -32,6 +33,7 @@ from trading.live_intraday_agent import (
     query_multi_tier_llm,
     set_latest_news_synthesis,
 )
+from trading.market_calendar import configure_market_calendar, get_market_calendar
 from trading.tape_stream import (
     TapeBroadcaster,
     seed_broadcaster_from_db,
@@ -43,52 +45,21 @@ from trading.tape_stream import (
 def is_market_session_active(now_dt: datetime | None = None) -> bool:
     """Check if the current time falls within US regular equity market hours.
 
-    Regular hours: Monday through Friday, 09:30 AM to 04:00 PM Eastern Time.
+    Delegates to the configured MarketCalendar: Alpaca's /v2/clock when a client
+    is wired (holidays, half-days, ad-hoc closures), weekday/time arithmetic
+    otherwise. A client whose clock cannot be read counts as closed.
     """
-    if now_dt is None:
-        now_dt = datetime.now(ZoneInfo("America/New_York"))
-
-    weekday = now_dt.weekday() if callable(getattr(now_dt, "weekday", None)) else getattr(now_dt, "weekday", 0)
-    if weekday >= 5:
-        return False
-
-    hour = getattr(now_dt, "hour", 0)
-    minute = getattr(now_dt, "minute", 0)
-    total_minutes = hour * 60 + minute
-    return 570 <= total_minutes < 960
+    return get_market_calendar().is_open(now_dt)
 
 
 def calculate_seconds_to_market_open(now_dt: datetime | None = None) -> float:
-    """Calculate the number of seconds until the next 09:30 AM ET market open."""
-    if now_dt is None:
-        now_dt = datetime.now(ZoneInfo("America/New_York"))
-
-    weekday = now_dt.weekday() if callable(getattr(now_dt, "weekday", None)) else getattr(now_dt, "weekday", 0)
-    hour = getattr(now_dt, "hour", 0)
-    minute = getattr(now_dt, "minute", 0)
-    second = getattr(now_dt, "second", 0)
-
-    current_secs = hour * 3600 + minute * 60 + second
-    target_open_secs = 9 * 3600 + 30 * 60
-
-    if weekday < 5 and current_secs < target_open_secs:
-        return float(target_open_secs - current_secs)
-
-    days_ahead = 1
-    if weekday == 4:
-        days_ahead = 3
-    elif weekday == 5:
-        days_ahead = 2
-    elif weekday == 6:
-        days_ahead = 1
-
-    secs_remaining_today = max(0, 86400 - current_secs)
-    return float(secs_remaining_today + (days_ahead - 1) * 86400 + target_open_secs)
+    """Seconds until the next regular session open (holiday-aware when wired)."""
+    return get_market_calendar().seconds_to_next_open(now_dt)
 
 
 async def run_daemon_turn(
     alpaca_data_client: Any = None,
-    alpaca_trading_client: Any = None,
+    alpaca_broker: Any = None,
     sb_client: Any = None,
     http_client: httpx.AsyncClient | None = None,
     ticker: str = "SPY",
@@ -101,7 +72,7 @@ async def run_daemon_turn(
 
     step_result = await execute_intraday_agent_step(
         alpaca_data_client=alpaca_data_client,
-        alpaca_trading_client=alpaca_trading_client,
+        alpaca_broker=alpaca_broker,
         sb_client=sb_client,
         http_client=http_client,
         ticker=ticker,
@@ -117,22 +88,19 @@ async def run_daemon_turn(
 
 
 def _create_clients() -> tuple[Any, Any, Any]:
-    """Instantiate Alpaca data/trading clients and Supabase client."""
+    """Instantiate the Alpaca data client, the paper broker, and the Supabase client."""
     data_client = None
-    trading_client = None
 
     if ALPACA_API_KEY and ALPACA_SECRET_KEY:
         try:
             from alpaca.data.historical import StockHistoricalDataClient
-            from alpaca.trading.client import TradingClient
 
             data_client = StockHistoricalDataClient(ALPACA_API_KEY, ALPACA_SECRET_KEY)
-            trading_client = TradingClient(ALPACA_API_KEY, ALPACA_SECRET_KEY, paper=True)
         except Exception:
-            logger.exception("Failed to initialize Alpaca clients")
+            logger.exception("Failed to initialize Alpaca data client")
 
     sb_client = get_supabase_client()
-    return data_client, trading_client, sb_client
+    return data_client, AlpacaBroker(sb_client=sb_client), sb_client
 
 
 async def run_tape_poller_loop(
@@ -152,7 +120,7 @@ async def run_tape_poller_loop(
 
     while True:
         try:
-            if alpaca_data_client and is_market_session_active():
+            if alpaca_data_client and await asyncio.to_thread(is_market_session_active):
                 bars = await fetch_intraday_bars(alpaca_data_client, ticker=ticker, window_minutes=60)
                 if bars:
                     broadcaster.publish_bars(bars)
@@ -172,7 +140,7 @@ async def _run_agent_loop(
     cheap_proxy_url: str,
     continuous_24_7: bool,
     data_client: Any,
-    trading_client: Any,
+    broker: Any,
     sb_client: Any,
     broadcaster: TapeBroadcaster | None = None,
 ) -> None:
@@ -180,9 +148,9 @@ async def _run_agent_loop(
     async with httpx.AsyncClient(timeout=90.0) as http_client:
         while True:
             try:
-                is_open = is_market_session_active()
+                is_open = await asyncio.to_thread(is_market_session_active)
                 if not is_open and not continuous_24_7:
-                    secs_to_open = calculate_seconds_to_market_open()
+                    secs_to_open = await asyncio.to_thread(calculate_seconds_to_market_open)
                     sleep_dur = min(secs_to_open, 300.0)
                     logger.info(
                         f"Regular market closed. Sleeping {sleep_dur:.0f}s (next open in {secs_to_open / 3600:.1f}h)"
@@ -191,12 +159,12 @@ async def _run_agent_loop(
                     continue
 
                 # In 24/7 off-hours mode, trading is disabled (paper orders skipped) but Q&A and analysis run
-                effective_trading_client = trading_client if is_open else None
+                effective_broker = broker if is_open else None
                 mode_str = "Market open" if is_open else "24/7 Off-hours"
                 logger.info(f"{mode_str}. Running evaluation turn for {ticker}...")
                 turn_result = await run_daemon_turn(
                     alpaca_data_client=data_client,
-                    alpaca_trading_client=effective_trading_client,
+                    alpaca_broker=effective_broker,
                     sb_client=sb_client,
                     http_client=http_client,
                     ticker=ticker,
@@ -368,26 +336,32 @@ async def run_news_synthesis_worker_loop(
 
 
 def _is_price_refresh_window(now_dt: datetime | None = None) -> bool:
-    """Weekday 09:30–16:05 ET: the regular session plus the post-close print window."""
-    if now_dt is None:
-        now_dt = datetime.now(ZoneInfo("America/New_York"))
-    if now_dt.weekday() >= 5:
-        return False
-    return 570 <= now_dt.hour * 60 + now_dt.minute <= 965
+    """Regular session plus the post-close print window, from the exchange calendar.
+
+    Same window as the strategy hooks: marks and the closing print both belong to
+    a real session day, so holidays and half days are excluded identically.
+    """
+    return _is_hooks_window(now_dt)
 
 
 def _is_hooks_window(now_dt: datetime | None = None) -> bool:
-    """Weekday 09:30–16:05 ET: the strategy hooks need the closing print too.
+    """True inside the regular session, plus the closing-print tail.
 
-    The regular session ends at 16:00, but close-print strategies (daily stock
-    pick portfolios) exit on the official closing price, which only exists after
-    the bell. One extra tick is enough.
+    Derived from the exchange calendar rather than the clock: strategies need
+    "is today a session day and when does it close", which /v2/clock cannot
+    answer after the bell (is_open is already False at 16:01 while the daily
+    picks legs still exit on the official closing print at 16:00-16:05).
+    Holidays return no session, so no hook runs; half days end at 13:00 and the
+    tail moves with them.
     """
-    if now_dt is None:
-        now_dt = datetime.now(ZoneInfo("America/New_York"))
-    if now_dt.weekday() >= 5:
+    now_dt = now_dt or datetime.now(ZoneInfo("America/New_York"))
+    if now_dt.tzinfo is None:
+        now_dt = now_dt.replace(tzinfo=ZoneInfo("America/New_York"))
+    session = get_market_calendar().session_for(now_dt.date())
+    if session is None:
         return False
-    return 570 <= now_dt.hour * 60 + now_dt.minute <= 965
+    open_at, close_at = session
+    return open_at <= now_dt <= close_at + timedelta(minutes=5)
 
 
 async def run_systematic_hooks_loop(interval_seconds: int = 300, strategy_lock: asyncio.Lock | None = None) -> None:
@@ -404,7 +378,7 @@ async def run_systematic_hooks_loop(interval_seconds: int = 300, strategy_lock: 
     while True:
         try:
             now_et = datetime.now(ZoneInfo("America/New_York"))
-            if _is_hooks_window(now_et):
+            if await asyncio.to_thread(_is_hooks_window, now_et):
                 async with lock:
                     await run_systematic_strategy_hooks(now_et)
         except Exception:
@@ -438,7 +412,7 @@ async def run_market_data_loop(
     while True:
         try:
             now_et = datetime.now(ZoneInfo("America/New_York"))
-            if _is_price_refresh_window(now_et):
+            if await asyncio.to_thread(_is_price_refresh_window, now_et):
                 async with lock:
                     await refresh_portfolio_marks(sb_client, mdm)
                 if last_history_at is None or (time.monotonic() - last_history_at) >= history_interval_seconds:
@@ -468,7 +442,8 @@ async def run_loop(
     )
     logger.info(f"LLM Inference: {cheap_proxy_url} (model={os.getenv('FREE_PROXY_MODEL', 'auto-go')})")
 
-    data_client, trading_client, sb_client = _create_clients()
+    data_client, broker, sb_client = _create_clients()
+    configure_market_calendar(getattr(broker, "client", None))
     broadcaster = TapeBroadcaster()
 
     server = None
@@ -497,7 +472,7 @@ async def run_loop(
                 cheap_proxy_url=cheap_proxy_url,
                 continuous_24_7=continuous_24_7,
                 data_client=data_client,
-                trading_client=trading_client,
+                broker=broker,
                 sb_client=sb_client,
                 broadcaster=broadcaster,
             )
@@ -610,11 +585,12 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.once:
-        data_client, trading_client, sb_client = _create_clients()
+        data_client, broker, sb_client = _create_clients()
+        configure_market_calendar(getattr(broker, "client", None))
         result = asyncio.run(
             run_daemon_turn(
                 alpaca_data_client=data_client,
-                alpaca_trading_client=trading_client,
+                alpaca_broker=broker,
                 sb_client=sb_client,
                 ticker=args.ticker,
                 strata_url=args.strata_url,

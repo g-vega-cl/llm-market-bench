@@ -2,9 +2,16 @@ name: Sync Alpaca Orders
 
 on:
   schedule:
-    # Daily at 20:00 UTC (4pm ET, just after market close)
-    - cron: "0 20 * * 1-5"
+    # Every 15 min across the US session (13:00-21:45 UTC covers 09:30-16:00 ET
+    # in both EDT and EST) so a rejected order does not read SUBMITTED until after the close.
+    - cron: "*/15 13-21 * * 1-5"
   workflow_dispatch:
+
+# A manual dispatch must not overlap the scheduled run: the repair pass is a
+# compare-and-set, but two concurrent full syncs would still double-poll Alpaca.
+concurrency:
+  group: sync-alpaca
+  cancel-in-progress: false
 
 jobs:
   sync-alpaca:

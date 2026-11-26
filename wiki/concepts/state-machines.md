@@ -70,7 +70,7 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 
 - **Source Files**: [`apps/engine/scripts/sync_alpaca_orders.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/scripts/sync_alpaca_orders.py), [`apps/engine/execution/alpaca_broker.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/execution/alpaca_broker.py), [`apps/engine/execution/portfolio.py`](file:///home/cv/Documents/Code/llm-market-bench/apps/engine/execution/portfolio.py)
 - **Database Column**: `trades.alpaca_status`
-- **States**: `SUBMITTED`, `FILLED`, `CANCELED`, `EXPIRED`, `REJECTED`, `ERROR`, `BACKFILLED`, `SKIPPED_NO_POSITION`
+- **States**: `SUBMITTED`, `FILLED`, `CANCELED`, `EXPIRED`, `REJECTED`, `ERROR`, `BACKFILLED`, `SKIPPED_NO_POSITION`, `DISABLED`, `NO_MIRROR`
 
 ```text
                  ┌───────────────────[SUBMITTED]───────────────────┐
@@ -83,12 +83,17 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 
  [Submission Exception] ────▶ [ERROR]
  [Exit with zero pos]   ────▶ [SKIPPED_NO_POSITION]
+ [No broker / no client]────▶ [DISABLED]         (mirror never attempted)
+ [Pre-fix backfill]     ────▶ [NO_MIRROR]        (written once, by hand)
 ```
 
 - **Invariants**:
   - `SUBMITTED` is the initial state when an order is acknowledged by Alpaca API.
-  - Terminal states (`FILLED`, `CANCELED`, `EXPIRED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`) are immutable in application logic. Once reached, an order record cannot transition back to `SUBMITTED`.
+  - Terminal states (`FILLED`, `CANCELED`, `EXPIRED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`, `DISABLED`, `NO_MIRROR`) are immutable in application logic. Once reached, an order record cannot transition back to `SUBMITTED`.
   - `BACKFILLED` is reserved exclusively for post-market reconstructed fills (`[[concepts/backfilled-trades]]`).
+  - `DISABLED` means *not attempted* (no broker wired, or no Alpaca client because keys are missing); `ERROR` means attempted and failed. They are deliberately distinct — do not collapse them.
+  - `NO_MIRROR` marks ledger trades from the silent-failure window (`2026-11-24T19:27Z` – `2026-11-25T16:59Z`); it is never written at runtime.
+  - The ledger is authoritative: none of these values ever rolls back a ledger trade. See [[concepts/external-order-attestation]].
 
 ---
 

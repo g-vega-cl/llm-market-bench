@@ -5,6 +5,8 @@ Every executed trade is mirrored as a DAY limit order, tagged with agent metadat
 """
 
 import logging
+from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID
 
 from alpaca.common.exceptions import APIError
@@ -21,8 +23,13 @@ logger = logging.getLogger("engine")
 class AlpacaBroker:
     """Thin wrapper around Alpaca Trading API for limit order submission."""
 
-    def __init__(self):
+    def __init__(self, client: TradingClient | None = None, sb_client: Any = None):
         self._client: TradingClient | None = None
+        self._sb = sb_client
+
+        if client is not None:
+            self._client = client
+            return
 
         if not ALPACA_ENABLED:
             logger.info("[Alpaca] Disabled via ALPACA_ENABLED constant.")
@@ -39,6 +46,37 @@ class AlpacaBroker:
             url_override=ALPACA_PAPER_ENDPOINT,
         )
         logger.info("[Alpaca] Broker initialized (paper endpoint).")
+
+    @property
+    def client(self) -> TradingClient | None:
+        """The underlying paper TradingClient (None when disabled or keys missing)."""
+        return self._client
+
+    def try_get_alpaca_position(self, ticker: str) -> float | None:
+        """Position quantity, or None when the broker cannot answer.
+
+        `get_alpaca_position` collapses every failure to 0.0, which is correct for
+        the SELL guard but indistinguishable from a genuinely flat book. Callers
+        that record *evidence* (e.g. BROKER_POSITION_MISMATCH) must use this.
+        """
+        if not self._client:
+            return None
+
+        try:
+            position = self._client.get_open_position(ticker)
+        except APIError as exc:
+            if getattr(exc, "status_code", None) == 404:
+                return 0.0
+            logger.warning(f"[Alpaca] API error reading position for {ticker}: {exc}")
+            return None
+        except Exception as exc:
+            logger.warning(f"[Alpaca] Unexpected error reading position for {ticker}: {exc}")
+            return None
+
+        try:
+            return float(position.qty) if position.qty else 0.0
+        except (TypeError, ValueError):
+            return None
 
     def get_alpaca_position(self, ticker: str) -> float:
         """Query Alpaca for the current quantity held for a ticker.
@@ -68,13 +106,14 @@ class AlpacaBroker:
 
     async def submit_limit_order(
         self,
-        trade_id: UUID,
+        trade_id: UUID | str,
         ticker: str,
         quantity: int,
         signal: str,
         limit_price: float,
         agent_id: str,
-    ) -> None:
+        guard_sells: bool = True,
+    ) -> dict[str, Any]:
         """Fire-and-forget DAY limit order submission to Alpaca.
 
         Tags the order with agent metadata (client_order_id) for audit filtering.
@@ -82,10 +121,11 @@ class AlpacaBroker:
 
         SELL orders are guarded against shorting: if Alpaca does not hold the
         requested shares, the order is skipped or quantity-capped to the actual
-        Alpaca position size.
+        Alpaca position size. Pass ``guard_sells=False`` to mirror the ledger
+        attempt verbatim instead (the rejection then becomes the audit record).
         """
         if not self._client:
-            return
+            return {"status": "DISABLED", "order_id": None}
 
         sig = signal.upper()
         if sig in ("BUY", "LONG", "COVER"):
@@ -100,7 +140,7 @@ class AlpacaBroker:
         # Guardrails:
         # 1. SELL (closing long): only sell shares Alpaca physically holds.
         #    Never sell shares not held on Alpaca to prevent accidental short positions.
-        if sig == "SELL":
+        if guard_sells and sig == "SELL":
             alpaca_qty = self.get_alpaca_position(ticker)
             if alpaca_qty <= 0:
                 logger.warning(
@@ -108,7 +148,7 @@ class AlpacaBroker:
                     f"Alpaca holds {alpaca_qty} shares. Cannot close position not held."
                 )
                 await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
-                return
+                return {"status": "SKIPPED_NO_POSITION", "order_id": None}
             elif quantity > alpaca_qty:
                 logger.warning(
                     f"[Alpaca] CAPPING SELL for {ticker}: "
@@ -118,7 +158,7 @@ class AlpacaBroker:
                 quantity = int(alpaca_qty)
 
         # 2. COVER (closing short): only cover shares Alpaca is physically short.
-        elif sig == "COVER":
+        elif guard_sells and sig == "COVER":
             alpaca_qty = self.get_alpaca_position(ticker)
             if alpaca_qty >= 0:
                 logger.warning(
@@ -126,7 +166,7 @@ class AlpacaBroker:
                     f"Alpaca holds {alpaca_qty} shares. Cannot cover without short position."
                 )
                 await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
-                return
+                return {"status": "SKIPPED_NO_POSITION", "order_id": None}
             short_shares = int(abs(alpaca_qty))
             if quantity > short_shares:
                 logger.warning(
@@ -148,42 +188,51 @@ class AlpacaBroker:
         try:
             order = self._client.submit_order(order_request)
             order_id_str = str(order.id) if order.id else None
-            await self._update_trade(trade_id, order_id_str, "SUBMITTED")
+            persisted = bool(await self._update_trade(trade_id, order_id_str, "SUBMITTED"))
             logger.info(
                 f"[Alpaca] Submitted {signal} {quantity} {ticker} @ ${limit_price:.2f} "
                 f"(OrderID: {order_id_str}, ClientOrderID: {client_order_id})"
             )
+            return {"status": "SUBMITTED", "order_id": order_id_str, "persisted": persisted}
         except Exception:
             logger.exception(f"[Alpaca] Failed to submit order for {ticker}")
-            await self._update_trade(trade_id, None, "ERROR")
+            persisted = bool(await self._update_trade(trade_id, None, "ERROR"))
+            return {"status": "ERROR", "order_id": None, "persisted": persisted}
 
-    async def _update_trade(self, trade_id: UUID, order_id: str | None, status: str) -> None:
-        """Update the trades row with Alpaca metadata."""
+    async def _update_trade(self, trade_id: UUID | str, order_id: str | None, status: str) -> bool:
+        """Update the trades row with Alpaca metadata. Returns True when persisted."""
         try:
-            supabase = get_supabase_client()
+            supabase = self._sb or get_supabase_client()
             payload: dict = {
                 "alpaca_status": status,
-                "alpaca_submitted_at": "now()",
+                "alpaca_submitted_at": datetime.now(UTC).isoformat(),
             }
             if order_id:
                 payload["alpaca_order_id"] = str(order_id)
 
             supabase.table("trades").update(payload).eq("id", str(trade_id)).execute()
+            return True
         except Exception as exc:
             logger.error(f"[Alpaca] Failed to update trade {trade_id} status: {exc}")
+            return False
 
     async def submit_market_order(
         self,
-        trade_id: UUID,
+        trade_id: UUID | str,
         ticker: str,
         quantity: int,
         signal: str,
         agent_id: str,
         time_in_force: TimeInForce = TimeInForce.DAY,
-    ) -> None:
-        """Fire-and-forget market order submission to Alpaca (supports DAY and OPG)."""
+        guard_sells: bool = True,
+    ) -> dict[str, Any]:
+        """Fire-and-forget market order submission to Alpaca (supports DAY and OPG).
+
+        Returns the outcome so the caller can record it against the ledger trade:
+        ``{"status": SUBMITTED|ERROR|SKIPPED_NO_POSITION|DISABLED, "order_id": str|None}``.
+        """
         if not self._client:
-            return
+            return {"status": "DISABLED", "order_id": None}
 
         sig = signal.upper()
         if sig in ("BUY", "LONG", "COVER"):
@@ -195,7 +244,7 @@ class AlpacaBroker:
 
         client_order_id = f"{agent_id}__{ticker}__{signal}__{str(trade_id)}"
 
-        if sig == "SELL":
+        if guard_sells and sig == "SELL":
             alpaca_qty = self.get_alpaca_position(ticker)
             if alpaca_qty <= 0:
                 logger.warning(
@@ -203,7 +252,7 @@ class AlpacaBroker:
                     f"Alpaca holds {alpaca_qty} shares. Cannot close position not held."
                 )
                 await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
-                return
+                return {"status": "SKIPPED_NO_POSITION", "order_id": None}
             elif quantity > alpaca_qty:
                 logger.warning(
                     f"[Alpaca] CAPPING SELL for {ticker}: "
@@ -211,7 +260,7 @@ class AlpacaBroker:
                     f"Submitting {alpaca_qty} instead."
                 )
                 quantity = int(alpaca_qty)
-        elif sig == "COVER":
+        elif guard_sells and sig == "COVER":
             alpaca_qty = self.get_alpaca_position(ticker)
             if alpaca_qty >= 0:
                 logger.warning(
@@ -219,7 +268,7 @@ class AlpacaBroker:
                     f"Alpaca holds {alpaca_qty} shares. Cannot cover without short position."
                 )
                 await self._update_trade(trade_id, None, "SKIPPED_NO_POSITION")
-                return
+                return {"status": "SKIPPED_NO_POSITION", "order_id": None}
             short_shares = int(abs(alpaca_qty))
             if quantity > short_shares:
                 logger.warning(
@@ -240,14 +289,16 @@ class AlpacaBroker:
         try:
             order = self._client.submit_order(order_request)
             order_id_str = str(order.id) if order.id else None
-            await self._update_trade(trade_id, order_id_str, "SUBMITTED")
+            persisted = bool(await self._update_trade(trade_id, order_id_str, "SUBMITTED"))
             logger.info(
                 f"[Alpaca] Submitted market order {signal} {quantity} {ticker} ({time_in_force.value}) "
                 f"(OrderID: {order_id_str}, ClientOrderID: {client_order_id})"
             )
+            return {"status": "SUBMITTED", "order_id": order_id_str, "persisted": persisted}
         except Exception:
             logger.exception(f"[Alpaca] Failed to submit market order for {ticker}")
-            await self._update_trade(trade_id, None, "ERROR")
+            persisted = bool(await self._update_trade(trade_id, None, "ERROR"))
+            return {"status": "ERROR", "order_id": None, "persisted": persisted}
 
     async def cancel_open_orders_for_agent(self, agent_id: str, ticker: str | None = None) -> int:
         """Cancel open Alpaca orders belonging to a specific agent."""

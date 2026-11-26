@@ -146,8 +146,10 @@ async def run_tape_poller_loop(
             elif not broadcaster.latest_bars and sb_client:
                 # Outside market hours, ensure initial snapshot is seeded
                 await seed_broadcaster_from_db(sb_client, broadcaster)
-        except Exception:
+            broadcaster.record_loop_ok("tape", tape_interval_seconds)
+        except Exception as exc:
             logger.exception("Error in tape poller loop")
+            broadcaster.record_loop_error("tape", type(exc).__name__, tape_interval_seconds)
         await asyncio.sleep(float(tape_interval_seconds))
 
 
@@ -173,6 +175,8 @@ async def _run_agent_loop(
                     logger.info(
                         f"Regular market closed. Sleeping {sleep_dur:.0f}s (next open in {secs_to_open / 3600:.1f}h)"
                     )
+                    if broadcaster:
+                        broadcaster.record_loop_ok("agent", sleep_dur)
                     await asyncio.sleep(sleep_dur)
                     continue
 
@@ -215,8 +219,11 @@ async def _run_agent_loop(
                         "portfolio": turn_result.get("portfolio"),
                     }
                     broadcaster.publish_agent_turn(agent_turn_payload)
-            except Exception:
+                    broadcaster.record_loop_ok("agent", interval_seconds)
+            except Exception as exc:
                 logger.exception("Unexpected error in daemon turn loop")
+                if broadcaster:
+                    broadcaster.record_loop_error("agent", type(exc).__name__, interval_seconds)
 
             await asyncio.sleep(float(interval_seconds))
 
@@ -226,6 +233,7 @@ async def run_qa_worker_loop(
     strata_url: str = DEFAULT_STRATA_URL,
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     interval_seconds: int = 300,
+    broadcaster: TapeBroadcaster | None = None,
 ) -> None:
     """Run the 5-minute background worker answering audience questions with conversational explainer."""
     logger.info(f"Starting Conversational Desk QA worker loop (interval={interval_seconds}s)")
@@ -243,8 +251,12 @@ async def run_qa_worker_loop(
                         logger.info(
                             f"Answered audience inquiry from @{result.get('author')}: {result.get('message', '')[:60]}"
                         )
-            except Exception:
+                if broadcaster:
+                    broadcaster.record_loop_ok("qa", interval_seconds)
+            except Exception as exc:
                 logger.exception("Unexpected error in QA worker loop")
+                if broadcaster:
+                    broadcaster.record_loop_error("qa", type(exc).__name__, interval_seconds)
 
             await asyncio.sleep(float(interval_seconds))
 
@@ -332,6 +344,7 @@ async def run_news_synthesis_worker_loop(
     strata_url: str = DEFAULT_STRATA_URL,
     cheap_proxy_url: str = DEFAULT_CHEAP_PROXY_URL,
     interval_seconds: int = 1800,
+    broadcaster: TapeBroadcaster | None = None,
 ) -> None:
     """Run the 30-minute background worker synthesizing recent breaking news using auto-strata."""
     logger.info(f"Starting 30-minute AI News Synthesis worker loop (interval={interval_seconds}s)")
@@ -347,8 +360,12 @@ async def run_news_synthesis_worker_loop(
                     )
                     if summary:
                         logger.info(f"AI News Synthesis complete: {summary[:80]}...")
-            except Exception:
+                if broadcaster:
+                    broadcaster.record_loop_ok("news", interval_seconds)
+            except Exception as exc:
                 logger.exception("Unexpected error in news synthesis worker loop")
+                if broadcaster:
+                    broadcaster.record_loop_error("news", type(exc).__name__, interval_seconds)
 
             await asyncio.sleep(float(interval_seconds))
 
@@ -382,7 +399,11 @@ def _is_hooks_window(now_dt: datetime | None = None) -> bool:
     return open_at <= now_dt <= close_at + timedelta(minutes=5)
 
 
-async def run_systematic_hooks_loop(interval_seconds: int = 300, strategy_lock: asyncio.Lock | None = None) -> None:
+async def run_systematic_hooks_loop(
+    interval_seconds: int = 300,
+    strategy_lock: asyncio.Lock | None = None,
+    broadcaster: TapeBroadcaster | None = None,
+) -> None:
     """Run every time-gated systematic strategy hook while the market is open.
 
     This daemon is the single owner of deterministic strategy execution. The price
@@ -399,8 +420,12 @@ async def run_systematic_hooks_loop(interval_seconds: int = 300, strategy_lock: 
             if await asyncio.to_thread(_is_hooks_window, now_et):
                 async with lock:
                     await run_systematic_strategy_hooks(now_et)
-        except Exception:
+            if broadcaster:
+                broadcaster.record_loop_ok("hooks", interval_seconds)
+        except Exception as exc:
             logger.exception("Systematic strategy hooks loop failed")
+            if broadcaster:
+                broadcaster.record_loop_error("hooks", type(exc).__name__, interval_seconds)
         await asyncio.sleep(float(interval_seconds))
 
 
@@ -408,6 +433,7 @@ async def run_market_data_loop(
     interval_seconds: int = 900,
     history_interval_seconds: int = 1800,
     strategy_lock: asyncio.Lock | None = None,
+    broadcaster: TapeBroadcaster | None = None,
 ) -> None:
     """Refresh portfolio marks on every tick and benchmark/macro history less often.
 
@@ -436,8 +462,12 @@ async def run_market_data_loop(
                 if last_history_at is None or (time.monotonic() - last_history_at) >= history_interval_seconds:
                     await fetch_benchmark_history(mdm)
                     last_history_at = time.monotonic()
-        except Exception:
+            if broadcaster:
+                broadcaster.record_loop_ok("marks", interval_seconds)
+        except Exception as exc:
             logger.exception("Market data loop failed")
+            if broadcaster:
+                broadcaster.record_loop_error("marks", type(exc).__name__, interval_seconds)
         await asyncio.sleep(float(interval_seconds))
 
 
@@ -501,6 +531,7 @@ async def run_loop(
                 strata_url=strata_url,
                 cheap_proxy_url=cheap_proxy_url,
                 interval_seconds=interval_seconds,
+                broadcaster=broadcaster,
             )
         )
         news_synth_task = asyncio.create_task(
@@ -509,6 +540,7 @@ async def run_loop(
                 strata_url=strata_url,
                 cheap_proxy_url=cheap_proxy_url,
                 interval_seconds=news_interval_seconds,
+                broadcaster=broadcaster,
             )
         )
         strategy_lock = asyncio.Lock()
@@ -516,6 +548,7 @@ async def run_loop(
             run_systematic_hooks_loop(
                 interval_seconds=interval_seconds,
                 strategy_lock=strategy_lock,
+                broadcaster=broadcaster,
             )
         )
         market_data_task = asyncio.create_task(
@@ -523,6 +556,7 @@ async def run_loop(
                 interval_seconds=marks_interval_seconds,
                 history_interval_seconds=history_interval_seconds,
                 strategy_lock=strategy_lock,
+                broadcaster=broadcaster,
             )
         )
         await asyncio.gather(

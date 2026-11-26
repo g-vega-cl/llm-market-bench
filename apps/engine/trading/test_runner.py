@@ -445,3 +445,28 @@ async def test_run_news_synthesis_worker_loop_triggers_synthesizer():
         )
 
         assert mock_synth.called
+
+
+@pytest.mark.asyncio
+async def test_qa_loop_records_error_in_broadcaster_health():
+    from trading.runner import run_qa_worker_loop
+    from trading.tape_stream import TapeBroadcaster
+
+    broadcaster = TapeBroadcaster()
+
+    async def mock_sleep(_dur):
+        raise asyncio.CancelledError()
+
+    with (
+        patch("trading.runner.process_pending_queue_item", side_effect=RuntimeError("boom")),
+        patch("asyncio.sleep", side_effect=mock_sleep),
+        pytest.raises(asyncio.CancelledError),
+    ):
+        await run_qa_worker_loop(
+            sb_client=MagicMock(),
+            interval_seconds=300,
+            broadcaster=broadcaster,
+        )
+
+    assert broadcaster.loop_health["qa"]["consecutive_failures"] == 1
+    assert broadcaster.loop_health["qa"]["last_error_type"] == "RuntimeError"

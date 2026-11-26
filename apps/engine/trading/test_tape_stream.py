@@ -244,3 +244,33 @@ async def test_tape_http_server_sse_stream_snapshot_and_delta(sample_bars):
     finally:
         server.close()
         await server.wait_closed()
+
+
+@pytest.mark.asyncio
+async def test_tape_health_reports_loop_status():
+    import json
+
+    broadcaster = TapeBroadcaster()
+    broadcaster.record_loop_ok("agent", 300)
+    broadcaster.record_loop_error("marks", "TimeoutError", 900)
+    server, port = await start_tape_server(broadcaster, host="127.0.0.1", port=0)
+
+    try:
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(b"GET /api/tape/health?check=1 HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        await writer.drain()
+
+        raw = await reader.read(2048)
+        body = raw.decode().split("\r\n\r\n", 1)[1]
+        payload = json.loads(body)
+        assert payload["status"] == "degraded"
+        assert payload["loops"]["agent"]["consecutive_failures"] == 0
+        assert payload["loops"]["agent"]["last_ok_at"]
+        assert payload["loops"]["marks"]["consecutive_failures"] == 1
+        assert payload["loops"]["marks"]["last_error_type"] == "TimeoutError"
+        assert "last_error" not in payload["loops"]["marks"]
+        writer.close()
+        await writer.wait_closed()
+    finally:
+        server.close()
+        await server.wait_closed()

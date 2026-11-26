@@ -8,7 +8,6 @@ tape snapshot without running heavy LLM inference loops.
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import json
 from datetime import UTC, datetime
 from typing import Any
@@ -26,6 +25,50 @@ class TapeBroadcaster:
         self.latest_agent_state: dict[str, Any] | None = None
         self.last_updated: str = ""
         self._subscribers: set[asyncio.Queue[str]] = set()
+        self.loop_health: dict[str, dict[str, Any]] = {}
+
+    def record_loop_ok(self, lane: str, interval_seconds: float | None = None) -> None:
+        """Record a successful iteration timestamp for a background loop."""
+        prev = self.loop_health.get(lane) or {}
+        entry: dict[str, Any] = {
+            "last_ok_at": datetime.now(UTC).isoformat(),
+            "last_error_at": prev.get("last_error_at"),
+            "consecutive_failures": 0,
+        }
+        if interval_seconds is not None:
+            entry["interval_seconds"] = float(interval_seconds)
+        elif "interval_seconds" in prev:
+            entry["interval_seconds"] = prev["interval_seconds"]
+        self.loop_health[lane] = entry
+
+    def record_loop_error(self, lane: str, error_type: str, interval_seconds: float | None = None) -> None:
+        """Record a failed iteration with sanitized error class (never raw exception text)."""
+        prev = self.loop_health.get(lane) or {}
+        entry: dict[str, Any] = {
+            "last_ok_at": prev.get("last_ok_at"),
+            "last_error_at": datetime.now(UTC).isoformat(),
+            "consecutive_failures": int(prev.get("consecutive_failures") or 0) + 1,
+            "last_error_type": str(error_type)[:64],
+        }
+        if interval_seconds is not None:
+            entry["interval_seconds"] = float(interval_seconds)
+        elif "interval_seconds" in prev:
+            entry["interval_seconds"] = prev["interval_seconds"]
+        self.loop_health[lane] = entry
+
+    def is_loop_stale(self, entry: dict[str, Any], now_utc: datetime | None = None) -> bool:
+        """Return True when a loop with a registered interval exceeded 2x cadence + 60s."""
+        last_ok = entry.get("last_ok_at")
+        interval = entry.get("interval_seconds")
+        if not last_ok or not interval:
+            return False
+        try:
+            last_dt = datetime.fromisoformat(str(last_ok).replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        now_dt = now_utc or datetime.now(UTC)
+        age = (now_dt - last_dt).total_seconds()
+        return age > max(float(interval) * 2.0, float(interval) + 60.0)
 
     @property
     def client_count(self) -> int:
@@ -247,15 +290,23 @@ class TapeHttpServer:
         finally:
             self.broadcaster.unsubscribe(queue)
             writer.close()
-            with contextlib.suppress(Exception):
+            try:
                 await writer.wait_closed()
+            except Exception:
+                logger.debug("Error closing SSE stream writer", exc_info=True)
 
     async def _handle_health(self, writer: asyncio.StreamWriter) -> None:
+        now_utc = datetime.now(UTC)
+        has_failures = any(
+            int(entry.get("consecutive_failures") or 0) > 0 or self.broadcaster.is_loop_stale(entry, now_utc)
+            for entry in self.broadcaster.loop_health.values()
+        )
         body = json.dumps(
             {
-                "status": "ok",
+                "status": "degraded" if has_failures else "ok",
                 "clients": self.broadcaster.client_count,
                 "bars_count": len(self.broadcaster.latest_bars),
+                "loops": self.broadcaster.loop_health,
             }
         ).encode("utf-8")
         resp = (
@@ -309,11 +360,12 @@ class TapeHttpServer:
                 await writer.wait_closed()
                 return
 
-            if path == "/api/tape/health":
+            route = path.split("?", 1)[0]
+            if route == "/api/tape/health":
                 await self._handle_health(writer)
                 return
 
-            if path.startswith("/api/tape/stream"):
+            if route.startswith("/api/tape/stream"):
                 await self._handle_stream(reader, writer)
                 return
 

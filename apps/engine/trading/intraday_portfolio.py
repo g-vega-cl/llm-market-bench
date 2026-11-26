@@ -8,6 +8,7 @@ Manages the persistent paper portfolio for the live intraday homepage trader:
 - Dual execution: records into Supabase ledger and mirrors to Alpaca paper account.
 """
 
+import asyncio
 from datetime import UTC, date, datetime
 from typing import Any
 
@@ -216,7 +217,7 @@ async def _mirror_to_alpaca(
     if not trade_id:
         return None, None
 
-    position_note = _broker_position_note(broker, ticker, quantity, signal)
+    position_note = await asyncio.to_thread(_broker_position_note, broker, ticker, quantity, signal)
 
     if broker is None:
         _write_trade_columns(sb_client, trade_id, {"alpaca_status": "DISABLED"})
@@ -255,7 +256,7 @@ async def _mirror_to_alpaca(
         if not _write_trade_columns(sb_client, trade_id, payload):
             status = "ERROR"
 
-    if position_note:
+    if position_note and status not in ("ERROR", "REJECTED"):
         _write_trade_columns(sb_client, trade_id, {"alpaca_note": position_note})
 
     return (str(order_id) if order_id else None), status
@@ -447,7 +448,7 @@ async def execute_intraday_portfolio_turn(
             "total_equity": total_equity,
             "buying_power": cash_balance,
             "excess_liquidity": cash_balance,
-            "last_updated_at": "now()",
+            "last_updated_at": datetime.now(UTC).isoformat(),
         }
     ).eq("id", portfolio_id).execute()
 

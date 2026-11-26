@@ -156,19 +156,23 @@ class TestSubmitLimitOrder:
         assert request.client_order_id == f"claude-haiku-4-5__TSLA__SELL__{trade_id}"
 
     async def test_no_op_when_client_none(self):
-        """submit_limit_order is a no-op if _client is None (disabled/missing keys)."""
+        """submit_limit_order stamps DISABLED without hitting Alpaca when _client is None."""
         broker = AlpacaBroker()
         broker._client = None
+        trade_id = uuid4()
 
-        # Should not raise
-        await broker.submit_limit_order(
-            trade_id=uuid4(),
-            ticker="AAPL",
-            quantity=1,
-            signal="BUY",
-            limit_price=100.0,
-            agent_id="test",
-        )
+        with patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update:
+            result = await broker.submit_limit_order(
+                trade_id=trade_id,
+                ticker="AAPL",
+                quantity=1,
+                signal="BUY",
+                limit_price=100.0,
+                agent_id="test",
+            )
+
+        assert result == {"status": "DISABLED", "order_id": None}
+        mock_update.assert_awaited_once_with(trade_id, None, "DISABLED")
 
     async def test_failure_does_not_propagate(self, mock_trading_client):
         """Alpaca API exceptions are caught and logged; trade flow is NOT interrupted."""
@@ -610,6 +614,21 @@ class TestUpdateTrade:
             update_call = mock_table.update.call_args[0][0]
             assert update_call["alpaca_status"] == "ERROR"
             assert "alpaca_order_id" not in update_call
+            assert "alpaca_submitted_at" in update_call
+
+    async def test_update_trade_disabled_omits_submitted_at(self, mock_supabase_table):
+        """DISABLED state omits alpaca_submitted_at because no order was sent to Alpaca."""
+        mock_table, mock_eq, mock_execute = mock_supabase_table
+
+        with patch("execution.alpaca_broker.get_supabase_client") as mock_get_client:
+            mock_get_client.return_value.table.return_value = mock_table
+
+            broker = AlpacaBroker()
+            trade_id = uuid4()
+            await broker._update_trade(trade_id, None, "DISABLED")
+
+            update_call = mock_table.update.call_args[0][0]
+            assert update_call == {"alpaca_status": "DISABLED"}
 
     async def test_update_trade_failure_logged(self, mock_supabase_table):
         """Supabase errors during update are caught and logged, not propagated."""
@@ -693,19 +712,22 @@ class TestMarketOrderReporting:
         assert result == {"status": "ERROR", "order_id": None, "persisted": True}
 
     async def test_returns_disabled_when_client_missing(self):
-        """No client (missing keys / disabled) reports DISABLED, never a fake success."""
+        """No client (missing keys / disabled) reports and persists DISABLED, never a fake success."""
         broker = AlpacaBroker()
         broker._client = None
+        trade_id = uuid4()
 
-        result = await broker.submit_market_order(
-            trade_id=uuid4(),
-            ticker="SPY",
-            quantity=2,
-            signal="BUY",
-            agent_id="live-spy-trader",
-        )
+        with patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update:
+            result = await broker.submit_market_order(
+                trade_id=trade_id,
+                ticker="SPY",
+                quantity=2,
+                signal="BUY",
+                agent_id="live-spy-trader",
+            )
 
         assert result == {"status": "DISABLED", "order_id": None}
+        mock_update.assert_awaited_once_with(trade_id, None, "DISABLED")
 
 
 # ---------------------------------------------------------------------------
@@ -800,3 +822,93 @@ class TestTryGetAlpacaPosition:
         client = MagicMock()
         client.get_open_position.side_effect = TimeoutError("hung")
         assert self._broker(client).try_get_alpaca_position("SPY") is None
+
+
+@pytest.mark.asyncio
+class TestApiErrorClassification:
+    """4xx rejections stamp REJECTED + alpaca_note; 5xx/timeouts stay ERROR + alpaca_note."""
+
+    @staticmethod
+    def _api_error(status_code: int, message: str):
+        from alpaca.common.exceptions import APIError
+
+        mock_response = MagicMock()
+        mock_response.status_code = status_code
+        mock_http_error = MagicMock()
+        mock_http_error.response = mock_response
+        return APIError(error={"message": message}, http_error=mock_http_error)
+
+    async def test_4xx_api_error_stamps_rejected_with_note(self, mock_trading_client):
+        mock_trading_client.submit_order.side_effect = self._api_error(403, "insufficient buying power")
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(broker, "_update_trade", new_callable=AsyncMock, return_value=True) as mock_update:
+            result = await broker.submit_market_order(
+                trade_id=uuid4(),
+                ticker="SPY",
+                quantity=2,
+                signal="BUY",
+                agent_id="live-spy-trader",
+            )
+
+        assert result == {"status": "REJECTED", "order_id": None, "persisted": True}
+        assert mock_update.call_args[0][2] == "REJECTED"
+        assert "HTTP 403" in mock_update.call_args.kwargs["note"]
+
+    async def test_5xx_api_error_stamps_error_with_note(self, mock_trading_client):
+        mock_trading_client.submit_order.side_effect = self._api_error(503, "upstream timeout")
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(broker, "_update_trade", new_callable=AsyncMock, return_value=True) as mock_update:
+            result = await broker.submit_limit_order(
+                trade_id=uuid4(),
+                ticker="AAPL",
+                quantity=1,
+                signal="BUY",
+                limit_price=150.0,
+                agent_id="gpt-6-luna",
+            )
+
+        assert result == {"status": "ERROR", "order_id": None, "persisted": True}
+        assert mock_update.call_args[0][2] == "ERROR"
+        assert "HTTP 503" in mock_update.call_args.kwargs["note"]
+
+    async def test_429_rate_limit_stays_error_for_recovery(self, mock_trading_client):
+        mock_trading_client.submit_order.side_effect = self._api_error(429, "too many requests")
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with patch.object(broker, "_update_trade", new_callable=AsyncMock, return_value=True) as mock_update:
+            result = await broker.submit_market_order(
+                trade_id=uuid4(),
+                ticker="SPY",
+                quantity=2,
+                signal="BUY",
+                agent_id="live-spy-trader",
+            )
+
+        assert result == {"status": "ERROR", "order_id": None, "persisted": True}
+        assert mock_update.call_args[0][2] == "ERROR"
+        assert "HTTP 429" in mock_update.call_args.kwargs["note"]
+
+    async def test_fractional_sub_share_sell_skips_instead_of_submitting_zero(self, mock_trading_client):
+        broker = AlpacaBroker()
+        broker._client = mock_trading_client
+
+        with (
+            patch.object(broker, "get_alpaca_position", return_value=0.5),
+            patch.object(broker, "_update_trade", new_callable=AsyncMock) as mock_update,
+        ):
+            result = await broker.submit_market_order(
+                trade_id=uuid4(),
+                ticker="AAPL",
+                quantity=1,
+                signal="SELL",
+                agent_id="gpt-6-luna",
+            )
+
+        mock_trading_client.submit_order.assert_not_called()
+        assert result == {"status": "SKIPPED_NO_POSITION", "order_id": None}
+        mock_update.assert_awaited_once()

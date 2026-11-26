@@ -51,7 +51,6 @@ It would earn its place only if two things become true: an outside party asks to
 ## Known debt
 
 - **Ledger writes are not atomic.** `execute_intraday_portfolio_turn` inserts the trade, upserts the position, updates the portfolio and upserts the performance snapshot as four separate calls. A crash between them leaves cash and positions inconsistent, and a re-run creates a new trade id — hence a new `client_order_id` and a genuinely duplicated broker order. `execute_portfolio_trade` (RPC, `supabase/migrations/20261119050000_atomic_execute_portfolio_trade_rpc.sql`) exists for exactly this and is the intended fix; adopting it is a separate change.
-- **`submit_limit_order` / `submit_market_order` are ~90% duplicated** (~14 decision points each). Any policy change — like `guard_sells` — currently has to be applied twice.
 
 ## Related
 

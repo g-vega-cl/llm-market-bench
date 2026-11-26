@@ -43,7 +43,9 @@ Each targeted portfolio row is reset to the Cash-Only default state:
 | `maintenance_margin` | `0.0` |
 | `sma` | `10000.00` |
 | `realized` | `10000.00` |
-| `last_updated_at` | `now()` |
+| `last_updated_at` | current UTC ISO timestamp (`datetime.now(UTC).isoformat()`) |
+
+`last_updated_at` is written as a real ISO-8601 timestamp from Python rather than the SQL literal `"now()"`, so the value is a concrete instant the client actually sends rather than a string the database would have to interpret.
 
 See [[concepts/execution]] for the Cash-Only account model and [[concepts/portfolio-metrics-initialization]] for how these metrics are derived on load.
 

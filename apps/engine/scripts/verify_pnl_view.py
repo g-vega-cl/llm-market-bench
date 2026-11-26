@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+from datetime import UTC, datetime
 from uuid import uuid4
 
 # Add path to load components
@@ -33,7 +34,7 @@ async def verify_pnl():
         # Create dummy market data
         # Price: 110 (10% gain, $100 P/L)
         supabase.table("market_data_cache").upsert(
-            {"ticker": ticker, "price": 110.00, "market_cap": 10000000000, "fetched_at": "now()"}
+            {"ticker": ticker, "price": 110.00, "market_cap": 10000000000, "fetched_at": datetime.now(UTC).isoformat()}
         ).execute()
 
         # 2. Query the View

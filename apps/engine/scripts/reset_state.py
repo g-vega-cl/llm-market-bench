@@ -2,6 +2,7 @@ import argparse
 import asyncio
 import logging
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -75,7 +76,7 @@ async def reset_database(llm_only: bool = True):
                 "maintenance_margin": 0.0,
                 "sma": 10000.00,
                 "realized": 10000.00,
-                "last_updated_at": "now()",
+                "last_updated_at": datetime.now(UTC).isoformat(),
             }
         ).eq("id", p["id"]).execute()
         logger.info(f"Reset portfolio for {p['owner_id']}")

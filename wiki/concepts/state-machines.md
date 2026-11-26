@@ -211,9 +211,9 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 
 ### 2.9 Investing Style Diagnostic Session (`QuizSession`)
 
-- **Source Files**: [`apps/web/src/features/personality/PersonalityQuizPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/personality/PersonalityQuizPage.tsx), [`apps/web/src/routes/personality.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/personality.tsx)
+- **Source Files**: [`apps/web/src/features/personality/quiz-session-helpers.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/personality/quiz-session-helpers.ts), [`apps/web/src/features/personality/PersonalityQuizPage.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/features/personality/PersonalityQuizPage.tsx), [`apps/web/src/routes/personality.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/personality.tsx)
 - **Entity Page**: [[entities/personality-quiz]]
-- **States**: `answering` (`stepIndex`, `answers`) | `result` (`mode: 'quiz_match'`, `quizAnswers`) | `result` (`mode: 'inspect'`, `archetypeId`, `quizAnswers`)
+- **States**: `answering` (`stepIndex`, `answers`, `checkpoint: number | null`) | `result` (`mode: 'quiz_match'`, `quizAnswers`) | `result` (`mode: 'inspect'`, `archetypeId`, `quizAnswers`)
 - **Invariants**:
   - Illegal `{ phase: 'result', quizAnswers: null, inspectedArchetypeId: null }` states are unrepresentable; `mode: 'quiz_match'` always holds non-null `quizAnswers` and `mode: 'inspect'` always holds a concrete `archetypeId`.
   - Selecting your own matched archetype in `archetype-switcher` transitions back to `mode: 'quiz_match'` rather than showing `buildSharedArchetypeResult`'s reference `98%` fit.

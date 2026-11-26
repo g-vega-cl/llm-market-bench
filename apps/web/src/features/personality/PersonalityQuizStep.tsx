@@ -1,6 +1,19 @@
 import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import type { QuizQuestion } from './personality-questions';
 
+export const QUIZ_CARD_BASE_CLASS =
+    'col-start-1 row-start-1 flex w-full max-w-2xl min-w-0 flex-col gap-4 rounded-none p-6';
+export const QUIZ_HEADER_CLASS =
+    'flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b-2 border-voxel-bevel-hi pb-3';
+export const QUIZ_CONTEXT_ROW_CLASS =
+    'flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs font-normal text-voxel-muted';
+export const QUIZ_PROMPT_CLASS =
+    'font-display min-h-10 min-w-0 break-words text-sm font-bold leading-snug text-voxel-ink';
+export const QUIZ_OPTION_BUTTON_CLASS =
+    'h-auto w-full min-w-0 justify-start px-4 py-3 text-left whitespace-normal';
+export const QUIZ_FOOTER_CLASS =
+    'mt-auto flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t-2 border-voxel-bevel-hi pt-3';
+
 export interface PersonalityQuizStepProps {
     question: QuizQuestion;
     stepIndex: number;
@@ -11,13 +24,46 @@ export interface PersonalityQuizStepProps {
     totalActs: number;
     chosenOptionId?: string;
     liveHint: string;
-    /** Act 4 carries the optional free-text field. */
-    showSelfDescription: boolean;
-    selfDescription: string;
-    onSelfDescriptionChange: (value: string) => void;
     onSelectOption: (questionId: string, optionId: string) => void;
     onPrevious: () => void;
     onBrowseAll: () => void;
+}
+
+/**
+ * Recessed Act-4 free-text trough rendered below the active quiz card so the
+ * optional words never displace question options or pad Acts 1–3.
+ */
+export function QuizSelfDescriptionTrough({
+    selfDescription,
+    onChange,
+}: {
+    selfDescription: string;
+    onChange: (value: string) => void;
+}) {
+    return (
+        <div className="scene-scrim voxel-trough flex w-full max-w-2xl min-w-0 flex-col gap-2 rounded-none p-4">
+            <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-1">
+                <label
+                    htmlFor="personality-self-description"
+                    className="min-w-0 break-words text-xs font-normal text-voxel-muted"
+                >
+                    In your own words — anything you want the bot to be like (optional):
+                </label>
+                <span className="min-w-0 whitespace-nowrap text-xs font-normal text-voxel-muted">
+                    {`${String(selfDescription.length)} / 180`}
+                </span>
+            </div>
+            <textarea
+                id="personality-self-description"
+                data-testid="quiz-self-description"
+                rows={2}
+                maxLength={180}
+                value={selfDescription}
+                onChange={(event) => onChange(event.target.value)}
+                className="h-14 w-full min-w-0 resize-none border-2 border-voxel-bevel-lo bg-voxel-surface p-2 text-xs font-normal text-voxel-ink outline-none focus:border-accent"
+            />
+        </div>
+    );
 }
 
 /**
@@ -34,9 +80,6 @@ export function PersonalityQuizStep({
     totalActs,
     chosenOptionId,
     liveHint,
-    showSelfDescription,
-    selfDescription,
-    onSelfDescriptionChange,
     onSelectOption,
     onPrevious,
     onBrowseAll,
@@ -46,9 +89,9 @@ export function PersonalityQuizStep({
     return (
         <div
             data-testid="personality-quiz-card"
-            className="scene-scrim voxel-card flex w-full max-w-2xl flex-col gap-4 rounded-none p-6"
+            className={`scene-scrim voxel-card h-full ${QUIZ_CARD_BASE_CLASS}`}
         >
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b-2 border-voxel-bevel-hi pb-3">
+            <div className={QUIZ_HEADER_CLASS}>
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                     <Badge colorScheme="accent" variant="soft" size="sm">
                         {`Act ${actIndex + 1} of ${totalActs}`}
@@ -59,7 +102,7 @@ export function PersonalityQuizStep({
                 </div>
                 <span
                     data-testid="quiz-live-world-hint"
-                    className="min-w-0 break-words text-xs font-normal text-voxel-muted"
+                    className="min-w-0 whitespace-nowrap text-xs font-normal text-voxel-muted"
                 >
                     {liveHint || 'Scoring 4 trading axes'}
                 </span>
@@ -79,7 +122,7 @@ export function PersonalityQuizStep({
                 />
             </div>
 
-            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-xs font-normal text-voxel-muted">
+            <div className={QUIZ_CONTEXT_ROW_CLASS}>
                 <div
                     data-testid="quiz-act-track"
                     aria-hidden="true"
@@ -98,7 +141,7 @@ export function PersonalityQuizStep({
                         />
                     ))}
                 </div>
-                <span className="flex min-w-0 flex-wrap items-baseline justify-end gap-2">
+                <span className="flex min-w-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-1">
                     <span className="min-w-0 break-words">{question.context}</span>
                     <span className="whitespace-nowrap">
                         {`Question ${String(stepIndex + 1).padStart(2, '0')} / ${totalQuestions}`}
@@ -106,32 +149,7 @@ export function PersonalityQuizStep({
                 </span>
             </div>
 
-            <h2 className="text-sm font-bold leading-snug text-voxel-ink">{question.prompt}</h2>
-
-            {showSelfDescription ? (
-                <div className="voxel-trough flex min-w-0 flex-col gap-2 rounded-none p-3">
-                    <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-2">
-                        <label
-                            htmlFor="personality-self-description"
-                            className="min-w-0 break-words text-xs font-normal text-voxel-muted"
-                        >
-                            In your own words — anything you want the bot to be like (optional):
-                        </label>
-                        <span className="min-w-0 whitespace-nowrap text-xs font-normal text-voxel-muted">
-                            {`${String(selfDescription.length)} / 180`}
-                        </span>
-                    </div>
-                    <textarea
-                        id="personality-self-description"
-                        data-testid="quiz-self-description"
-                        rows={2}
-                        maxLength={180}
-                        value={selfDescription}
-                        onChange={(event) => onSelfDescriptionChange(event.target.value)}
-                        className="w-full min-w-0 resize-none border-2 border-voxel-bevel-lo bg-voxel-surface p-2 text-xs font-normal text-voxel-ink outline-none focus:border-accent"
-                    />
-                </div>
-            ) : null}
+            <h2 className={QUIZ_PROMPT_CLASS}>{question.prompt}</h2>
 
             <div className="grid grid-cols-1 gap-4">
                 {question.options.map((option, optionIdx) => {
@@ -145,9 +163,9 @@ export function PersonalityQuizStep({
                             size="md"
                             data-testid={`quiz-option-${option.id}`}
                             onClick={() => onSelectOption(question.id, option.id)}
-                            className="h-auto w-full justify-start px-4 py-3 text-left whitespace-normal"
+                            className={QUIZ_OPTION_BUTTON_CLASS}
                         >
-                            <span className="flex flex-col items-start gap-2">
+                            <span className="flex min-w-0 flex-col items-start gap-2">
                                 <span className="text-sm font-bold">
                                     {`${String.fromCharCode(65 + optionIdx)}. ${option.label}`}
                                 </span>
@@ -166,7 +184,7 @@ export function PersonalityQuizStep({
                 })}
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t-2 border-voxel-bevel-hi pt-3">
+            <div className={QUIZ_FOOTER_CLASS}>
                 <Button
                     type="button"
                     variant="outline"

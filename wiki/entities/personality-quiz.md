@@ -113,7 +113,7 @@ Two pure helpers derive all starter bot technical details directly from `package
 
 ```ts
 type QuizSession =
-    | { phase: 'answering'; stepIndex: number; answers: Record<string, string> }
+    | { phase: 'answering'; stepIndex: number; answers: Record<string, string>; checkpoint: number | null }
     | { phase: 'result'; mode: 'quiz_match'; quizAnswers: Record<string, string> }
     | { phase: 'result'; mode: 'inspect'; archetypeId: ArchetypeId; quizAnswers: Record<string, string> | null };
 ```
@@ -135,6 +135,8 @@ Selecting the last option calls `scorePersonalityQuiz`, updates the `?archetype=
 
 - `PersonalityQuizPage.tsx` — non-destructive `'quiz_match' | 'inspect'` state machine, router-synced search params, race-guarded clipboard handling, per-act `personality-compass` world composition (`text-sm font-bold` + `text-xs font-normal`, no visible `h1` — an `sr-only` heading carries the page name).
 - `PersonalityQuizStep.tsx` — single-question card (`data-testid="personality-quiz-card"`) with an `Act N of 4` badge, the act title, a four-pip act track (`data-testid="quiz-act-track"`), the `Question NN / 16` counter with its scenario label, `quiz-live-world-hint`, an accessible `role="progressbar"`, four full-width option buttons inheriting `text-voxel-trough` contrast on `bg-accent` selection, `Previous question`, and `Browse all 16 types`.
+- `QuizStepHeightSizer.tsx` — single-card `inert` / `aria-hidden` upper-bound sizer (`data-testid="quiz-height-sizer"`) sharing `PersonalityQuizStep` layout and typography constants so `PersonalityQuizStep` (`h-full` + `mt-auto` footer) and `ActCheckpointPlaque` (`h-full` + summary-anchored footer) keep an invariant height across all 16 questions and section checkpoints with zero CLS and zero viewport breakpoints.
+- `quiz-session-helpers.ts` — `QuizSession` union, localStorage draft helpers, and pure view-model derivation extracted from `PersonalityQuizPage.tsx`.
 - `PersonalityResultPanel.tsx` — the result plaque: 4x4 `TypeCodeGrid` at the top, code/title/summary header, 4-axis readout annotated with each letter, one matched bot card, and the **one-letter-away neighbour** trough (`data-testid="neighbour-type"`) that replaces the old distance-based runner-up.
 - `apps/web/src/components/ui/TypeCodeGrid.tsx` — shared 4x4 code grid (16 cells, row/column headers, `aria-pressed` active cell, in-flow description). Used by the result panel and by `TemplatePickerBar`, so the recipe studio's template picker shows codes instead of sixteen full-name buttons.
 - `personality-data.ts` — scoring (`profileFromAnswers`, `scorePersonalityQuiz`, `lettersForAnswers`), ranking, share-result builder, and the eager archetype-code + recipe-integrity checks; re-exports the whole public surface.
@@ -158,9 +160,9 @@ Each file stays within at most two typography combinations (`text-sm font-bold` 
 
 Three engagement mechanisms sit on top of the 16-question flow:
 
-- **Act checkpoint plaque** (`ActCheckpointPlaque.tsx`) — closing an act (question 4, 8, 12) replaces the question card *in place* with a plaque naming the letter just settled, its pole label, the strength and one filled voxel bar. "Keep going" advances to the next act. It is a sibling card at the same level as the step, never nested inside one, so there is no layout shift and no new page block. Backing out of a plaque returns to the act's last question rather than losing the answer.
-- **Act-4 free text** — an optional 180-character field at the top of Act 4 ("anything you want the bot to be like"). It is never scored, never changes the type, and is appended verbatim to `builderIdeaPrompt` as `In their words: "..."` when the visitor opens `/build`; the result panel echoes it back as **Your words**.
-- **Deferred resume** — answers are written to `localStorage` (`benchify:personality-draft`) after hydration only. On return, a draft with `>= 3` answers offers an in-flow *Resume Act N* trough above the quiz; the trough never renders during SSR, so hydration stays byte-identical.
+- **Act checkpoint plaque** (`ActCheckpointPlaque.tsx`) — closing an act (question 4, 8, 12) replaces the question card *in place* inside the same `grid-cols-1` height frame with a plaque naming the letter just settled, its pole label, the strength, one filled voxel bar, and `Keep going` directly below the summary (visible above the fold on 360px mobile while preserving the full card height). Backing out of a plaque returns to the act's last question rather than losing the answer.
+- **Act-4 free text** — an optional 180-character recessed trough (`QuizSelfDescriptionTrough`) rendered **below** the active Act-4 question card ("anything you want the bot to be like") so Acts 1–3 carry no dead vertical padding. It is never scored, never changes the type, and is appended verbatim to `builderIdeaPrompt` as `In their words: "..."` when the visitor opens `/build`; the result panel echoes it back as **Your words**.
+- **Deferred resume** — answers are written to `localStorage` (`benchify:personality-draft`) after hydration only. On return, a draft with `>= 3` answers offers an in-flow *Resume Act N* trough **below** the active quiz card (per `.agents/rules/design-spec.md` §4b.2), so the trough never renders during SSR and never pushes the primary card down post-hydration.
 
 ## Analytics and share paths
 

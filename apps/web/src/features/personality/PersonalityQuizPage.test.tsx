@@ -77,14 +77,22 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         );
         expect(screen.queryByTestId('garden-backdrop')).toBeNull();
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
-        expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('personality-quiz-card')).getByText(
+                PERSONALITY_QUESTIONS[0].prompt,
+            ),
+        ).toBeInTheDocument();
 
         // Answer Question 1 -> advances to Question 2. No letter is revealed yet:
         // the first act is not complete, so the hint falls back to its default.
         fireEvent.click(
             screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[0].options[0].id}`),
         );
-        expect(screen.getByText(PERSONALITY_QUESTIONS[1].prompt)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('personality-quiz-card')).getByText(
+                PERSONALITY_QUESTIONS[1].prompt,
+            ),
+        ).toBeInTheDocument();
         expect(screen.getByTestId('quiz-live-world-hint').textContent).toBe(
             'Scoring 4 trading axes',
         );
@@ -92,7 +100,11 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         // Navigate back to Question 1 and step forward through all 16 questions,
         // checking that the first completed act reveals exactly one letter.
         fireEvent.click(screen.getByRole('button', { name: /previous question/i }));
-        expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('personality-quiz-card')).getByText(
+                PERSONALITY_QUESTIONS[0].prompt,
+            ),
+        ).toBeInTheDocument();
 
         for (const [index, q] of PERSONALITY_QUESTIONS.entries()) {
             fireEvent.click(screen.getByTestId(`quiz-option-${q.options[0].id}`));
@@ -124,7 +136,11 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         // Retake resets back to Q1
         fireEvent.click(screen.getByTestId('retake-quiz'));
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
-        expect(screen.getByText(PERSONALITY_QUESTIONS[0].prompt)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('personality-quiz-card')).getByText(
+                PERSONALITY_QUESTIONS[0].prompt,
+            ),
+        ).toBeInTheDocument();
     });
 
     it('shifts the act landmark without moving the sky or the stage (zero CLS)', () => {
@@ -156,6 +172,34 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         const after = stage.getBoundingClientRect();
         expect(after.width).toBeCloseTo(before.width, 0);
         expect(after.height).toBeCloseTo(before.height, 0);
+    });
+
+    it('mounts an inert, aria-hidden height sizer alongside mutually exclusive quiz and checkpoint cards', () => {
+        render(<PersonalityQuizPage initialAtmosphere="daylight" />);
+
+        const sizer = screen.getByTestId('quiz-height-sizer');
+        expect(sizer).toHaveAttribute('aria-hidden', 'true');
+        expect(sizer).toHaveAttribute('inert');
+        // Active card owns the sole interactive buttons and prompt heading.
+        expect(screen.getAllByRole('heading', { level: 2 })).toHaveLength(1);
+        const quizCard = screen.getByTestId('personality-quiz-card');
+        expect(quizCard).toBeInTheDocument();
+        expect(screen.queryByTestId('act-checkpoint')).toBeNull();
+        expect(quizCard.querySelectorAll('.flex-wrap').length).toBeGreaterThanOrEqual(3);
+        expect(quizCard.querySelectorAll('.whitespace-nowrap').length).toBeGreaterThanOrEqual(2);
+
+        for (let i = 0; i < 4; i += 1) {
+            fireEvent.click(
+                screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[i].options[0].id}`),
+            );
+        }
+
+        const checkpoint = screen.getByTestId('act-checkpoint');
+        expect(checkpoint).toBeInTheDocument();
+        expect(screen.queryByTestId('personality-quiz-card')).toBeNull();
+        expect(screen.getByTestId('quiz-height-sizer')).toBeInTheDocument();
+        expect(checkpoint.querySelectorAll('.flex-wrap').length).toBeGreaterThanOrEqual(3);
+        expect(checkpoint.querySelectorAll('.whitespace-nowrap').length).toBeGreaterThanOrEqual(4);
     });
 
     it('lights all four landmarks on the result screen', () => {
@@ -190,7 +234,11 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         fireEvent.click(
             screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[0].options[0].id}`),
         );
-        expect(screen.getByText(PERSONALITY_QUESTIONS[1].prompt)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('personality-quiz-card')).getByText(
+                PERSONALITY_QUESTIONS[1].prompt,
+            ),
+        ).toBeInTheDocument();
 
         rerender(<PersonalityQuizPage initialArchetype="news-surfer" />);
         expect(screen.getByTestId('archetype-title')).toHaveTextContent('The Headline Surfer');
@@ -267,14 +315,23 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
             fireEvent.click(screen.getByTestId(`quiz-option-${q.options[0].id}`));
             if ((index + 1) % 4 === 0) fireEvent.click(screen.getByTestId('continue-act'));
         }
-        expect(screen.getByText(PERSONALITY_QUESTIONS[11].prompt)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('personality-quiz-card')).getByText(
+                PERSONALITY_QUESTIONS[11].prompt,
+            ),
+        ).toBeInTheDocument();
         expect(screen.queryByTestId('quiz-self-description')).toBeNull();
 
         fireEvent.click(
             screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[11].options[0].id}`),
         );
         fireEvent.click(screen.getByTestId('continue-act'));
-        expect(screen.getByTestId('quiz-self-description')).toBeInTheDocument();
+        const selfDesc = screen.getByTestId('quiz-self-description');
+        const quizCard = screen.getByTestId('personality-quiz-card');
+        expect(selfDesc).toBeInTheDocument();
+        expect(
+            quizCard.compareDocumentPosition(selfDesc) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
 
         const words = 'no semiconductors, keep cash above 30 percent';
         for (const q of PERSONALITY_QUESTIONS.slice(12)) {
@@ -312,11 +369,21 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
 
         render(<PersonalityQuizPage />);
 
-        expect(screen.getByTestId('resume-quiz')).toBeInTheDocument();
+        const resumeBanner = screen.getByTestId('resume-quiz');
+        const quizCard = screen.getByTestId('personality-quiz-card');
+        expect(resumeBanner).toBeInTheDocument();
+        expect(window.localStorage.getItem('benchify:personality-draft')).not.toBeNull();
+        expect(
+            quizCard.compareDocumentPosition(resumeBanner) & Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
         fireEvent.click(screen.getByTestId('resume-quiz-button'));
 
         expect(screen.queryByTestId('resume-quiz')).toBeNull();
-        expect(screen.getByText(PERSONALITY_QUESTIONS[3].prompt)).toBeInTheDocument();
+        expect(
+            within(screen.getByTestId('personality-quiz-card')).getByText(
+                PERSONALITY_QUESTIONS[3].prompt,
+            ),
+        ).toBeInTheDocument();
     });
 
     it('preserves quiz answers across inspection, returns on self-selection, and avoids self-navigation wipes', () => {

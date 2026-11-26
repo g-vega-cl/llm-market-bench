@@ -743,5 +743,12 @@ describe('SSR Hydration Symmetry Regression Suite', () => {
             );
             expect(errors).toEqual([]);
         });
+
+        it('13. PersonalityQuizPage (answering phase): hydrates symmetrically with sizer frame', () => {
+            const errors = assertHydrationSymmetry(
+                <PersonalityQuizPage initialAtmosphere="dusk" />,
+            );
+            expect(errors).toEqual([]);
+        });
     });
 });

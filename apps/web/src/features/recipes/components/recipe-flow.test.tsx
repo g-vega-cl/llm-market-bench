@@ -5,6 +5,7 @@ import { STARTER_RECIPES } from '../starter-templates';
 import {
     type BacktestResultData,
     CURATED_TOOLS,
+    type PushStrategy,
     type RecipeAlert,
     type StrategyStage,
 } from '../types';
@@ -40,6 +41,10 @@ vi.mock('@tanstack/react-router', () => ({
     },
 }));
 
+const trumpChips = STARTER_RECIPES.find(
+    (t) => t.name === 'Trump & Chips News Momentum',
+) as PushStrategy;
+
 function ControlledStageHarness({ initialStage }: { initialStage: StrategyStage }) {
     const [stage, setStage] = useState<StrategyStage>(initialStage);
     return (
@@ -56,7 +61,7 @@ function ControlledStageHarness({ initialStage }: { initialStage: StrategyStage 
 
 describe('StageBuilder & PromptVisualizer', () => {
     it('renders all 4 block types and updates PromptVisualizer live', () => {
-        render(<ControlledStageHarness initialStage={STARTER_RECIPES[0].stages[0]} />);
+        render(<ControlledStageHarness initialStage={trumpChips.stages[0]} />);
 
         expect(screen.getByText('PROMPT BLOCK')).toBeInTheDocument();
         expect(screen.getByText('NEWS BLOCK')).toBeInTheDocument();
@@ -68,7 +73,7 @@ describe('StageBuilder & PromptVisualizer', () => {
     });
 
     it('preserves input focus across multi-character typing (fixes 1-char typing bug)', () => {
-        render(<ControlledStageHarness initialStage={STARTER_RECIPES[0].stages[0]} />);
+        render(<ControlledStageHarness initialStage={trumpChips.stages[0]} />);
 
         const targetInputs = screen.getAllByLabelText('Target Value') as HTMLInputElement[];
         const firstTarget = targetInputs[0];
@@ -88,13 +93,13 @@ describe('StageBuilder & PromptVisualizer', () => {
     });
 
     it('keeps prompt block pinned first (non-deletable) and toggles tools', () => {
-        render(<ControlledStageHarness initialStage={STARTER_RECIPES[0].stages[0]} />);
+        render(<ControlledStageHarness initialStage={trumpChips.stages[0]} />);
 
         expect(screen.getByRole('button', { name: '+ Prompt' })).toBeDisabled();
         expect(screen.getByText('PINNED FIRST')).toBeInTheDocument();
         expect(screen.getAllByText('PROMPT BLOCK').length).toBe(1);
 
-        const initialCount = STARTER_RECIPES[0].stages[0].selected_tools.length;
+        const initialCount = trumpChips.stages[0].selected_tools.length;
         expect(screen.getByText(`${initialCount} / ${CURATED_TOOLS.length}`)).toBeInTheDocument();
 
         const techCheckbox = screen.getByRole('checkbox', { name: 'Technical Indicators' });

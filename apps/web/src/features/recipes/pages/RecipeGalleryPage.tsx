@@ -54,30 +54,40 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
 
                 <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 items-stretch">
                     {templates.map((template) => (
-                        <Card
+                        <Link
                             key={template.name}
-                            padding="md"
-                            className="h-full min-w-0 flex flex-col gap-3"
+                            to="/login"
+                            search={{
+                                redirect: `/build?starter=${encodeURIComponent(template.name)}`,
+                            }}
+                            className="block h-full"
                         >
-                            <div className="flex flex-col gap-1 pb-2 border-b-2 border-voxel-bevel-hi">
-                                <span className="text-sm font-bold text-voxel-ink break-words">
-                                    {template.name}
-                                </span>
-                                <span className="text-xs font-normal text-voxel-muted">
-                                    Live: 30m · Backtest: {template.cadence} · one LLM call
-                                </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                                {blocksOf(template).map((type) => (
-                                    <Badge key={type} colorScheme="accent" variant="soft" size="sm">
-                                        {type}
-                                    </Badge>
-                                ))}
-                            </div>
-                            <p className="voxel-trough p-2 text-xs font-normal text-voxel-muted whitespace-pre-wrap break-words line-clamp-3">
-                                {promptExcerpt(template)}
-                            </p>
-                        </Card>
+                            <Card padding="md" className="h-full min-w-0 flex flex-col gap-3">
+                                <div className="flex flex-col gap-1 pb-2 border-b-2 border-voxel-bevel-hi">
+                                    <span className="text-sm font-bold text-voxel-ink break-words">
+                                        {template.name}
+                                    </span>
+                                    <span className="text-xs font-normal text-voxel-muted">
+                                        Live: 30m · Backtest: {template.cadence} · one LLM call
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                    {blocksOf(template).map((type) => (
+                                        <Badge
+                                            key={type}
+                                            colorScheme="accent"
+                                            variant="soft"
+                                            size="sm"
+                                        >
+                                            {type}
+                                        </Badge>
+                                    ))}
+                                </div>
+                                <p className="voxel-trough p-2 text-xs font-normal text-voxel-muted whitespace-pre-wrap break-words line-clamp-3">
+                                    {promptExcerpt(template)}
+                                </p>
+                            </Card>
+                        </Link>
                     ))}
                 </div>
 

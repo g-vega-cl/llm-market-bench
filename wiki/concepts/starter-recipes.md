@@ -27,6 +27,15 @@ Every starter recipe shares the same JSON shape:
 - **`technicals`** — declarative screening rules (`metric`, `operator`, `target`).
 - **`output_format`** — enforces the structured output contract.
 
+## Catalog Order & Entry Points
+
+`STARTER_RECIPES` is an ordered array, and the order is load-bearing:
+
+- **`STARTER_RECIPES[0]` is the default template.** The studio opens on it, and `fallbackReply()` in the [[concepts/recipe-builder-compiler]] validates it as the `CLOSEST WORKING TEMPLATE` returned whenever a model reply cannot be parsed into a runnable recipe. The current first entry is `Claude Agent Portfolio Mirror`.
+- **The public gallery deep-links by exact name.** Each card in `RecipeGalleryPage` (`apps/web/src/features/recipes/pages/RecipeGalleryPage.tsx`) is a whole-card `Link` to `/login?redirect=/build?starter=<encoded name>`, so an anonymous visitor who clicks a template signs in and lands directly in `CompiledBotWorkspace` with that deterministic strategy — no LLM re-compilation. `/build?starter=<name>` resolves the name against this catalog and falls back to the describe flow when it does not match.
+
+Because the catalog is addressed by name rather than index, tests and deep links reference templates by their exact `name` string (e.g. `Trump & Chips News Momentum`), so reordering the array never silently changes which strategy a link or a test exercises.
+
 ## The `2.0-push` Recipe Family
 
 The `2.0-push` recipes are deterministic, push-based templates: each one pre-compiles a fixed set of context blocks (news/memories/technicals) and a tool allowlist, so the agent operates on a reproducible, point-in-time snapshot rather than pulling everything on demand. They span the full spectrum from zero-injected-context screens to news-driven contrarian books.
@@ -53,6 +62,7 @@ The `2.0-push` recipes are deterministic, push-based templates: each one pre-com
 - **Headline Panic Fader** — 24 hours of panic/downgrade/selloff headlines plus short-horizon post-mortems; buys oversold names below VWAP (RSI < 30, price_52w_pct < 35, price < VWAP) and fades the fear quickly.
 - **Fast News Contrarian** — 24 hours of headline/cut/selloff news with 96 hours of post-mortems; a quick contrarian book buying overreactions in cash-generative names (RSI < 40, price < VWAP, FCF > 0).
 - **Print Window Scalper** — 24 hours of earnings/beat/miss headlines with 72 hours of calendar memories; scalps the post-print window on heavy volume near 52-week highs (RVOL > 2, MACD > 0, price_52w_pct > 80).
+- **Trump & Chips News Momentum** — 48 hours of Trump/chips headlines plus 168 hours of tariff/semiconductor market-event memories; screens P/E < 45 and RSI < 70 in one LLM call.
 
 ## Related
 

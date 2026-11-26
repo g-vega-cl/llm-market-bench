@@ -256,7 +256,7 @@ describe('RecipeStudioPage > draft and explicit save', () => {
 
         render(<RecipeStudioPage />);
 
-        expect(screen.getByLabelText('Recipe Name')).toHaveValue('Trump & Chips News Momentum');
+        expect(screen.getByLabelText('Recipe Name')).toHaveValue('Claude Agent Portfolio Mirror');
 
         fireEvent.change(screen.getByLabelText('Recipe Name'), {
             target: { value: '  Small-Cap Rotation  ' },

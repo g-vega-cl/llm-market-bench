@@ -179,7 +179,7 @@ describe('RecipeStudioPage > templates', () => {
         expect(within(grid).getByRole('button', { name: /LVFP/ })).toBeInTheDocument();
 
         expect(screen.getByTestId('template-code-grid-description')).toHaveTextContent(
-            /News-driven momentum/i,
+            /Mirrors our live Claude agent portfolio/i,
         );
     });
 });

@@ -27,8 +27,20 @@ vi.mock('@tanstack/react-router', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@tanstack/react-router')>();
     return {
         ...actual,
-        Link: ({ to, children, ...rest }: { to: string; children: React.ReactNode }) => (
-            <a href={to} {...rest}>
+        Link: ({
+            to,
+            children,
+            search,
+            ...rest
+        }: {
+            to: string;
+            children: React.ReactNode;
+            search?: Record<string, string>;
+        }) => (
+            <a
+                href={`${to}${search ? `?${new URLSearchParams(search).toString()}` : ''}`}
+                {...rest}
+            >
                 {children}
             </a>
         ),
@@ -42,6 +54,21 @@ describe('Recipe gallery (public /recipes)', () => {
         render(<RecipeGalleryPage />);
         expect(screen.getByText('Trump & Chips News Momentum')).toBeInTheDocument();
         expect(screen.queryByText('Sign in to fork')).not.toBeInTheDocument();
+    });
+
+    it('makes each recipe card a link to /login carrying the starter redirect', () => {
+        render(<RecipeGalleryPage />);
+        const trumpCard = screen.getByText('Trump & Chips News Momentum').closest('a');
+        expect(trumpCard).toHaveAttribute(
+            'href',
+            '/login?redirect=%2Fbuild%3Fstarter%3DTrump%2520%2526%2520Chips%2520News%2520Momentum',
+        );
+
+        const firstCard = screen.getByText('Claude Agent Portfolio Mirror').closest('a');
+        expect(firstCard).toHaveAttribute(
+            'href',
+            '/login?redirect=%2Fbuild%3Fstarter%3DClaude%2520Agent%2520Portfolio%2520Mirror',
+        );
     });
 
     it('shows a single primary CTA to /build and a subtle link to /recipes-demo', () => {

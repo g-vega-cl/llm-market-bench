@@ -1,72 +1,6 @@
 [
   {
     "version": "2.0-push",
-    "name": "Trump & Chips News Momentum",
-    "description": "News-driven momentum: chip-tariff headlines, tariff memories, and P/E plus RSI screens resolved in one LLM call.",
-    "cadence": "3h",
-    "stages": [
-      {
-        "id": "stage-1",
-        "selected_tools": [
-          "get_technical_indicators",
-          "get_key_metrics",
-          "get_price_history",
-          "get_todays_news_menu"
-        ],
-        "blocks": [
-          {
-            "id": "blk-prompt-1",
-            "type": "prompt",
-            "text": "Analyze the injected news catalysts and historical memories. Use the tools to verify valuations and technicals."
-          },
-          {
-            "id": "blk-news-1",
-            "type": "news",
-            "contains": [
-              "Trump",
-              "chips"
-            ],
-            "recency_hours": 48
-          },
-          {
-            "id": "blk-mem-1",
-            "type": "memories",
-            "contains": [
-              "tariff",
-              "semiconductor"
-            ],
-            "recency_hours": 168,
-            "category": "MARKET_EVENT",
-            "min_importance": 5
-          },
-          {
-            "id": "blk-tech-1",
-            "type": "technicals",
-            "rules": [
-              {
-                "id": "rule-pe",
-                "metric": "P/E",
-                "operator": "<",
-                "target": "45"
-              },
-              {
-                "id": "rule-rsi",
-                "metric": "RSI",
-                "operator": "<",
-                "target": "70"
-              }
-            ]
-          },
-          {
-            "id": "blk-format-1",
-            "type": "output_format"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "version": "2.0-push",
     "name": "Claude Agent Portfolio Mirror",
     "description": "Mirrors our live Claude agent portfolio: tool-first research, thesis review of open positions, long-only 4 x 25% sizing.",
     "cadence": "3h",
@@ -1061,6 +995,72 @@
           },
           {
             "id": "blk-pws-format",
+            "type": "output_format"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "version": "2.0-push",
+    "name": "Trump & Chips News Momentum",
+    "description": "News-driven momentum: chip-tariff headlines, tariff memories, and P/E plus RSI screens resolved in one LLM call.",
+    "cadence": "3h",
+    "stages": [
+      {
+        "id": "stage-1",
+        "selected_tools": [
+          "get_technical_indicators",
+          "get_key_metrics",
+          "get_price_history",
+          "get_todays_news_menu"
+        ],
+        "blocks": [
+          {
+            "id": "blk-prompt-1",
+            "type": "prompt",
+            "text": "Analyze the injected news catalysts and historical memories. Use the tools to verify valuations and technicals."
+          },
+          {
+            "id": "blk-news-1",
+            "type": "news",
+            "contains": [
+              "Trump",
+              "chips"
+            ],
+            "recency_hours": 48
+          },
+          {
+            "id": "blk-mem-1",
+            "type": "memories",
+            "contains": [
+              "tariff",
+              "semiconductor"
+            ],
+            "recency_hours": 168,
+            "category": "MARKET_EVENT",
+            "min_importance": 5
+          },
+          {
+            "id": "blk-tech-1",
+            "type": "technicals",
+            "rules": [
+              {
+                "id": "rule-pe",
+                "metric": "P/E",
+                "operator": "<",
+                "target": "45"
+              },
+              {
+                "id": "rule-rsi",
+                "metric": "RSI",
+                "operator": "<",
+                "target": "70"
+              }
+            ]
+          },
+          {
+            "id": "blk-format-1",
             "type": "output_format"
           }
         ]

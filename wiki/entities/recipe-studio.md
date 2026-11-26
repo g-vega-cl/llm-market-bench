@@ -47,7 +47,7 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
    - Primary CTA: "+ Build New Bot" → `/build`
    - Each bot links to `/recipes/$recipeId` (Bot Overview), `/recipes/$recipeId/edit` (Blueprint Editor), and `/recipes/live/$recipeId/runs` (Live Runs & Traces)
    - Live schedule toggles, Turbo boost, backtest history, and alerts inbox
-   - Anonymous visitors see the **Recipe Gallery** (read-only template catalogue with a single "Start Building Your Bot →" CTA to `/build`)
+   - Anonymous visitors see the **Recipe Gallery** (read-only template catalogue with "Start Building Your Bot →" to `/build`); each whole card links to `/login?redirect=/build?starter=<name>` so signing in drops the visitor straight into the exact template they clicked
 
 ## Architecture
 
@@ -96,6 +96,7 @@ All owner actions route through `useBotHeaderActions` (`apps/web/src/features/re
 - the panel box is written out by hand — `relative z-10 mx-auto flex w-full max-w-[calc(80rem+3rem)] flex-col gap-6 px-6 pb-8 md:pb-12` — instead of `PageLayout maxWidth="xl"`, because `SceneStage` centres a `max-w-7xl` box inside its own `px-6` and a `PageLayout` preset would emit a competing `max-w-*` utility (`cn` is bare clsx, not tailwind-merge). See [[concepts/page-surface-conventions]].
 
 #### `/build` — 3-Step Chat Builder (`BuilderChatPanel` → `BuilderAlignmentCard` → `CompiledBotWorkspace`)
+- **Starter prefill**: `/build?starter=<exact template name>` looks up `STARTER_RECIPES` and opens `CompiledBotWorkspace` with that deterministic strategy (no LLM re-compilation); an unknown name falls back to the describe flow. `beforeLoad` redirects anonymous visitors with `starter` to `/login?redirect=...` so shared links cannot reach an anonymous studio.
 - **Step 1 (Describe)**: `BuilderChatPanel` + `BuilderDescribeStep` + `BuilderStatusStrip` + `BuilderCompilePipeline` + `BuilderActivePrompt` + `BuilderMessageHistory` + `BuilderStepper` inside `SceneStage` (`CedarRidgeBackdrop` + `.scene-scrim .voxel-card`). No visible headline block — an `sr-only` `<h1>` carries the page name. The stage passes `viewport` (`min-h-svh`) and `padding="compact"` (`px-6 pt-4 pb-6`) on `SceneStage` so the ridge band stays on screen below the card on a phone. **Phone fold, measured at 390×664 (2026-11-25)**: document 1,270 px (606 px of scroll); "Continue to Alignment" sits at 374–414 px, well above the 664 px fold; the only element crossing the fold inside the card is the stage's "Sky: Daylight / Pause motion" strip at 745–781 px. Nothing is truncated, so no phone-fit pass is planned — scroll into the 477 px footer is expected.
 - **Step 2 (Align)**: `status: 'align'` renders `BuilderAlignmentCard` with 1 round of 3–5 tailored multiple-choice questions before compiling the final bot (`status: 'ok'`). Trading ideas with offline limits compile to `ok` with a `warning`; non-trading inputs stay `declined`.
 - **Step 3 (Backtest & Go Live)**: `CompiledBotWorkspace` inside `PageLayout` over `GlobalBackground`. Its first block is `BuilderBotLiveStatus` for any saved bot, followed by `BuilderStatusStrip` (work axis), an in-flow `compiled-bot-live-warning` banner, `CompiledBotSummaryCard` (with the `bot-visibility-notice` public/private disclosure, a recessed `compiled-bot-next-action` trough highlighting the primary CTA), and `BuilderStepper` (Step 3 active). **Save-then-navigate**: `handleSaveRecipe` persists an unsaved bot and then `navigate({ to: '/recipes/$recipeId', params: { recipeId: saved.id } })`; an already-saved bot stays put. Enabling live navigates to `/recipes/live/$recipeId/runs`. Empty-prompt guard disables Save/Backtest/live.
@@ -231,7 +232,7 @@ Compile jobs are protected against aging out between the sweep and the pop poll.
 ## 17. Public Recipe Surface
 - `/` = Home CTA page
 - `/lab` = 3-block directory
-- `/build` = Primary builder entry (chat → workspace; `?recipeId=` redirects to `/recipes/$recipeId`)
+- `/build` = Primary builder entry (chat → workspace; `?recipeId=` redirects to `/recipes/$recipeId`; `?starter=<name>` preloads a starter behind sign-in)
 - `/recipes` = Gallery (anonymous) / Dashboard (signed-in)
 - `/recipes/$recipeId` = public-capable Bot Overview; `/recipes/$recipeId/edit` = owner Blueprint; `/recipes/live/$recipeId` = public-capable Live Runs (redirects to `/recipes/live/$recipeId/runs`)
 - `/recipes-demo` = Pinned showcase backtest

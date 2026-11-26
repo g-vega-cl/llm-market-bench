@@ -1,10 +1,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { STARTER_RECIPES } from '../starter-templates';
+import type { PushStrategy } from '../types';
 import { PromptVisualizer } from './PromptVisualizer';
 
 describe('PromptVisualizer', () => {
-    const stage = STARTER_RECIPES[0].stages[0];
+    const stage = (
+        STARTER_RECIPES.find((t) => t.name === 'Trump & Chips News Momentum') as PushStrategy
+    ).stages[0];
 
     it('previews the single stage as a template and requests live data on demand', () => {
         const onPreviewLiveData = vi.fn();

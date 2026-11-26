@@ -183,4 +183,22 @@ describe('Viewport sizing avoids dynamic viewport units (dvh) to prevent mobile 
 
         expect(violations).toEqual([]);
     });
+
+    describe('Pages with a fixed full-viewport scene backdrop must not size their wrapper with dynamic viewport units', () => {
+        const PAGE_VIEWPORT_PATTERN = /\b(?:min-h-screen|h-screen|w-screen|100vh|dvh)\b/gi;
+
+        it('flags any backdropMode="page" file whose outer wrapper uses min-h-screen/h-screen/w-screen/100vh/dvh', () => {
+            const files = [...walk(WEB), ...walk(DESIGN_SYSTEM)].filter(
+                (file) => /\.(tsx?)$/.test(file) && !file.includes('.test.'),
+            );
+            const violations = files.flatMap((file) => {
+                const source = stripComments(readFileSync(file, 'utf8'));
+                if (!source.includes('backdropMode="page"')) return [];
+                const matches = source.match(PAGE_VIEWPORT_PATTERN);
+                return matches ? [`${relative(REPO_ROOT, file)}: ${matches.join(', ')}`] : [];
+            });
+
+            expect(violations).toEqual([]);
+        });
+    });
 });

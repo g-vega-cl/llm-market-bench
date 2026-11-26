@@ -53,7 +53,7 @@ export function BotSceneShell({
         useDioramaStage(initialAtmosphere);
 
     return (
-        <div className="min-h-screen bg-voxel-canvas text-voxel-ink flex flex-col">
+        <div className="min-h-svh bg-voxel-canvas text-voxel-ink flex flex-col">
             <SceneStage
                 variant="hero"
                 backdropMode="page"

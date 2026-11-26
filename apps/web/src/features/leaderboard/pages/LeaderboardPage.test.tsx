@@ -331,4 +331,19 @@ describe('LeaderboardPage', () => {
         const lastCall = calls[calls.length - 1][0];
         expect(lastCall.queryKey).toEqual(['leaderboard', 7, 'all', 'composite_score', 'desc', 1]);
     });
+
+    it('sizes its root wrapper with min-h-svh, never dynamic viewport units, so the mobile background bottom does not jump', () => {
+        const { container } = render(
+            <LeaderboardPage initialData={makeInitialPage(mockRows)} initialAtmosphere="dusk" />,
+        );
+
+        const root = container.firstElementChild as HTMLElement;
+        expect(root.tagName).toBe('DIV');
+        expect(root.className).toContain('min-h-svh');
+        expect(root.className).not.toContain('min-h-screen');
+        expect(root.className).not.toContain('h-screen');
+        expect(root.className).not.toContain('w-screen');
+        expect(root.className).not.toContain('100vh');
+        expect(root.className).not.toContain('dvh');
+    });
 });

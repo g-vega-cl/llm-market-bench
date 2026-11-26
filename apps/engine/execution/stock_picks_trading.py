@@ -226,6 +226,7 @@ def _open_basket_legs(
                     "quantity": shares,
                     "price": entry_price,
                     "total_cost": shares * entry_price,
+                    "alpaca_status": "NO_MIRROR",
                     "executed_at": entry_ts,
                     "decision_id": basket_id,
                 }
@@ -472,6 +473,7 @@ async def execute_picks_exits(
                         "total_cost": shares * exit_price,
                         "realized_pnl": pnl,
                         "realized_pnl_pct": pnl_pct,
+                        "alpaca_status": "NO_MIRROR",
                         "executed_at": exit_ts,
                         "decision_id": entry.get("decision_id"),
                     }

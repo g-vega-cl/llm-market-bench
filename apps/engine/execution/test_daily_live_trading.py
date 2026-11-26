@@ -451,6 +451,7 @@ async def test_execute_daily_close_exits_for_short_trade_updates_entry_pnl(mock_
     # Assert COVER trade was inserted
     cover_trade = next((t for t in inserted_trades if t.get("signal") == "COVER"), None)
     assert cover_trade is not None
+    assert cover_trade["alpaca_status"] == "NO_MIRROR"
     assert cover_trade["realized_pnl"] is not None
 
     # Assert entry SHORT trade was updated with realized_pnl

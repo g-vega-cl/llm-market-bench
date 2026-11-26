@@ -46,7 +46,7 @@ def _enter_sector_legs(
         if shares <= 0:
             continue
 
-        trade_record = {
+        trade_record: dict[str, Any] = {
             "portfolio_id": portfolio_id,
             "ticker": ticker,
             "signal": signal,
@@ -55,6 +55,8 @@ def _enter_sector_legs(
             "total_cost": shares * entry_p,
             "executed_at": start_ts,
         }
+        if not is_long:
+            trade_record["alpaca_status"] = "NO_MIRROR"
         trade_id = None
         if not dry_run:
             ins_res = client.table("trades").insert(trade_record).execute()
@@ -359,7 +361,7 @@ async def execute_system_sector_exit(
 
         total_realized_pnl += pnl
 
-        exit_record = {
+        exit_record: dict[str, Any] = {
             "portfolio_id": str(portfolio.id),
             "ticker": ticker,
             "signal": exit_sig,
@@ -370,6 +372,8 @@ async def execute_system_sector_exit(
             "realized_pnl_pct": pnl_pct,
             "executed_at": end_ts,
         }
+        if side != "BUY":
+            exit_record["alpaca_status"] = "NO_MIRROR"
         exit_trade_id = None
         if not dry_run:
             ins_res = client.table("trades").insert(exit_record).execute()

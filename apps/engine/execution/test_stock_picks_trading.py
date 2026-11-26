@@ -78,6 +78,8 @@ async def test_picks_entries_create_six_legs_per_basket(alpaca_mirror):
     assert len(trades) == 24  # 4 baskets x 6 legs
     assert len([t for t in trades if t["signal"] == "BUY"]) == 12
     assert len([t for t in trades if t["signal"] == "SHORT"]) == 12
+    assert all(t.get("alpaca_status") == "NO_MIRROR" for t in trades if t["signal"] == "SHORT")
+    assert all(t.get("alpaca_status") is None for t in trades if t["signal"] == "BUY")
     assert len(store.rows["portfolio_positions"]) == 12  # longs only
     assert all(t["executed_at"] == "2026-11-19T14:30:00Z" for t in trades)
     assert all(t["decision_id"] for t in trades)
@@ -176,6 +178,7 @@ async def test_picks_exit_realizes_pnl_and_snapshots_performance():
     assert result["status"] == "success"
     exit_trades = [t for t in store.rows["trades"] if t["signal"] in ("SELL", "COVER")]
     assert len(exit_trades) == 24
+    assert all(t.get("alpaca_status") == "NO_MIRROR" for t in exit_trades)
     assert all(t["executed_at"] == "2026-11-19T21:00:00Z" for t in exit_trades)
     assert all(t["realized_pnl"] is not None for t in exit_trades)
 

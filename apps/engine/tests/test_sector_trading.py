@@ -71,7 +71,9 @@ async def test_execute_system_sector_entry_creates_trades_and_positions():
     assert "BUY" in signals
     assert "SHORT" in signals
     assert signals["BUY"]["ticker"] == "XLK"
+    assert signals["BUY"].get("alpaca_status") is None
     assert signals["SHORT"]["ticker"] == "XLE"
+    assert signals["SHORT"]["alpaca_status"] == "NO_MIRROR"
 
     # Verify long position upserted in portfolio_positions
     upserted_positions = [call[0][0] for call in mock_chain.upsert.call_args_list if "average_cost_basis" in call[0][0]]

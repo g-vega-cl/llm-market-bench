@@ -111,6 +111,7 @@ async def execute_daily_bond_moo_entries(
             "quantity": shares,
             "price": session_open,
             "total_cost": shares * session_open,
+            "alpaca_status": "NO_MIRROR",
             "executed_at": _et_session_stamp(target_date_str, 9, 30),
         }
 
@@ -235,6 +236,7 @@ async def execute_system_daily_bond_close_trade(
         "quantity": shares,
         "price": execution["entry_price"],
         "total_cost": shares * execution["entry_price"],
+        "alpaca_status": "NO_MIRROR",
         "executed_at": _et_session_stamp(target_date_str, 9, 30),
     }
     if direction == "DOWN":
@@ -252,6 +254,7 @@ async def execute_system_daily_bond_close_trade(
         "total_cost": shares * execution["exit_price"],
         "realized_pnl": execution["realized_pnl"],
         "realized_pnl_pct": execution["realized_pnl_pct"],
+        "alpaca_status": "NO_MIRROR",
         "executed_at": _et_session_stamp(target_date_str, 16, 0),
     }
     client.table("trades").insert(exit_payload).execute()

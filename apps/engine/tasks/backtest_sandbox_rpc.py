@@ -232,8 +232,8 @@ def execute_sqlite_portfolio_trade(params: dict[str, Any], t_sim: datetime | Non
             """
             INSERT INTO trades (
                 id, portfolio_id, ticker, signal, quantity, price, total_cost,
-                executed_at, decision_id, reasoning, realized_pnl, realized_pnl_pct, idempotency_key
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                executed_at, decision_id, reasoning, realized_pnl, realized_pnl_pct, idempotency_key, alpaca_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 trade_id,
@@ -249,6 +249,7 @@ def execute_sqlite_portfolio_trade(params: dict[str, Any], t_sim: datetime | Non
                 res["realized_pnl"],
                 res["realized_pnl_pct"],
                 idem_key,
+                params.get("p_alpaca_status"),
             ),
         )
         new_realized, new_equity = _compute_sqlite_equity(

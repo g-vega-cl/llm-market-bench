@@ -84,15 +84,17 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
  [Submission Exception] ────▶ [ERROR]
  [Exit with zero pos]   ────▶ [SKIPPED_NO_POSITION]
  [No broker / no client]────▶ [DISABLED]         (mirror never attempted)
- [Pre-fix backfill]     ────▶ [NO_MIRROR]        (written once, by hand)
+ [Non-mirrored lane]    ────▶ [NO_MIRROR]        (stamped at insert time & historical backfill)
 ```
 
 - **Invariants**:
   - `SUBMITTED` is the initial state when an order is acknowledged by Alpaca API.
-  - Terminal states (`FILLED`, `CANCELED`, `EXPIRED`, `REJECTED`, `ERROR`, `SKIPPED_NO_POSITION`, `DISABLED`, `NO_MIRROR`) are immutable in application logic. Once reached, an order record cannot transition back to `SUBMITTED`.
+  - Terminal states (`FILLED`, `CANCELED`, `EXPIRED`, `REJECTED`, `BACKFILLED`, `SKIPPED_NO_POSITION`, `DISABLED`, `NO_MIRROR`) are immutable at both the PostgreSQL layer (`trg_enforce_trades_alpaca_status_transition` `BEFORE UPDATE OF alpaca_status` trigger on `public.trades`, escape hatch via `app.allow_alpaca_status_override = 'true'`) and application layer (CAS predicates `.is_("alpaca_status", "null")`, `.eq("alpaca_status", "ERROR")`, and `.eq("alpaca_status", "SUBMITTED")` in `apps/engine/scripts/sync_alpaca_orders.py`).
+  - `ERROR` is reserved for 5xx/timeout/unexpected submission failures and is recoverable by `sync_alpaca_orders.py` repair (via deterministic `client_order_id`) into `SUBMITTED` or a terminal state; HTTP 4xx `APIError` rejections go straight to `REJECTED` with the reason recorded in `trades.alpaca_note`.
+  - `trades_alpaca_status_check` (`supabase/migrations/20261126120000_add_alpaca_status_check.sql`) enforces the 10-state enum (`SUBMITTED`, `FILLED`, `CANCELED`, `EXPIRED`, `REJECTED`, `ERROR`, `BACKFILLED`, `SKIPPED_NO_POSITION`, `DISABLED`, `NO_MIRROR`, or `NULL`), and `trades_alpaca_columns_check` (`supabase/migrations/20261126140000_enforce_alpaca_state_machine_and_no_mirror.sql`) enforces cross-column invariants (`alpaca_order_id` + `alpaca_submitted_at` required on `SUBMITTED`/`FILLED`/`CANCELED`/`EXPIRED`; `alpaca_filled_at` required on `FILLED`; `alpaca_order_id IS NULL` on `NULL`/`ERROR`/`SKIPPED_NO_POSITION`/`DISABLED`/`BACKFILLED`/`NO_MIRROR`; `REJECTED` allows either).
   - `BACKFILLED` is reserved exclusively for post-market reconstructed fills (`[[concepts/backfilled-trades]]`).
-  - `DISABLED` means *not attempted* (no broker wired, or no Alpaca client because keys are missing); `ERROR` means attempted and failed. They are deliberately distinct — do not collapse them.
-  - `NO_MIRROR` marks ledger trades from the silent-failure window (`2026-11-24T19:27Z` – `2026-11-25T16:59Z`); it is never written at runtime.
+  - `DISABLED` means *not attempted* (no broker wired, or no Alpaca client because keys are missing); `ERROR` means attempted and failed transiently/ambiguously; `REJECTED` means the broker explicitly refused the order. Do not collapse them.
+  - `NO_MIRROR` marks structurally non-mirrored lanes at insert time (`daily_live_trading.py` `SHORT`/`COVER`, `daily_bond_trading.py`, `stock_picks_trading.py` `SHORT`/`SELL`/`COVER`, `sector_trading.py` `SHORT`/`COVER`, `system_portfolios.py`, `daily_trading.py` default, and `Portfolio.execute_trade(..., skip_alpaca_mirror=True)` via `execute_portfolio_trade(..., p_alpaca_status='NO_MIRROR')`) plus backfilled historical non-mirrored/silent-window trades so `sync_alpaca_orders.py` repair needs no `owner_id` prefix heuristics.
   - The ledger is authoritative: none of these values ever rolls back a ledger trade. See [[concepts/external-order-attestation]].
 
 ---
@@ -289,7 +291,7 @@ The following areas in the codebase currently manage state implicitly through co
 | Surface | Current Implicit Mechanism | Target Refactored State |
 | :--- | :--- | :--- |
 | **Daily Predictions Lifecycle** | Split-brain: PostgreSQL check constraint permits only `('pending', 'evaluated')` while intermediate phases (`ENTERED`, `TARGET_EXITED`, `CLOSE_EXITED`) are inferred from nullable FKs (`entry_trade_id`, `exit_trade_id`). | Formal migration adding an explicit enum/check constraint: `DailyPredictionStatus = 'PREDICTED' \| 'ENTERED' \| 'TARGET_EXITED' \| 'CLOSE_EXITED' \| 'EVALUATED'` |
-| **Alpaca Trades Status** | `trades.alpaca_status` is an unconstrained `TEXT DEFAULT NULL` column without database-level enum or transition check constraints. | Add PostgreSQL enum type or `CHECK (alpaca_status IN ('SUBMITTED', 'FILLED', 'CANCELED', 'EXPIRED', 'REJECTED', 'ERROR', 'BACKFILLED', 'SKIPPED_NO_POSITION'))` with a transition trigger preventing backward moves. |
+| **Alpaca Trades Status** | `trades_alpaca_status_check` (`supabase/migrations/20261126120000_add_alpaca_status_check.sql`) enforces the 10 allowed `alpaca_status` strings; transition rules remain in application logic (`sync_alpaca_orders.py`). | Add a database transition trigger blocking backward moves out of terminal states while permitting `NULL` / `ERROR` / `SUBMITTED` forward transitions. |
 | **LLM Proxy Circuit Breaker** | Cooldown timestamps allow thundering herds when a 60-second window expires; all concurrent requests hit the provider simultaneously. | Formal FSM: `CLOSED` $\to$ `OPEN` $\to$ `HALF_OPEN` with single-canary mutex probe gating before full traffic resumption. |
 | **Autoresearch Experiments** | `evaluated_at IS NULL`, `is_champion` boolean, `score IS NULL`. | `ExperimentState = 'PENDING_EVALUATION' \| 'EVALUATED' \| 'CHAMPION' \| 'PRUNED'` |
 | **Systematic Sector Horizons** | `exit_date IS NULL` combined with application date math. | `PositionHorizonState = 'OPEN' \| 'MATURED_HOLD' \| 'EXIT_QUEUED' \| 'CLOSED'` |

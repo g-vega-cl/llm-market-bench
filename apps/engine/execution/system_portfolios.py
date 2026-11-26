@@ -318,6 +318,7 @@ async def execute_system_sector_rebalance(
             "total_cost": shares * entry_p,
             "realized_pnl": 0.0,
             "realized_pnl_pct": 0.0,
+            "alpaca_status": "NO_MIRROR",
             "executed_at": f"{week_start_date}T13:30:00Z",
         }
         client.table("trades").insert(entry_trade).execute()
@@ -332,6 +333,7 @@ async def execute_system_sector_rebalance(
             "total_cost": shares * exit_p,
             "realized_pnl": pnl,
             "realized_pnl_pct": pnl_pct,
+            "alpaca_status": "NO_MIRROR",
             "executed_at": f"{week_end_date}T20:00:00Z",
         }
         client.table("trades").insert(exit_trade).execute()
@@ -361,6 +363,7 @@ async def execute_system_sector_rebalance(
             "total_cost": shares * entry_p,
             "realized_pnl": 0.0,
             "realized_pnl_pct": 0.0,
+            "alpaca_status": "NO_MIRROR",
             "executed_at": f"{week_start_date}T13:30:00Z",
         }
         client.table("trades").insert(entry_trade).execute()
@@ -375,6 +378,7 @@ async def execute_system_sector_rebalance(
             "total_cost": shares * exit_p,
             "realized_pnl": pnl,
             "realized_pnl_pct": pnl_pct,
+            "alpaca_status": "NO_MIRROR",
             "executed_at": f"{week_end_date}T20:00:00Z",
         }
         client.table("trades").insert(exit_trade).execute()
@@ -498,6 +502,7 @@ async def execute_mechanical_sector_rebalance(
             "total_cost": shares * entry_p,
             "realized_pnl": 0.0,
             "realized_pnl_pct": 0.0,
+            "alpaca_status": "NO_MIRROR",
             "executed_at": f"{week_start_date}T13:30:00Z",
         }
         client.table("trades").insert(entry_trade).execute()
@@ -512,6 +517,7 @@ async def execute_mechanical_sector_rebalance(
             "total_cost": shares * exit_p,
             "realized_pnl": pnl,
             "realized_pnl_pct": pnl_pct,
+            "alpaca_status": "NO_MIRROR",
             "executed_at": f"{week_end_date}T20:00:00Z",
         }
         client.table("trades").insert(exit_trade).execute()

@@ -71,7 +71,7 @@ async def _execute_single_moo_portfolio_entry(
 
     trade_id = str(uuid4())
     signal = "BUY" if direction == "UP" else "SHORT"
-    entry_trade = {
+    entry_trade: dict[str, Any] = {
         "id": trade_id,
         "portfolio_id": str(portfolio_id),
         "ticker": ticker,
@@ -81,6 +81,9 @@ async def _execute_single_moo_portfolio_entry(
         "total_cost": shares * spy_price,
         "executed_at": f"{target_date_str}T13:30:00Z",
     }
+    if direction != "UP":
+        # Virtual SHORT legs are never sent to Alpaca; mark explicitly so sync/repair skips them.
+        entry_trade["alpaca_status"] = "NO_MIRROR"
 
     if not dry_run:
         client.table("trades").insert(entry_trade).execute()
@@ -445,6 +448,7 @@ async def execute_daily_close_exits(target_date: str | None = None, dry_run: boo
                 "total_cost": qty * current_price,
                 "realized_pnl": realized_pnl,
                 "realized_pnl_pct": realized_pnl_pct,
+                "alpaca_status": "NO_MIRROR",
                 "executed_at": f"{target_date_str}T19:30:00Z",
             }
 

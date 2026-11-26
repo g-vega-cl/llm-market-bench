@@ -733,6 +733,10 @@ def test_backtest_sandbox_rpc_executes_locally_in_sqlite(tmp_path):
 
     assert trade_id is not None
     assert p.cash_balance == pytest.approx(7500.0)
+    verify_conn = sqlite3.connect(str(db_file))
+    row = verify_conn.execute("SELECT alpaca_status FROM trades WHERE id = ?", (trade_id,)).fetchone()
+    verify_conn.close()
+    assert row is not None and row[0] == "NO_MIRROR"
     assert p.positions["SPY"].quantity == 5
     assert replay_again.data["idempotent_replay"] is True
     assert replay_again.data["trade_id"] == replay.data["trade_id"]

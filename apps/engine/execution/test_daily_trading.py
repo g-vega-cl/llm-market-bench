@@ -199,11 +199,13 @@ async def test_execute_system_daily_close_trade_flow():
     entry_trade, exit_trade = inserted_trades[0], inserted_trades[1]
 
     assert entry_trade["signal"] == "SHORT"
+    assert entry_trade["alpaca_status"] == "NO_MIRROR"
     assert entry_trade["executed_at"] == "2026-09-18T13:30:00Z"
     # Entry price with 2 bps slippage: 761.31 * (1 - 0.0002) = 761.157738
     assert entry_trade["price"] == pytest.approx(761.31 * 0.9998)
 
     assert exit_trade["signal"] == "COVER"
+    assert exit_trade["alpaca_status"] == "NO_MIRROR"
     assert exit_trade["executed_at"] == "2026-09-18T20:00:00Z"
     # Exit price with 2 bps slippage: 761.62 * (1 + 0.0002) = 761.772324
     assert exit_trade["price"] == pytest.approx(761.62 * 1.0002)

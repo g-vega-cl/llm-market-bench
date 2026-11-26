@@ -152,7 +152,7 @@ async def execute_daily_spy_trade(
     owner_prefix: str,
     exit_on_target: bool,
     slippage_bps: float,
-    alpaca_status: str | None = None,
+    alpaca_status: str | None = "NO_MIRROR",
     get_supabase_client_fn: Callable | None = None,
     get_or_create_system_portfolio_fn: Callable | None = None,
 ) -> dict[str, Any]:
@@ -338,7 +338,7 @@ async def execute_system_daily_trade(
     prediction: dict,
     intraday_data: dict,
     slippage_bps: float = DEFAULT_DAILY_SLIPPAGE_BPS,
-    alpaca_status: str | None = None,
+    alpaca_status: str | None = "NO_MIRROR",
     get_supabase_client_fn: Callable | None = None,
     get_or_create_system_portfolio_fn: Callable | None = None,
 ) -> dict[str, Any]:
@@ -373,7 +373,7 @@ async def execute_system_daily_close_trade(
     prediction: dict,
     intraday_data: dict,
     slippage_bps: float = DEFAULT_DAILY_CLOSE_SLIPPAGE_BPS,
-    alpaca_status: str | None = None,
+    alpaca_status: str | None = "NO_MIRROR",
     get_supabase_client_fn: Callable | None = None,
     get_or_create_system_portfolio_fn: Callable | None = None,
 ) -> dict[str, Any]:

@@ -288,7 +288,7 @@ class Portfolio:
                         "maintenance_margin": self.metrics.maintenance_margin_req,
                         "sma": self.metrics.sma,
                         "realized": self.metrics.realized,
-                        "last_updated_at": "now()",
+                        "last_updated_at": datetime.now(UTC).isoformat(),
                     }
                 )
                 .eq("id", self.id)
@@ -409,6 +409,7 @@ class Portfolio:
             "p_reason": reason,
             "p_idempotency_key": idempotency_key,
             "p_mark_prices": merged_prices,
+            "p_alpaca_status": "NO_MIRROR" if skip_alpaca_mirror else None,
         }
 
         try:

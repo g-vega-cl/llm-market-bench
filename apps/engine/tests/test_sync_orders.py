@@ -135,12 +135,13 @@ def test_sync_orders_updates_terminal_and_skips_non_terminal():
         "repaired": 0,
     }
 
-    # Verify update calls
+    # Verify update calls (including CAS predicate on SUBMITTED)
     mock_table.update.assert_any_call({"alpaca_status": "FILLED", "alpaca_filled_at": "2026-05-24T16:00:00Z"})
     mock_update.eq.assert_any_call("id", "trade-1")
 
     mock_table.update.assert_any_call({"alpaca_status": "REJECTED"})
     mock_update.eq.assert_any_call("id", "trade-2")
+    mock_update_eq.eq.assert_any_call("alpaca_status", "SUBMITTED")
 
     # The third (non-terminal) order should not have triggered an update call
     assert mock_table.update.call_count == 2
@@ -205,3 +206,147 @@ def test_sync_workflow_runs_intraday():
     cron_lines = [line.strip() for line in workflow.read_text().splitlines() if line.strip().startswith("- cron:")]
 
     assert '- cron: "*/15 13-21 * * 1-5"' in cron_lines
+
+
+def test_sync_repairs_error_trade_and_clears_error_note():
+    """ERROR rows without an order_id are recovered by client_order_id and clear stale error notes."""
+    mock_supabase = MagicMock()
+    mock_alpaca = MagicMock()
+
+    trades_table = MagicMock()
+    portfolios_table = MagicMock()
+    mock_supabase.table.side_effect = lambda name: {
+        "trades": trades_table,
+        "portfolios": portfolios_table,
+    }.get(name, MagicMock())
+
+    trades_table.select.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    # ERROR query returns one timed-out BUY that Alpaca actually accepted
+    trades_table.select.return_value.filter.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[
+            {
+                "id": "trade-err",
+                "portfolio_id": "pf-live",
+                "ticker": "SPY",
+                "signal": "BUY",
+                "alpaca_note": "HTTP 503: upstream timeout",
+            }
+        ]
+    )
+    # SUBMITTED query returns empty
+    trades_table.select.return_value.eq.return_value.not_.is_.return_value.gte.return_value.execute.return_value = (
+        MagicMock(data=[])
+    )
+    portfolios_table.select.return_value.in_.return_value.execute.return_value = MagicMock(
+        data=[{"id": "pf-live", "owner_id": "live-spy-trader"}]
+    )
+
+    order = MagicMock()
+    order.id = "alpaca-recovered-1"
+    order.status = "filled"
+    order.filled_at = MagicMock()
+    order.filled_at.isoformat.return_value = "2026-11-26T15:00:00Z"
+    mock_alpaca.get_order_by_client_id.return_value = order
+
+    with (
+        patch("scripts.sync_alpaca_orders.ALPACA_API_KEY", "mock-key"),
+        patch("scripts.sync_alpaca_orders.ALPACA_SECRET_KEY", "mock-secret"),
+        patch("scripts.sync_alpaca_orders.get_supabase_client", return_value=mock_supabase),
+        patch("scripts.sync_alpaca_orders.TradingClient", return_value=mock_alpaca),
+    ):
+        result = sync_orders()
+
+    assert result["repaired"] == 1
+    mock_alpaca.get_order_by_client_id.assert_called_once_with("live-spy-trader__SPY__BUY__trade-err")
+    trades_table.update.return_value.eq.return_value.eq.assert_called_with("alpaca_status", "ERROR")
+    update_payload = trades_table.update.call_args[0][0]
+    assert update_payload["alpaca_filled_at"] == "2026-11-26T15:00:00Z"
+    assert update_payload["alpaca_note"] is None
+
+
+def test_sync_uses_batch_get_orders_without_owner_prefix_rules():
+    """Batch get_orders repairs NULL rows directly without upfront owner-prefix splitting."""
+    mock_supabase = MagicMock()
+    mock_alpaca = MagicMock()
+
+    trades_table = MagicMock()
+    portfolios_table = MagicMock()
+    mock_supabase.table.side_effect = lambda name: {
+        "trades": trades_table,
+        "portfolios": portfolios_table,
+    }.get(name, MagicMock())
+
+    trades_table.select.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[{"id": "trade-null-1", "portfolio_id": "pf-live", "ticker": "SPY", "signal": "BUY"}]
+    )
+    trades_table.select.return_value.filter.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    trades_table.select.return_value.eq.return_value.not_.is_.return_value.gte.return_value.execute.return_value = (
+        MagicMock(data=[{"id": "trade-sub-1", "alpaca_order_id": "ord-sub-1", "alpaca_status": "SUBMITTED"}])
+    )
+    portfolios_table.select.return_value.in_.return_value.execute.return_value = MagicMock(
+        data=[{"id": "pf-live", "owner_id": "live-spy-trader"}]
+    )
+
+    repaired_order = MagicMock(
+        id="ord-rep-1", status="accepted", client_order_id="live-spy-trader__SPY__BUY__trade-null-1"
+    )
+    synced_order = MagicMock(id="ord-sub-1", status="canceled", client_order_id="other")
+    mock_alpaca.get_orders.return_value = [repaired_order, synced_order]
+
+    with (
+        patch("scripts.sync_alpaca_orders.ALPACA_API_KEY", "mock-key"),
+        patch("scripts.sync_alpaca_orders.ALPACA_SECRET_KEY", "mock-secret"),
+        patch("scripts.sync_alpaca_orders.get_supabase_client", return_value=mock_supabase),
+        patch("scripts.sync_alpaca_orders.TradingClient", return_value=mock_alpaca),
+    ):
+        result = sync_orders()
+
+    assert result["repaired"] == 1
+    assert result["canceled"] == 1
+    mock_alpaca.get_order_by_client_id.assert_not_called()
+    mock_alpaca.get_order_by_id.assert_not_called()
+
+
+def test_sync_orders_cas_skips_concurrent_transition_and_sets_filled_at_fallback():
+    """Concurrent transitions matching 0 rows increment skipped; FILLED without filled_at falls back to UTC now."""
+    mock_supabase = MagicMock()
+    mock_alpaca = MagicMock()
+
+    trades_table = MagicMock()
+    mock_supabase.table.return_value = trades_table
+    trades_table.select.return_value.eq.return_value.not_.is_.return_value.gte.return_value.execute.return_value = (
+        MagicMock(
+            data=[
+                {"id": "trade-race", "alpaca_order_id": "ord-race", "alpaca_status": "SUBMITTED"},
+            ]
+        )
+    )
+    trades_table.select.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    trades_table.select.return_value.filter.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    # CAS update matches 0 rows (already transitioned elsewhere)
+    trades_table.update.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(data=[])
+
+    order = MagicMock(id="ord-race", status=OrderStatus.FILLED.value, filled_at=None, client_order_id="c-1")
+    mock_alpaca.get_orders.return_value = [order]
+
+    with (
+        patch("scripts.sync_alpaca_orders.ALPACA_API_KEY", "mock-key"),
+        patch("scripts.sync_alpaca_orders.ALPACA_SECRET_KEY", "mock-secret"),
+        patch("scripts.sync_alpaca_orders.get_supabase_client", return_value=mock_supabase),
+        patch("scripts.sync_alpaca_orders.TradingClient", return_value=mock_alpaca),
+    ):
+        result = sync_orders()
+
+    assert result["filled"] == 0
+    assert result["skipped"] == 1
+    update_payload = trades_table.update.call_args[0][0]
+    assert update_payload["alpaca_status"] == "FILLED"
+    assert isinstance(update_payload["alpaca_filled_at"], str) and len(update_payload["alpaca_filled_at"]) > 0

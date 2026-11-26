@@ -79,9 +79,10 @@ def fail_stale_compile_jobs(sb: Any, *, timeout_seconds: int = STALE_COMPILE_SEC
         .eq("mode", "compile")
         .eq("status", "pending")
         .lt("created_at", cutoff)
-        .select("id")
         .execute()
     )
+    # postgrest.update() already defaults to returning="representation", so `res.data`
+    # carries the swept rows; the filter builder has no .select() and never did.
     rows = getattr(res, "data", None)
     return len(rows) if isinstance(rows, list) else 0
 

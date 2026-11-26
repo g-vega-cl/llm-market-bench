@@ -1,7 +1,8 @@
 """Hermetic tests for recipe studio queue worker (Push v2 only)."""
 
 from datetime import UTC, datetime, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import httpx
 import pytest
@@ -672,10 +673,13 @@ def test_fail_stale_compile_jobs_marks_pending_rows_failed():
     from recipes.worker import STALE_COMPILE_MESSAGE, fail_stale_compile_jobs
 
     client, queue_table, _recipes_table, _alerts = _make_mock_supabase()
-    queue_table.update.return_value.eq.return_value.eq.return_value.lt.return_value.select.return_value.execute.return_value.data = [
-        {"id": "job-stale-1"},
-        {"id": "job-stale-2"},
-    ]
+    # Mirror postgrest's real filter-builder surface: update() returns a builder with
+    # eq/lt/execute only, so a reintroduced `.select("id")` fails here instead of passing.
+    builder = MagicMock(spec=["eq", "lt", "execute"])
+    builder.eq.return_value = builder
+    builder.lt.return_value = builder
+    builder.execute.return_value = SimpleNamespace(data=[{"id": "job-stale-1"}, {"id": "job-stale-2"}])
+    queue_table.update.return_value = builder
 
     count = fail_stale_compile_jobs(client, timeout_seconds=600)
 
@@ -684,12 +688,9 @@ def test_fail_stale_compile_jobs_marks_pending_rows_failed():
     assert payload["status"] == "failed"
     assert payload["error_message"] == STALE_COMPILE_MESSAGE
     assert payload["completed_at"]
-    # only pending compile rows are swept (eq chains: each call returns a new builder)
-    update_chain = queue_table.update.return_value
-    update_chain.eq.assert_called_once_with("mode", "compile")
-    pending_chain = update_chain.eq.return_value
-    pending_chain.eq.assert_called_once_with("status", "pending")
-    pending_chain.eq.return_value.lt.assert_called_once()
+    assert builder.eq.call_args_list == [call("mode", "compile"), call("status", "pending")]
+    assert builder.lt.call_args_list[0][0][0] == "created_at"
+    builder.execute.assert_called_once_with()
 
 
 def test_compile_job_refuses_a_row_that_aged_past_the_window():

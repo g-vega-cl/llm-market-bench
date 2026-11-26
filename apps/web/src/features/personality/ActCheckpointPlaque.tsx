@@ -1,5 +1,5 @@
 import { Button } from '@llm-market-bench/ui-design-system';
-import { QuizHeaderRowSizer, QuizPinnedRow } from './quiz-card-rows';
+import { QUIZ_CARD_BASE_CLASS, QuizHeaderRowSizer, QuizPinnedRow } from './quiz-card-rows';
 
 export interface ActCheckpointPlaqueProps {
     actTitle: string;
@@ -36,7 +36,7 @@ export function ActCheckpointPlaque({
     return (
         <div
             data-testid="act-checkpoint"
-            className="scene-scrim voxel-card col-start-1 row-start-1 flex h-full w-full max-w-2xl min-w-0 flex-col gap-4 rounded-none p-6"
+            className={`scene-scrim voxel-card h-full ${QUIZ_CARD_BASE_CLASS}`}
         >
             <QuizPinnedRow
                 testId="quiz-row-sizer-header"

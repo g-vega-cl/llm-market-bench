@@ -6,9 +6,12 @@ import {
     QUIZ_FOOTER_CLASS,
     QUIZ_HEADER_CLASS,
     QUIZ_OPTION_BUTTON_CLASS,
+    QUIZ_OPTIONS_GRID_CLASS,
     QUIZ_PROMPT_CLASS,
     QuizContextRowSizer,
     QuizHeaderRowSizer,
+    QuizOptionRow,
+    QuizOptionRowSizer,
     QuizPinnedRow,
     QuizPromptSizer,
 } from './quiz-card-rows';
@@ -67,8 +70,13 @@ export function QuizSelfDescriptionTrough({
 
 /**
  * Interactive single-step diagnostic card inside `.scene-scrim .voxel-card`.
- * Uses at most two typography combos (`text-xs font-normal`, `text-sm font-bold`)
- * and one border style (`border-2`).
+ *
+ * Every row sits in a `QuizPinnedRow`, so the answers block starts at the same
+ * y on every question: the header, context and prompt reserve their longest
+ * copy, and the four answer rows reserve one shared worst-case answer (the
+ * answer copy itself lives in `QuizOptionRow`, so a row and its reservation
+ * can never drift apart). At most two typography combos render here —
+ * `text-xs font-normal` and `text-sm font-bold` — and one border style.
  */
 export function PersonalityQuizStep({
     question,
@@ -162,35 +170,28 @@ export function PersonalityQuizStep({
                 <h2 className={QUIZ_PROMPT_CLASS}>{question.prompt}</h2>
             </QuizPinnedRow>
 
-            <div className="grid grid-cols-1 gap-4">
+            <div className={QUIZ_OPTIONS_GRID_CLASS}>
                 {question.options.map((option, optionIdx) => {
+                    const letter = String.fromCharCode(65 + optionIdx);
                     const selected = chosenOptionId === option.id;
                     return (
-                        <Button
+                        <QuizPinnedRow
                             key={option.id}
-                            type="button"
-                            variant={selected ? 'solid' : 'outline'}
-                            colorScheme={selected ? 'accent' : 'neutral'}
-                            size="md"
-                            data-testid={`quiz-option-${option.id}`}
-                            onClick={() => onSelectOption(question.id, option.id)}
-                            className={QUIZ_OPTION_BUTTON_CLASS}
+                            testId={`quiz-row-sizer-option-${letter}`}
+                            sizer={<QuizOptionRowSizer letter={letter} />}
                         >
-                            <span className="flex min-w-0 flex-col items-start gap-2">
-                                <span className="text-sm font-bold">
-                                    {`${String.fromCharCode(65 + optionIdx)}. ${option.label}`}
-                                </span>
-                                <span
-                                    className={
-                                        selected
-                                            ? 'text-xs font-normal'
-                                            : 'text-xs font-normal text-voxel-muted'
-                                    }
-                                >
-                                    {option.detail}
-                                </span>
-                            </span>
-                        </Button>
+                            <Button
+                                type="button"
+                                variant={selected ? 'solid' : 'outline'}
+                                colorScheme={selected ? 'accent' : 'neutral'}
+                                size="md"
+                                data-testid={`quiz-option-${option.id}`}
+                                onClick={() => onSelectOption(question.id, option.id)}
+                                className={QUIZ_OPTION_BUTTON_CLASS}
+                            >
+                                <QuizOptionRow letter={letter} option={option} muted={!selected} />
+                            </Button>
+                        </QuizPinnedRow>
                     );
                 })}
             </div>

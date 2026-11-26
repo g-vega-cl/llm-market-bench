@@ -700,3 +700,21 @@
 .thought-step-glow:hover {
     box-shadow: 0 0 40px rgba(37, 99, 235, 0.25);
 }
+
+/* Quiz card flow: the four answer rows reserve ONE shared worst-case answer, so
+   every row is the same height at every container width. Below ~34rem of card
+   width that reservation is taller than the card's 16px rhythm can absorb on a
+   phone, so the card and the answer grid tighten to 8px instead of the card
+   growing by 60px. The 16px default is the `gap-4` utility on the elements; only
+   the compact override lives here. Container query, not a viewport breakpoint:
+   the card is narrow because it is a 42rem column, and only its own width
+   decides this. */
+.quiz-card-container {
+    container-type: inline-size;
+}
+
+@container (max-width: 34rem) {
+    .quiz-card-flow {
+        gap: 0.5rem;
+    }
+}

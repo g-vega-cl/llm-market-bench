@@ -248,10 +248,16 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         for (const question of PERSONALITY_QUESTIONS) {
             expect(QUIZ_WORST_CASE.prompt.length).toBeGreaterThanOrEqual(question.prompt.length);
             expect(QUIZ_WORST_CASE.context.length).toBeGreaterThanOrEqual(question.context.length);
-            question.options.forEach((option, slot) => {
-                const reservation = QUIZ_WORST_CASE.options[slot];
-                expect(option.label.length).toBeLessThanOrEqual(reservation.label.length);
-                expect(option.detail.length).toBeLessThanOrEqual(reservation.detail.length);
+            question.options.forEach((option) => {
+                // One shared pair, not one entry per slot: four different
+                // reservations let the live rows disagree in height inside the
+                // same grid, which is the ragged stack this pins shut.
+                expect(option.label.length).toBeLessThanOrEqual(
+                    QUIZ_WORST_CASE.option.label.length,
+                );
+                expect(option.detail.length).toBeLessThanOrEqual(
+                    QUIZ_WORST_CASE.option.detail.length,
+                );
             });
         }
         for (const act of QUIZ_ACTS) {
@@ -269,6 +275,60 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         const plaqueHeader = within(plaque).getByTestId('quiz-row-sizer-header');
         expect(plaqueHeader).toHaveAttribute('aria-hidden', 'true');
         expect(plaqueHeader.textContent).toContain(QUIZ_WORST_CASE.actTitle);
+    });
+
+    it('reserves one shared worst-case answer per option row, so all four rows are the same height', () => {
+        render(<PersonalityQuizPage initialAtmosphere="daylight" />);
+
+        const card = screen.getByTestId('personality-quiz-card');
+        const question = PERSONALITY_QUESTIONS[0];
+        const letters = ['A', 'B', 'C', 'D'];
+        const shared = `${QUIZ_WORST_CASE.option.label}${QUIZ_WORST_CASE.option.detail}`;
+
+        letters.forEach((letter, idx) => {
+            const button = within(card).getByTestId(`quiz-option-${question.options[idx].id}`);
+            const liveRow = button.parentElement as HTMLElement;
+            const cell = liveRow.parentElement as HTMLElement;
+
+            // The row is the taller of two stacked layers: the hidden reservation
+            // and the live button, which fills that row (`h-full`). The copy test
+            // below is the height guarantee; jsdom has no layout to measure.
+            expect(cell.children).toHaveLength(2);
+            expect(button).toHaveClass('h-full');
+
+            // Every reservation carries the same copy except its own letter: a
+            // per-slot reservation would let one row reserve less than another
+            // and the four buttons would end up ragged inside the same grid.
+            const reservation = within(cell).getByTestId(`quiz-row-sizer-option-${letter}`);
+            expect(reservation).toHaveAttribute('inert');
+            expect(reservation.textContent).toBe(`${letter}. ${shared}`);
+        });
+
+        // The standalone sizer must reserve the same four rows, or the card it
+        // sizes would be shorter than the rows it promises to hold. Its ids are
+        // distinct from the live card's so a document-wide lookup stays unique.
+        const sizer = screen.getByTestId('quiz-height-sizer');
+        letters.forEach((letter) => {
+            expect(
+                within(sizer).getByTestId(`quiz-height-sizer-option-${letter}`),
+            ).toBeInTheDocument();
+        });
+    });
+
+    it('derives the shared answer reservation from every option, not just one slot', () => {
+        const labels = PERSONALITY_QUESTIONS.flatMap((q) => q.options.map((o) => o.label));
+        const details = PERSONALITY_QUESTIONS.flatMap((q) => q.options.map((o) => o.detail));
+
+        // The reservation is a real answer, and the longest of the 64 — an
+        // invented or per-slot string would silently under-reserve a row.
+        expect(labels).toContain(QUIZ_WORST_CASE.option.label);
+        expect(details).toContain(QUIZ_WORST_CASE.option.detail);
+        expect(QUIZ_WORST_CASE.option.label.length).toBe(
+            Math.max(...labels.map((value) => value.length)),
+        );
+        expect(QUIZ_WORST_CASE.option.detail.length).toBe(
+            Math.max(...details.map((value) => value.length)),
+        );
     });
 
     it('hydrates shared ?archetype= links directly with Cedar backdrop and zero nested cards', () => {

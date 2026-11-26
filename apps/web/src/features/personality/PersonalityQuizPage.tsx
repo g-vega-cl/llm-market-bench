@@ -285,7 +285,7 @@ export function PersonalityQuizPage({
 
                 {session.phase === 'answering' ? (
                     <>
-                        <div className="grid w-full max-w-2xl grid-cols-1 min-w-0">
+                        <div className="quiz-card-container grid w-full max-w-2xl grid-cols-1 min-w-0">
                             <QuizStepHeightSizer />
                             {view.checkpointIndex !== null &&
                             view.checkpointAct &&

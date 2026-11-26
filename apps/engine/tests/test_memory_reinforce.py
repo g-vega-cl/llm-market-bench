@@ -3,12 +3,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from apps.engine.memory.store import add_memory
+
+from memory.store import add_memory
 
 
 @pytest.fixture
 def mock_supabase():
-    with patch("apps.engine.memory.store.get_supabase_client") as mock:
+    with patch("memory.store.get_supabase_client") as mock:
         client = MagicMock()
         mock.return_value = client
         yield client
@@ -16,14 +17,14 @@ def mock_supabase():
 
 @pytest.fixture
 def mock_embedding():
-    with patch("apps.engine.memory.store.get_embedding") as mock:
+    with patch("memory.store.get_embedding") as mock:
         mock.return_value = [0.1, 0.2, 0.3]
         yield mock
 
 
 def test_add_memory_reinforces_and_bumps_duplicate(mock_embedding, mock_supabase):
     # Mock find_similar_memory to find an existing duplicate
-    with patch("apps.engine.memory.store.find_similar_memory") as mock_find:
+    with patch("memory.store.find_similar_memory") as mock_find:
         mock_find.return_value = "existing-uuid"
 
         # Mock the update call execution

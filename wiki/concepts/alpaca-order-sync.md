@@ -63,6 +63,12 @@ Both submit methods return the outcome instead of `None`, so the caller can reco
 
 The constructor accepts `client` and `sb_client` for hermetic tests, exposes the underlying paper `TradingClient` through a `client` property, and `_update_trade` returns `True`/`False` so a failed row write is visible rather than silent.
 
+## Kill Switch & Construction Failure
+
+`ALPACA_ENABLED` is evaluated **before** an injected `client` is accepted, so a caller that builds its own `TradingClient` cannot mirror while the flag is off. `apps/engine/trading/runner.py` mirrors the rule on its side: `_create_clients` constructs the paper `TradingClient` only when `ALPACA_ENABLED` is true, while the read-only `StockHistoricalDataClient` is built regardless (market data is read-only and stays available).
+
+A `TradingClient` construction failure is caught and logged with `logger.exception`, leaving `_client = None` so the broker degrades to `DISABLED` instead of aborting the caller's startup — ten trading lanes share this path and the ledger does not need the mirror.
+
 ## Trade Status Flags
 
 Skipped orders are recorded via `_update_trade` with the sentinel status `SKIPPED_NO_POSITION`, giving a full audit trail of signals that were rejected because the broker-side position did not support them. `DISABLED` (mirror never attempted) and `ERROR` (attempted and failed) are deliberately distinct states, and `SUBMITTED` rows are reconciled to `FILLED` / `REJECTED` / `CANCELED` / `EXPIRED` by `apps/engine/scripts/sync_alpaca_orders.py` (see [[entities/alpaca-audit]]).

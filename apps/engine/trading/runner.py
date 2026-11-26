@@ -18,6 +18,7 @@ import httpx
 
 from core.config import (
     ALPACA_API_KEY,
+    ALPACA_ENABLED,
     ALPACA_SECRET_KEY,
     logger,
 )
@@ -90,9 +91,12 @@ async def run_daemon_turn(
 def _create_clients() -> tuple[Any, Any, Any]:
     """Instantiate the Alpaca data client, the paper broker, and the Supabase client.
 
-    The trading client is built here and injected so the credentials have exactly one
-    source (`trading.runner.ALPACA_*`); letting AlpacaBroker read its own module constants
-    meant the data client and the mirror could disagree about whether keys were present.
+    The trading client is constructed here — once, with `paper=True`, and only when
+    `ALPACA_ENABLED` — then injected. Constructing it inside AlpacaBroker instead would
+    skip the kill switch, because the broker returns early on an injected-or-built client
+    before it checks `ALPACA_ENABLED`. AlpacaBroker's own construction path is still used
+    by the other trading callers, so this makes the daemon's path explicit rather than
+    eliminating the duplication repo-wide.
     """
     data_client = None
     trading_client = None
@@ -100,12 +104,18 @@ def _create_clients() -> tuple[Any, Any, Any]:
     if ALPACA_API_KEY and ALPACA_SECRET_KEY:
         try:
             from alpaca.data.historical import StockHistoricalDataClient
-            from alpaca.trading.client import TradingClient
 
             data_client = StockHistoricalDataClient(ALPACA_API_KEY, ALPACA_SECRET_KEY)
-            trading_client = TradingClient(ALPACA_API_KEY, ALPACA_SECRET_KEY, paper=True)
         except Exception:
-            logger.exception("Failed to initialize Alpaca clients")
+            logger.exception("Failed to initialize Alpaca data client")
+
+        if ALPACA_ENABLED:
+            try:
+                from alpaca.trading.client import TradingClient
+
+                trading_client = TradingClient(ALPACA_API_KEY, ALPACA_SECRET_KEY, paper=True)
+            except Exception:
+                logger.exception("Failed to initialize Alpaca trading client; mirror will report DISABLED")
 
     sb_client = get_supabase_client()
     return data_client, AlpacaBroker(client=trading_client, sb_client=sb_client), sb_client

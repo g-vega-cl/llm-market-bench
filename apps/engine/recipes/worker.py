@@ -74,15 +74,23 @@ def fail_stale_compile_jobs(sb: Any, *, timeout_seconds: int = STALE_COMPILE_SEC
                 "status": "failed",
                 "error_message": STALE_COMPILE_MESSAGE,
                 "completed_at": now.isoformat(),
-            }
+            },
+            # Count from Content-Range rather than ferrying every swept row back: compile
+            # rows carry payload_json (up to ~60 KB), and this call runs synchronously on
+            # the daemon's shared event loop. `returning="minimal"` also makes the count
+            # independent of PostgREST's max_rows, which would silently truncate len(data).
+            count="exact",
+            returning="minimal",
         )
         .eq("mode", "compile")
         .eq("status", "pending")
         .lt("created_at", cutoff)
         .execute()
     )
-    # postgrest.update() already defaults to returning="representation", so `res.data`
-    # carries the swept rows; the filter builder has no .select() and never did.
+    swept = getattr(res, "count", None)
+    if isinstance(swept, int):
+        return swept
+    # Older proxies may omit Content-Range; fall back to whatever representation came back.
     rows = getattr(res, "data", None)
     return len(rows) if isinstance(rows, list) else 0
 

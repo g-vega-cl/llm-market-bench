@@ -3,12 +3,13 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from apps.engine.memory.store import consolidate_overlapping_memories
+
+from memory.store import consolidate_overlapping_memories
 
 
 @pytest.fixture
 def mock_supabase():
-    with patch("apps.engine.memory.store.get_supabase_client") as mock:
+    with patch("memory.store.get_supabase_client") as mock:
         client = MagicMock()
         mock.return_value = client
         yield client
@@ -30,14 +31,14 @@ def mock_cosine():
         with patch(target) as mock:
             yield mock
     except ImportError:
-        target = "apps.engine.analysis.consensus.cosine_similarity"
+        target = "analysis.consensus.cosine_similarity"
         with patch(target) as mock:
             yield mock
 
 
 @pytest.fixture
 def mock_add_memory():
-    with patch("apps.engine.memory.store.add_memory") as mock:
+    with patch("memory.store.add_memory") as mock:
         mock.return_value = "uuid-consolidated"
         yield mock
 

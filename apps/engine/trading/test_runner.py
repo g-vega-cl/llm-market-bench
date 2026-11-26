@@ -168,6 +168,7 @@ def test_create_clients_handles_missing_keys():
     with (
         patch("trading.runner.ALPACA_API_KEY", ""),
         patch("trading.runner.ALPACA_SECRET_KEY", ""),
+        # the broker falls back to its own constants when handed no client, so pin both
         patch("execution.alpaca_broker.ALPACA_API_KEY", ""),
         patch("execution.alpaca_broker.ALPACA_SECRET_KEY", ""),
         patch("trading.runner.get_supabase_client", return_value=MagicMock()),
@@ -191,9 +192,28 @@ def test_create_clients_initializes_when_keys_present():
         assert mock_data_cls.called
         assert mock_trade_cls.called
         assert mock_trade_cls.call_args[0][:2] == ("test_key", "test_secret")
+        # paper=True is the only argument standing between this and live money
+        assert mock_trade_cls.call_args.kwargs["paper"] is True
         # the broker receives the client rather than reading its own module constants
         assert broker._client is mock_trade_cls.return_value
         assert sb is not None
+
+
+def test_create_clients_honours_the_alpaca_kill_switch():
+    """ALPACA_ENABLED=False must leave the mirror unauthenticated even with keys present."""
+    with (
+        patch("trading.runner.ALPACA_API_KEY", "test_key"),
+        patch("trading.runner.ALPACA_SECRET_KEY", "test_secret"),
+        patch("trading.runner.ALPACA_ENABLED", False),
+        patch("execution.alpaca_broker.ALPACA_ENABLED", False),
+        patch("trading.runner.get_supabase_client", return_value=MagicMock()),
+        patch("alpaca.data.historical.StockHistoricalDataClient") as mock_data_cls,
+        patch("alpaca.trading.client.TradingClient") as mock_trade_cls,
+    ):
+        data, broker, sb = _create_clients()
+        assert mock_data_cls.called, "market data is read-only and stays available"
+        assert not mock_trade_cls.called, "the kill switch must stop client construction"
+        assert broker._client is None
 
 
 @pytest.mark.asyncio

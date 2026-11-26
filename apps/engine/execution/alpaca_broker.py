@@ -27,24 +27,33 @@ class AlpacaBroker:
         self._client: TradingClient | None = None
         self._sb = sb_client
 
-        if client is not None:
-            self._client = client
-            return
-
+        # The kill switch governs every path, including an injected client: a caller that
+        # builds its own TradingClient must not be able to mirror while ALPACA_ENABLED is off.
         if not ALPACA_ENABLED:
             logger.info("[Alpaca] Disabled via ALPACA_ENABLED constant.")
+            return
+
+        if client is not None:
+            self._client = client
             return
 
         if not ALPACA_API_KEY or not ALPACA_SECRET_KEY:
             logger.warning("[Alpaca] API keys missing. Alpaca mirroring disabled.")
             return
 
-        self._client = TradingClient(
-            ALPACA_API_KEY,
-            ALPACA_SECRET_KEY,
-            paper=True,
-            url_override=ALPACA_PAPER_ENDPOINT,
-        )
+        try:
+            self._client = TradingClient(
+                ALPACA_API_KEY,
+                ALPACA_SECRET_KEY,
+                paper=True,
+                url_override=ALPACA_PAPER_ENDPOINT,
+            )
+        except Exception:
+            # Construction failure must degrade to "no mirror", never abort the caller's
+            # startup: ten trading lanes share this path and the ledger does not need it.
+            logger.exception("[Alpaca] Trading client construction failed. Alpaca mirroring disabled.")
+            self._client = None
+            return
         logger.info("[Alpaca] Broker initialized (paper endpoint).")
 
     @property

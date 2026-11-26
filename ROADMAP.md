@@ -35,6 +35,7 @@ Full detail and commands in [[entities/open-operations-followups]].
 - [ ] - Benchify: this but somehow voxel for Benchify? - procedural generation? [Swimmable underwater world in one 97 KB HTML file](https://www.reddit.com/r/ClaudeAI/comments/1xw376f/i_built_a_swimmable_underwater_world_in_one_97_kb/) — can we ship a single-file procedural voxel world as an explorable market backdrop?
 - [x] - Benchify: use unlightouse to audit our whole site and fix.
  - Do consistently, last time Done 2026/11/06
+- [ ] - Benchify: consider adding a small leaderboard module to the homepage as social proof (the data already exists at /leaderboard).
 
 ### Marketing & Building in Public
 

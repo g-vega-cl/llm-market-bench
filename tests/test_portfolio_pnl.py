@@ -25,26 +25,36 @@ class TestPortfolioPnL(unittest.IsolatedAsyncioTestCase):
         )
 
         mock_supabase = MagicMock()
-        # Mock the trades table insert to capture what was sent
-        mock_insert = mock_supabase.table.return_value.insert
-        mock_insert.return_value.execute.return_value.data = [{"id": uuid4()}]
+        # The portfolio now ledgers trades through the execute_portfolio_trade RPC.
+        mock_rpc = mock_supabase.rpc
+        mock_rpc.return_value.execute.return_value.data = {
+            "trade_id": str(uuid4()),
+            "cash_balance": 9400.0,
+            "position_quantity": 50,
+            "position_avg_cost": 100.0,
+        }
 
         with patch(
             "execution.portfolio.get_supabase_client", return_value=mock_supabase
         ):
             # Execute a SELL trade at $120 (Profit of $20/share)
             # Sell 50 shares
-            await portfolio.execute_trade("AAPL", 50, 120.0, "SELL")
+            trade_id = await portfolio.execute_trade("AAPL", 50, 120.0, "SELL")
 
-            # Verify the data sent to the trades table
-            self.assertTrue(mock_insert.called)
-            inserted_data = mock_insert.call_args[0][0]
+            # Verify the RPC was called with the trade payload
+            self.assertTrue(mock_rpc.called)
+            rpc_name, rpc_params = mock_rpc.call_args[0]
+            self.assertEqual(rpc_name, "execute_portfolio_trade")
+            self.assertEqual(rpc_params["p_ticker"], "AAPL")
+            self.assertEqual(rpc_params["p_signal"], "SELL")
+            self.assertEqual(rpc_params["p_quantity"], 50)
+            self.assertAlmostEqual(rpc_params["p_price"], 120.0)
+            self.assertIsNotNone(trade_id)
 
-            # Expected PnL: (120 - 100) * 50 = 1000
-            # Expected PnL %: ((120 / 100) - 1) * 100 = 20%
-            self.assertAlmostEqual(inserted_data["realized_pnl"], 1000.0)
-            self.assertAlmostEqual(inserted_data["realized_pnl_pct"], 20.0)
-            self.assertEqual(inserted_data["signal"], "SELL")
+            # PnL is calculated server-side by the RPC; the client only sends
+            # price, quantity, and signal.
+            self.assertNotIn("realized_pnl", rpc_params)
+            self.assertNotIn("realized_pnl_pct", rpc_params)
 
     async def test_execute_trade_no_pnl_on_buy(self):
         portfolio = Portfolio("test_agent")
@@ -52,18 +62,29 @@ class TestPortfolioPnL(unittest.IsolatedAsyncioTestCase):
         portfolio.cash_balance = 20000.0
 
         mock_supabase = MagicMock()
-        mock_insert = mock_supabase.table.return_value.insert
-        mock_insert.return_value.execute.return_value.data = [{"id": uuid4()}]
+        mock_rpc = mock_supabase.rpc
+        mock_rpc.return_value.execute.return_value.data = {
+            "trade_id": str(uuid4()),
+            "cash_balance": 18000.0,
+            "position_quantity": 10,
+            "position_avg_cost": 200.0,
+        }
 
         with patch(
             "execution.portfolio.get_supabase_client", return_value=mock_supabase
         ):
             # Execute a BUY trade
-            await portfolio.execute_trade("TSLA", 10, 200.0, "BUY")
+            trade_id = await portfolio.execute_trade("TSLA", 10, 200.0, "BUY")
 
-            inserted_data = mock_insert.call_args[0][0]
-            self.assertNotIn("realized_pnl", inserted_data)
-            self.assertNotIn("realized_pnl_pct", inserted_data)
+            self.assertTrue(mock_rpc.called)
+            rpc_name, rpc_params = mock_rpc.call_args[0]
+            self.assertEqual(rpc_name, "execute_portfolio_trade")
+            self.assertEqual(rpc_params["p_signal"], "BUY")
+            self.assertEqual(rpc_params["p_quantity"], 10)
+            self.assertAlmostEqual(rpc_params["p_price"], 200.0)
+            self.assertIsNotNone(trade_id)
+            self.assertNotIn("realized_pnl", rpc_params)
+            self.assertNotIn("realized_pnl_pct", rpc_params)
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { ChatPage } from '~/features/chat/ChatPage';
 import { seo } from '~/lib/seo';
+import { buildAuthRedirectSearch } from '~/shared/auth/redirect';
 
 interface ChatSearch {
     q?: string;
@@ -8,6 +9,15 @@ interface ChatSearch {
 }
 
 export const Route = createFileRoute('/chat')({
+    beforeLoad: ({ context, location }) => {
+        if (!context.user) {
+            throw redirect({
+                to: '/login',
+                search: buildAuthRedirectSearch(location.pathname, location.searchStr),
+                replace: true,
+            });
+        }
+    },
     validateSearch: (search: Record<string, unknown>): ChatSearch => ({
         q: typeof search.q === 'string' ? search.q : undefined,
         ticker: typeof search.ticker === 'string' ? search.ticker : undefined,

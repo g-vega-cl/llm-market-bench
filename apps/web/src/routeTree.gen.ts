@@ -38,7 +38,7 @@ import { Route as TodayRouteImport } from './routes/today'
 import { Route as AuthedProfileRouteImport } from './routes/_authed/profile'
 import { Route as AiPredictionsIndexRouteImport } from './routes/ai-predictions/index'
 import { Route as AuditsIndexRouteImport } from './routes/audits/index'
-import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AuthCallbackRouteImport } from './routes/auth_.callback'
 import { Route as AutoresearchIndexRouteImport } from './routes/autoresearch/index'
 import { Route as CauseAndEffectIndexRouteImport } from './routes/cause-and-effect/index'
 import { Route as CompaniesTickerRouteImport } from './routes/companies.$ticker'
@@ -210,9 +210,9 @@ const AuditsIndexRoute = AuditsIndexRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthCallbackRoute = AuthCallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
-  getParentRoute: () => AuthRoute,
+  id: '/auth_/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AutoresearchIndexRoute = AutoresearchIndexRouteImport.update({
   id: '/autoresearch/',
@@ -342,7 +342,7 @@ const RecipesLiveRecipeIdRunsRoute = RecipesLiveRecipeIdRunsRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRouteWithChildren
+  '/auth': typeof AuthRoute
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/build': typeof BuildRoute
@@ -397,7 +397,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/auth': typeof AuthRouteWithChildren
+  '/auth': typeof AuthRoute
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/build': typeof BuildRoute
@@ -451,7 +451,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authed': typeof AuthedRouteWithChildren
-  '/auth': typeof AuthRouteWithChildren
+  '/auth': typeof AuthRoute
   '/autoresearch-backtest': typeof AutoresearchBacktestRoute
   '/barometer-audit': typeof BarometerAuditRoute
   '/build': typeof BuildRoute
@@ -477,7 +477,7 @@ export interface FileRoutesById {
   '/today': typeof TodayRoute
   '/recipes/$recipeId': typeof RecipesRecipeIdRouteRouteWithChildren
   '/_authed/profile': typeof AuthedProfileRoute
-  '/auth/callback': typeof AuthCallbackRoute
+  '/auth_/callback': typeof AuthCallbackRoute
   '/companies/$ticker': typeof CompaniesTickerRoute
   '/portfolios/$portfolioId': typeof PortfoliosPortfolioIdRoute
   '/ai-predictions/': typeof AiPredictionsIndexRoute
@@ -642,7 +642,7 @@ export interface FileRouteTypes {
     | '/today'
     | '/recipes/$recipeId'
     | '/_authed/profile'
-    | '/auth/callback'
+    | '/auth_/callback'
     | '/companies/$ticker'
     | '/portfolios/$portfolioId'
     | '/ai-predictions/'
@@ -673,7 +673,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthedRoute: typeof AuthedRouteWithChildren
-  AuthRoute: typeof AuthRouteWithChildren
+  AuthRoute: typeof AuthRoute
   AutoresearchBacktestRoute: typeof AutoresearchBacktestRoute
   BarometerAuditRoute: typeof BarometerAuditRoute
   BuildRoute: typeof BuildRoute
@@ -698,6 +698,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   TodayRoute: typeof TodayRoute
   RecipesRecipeIdRouteRoute: typeof RecipesRecipeIdRouteRouteWithChildren
+  AuthCallbackRoute: typeof AuthCallbackRoute
   PortfoliosPortfolioIdRoute: typeof PortfoliosPortfolioIdRoute
   AiPredictionsIndexRoute: typeof AiPredictionsIndexRoute
   AuditsIndexRoute: typeof AuditsIndexRoute
@@ -920,12 +921,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth/callback': {
-      id: '/auth/callback'
-      path: '/callback'
+    '/auth_/callback': {
+      id: '/auth_/callback'
+      path: '/auth/callback'
       fullPath: '/auth/callback'
       preLoaderRoute: typeof AuthCallbackRouteImport
-      parentRoute: typeof AuthRoute
+      parentRoute: typeof rootRouteImport
     }
     '/autoresearch/': {
       id: '/autoresearch/'
@@ -1113,16 +1114,6 @@ const AuthedRouteChildren: AuthedRouteChildren = {
 const AuthedRouteWithChildren =
   AuthedRoute._addFileChildren(AuthedRouteChildren)
 
-interface AuthRouteChildren {
-  AuthCallbackRoute: typeof AuthCallbackRoute
-}
-
-const AuthRouteChildren: AuthRouteChildren = {
-  AuthCallbackRoute: AuthCallbackRoute,
-}
-
-const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
-
 interface CompaniesRouteChildren {
   CompaniesTickerRoute: typeof CompaniesTickerRoute
 }
@@ -1183,7 +1174,7 @@ const RecipesLiveRecipeIdRouteRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthedRoute: AuthedRouteWithChildren,
-  AuthRoute: AuthRouteWithChildren,
+  AuthRoute: AuthRoute,
   AutoresearchBacktestRoute: AutoresearchBacktestRoute,
   BarometerAuditRoute: BarometerAuditRoute,
   BuildRoute: BuildRoute,
@@ -1208,6 +1199,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   TodayRoute: TodayRoute,
   RecipesRecipeIdRouteRoute: RecipesRecipeIdRouteRouteWithChildren,
+  AuthCallbackRoute: AuthCallbackRoute,
   PortfoliosPortfolioIdRoute: PortfoliosPortfolioIdRoute,
   AiPredictionsIndexRoute: AiPredictionsIndexRoute,
   AuditsIndexRoute: AuditsIndexRoute,

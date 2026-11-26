@@ -29,7 +29,6 @@ export const PRELOAD_WARMUP_ROUTES = [
     '/retired-agents',
     '/chat',
     '/login',
-    '/signup',
 ] as const satisfies readonly (keyof FileRoutesByTo)[];
 
 type DynamicWarmupRouteKey = Extract<

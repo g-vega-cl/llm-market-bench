@@ -9,7 +9,7 @@ The web app splits its Supabase access into two strictly separated client famili
 
 ## Why It Exists
 
-The platform migrated its data layer to a self-hosted PostgreSQL + PostgREST stack at `https://benchify-archive-db.clvg.uk` (see [[concepts/hybrid-database-archival]]). That stack serves the Data API but does **not** run GoTrue/Auth. Authentication (password login, Google OAuth, session cookies) remains on Supabase Cloud. A single shared client cannot serve both: pointing `auth.getUser()` at the archive DB returns `PGRST125` (invalid path), and pointing data queries at the cloud project reintroduces egress and quota coupling.
+The platform migrated its data layer to a self-hosted PostgreSQL + PostgREST stack at `https://benchify-archive-db.clvg.uk` (see [[concepts/hybrid-database-archival]]). That stack serves the Data API but does **not** run GoTrue/Auth. Authentication (Google OAuth and session cookies) remains on Supabase Cloud. A single shared client cannot serve both: pointing `auth.getUser()` at the archive DB returns `PGRST125` (invalid path), and pointing data queries at the cloud project reintroduces egress and quota coupling.
 
 ## The Two Client Families
 
@@ -19,7 +19,7 @@ The platform migrated its data layer to a self-hosted PostgreSQL + PostgREST sta
 - **`apps/web/src/lib/auth-client.ts`** — `getAuthBrowserClient()` builds a `createBrowserClient` from `VITE_SUPABASE_AUTH_URL` (falling back to `VITE_SUPABASE_URL`) and `VITE_SUPABASE_AUTH_ANON_KEY` (falling back to `VITE_SUPABASE_ANON_KEY`).
 - **`assertValidAuthUrl(url, envVarName)`** — shared guard that throws if the URL is missing or contains `benchify-archive-db`, with an explicit message telling the operator to point the variable at the Supabase Cloud project URL (`https://<project-ref>.supabase.co`).
 
-Auth consumers: `__root.tsx` (`fetchUser`), `_authed.tsx` (`loginFn`), `auth.callback.tsx` (`exchangeCodeFn`), `logout.tsx` (`logoutFn`), `signup.tsx` (`signupFn`), `shared/auth/components/Auth.tsx` (Google OAuth), and the chat server's `auth.getUser()` calls.
+Auth consumers: `__root.tsx` (`fetchUser`), `auth_.callback.tsx` (`exchangeCodeFn`), `logout.tsx` (`logoutFn`), `shared/auth/components/Auth.tsx` (Google OAuth), and the chat server's `auth.getUser()` calls.
 
 `fetchUser` in `__root.tsx` wraps `auth.getUser()` in a `try/catch` and returns `null` (guest) on any thrown error, missing user, or missing email, logging a `console.warn` instead of propagating. A transient Auth-service failure therefore degrades to an unauthenticated render rather than crashing the root route. `RootDocument` reads the route context defensively (`context?.user`) so it renders safely even when the router is in an error state and the context is undefined.
 

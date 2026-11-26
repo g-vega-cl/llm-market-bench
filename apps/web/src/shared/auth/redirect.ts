@@ -1,5 +1,14 @@
 const AUTH_SELF_PATHS = new Set(['/', '/auth', '/login', '/signup', '/logout', '/auth/callback']);
 
+function normalizePathname(path: string): string {
+    const pathname = path.split(/[?#]/)[0] ?? '/';
+    return pathname.replace(/\/+$/, '') || '/';
+}
+
+export function isAuthSelfPath(path: string): boolean {
+    return AUTH_SELF_PATHS.has(normalizePathname(path));
+}
+
 export function sanitizeRedirectPath(raw: unknown): string {
     if (typeof raw !== 'string') return '/';
     const trimmed = raw.trim();
@@ -16,11 +25,16 @@ export function sanitizeRedirectPath(raw: unknown): string {
     return trimmed;
 }
 
+export function sanitizePostAuthRedirect(raw: unknown): string {
+    const safe = sanitizeRedirectPath(raw);
+    return isAuthSelfPath(safe) ? '/' : safe;
+}
+
 export function resolveCurrentReturnPath(): string {
     if (typeof window === 'undefined') return '/';
     const candidate = `${window.location.pathname || '/'}${window.location.search || ''}`;
     const safe = sanitizeRedirectPath(candidate);
-    return AUTH_SELF_PATHS.has(window.location.pathname || '/') ? '/' : safe;
+    return isAuthSelfPath(safe) ? '/' : safe;
 }
 
 /**
@@ -38,8 +52,7 @@ export function buildAuthRedirectSearch(pathname: string, searchStr = ''): { red
 export function buildOAuthCallbackUrl(origin: string, currentPath?: string): string {
     const cleanOrigin = origin.replace(/\/$/, '');
     const safeNext = sanitizeRedirectPath(currentPath);
-    const barePath = safeNext.split('?')[0] ?? '/';
-    if (AUTH_SELF_PATHS.has(barePath)) {
+    if (isAuthSelfPath(safeNext)) {
         return `${cleanOrigin}/auth/callback`;
     }
     return `${cleanOrigin}/auth/callback?next=${encodeURIComponent(safeNext)}`;

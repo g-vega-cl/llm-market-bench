@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildAuthRedirectSearch, buildOAuthCallbackUrl, sanitizeRedirectPath } from './redirect';
+import {
+    buildAuthRedirectSearch,
+    buildOAuthCallbackUrl,
+    sanitizePostAuthRedirect,
+    sanitizeRedirectPath,
+} from './redirect';
 
 describe('auth redirect helpers', () => {
     it('allows clean internal relative paths and rejects external or protocol-relative URLs', () => {
@@ -16,11 +21,25 @@ describe('auth redirect helpers', () => {
         expect(sanitizeRedirectPath(undefined)).toBe('/');
     });
 
+    it('sanitizePostAuthRedirect strips auth self-paths including trailing slashes and hashes', () => {
+        expect(sanitizePostAuthRedirect('/login')).toBe('/');
+        expect(sanitizePostAuthRedirect('/login/?redirect=/login/')).toBe('/');
+        expect(sanitizePostAuthRedirect('/login#section')).toBe('/');
+        expect(sanitizePostAuthRedirect('/login?redirect=/recipes')).toBe('/');
+        expect(sanitizePostAuthRedirect('/auth?redirect=/chat')).toBe('/');
+        expect(sanitizePostAuthRedirect('/auth/')).toBe('/');
+        expect(sanitizePostAuthRedirect('/signup?next=/recipes')).toBe('/');
+        expect(sanitizePostAuthRedirect('/signup/')).toBe('/');
+        expect(sanitizePostAuthRedirect('/auth/callback?code=123')).toBe('/');
+        expect(sanitizePostAuthRedirect('/logout')).toBe('/');
+        expect(sanitizePostAuthRedirect('/recipes?recipeId=rec-1')).toBe('/recipes?recipeId=rec-1');
+    });
+
     it('attaches a safe next param to the OAuth callback URL when on a gated route', () => {
         expect(buildOAuthCallbackUrl('https://benchify.app', '/recipes')).toBe(
             'https://benchify.app/auth/callback?next=%2Frecipes',
         );
-        expect(buildOAuthCallbackUrl('https://benchify.app', '/login')).toBe(
+        expect(buildOAuthCallbackUrl('https://benchify.app', '/login/')).toBe(
             'https://benchify.app/auth/callback',
         );
         expect(buildOAuthCallbackUrl('https://benchify.app', '/')).toBe(

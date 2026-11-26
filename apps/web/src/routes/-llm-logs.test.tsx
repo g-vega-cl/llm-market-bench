@@ -37,7 +37,7 @@ async function runGuard(context: GuardContext): Promise<unknown> {
 }
 
 describe('/llm-logs route guard', () => {
-    it('redirects unauthenticated visitors to /auth with /llm-logs return path', async () => {
+    it('redirects unauthenticated visitors to /login with /llm-logs return path', async () => {
         const thrown = await runGuard({ user: null });
         expect(isRedirect(thrown)).toBe(true);
         const redirectObj = thrown as unknown as {
@@ -45,7 +45,7 @@ describe('/llm-logs route guard', () => {
             options: { to: string; search: { redirect: string } };
         };
         expect(redirectObj.status).toBe(307);
-        expect(redirectObj.options.to).toBe('/auth');
+        expect(redirectObj.options.to).toBe('/login');
         expect(redirectObj.options.search).toEqual({ redirect: '/llm-logs' });
     });
 

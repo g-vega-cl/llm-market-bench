@@ -23,14 +23,18 @@ const mockPostHogProvider = vi.fn(({ children }) => <>{children}</>);
 const mockIdentify = vi.fn();
 const mockReset = vi.fn();
 const mockGetDistinctId = vi.fn();
+const mockCapture = vi.fn();
+const mockPostHogClient = {
+    __loaded: true,
+    identify: mockIdentify,
+    reset: mockReset,
+    get_distinct_id: mockGetDistinctId,
+    capture: mockCapture,
+};
 
 vi.mock('@posthog/react', () => ({
     PostHogProvider: (props: Record<string, unknown>) => mockPostHogProvider(props),
-    usePostHog: () => ({
-        identify: mockIdentify,
-        reset: mockReset,
-        get_distinct_id: mockGetDistinctId,
-    }),
+    usePostHog: () => mockPostHogClient,
 }));
 
 describe('Root layout navigation', () => {
@@ -124,6 +128,9 @@ describe('Root layout navigation', () => {
         // "BENCHIFY" heading text and standalone "HOME" button should NOT exist
         expect(screen.queryByText('BENCHIFY')).toBeNull();
         expect(screen.queryByText('Home')).toBeNull();
+
+        // Site-wide compact disclaimer banner should not be rendered above <main>
+        expect(screen.queryByRole('link', { name: 'Learn more' })).toBeNull();
     });
 
     it('RootDocument navbar renders Logout on the same row without flex-wrap and without user email when authenticated', async () => {
@@ -539,6 +546,44 @@ describe('RootDocument PostHog identity synchronization', () => {
         await screen.findByText('App Content');
 
         expect(mockIdentify).not.toHaveBeenCalled();
+    });
+
+    it('captures auth_completed once after a Google OAuth return', () => {
+        mockCapture.mockClear();
+        window.sessionStorage.setItem('benchify_auth_started', 'google');
+
+        render(<PostHogAuthSync user={{ id: 'usr-123', email: 'investor@example.com' }} />);
+
+        expect(mockCapture).toHaveBeenCalledWith('auth_completed', { provider: 'google' });
+        expect(window.sessionStorage.getItem('benchify_auth_started')).toBeNull();
+    });
+
+    it('defers identify and auth_completed without dropping the session marker while PostHog is uninitialized', async () => {
+        mockCapture.mockClear();
+        mockIdentify.mockClear();
+        mockGetDistinctId.mockReturnValue('anon-before-oauth');
+        mockPostHogClient.__loaded = false;
+        window.sessionStorage.setItem('benchify_auth_started', 'google');
+
+        try {
+            render(<PostHogAuthSync user={{ id: 'usr-123', email: 'investor@example.com' }} />);
+
+            // Must not consume the marker or drop telemetry before PostHogProvider's useEffect init()
+            expect(mockIdentify).not.toHaveBeenCalled();
+            expect(mockCapture).not.toHaveBeenCalled();
+            expect(window.sessionStorage.getItem('benchify_auth_started')).toBe('google');
+
+            mockPostHogClient.__loaded = true;
+            await new Promise((resolve) => window.setTimeout(resolve, 10));
+
+            expect(mockIdentify).toHaveBeenCalledWith('usr-123', {
+                email: 'investor@example.com',
+            });
+            expect(mockCapture).toHaveBeenCalledWith('auth_completed', { provider: 'google' });
+            expect(window.sessionStorage.getItem('benchify_auth_started')).toBeNull();
+        } finally {
+            mockPostHogClient.__loaded = true;
+        }
     });
 
     it('should call posthog.reset when an authenticated user transitions to unauthenticated', () => {

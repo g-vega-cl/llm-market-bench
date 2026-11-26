@@ -115,7 +115,7 @@
 
 - [[concepts/privacy-policy]] — platform privacy policy governing data collection, storage, and user rights
 - [[concepts/atomic-live-schedule-switch]] — single-transaction `switch_live_schedule` RPC that pauses one live bot and enables another
-- [[concepts/turnstile-captcha]] — Cloudflare Turnstile CAPTCHA gating password login and signup
+- [[concepts/google-only-auth]] — Google OAuth is the sole sign-in path, with sanitised return paths and a single `auth_completed` event
 - [[concepts/page-surface-conventions]] — PageLayout padding opt-out (`withPadding={false}`) and action-vs-browse page title rules, enforced by `page-surface-conventions.test.tsx`
 - [[concepts/starter-recipes]] — catalog of pre-built recipe templates in packages/config/starter-recipes.json
 - [[concepts/recipe-compile-queue]] — Auto-indexed page

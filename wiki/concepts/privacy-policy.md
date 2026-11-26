@@ -9,10 +9,10 @@ The platform's privacy policy governs how user data is collected, stored, proces
 
 ## Data Collection
 
-- **Account data**: email address, password hash, and Google profile information (email, display name) obtained via Supabase Auth. Passwords are never stored in plaintext.
+- **Account data**: email address and Google profile information (email, display name) obtained via Supabase Auth. Benchify does not collect passwords.
 - **Product data**: bot descriptions, starter ideas, alignment answers, compiled strategies, backtest settings, and user-created results.
 - **Usage data**: page views, clicks, feature interactions, and errors captured by PostHog. Session replay captures form inputs masked; on-page text including bot descriptions, compiled strategies, and chat messages is part of the replay. Browser console logs and unhandled errors are captured for debugging.
-- **Technical and security data**: IP-derived coarse location, device/browser type, timestamps, and Cloudflare Turnstile abuse-prevention tokens.
+- **Technical and security data**: IP-derived coarse location, device/browser type, and timestamps.
 - **Support communications**: messages sent when contacting us about the product.
 - **Language-model providers**: When users describe a bot, answer alignment questions, compile a strategy, or use the research chat, the text is sent to third-party AI providers. Currently includes DeepSeek (direct chat), MiniMax (market commentary), and the model gateway that routes compilation and analysis, which fronts Groq, Google (Gemini), OpenRouter, Nous Research, NVIDIA, Kilo, and OpenCode. Those providers may process text outside the user's country, and the set of providers changes as models are added or retired.
 

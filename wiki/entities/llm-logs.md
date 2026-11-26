@@ -11,7 +11,7 @@ category: entity
 
 Three independent gates, all of which must pass:
 
-1. **Session gate (`beforeLoad`)** — `apps/web/src/routes/llm-logs.tsx` throws `redirect({ to: '/auth', search: buildAuthRedirectSearch(location.pathname, location.searchStr), replace: true })` when `context.user` is absent, so an anonymous visitor is sent to `/auth` with `/llm-logs` as the return path (the same helper the other auth-gated routes use).
+1. **Session gate (`beforeLoad`)** — `apps/web/src/routes/llm-logs.tsx` throws `redirect({ to: '/login', search: buildAuthRedirectSearch(location.pathname, location.searchStr), replace: true })` when `context.user` is absent, so an anonymous visitor is sent to `/login` with `/llm-logs` as the return path (the same helper the other auth-gated routes use).
 2. **Email allowlist** — the route component resolves `isAllowedLlmLogsEmail(user?.email)` from `apps/web/src/features/llm-logs/llm-logs-types.ts`. `ALLOWED_LLM_LOGS_EMAILS` is `['g.vega.cl@gmail.com']`, and the check trims and lowercases the caller's email before comparing case-insensitively. A signed-in user outside the allowlist renders `<NotFound />` rather than an error or an empty table, so the route's existence is not disclosed.
 3. **Server-side enforcement** — `fetchLlmLogsData` (`apps/web/src/features/llm-logs/llm-logs-server.ts`) re-checks the caller before reading, throwing `Authentication required` for a missing session and `Restricted to authorized accounts` for a non-allowlisted email. Neither path issues a proxy request, so the browser gate is never the only barrier.
 
@@ -71,7 +71,7 @@ Each row is followed by an optional `LogRowDetail` row — an in-flow recessed `
 - `apps/free_llm_proxy/tests/test_logs_endpoint.py` — `/v1/logs` returns `401` without a master key; with a key it returns newest-first rows, honors `provider`, `status_code`, and `billing` filters, and paginates via `limit`/`offset` while reporting the unfiltered `total`.
 - `apps/web/src/features/llm-logs/llm-logs-server.test.ts` — an unauthenticated caller and a non-allowlisted authenticated caller both throw without calling `fetch`; an allowlisted caller issues exactly two Bearer-authenticated requests to `/metrics` and `/logs?limit=50&offset=0&provider=groq`; a `404` on `/logs` falls back to `metrics.recent_calls` with `isFallbackRecentOnly: true` and a parsed `failover_chain`; and when both `FREE_PROXY_MASTER_KEY` and `STRATA_API_KEY` are unset the handler throws `Proxy authentication is not configured on the server` without leaking either env var name in the message.
 - `apps/web/src/features/llm-logs/LlmLogsPage.test.tsx` — renders the title, success rate, formatted token total, a log row, and the in-flow trough detail (`purpose:`, prompt preview, `failover:` chain).
-- `apps/web/src/routes/-llm-logs.test.tsx` — drives the real `Route.options.beforeLoad` with a stubbed auth client: an unauthenticated context throws a redirect with `status: 307`, `to: '/auth'`, and `search: { redirect: '/llm-logs' }`; an authenticated context resolves without throwing, leaving the email allowlist to the component and the server function.
+- `apps/web/src/routes/-llm-logs.test.tsx` — drives the real `Route.options.beforeLoad` with a stubbed auth client: an unauthenticated context throws a redirect with `status: 307`, `to: '/login'`, and `search: { redirect: '/llm-logs' }`; an authenticated context resolves without throwing, leaving the email allowlist to the component and the server function.
 
 ## Related
 

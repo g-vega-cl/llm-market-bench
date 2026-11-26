@@ -31,7 +31,7 @@ describe('ConsoleQueueCard', () => {
         expect(screen.getByText(/Sign in to submit hypotheses/i)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /Sign In to Queue/i })).toHaveAttribute(
             'href',
-            '/signup',
+            '/login',
         );
     });
 

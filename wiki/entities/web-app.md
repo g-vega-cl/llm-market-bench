@@ -33,12 +33,12 @@ The topbar is a single non-wrapping row. The left cluster holds the `B` logo and
 - **Portfolio Detail Pages** (`/portfolios/:id` and `/renko`): Real-time portfolio analysis, performance charts, current positions, and recent trades audit trail in Eastern Time (`ET`).
 - **Retired Agents** (`/retired-agents`): Dedicated archive page listing every frozen, inactive portfolio (`!p.is_active`).
 - **Companies** (`/companies`, `/companies/$ticker`): Institutional company & sector research dossier explorer.
-- **Investment Chat Gateway** (`/chat`): Conversational research interface with live database query tools and memory search.
+- **Investment Chat Gateway** (`/chat`): Authenticated conversational research interface with live database query tools and memory search. Anonymous visitors get a 307 to `/login?redirect=/chat` from the route `beforeLoad`; chat server functions independently reject guests.
 - **AI Memories Page** (`/memories`): Searchable archive of market consensus events, economic calendar catalysts, lessons, and resolved trades.
 
 ## Private routes
 
-- **LLM Proxy Logs** (`/llm-logs`): Owner-only viewer for the free LLM proxy audit trail. `beforeLoad` redirects an anonymous visitor to `/auth` with `/llm-logs` as the return path, the component renders `<NotFound />` for a signed-in user outside the `isAllowedLlmLogsEmail` allowlist, and `fetchLlmLogsFn` re-checks the caller server-side. The route head declares `robots: noindex, nofollow`.
+- **LLM Proxy Logs** (`/llm-logs`): Owner-only viewer for the free LLM proxy audit trail. `beforeLoad` redirects an anonymous visitor to `/login` with `/llm-logs` as the return path, the component renders `<NotFound />` for a signed-in user outside the `isAllowedLlmLogsEmail` allowlist, and `fetchLlmLogsFn` re-checks the caller server-side. The route head declares `robots: noindex, nofollow`.
 
 ## Architecture
 
@@ -55,7 +55,7 @@ The topbar is a single non-wrapping row. The left cluster holds the `B` logo and
 
 The web app uses two strictly separated Supabase client families (see [[concepts/auth-db-client-separation]]):
 
-- **Auth client** — `apps/web/src/lib/auth.ts` (`getAuthServerClient`) and `apps/web/src/lib/auth-client.ts` (`getAuthBrowserClient`) talk to **Supabase Cloud** for password login, Google OAuth, session cookies, and `auth.getUser()`. `assertValidAuthUrl` rejects any URL containing `benchify-archive-db` to prevent `PGRST125` auth misrouting.
+- **Auth client** — `apps/web/src/lib/auth.ts` (`getAuthServerClient`) and `apps/web/src/lib/auth-client.ts` (`getAuthBrowserClient`) talk to **Supabase Cloud** for Google OAuth, session cookies, and `auth.getUser()`. `assertValidAuthUrl` rejects any URL containing `benchify-archive-db` to prevent `PGRST125` auth misrouting.
 - **DB client** — `apps/web/src/lib/db.ts` (`getDbServerClient`, `getDbAdminClient`, `getDbBrowserClient`) talks to the **self-hosted PostgREST archive DB** (`https://benchify-archive-db.clvg.uk`) for all data reads/writes, using stateless `createClient` options. `getDbAdminClient()` is an explicit dedicated export used for privileged server-side operations.
 
 All feature data fetchers import `getDbServerClient` / `getDbBrowserClient` from `~/lib/db`; auth routes import `getAuthServerClient` from `~/lib/auth`.

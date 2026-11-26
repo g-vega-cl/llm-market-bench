@@ -15,11 +15,11 @@ import { createServerFn } from '@tanstack/react-start';
 import { type ReactNode, useEffect, useRef } from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
-import { FinancialDisclaimer } from '~/features/legal/FinancialDisclaimer';
 import { SiteFooter } from '~/features/legal/SiteFooter';
 import { getAuthServerClient } from '~/lib/auth';
 import { QueryClientProviderWrapper } from '~/lib/query-client';
 import { canonicalUrl, seo } from '~/lib/seo';
+import { consumePendingGoogleAuth } from '~/shared/auth/pending-auth';
 import { posthogBeforeSend } from '~/utils/posthog-filter';
 import { warmRouteChunks } from '~/utils/route-warmup';
 import appCss from '../styles/app.css?url';
@@ -290,6 +290,19 @@ export function NavLink({
     );
 }
 
+function isPostHogReady(posthog: unknown): boolean {
+    return (posthog as { __loaded?: boolean } | null | undefined)?.__loaded !== false;
+}
+
+function capturePendingGoogleAuth(posthog: {
+    capture?: (eventName: string, properties?: Record<string, unknown>) => unknown;
+}) {
+    if (typeof posthog.capture !== 'function') return;
+    const provider = consumePendingGoogleAuth();
+    if (!provider) return;
+    posthog.capture('auth_completed', { provider });
+}
+
 export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } = {}) {
     const routeContext = Route.useRouteContext();
     const user = userProp !== undefined ? userProp : routeContext?.user;
@@ -299,17 +312,33 @@ export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } =
     useEffect(() => {
         if (!posthog) return;
 
-        if (user?.id) {
-            if (posthog.get_distinct_id?.() !== user.id) {
-                posthog.identify?.(user.id, {
-                    email: user.email,
-                });
+        const sync = () => {
+            if (!isPostHogReady(posthog)) return false;
+
+            if (user?.id) {
+                if (posthog.get_distinct_id?.() !== user.id) {
+                    posthog.identify?.(user.id, {
+                        email: user.email,
+                    });
+                }
+                capturePendingGoogleAuth(posthog);
+                prevUserIdRef.current = user.id;
+            } else if (prevUserIdRef.current && !user) {
+                posthog.reset?.();
+                prevUserIdRef.current = null;
             }
-            prevUserIdRef.current = user.id;
-        } else if (prevUserIdRef.current && !user) {
-            posthog.reset?.();
-            prevUserIdRef.current = null;
-        }
+            return true;
+        };
+
+        if (sync()) return;
+
+        // PostHogProvider runs init() in its own useEffect (after child effects);
+        // yield one macrotask on cold full-page loads (e.g. OAuth callback 307)
+        // so identify() and auth_completed do not drop before __loaded is true.
+        const timerId = window.setTimeout(() => {
+            sync();
+        }, 0);
+        return () => window.clearTimeout(timerId);
     }, [user, posthog]);
 
     return null;
@@ -356,6 +385,7 @@ export function RootDocument({ children }: { children: ReactNode }) {
                                   'https://us.i.posthog.com',
                         ui_host: 'https://us.posthog.com',
                         defaults: '2025-05-24',
+                        autocapture: true,
                         // No PostHog cookie or localStorage: analytics state lives
                         // in page memory, so nothing persistent is written before a
                         // visitor asks us to. Signed-in users stay whole because
@@ -423,7 +453,6 @@ export function RootDocument({ children }: { children: ReactNode }) {
                         </div>
                     </nav>
                     <GlobalBackground />
-                    <FinancialDisclaimer compact />
                     <main id="main-content">{children}</main>
                     <SiteFooter />
                     <TanStackRouterDevtools position="bottom-right" />

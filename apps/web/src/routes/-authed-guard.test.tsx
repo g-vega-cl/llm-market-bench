@@ -37,7 +37,7 @@ async function runGuard(context: GuardContext, pathname: string, searchStr = '')
 }
 
 describe('/_authed guard', () => {
-    it('redirects an anonymous /recipes visitor to /auth with the requested path', async () => {
+    it('redirects an anonymous /recipes visitor to /login with the requested path', async () => {
         const thrown = await runGuard({ user: null }, '/recipes', '?recipeId=rec-1');
 
         expect(isRedirect(thrown)).toBe(true);
@@ -46,7 +46,7 @@ describe('/_authed guard', () => {
             options: { to: string; search: { redirect: string }; replace?: boolean };
         };
         expect(redirect.status).toBe(307);
-        expect(redirect.options.to).toBe('/auth');
+        expect(redirect.options.to).toBe('/login');
         expect(redirect.options.search).toEqual({ redirect: '/recipes?recipeId=rec-1' });
         expect(redirect.options.replace).toBe(true);
     });

@@ -162,7 +162,7 @@ export function useBotHeaderActions({
             const msg = err instanceof Error ? err.message : 'Failed to fork bot';
             if (/unauthorized|sign in/i.test(msg)) {
                 await navigate({
-                    to: '/auth',
+                    to: '/login',
                     search: { redirect: `/recipes/${recipeId}` },
                 });
                 return;

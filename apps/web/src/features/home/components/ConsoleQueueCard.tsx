@@ -170,7 +170,7 @@ export function ConsoleQueueCard({
                     </span>
                     <div>
                         <a
-                            href="/signup"
+                            href="/login"
                             className="voxel-btn inline-block bg-accent text-voxel-trough px-3 py-1.5 text-sm font-bold uppercase tracking-wider hover:opacity-90"
                         >
                             Sign In to Queue

@@ -15,7 +15,7 @@ export const Route = createFileRoute('/llm-logs')({
     beforeLoad: ({ context, location }) => {
         if (!context.user) {
             throw redirect({
-                to: '/auth',
+                to: '/login',
                 search: buildAuthRedirectSearch(location.pathname, location.searchStr),
                 replace: true,
             });

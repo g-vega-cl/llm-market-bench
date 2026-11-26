@@ -264,6 +264,19 @@ Systems with unconstrained state suffer from combinatorial explosion ($2^N$ stat
 
 ---
 
+### 2.13 Auth Sign-In Card (`AuthPhase`)
+
+- **Source Files**: [`apps/web/src/shared/auth/components/Auth.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/shared/auth/components/Auth.tsx), [`apps/web/src/shared/auth/pending-auth.ts`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/shared/auth/pending-auth.ts), [`apps/web/src/routes/auth_.callback.tsx`](file:///home/cv/Documents/Code/llm-market-bench/apps/web/src/routes/auth_.callback.tsx)
+- **Entity Page**: [[concepts/google-only-auth]]
+- **States**:
+  - `AuthPhase = { kind: 'idle' } | { kind: 'redirecting' } | { kind: 'error'; message: string }` — collapses `isSubmitting`, `errorMessage`, and URL `errorCode` seeding into one mutually exclusive union.
+- **Invariants**:
+  - `handleGoogleLogin` rejects re-entry while `phase.kind === 'redirecting'` and wraps `markPendingGoogleAuth()`, `getAuthBrowserClient()`, and `signInWithOAuth()` inside `try/catch`, clearing the `sessionStorage` marker on any failure.
+  - `pageshow` (`event.persisted`) resets `redirecting` to `idle` and clears `benchify_auth_started` without re-deriving a stale URL `errorCode`.
+  - URL `?error=` parameters map strictly through bounded error codes (`access_denied`, `exchange_failed`, `oauth_failed`) rather than reflecting arbitrary query strings.
+
+---
+
 ## 3. Implicit State Debt & Refactoring Backlog
 
 The following areas in the codebase currently manage state implicitly through combinations of nullable columns, flags, or string literals, and are targeted for systematic collapse into explicit types and constraints:

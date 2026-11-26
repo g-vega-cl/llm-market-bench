@@ -319,10 +319,27 @@ def test_auto_wiki_proxy_timeout_is_bounded_for_the_hook(monkeypatch):
 def test_auto_wiki_proxy_timeout_defaults_below_four_minutes():
     import apps.engine.auto_wiki as aw
 
-    assert aw.PROXY_TIMEOUT_SECONDS <= 120, (
-        "the proxy tier runs inside the pre-commit hook; an exhausted free pool "
-        "walks every provider in minutes and would block the commit"
+    assert 165 <= aw.PROXY_TIMEOUT_SECONDS <= 239, (
+        "proxy timeout must exceed free-llm-proxy's 165s free+paid deadline while staying below four minutes"
     )
+
+
+def test_auto_wiki_find_related_wiki_pages_ignores_bare_prose_stem_matches(tmp_path, monkeypatch):
+    """Modifying execution/portfolio.py must not match unrelated pages merely mentioning 'portfolio'."""
+    import apps.engine.auto_wiki as aw
+
+    wiki = tmp_path / "wiki"
+    (wiki / "entities").mkdir(parents=True)
+    (wiki / "entities" / "unrelated.md").write_text("# Home\nDisplays the user's portfolio balance.\n")
+    (wiki / "entities" / "portfolio-engine.md").write_text(
+        "# Portfolio\nImplemented in `apps/engine/execution/portfolio.py`.\n"
+    )
+
+    monkeypatch.setattr(aw, "WIKI_DIR", wiki)
+
+    matches = aw.find_related_wiki_pages(["apps/engine/execution/portfolio.py"])
+    assert "entities/portfolio-engine.md" in matches
+    assert "entities/unrelated.md" not in matches
 
 
 def test_auto_wiki_free_backup_runs_last_and_failure_blocks_the_commit(monkeypatch):

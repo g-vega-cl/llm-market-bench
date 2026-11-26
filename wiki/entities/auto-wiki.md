@@ -20,7 +20,10 @@ The proxy leads because its `auto-go` alias walks free providers before the paid
 ### Budgets and timeouts
 
 - `MAX_OUTPUT_TOKENS = 65536` is the `max_tokens` sent on both the proxy and OpenRouter calls. The proxy clamps it down per provider (groq stays at 32k), so asking for 64k only raises what the larger providers may return.
-- `PROXY_TIMEOUT_SECONDS` (env `WIKI_DOC_PROXY_TIMEOUT_SECONDS`, default `60`) bounds the proxy tier's HTTP request. A healthy `auto-go` answers a documentation prompt in seconds; a saturated free pool walks every provider and takes minutes, and this runs inside the pre-commit hook, so the tier fails over to OpenRouter fast instead of stalling the commit.
+- `PROXY_TIMEOUT_SECONDS` (env `WIKI_DOC_PROXY_TIMEOUT_SECONDS`, default `180`) bounds the proxy tier's HTTP request. It must exceed free-llm-proxy's internal `FREE_PASS_DEADLINE_SECONDS` (120s) + `PAID_PASS_DEADLINE_SECONDS` (45s) = 165s so `auto-go` can finish its full free-to-paid cascade instead of aborting early. A healthy `auto-go` answers a documentation prompt in seconds; a saturated free pool walks every provider and takes minutes, and this runs inside the pre-commit hook.
+- `OPENROUTER_TIMEOUT_SECONDS` (env `WIKI_DOC_OPENROUTER_TIMEOUT_SECONDS`, default `90`) bounds each OpenRouter fallback call.
+- Both HTTP calls run through `_post_with_wall_clock`, which executes `requests.post` in a daemon thread and enforces a strict wall-clock ceiling. Standard `requests` timeouts only cap connect/idle gaps, so a trickling or stalled upstream can hang longer; this aborts at the deadline with `requests.Timeout`.
+- OpenRouter calls are recorded through `core/llm/openrouter_calls.py#log_requests_call` (`purpose="engine:auto_wiki"`) into the shared free-llm-proxy audit SQLite database, including model, prompt preview, response status, and latency. The proxy tier is already audited by the proxy itself, so it is not duplicated by the engine.
 
 ## Staging Contract
 

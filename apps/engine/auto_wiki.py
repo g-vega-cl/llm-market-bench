@@ -25,13 +25,18 @@ Exit code 0 = no changes needed or success. Non-zero = error (printed to stderr)
 import argparse
 import json
 import os
+import queue
 import re
 import subprocess
 import sys
+import threading
+import time
 from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
+
+from core.llm.openrouter_calls import log_requests_call
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
@@ -48,10 +53,12 @@ DEFAULT_PROXY_MODEL = "auto-go"
 # Output budget for every tier. The proxy clamps it down per provider (groq stays
 # at 32k), so asking for 64k only raises what the larger providers may return.
 MAX_OUTPUT_TOKENS = 65536
-# Wall clock for the proxy tier. A healthy auto-go answers a documentation prompt
-# in seconds; a saturated free pool walks every provider and takes minutes, and
-# this runs inside the pre-commit hook, so fail over to OpenRouter fast instead.
-PROXY_TIMEOUT_SECONDS = int(os.getenv("WIKI_DOC_PROXY_TIMEOUT_SECONDS", "60"))
+# Wall clock for the proxy tier. Must exceed free-llm-proxy's internal
+# FREE_PASS_DEADLINE_SECONDS (120s) + PAID_PASS_DEADLINE_SECONDS (45s) = 165s
+# so auto-go finishes its full free-to-paid cascade instead of aborting early.
+PROXY_TIMEOUT_SECONDS = int(os.getenv("WIKI_DOC_PROXY_TIMEOUT_SECONDS", "180"))
+# Wall clock per OpenRouter fallback call (also caps slow/trickling streams).
+OPENROUTER_TIMEOUT_SECONDS = int(os.getenv("WIKI_DOC_OPENROUTER_TIMEOUT_SECONDS", "90"))
 
 
 def get_api_key() -> str | None:
@@ -142,20 +149,25 @@ def extract_diff_filenames(diff_content: str) -> list[str]:
     return result
 
 
+_GENERIC_FILENAMES = frozenset({"__init__.py", "conftest.py", "index.ts", "index.tsx", "types.ts"})
+
+
 def find_related_wiki_pages(filenames: list[str]) -> dict[str, str]:
     """Locate existing wiki pages referencing or directly related to the modified files."""
     if not WIKI_DIR.is_dir() or not filenames:
         return {}
 
     related: dict[str, str] = {}
-    tokens = set()
+    path_tokens: set[str] = set()
+    stem_tokens: set[str] = set()
     for f in filenames:
         p = Path(f)
-        tokens.add(f)
-        tokens.add(p.name)
+        path_tokens.add(f)
+        if p.name and p.name not in _GENERIC_FILENAMES and len(p.name) > 5:
+            path_tokens.add(p.name)
         if p.stem:
-            tokens.add(p.stem)
-            tokens.add(p.stem.replace("_", "-"))
+            stem_tokens.add(p.stem)
+            stem_tokens.add(p.stem.replace("_", "-"))
 
     for md_file in sorted(WIKI_DIR.rglob("*.md")):
         rel = str(md_file.relative_to(WIKI_DIR))
@@ -166,7 +178,7 @@ def find_related_wiki_pages(filenames: list[str]) -> dict[str, str]:
         except OSError:
             continue
         page_stem = md_file.stem
-        if any(token in content for token in tokens if len(token) > 3) or any(token == page_stem for token in tokens):
+        if any(token in content for token in path_tokens) or page_stem in stem_tokens:
             related[rel] = content
 
     return related
@@ -311,6 +323,39 @@ If no documentation is needed, return:
 """
 
 
+def _post_with_wall_clock(
+    url: str,
+    *,
+    payload: dict,
+    headers: dict[str, str],
+    timeout_s: float,
+) -> requests.Response:
+    """Execute requests.post under a hard wall-clock deadline using a daemon thread.
+
+    ``requests.post(..., timeout=N)`` only caps connect + idle gaps between bytes, so
+    a trickling or stalled upstream can hang far longer than ``N``. Running inside a
+    daemon thread ensures the caller enforces a strict wall-clock ceiling and exits
+    promptly even if a socket remains stuck.
+    """
+    result_q: queue.Queue[tuple[bool, object]] = queue.Queue(maxsize=1)
+
+    def _run() -> None:
+        try:
+            response = requests.post(url, json=payload, headers=headers, timeout=timeout_s)
+            result_q.put((True, response))
+        except BaseException as exc:
+            result_q.put((False, exc))
+
+    threading.Thread(target=_run, daemon=True, name="auto-wiki-http").start()
+    try:
+        ok, value = result_q.get(timeout=timeout_s)
+    except queue.Empty as exc:
+        raise requests.Timeout(f"Request to {url} exceeded {timeout_s:.1f}s wall-clock deadline") from exc
+    if not ok:
+        raise value  # type: ignore[misc]
+    return value  # type: ignore[return-value]
+
+
 def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
     payload = {
         "model": model,
@@ -333,7 +378,20 @@ def call_openrouter(prompt: str, model: str, api_key: str) -> dict:
         "X-Title": "llm-market-bench auto wiki",
     }
 
-    resp = requests.post(OPENROUTER_URL, json=payload, headers=headers, timeout=180)
+    started = time.perf_counter()
+    resp = _post_with_wall_clock(
+        OPENROUTER_URL,
+        payload=payload,
+        headers=headers,
+        timeout_s=OPENROUTER_TIMEOUT_SECONDS,
+    )
+    log_requests_call(
+        purpose="engine:auto_wiki",
+        model=model,
+        preview=prompt,
+        response=resp,
+        latency_ms=(time.perf_counter() - started) * 1000,
+    )
     resp.raise_for_status()
     body = resp.json()
     # A 200 can still carry {"error": {...}} — an out-of-credit account or a
@@ -400,11 +458,11 @@ def call_free_proxy(prompt: str, model: str | None = None) -> dict:
         "Content-Type": "application/json",
     }
 
-    resp = requests.post(
+    resp = _post_with_wall_clock(
         f"{base_url}/chat/completions",
-        json=payload,
+        payload=payload,
         headers=headers,
-        timeout=PROXY_TIMEOUT_SECONDS,
+        timeout_s=PROXY_TIMEOUT_SECONDS,
     )
     resp.raise_for_status()
     content = resp.json()["choices"][0]["message"]["content"]

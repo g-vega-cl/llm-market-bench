@@ -4,7 +4,7 @@
 # Called from .husky/pre-commit — runs after the existing lint checks.
 # Only triggers when there are code changes (not just wiki/raw/doc changes).
 #
-# Exit code 0 always — wiki doc failures should never block a commit.
+# Blocking pre-commit gate — exit non-zero blocks the commit when wiki generation fails.
 
 set -euo pipefail
 

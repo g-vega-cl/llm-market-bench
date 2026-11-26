@@ -200,3 +200,29 @@ def test_no_local_on_device_llm_references_remain():
     for name, text in sources.items():
         assert "ollama" not in text.lower(), f"{name} still references the removed on-device tier"
         assert "11434" not in text, f"{name} still targets the removed on-device port"
+
+
+def test_post_with_wall_clock_aborts_hung_request(monkeypatch):
+    """A stalled HTTP request must abort at the wall-clock deadline and raise requests.Timeout."""
+    import threading
+
+    import apps.engine.auto_wiki as aw
+
+    release = threading.Event()
+
+    def stalled_post(*args, **kwargs):
+        release.wait(timeout=5.0)
+        return _fake_response()
+
+    monkeypatch.setattr(aw.requests, "post", stalled_post)
+
+    try:
+        with pytest.raises(requests.Timeout, match="wall-clock deadline"):
+            aw._post_with_wall_clock(
+                "https://openrouter.ai/api/v1/chat/completions",
+                payload={},
+                headers={},
+                timeout_s=0.05,
+            )
+    finally:
+        release.set()

@@ -88,19 +88,27 @@ async def run_daemon_turn(
 
 
 def _create_clients() -> tuple[Any, Any, Any]:
-    """Instantiate the Alpaca data client, the paper broker, and the Supabase client."""
+    """Instantiate the Alpaca data client, the paper broker, and the Supabase client.
+
+    The trading client is built here and injected so the credentials have exactly one
+    source (`trading.runner.ALPACA_*`); letting AlpacaBroker read its own module constants
+    meant the data client and the mirror could disagree about whether keys were present.
+    """
     data_client = None
+    trading_client = None
 
     if ALPACA_API_KEY and ALPACA_SECRET_KEY:
         try:
             from alpaca.data.historical import StockHistoricalDataClient
+            from alpaca.trading.client import TradingClient
 
             data_client = StockHistoricalDataClient(ALPACA_API_KEY, ALPACA_SECRET_KEY)
+            trading_client = TradingClient(ALPACA_API_KEY, ALPACA_SECRET_KEY, paper=True)
         except Exception:
-            logger.exception("Failed to initialize Alpaca data client")
+            logger.exception("Failed to initialize Alpaca clients")
 
     sb_client = get_supabase_client()
-    return data_client, AlpacaBroker(sb_client=sb_client), sb_client
+    return data_client, AlpacaBroker(client=trading_client, sb_client=sb_client), sb_client
 
 
 async def run_tape_poller_loop(

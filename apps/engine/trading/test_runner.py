@@ -185,12 +185,14 @@ def test_create_clients_initializes_when_keys_present():
         patch("trading.runner.ALPACA_SECRET_KEY", "test_secret"),
         patch("trading.runner.get_supabase_client", return_value=MagicMock()),
         patch("alpaca.data.historical.StockHistoricalDataClient") as mock_data_cls,
-        patch("execution.alpaca_broker.TradingClient") as mock_trade_cls,
+        patch("alpaca.trading.client.TradingClient") as mock_trade_cls,
     ):
         data, broker, sb = _create_clients()
         assert mock_data_cls.called
         assert mock_trade_cls.called
-        assert isinstance(broker, AlpacaBroker)
+        assert mock_trade_cls.call_args[0][:2] == ("test_key", "test_secret")
+        # the broker receives the client rather than reading its own module constants
+        assert broker._client is mock_trade_cls.return_value
         assert sb is not None
 
 

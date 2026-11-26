@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PersonalityQuizPage } from './PersonalityQuizPage';
-import { type ArchetypeId, PERSONALITY_QUESTIONS } from './personality-data';
+import { type ArchetypeId, PERSONALITY_QUESTIONS, QUIZ_ACTS } from './personality-data';
+import { QUIZ_WORST_CASE } from './quiz-worst-case';
 
 vi.mock('@tanstack/react-router', () => ({
     Link: ({
@@ -78,9 +79,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         expect(screen.queryByTestId('garden-backdrop')).toBeNull();
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
         expect(
-            within(screen.getByTestId('personality-quiz-card')).getByText(
-                PERSONALITY_QUESTIONS[0].prompt,
-            ),
+            within(screen.getByTestId('personality-quiz-card')).getByRole('heading', {
+                level: 2,
+                name: PERSONALITY_QUESTIONS[0].prompt,
+            }),
         ).toBeInTheDocument();
 
         // Answer Question 1 -> advances to Question 2. No letter is revealed yet:
@@ -89,9 +91,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
             screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[0].options[0].id}`),
         );
         expect(
-            within(screen.getByTestId('personality-quiz-card')).getByText(
-                PERSONALITY_QUESTIONS[1].prompt,
-            ),
+            within(screen.getByTestId('personality-quiz-card')).getByRole('heading', {
+                level: 2,
+                name: PERSONALITY_QUESTIONS[1].prompt,
+            }),
         ).toBeInTheDocument();
         expect(screen.getByTestId('quiz-live-world-hint').textContent).toBe(
             'Scoring 4 trading axes',
@@ -101,9 +104,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         // checking that the first completed act reveals exactly one letter.
         fireEvent.click(screen.getByRole('button', { name: /previous question/i }));
         expect(
-            within(screen.getByTestId('personality-quiz-card')).getByText(
-                PERSONALITY_QUESTIONS[0].prompt,
-            ),
+            within(screen.getByTestId('personality-quiz-card')).getByRole('heading', {
+                level: 2,
+                name: PERSONALITY_QUESTIONS[0].prompt,
+            }),
         ).toBeInTheDocument();
 
         for (const [index, q] of PERSONALITY_QUESTIONS.entries()) {
@@ -137,9 +141,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         fireEvent.click(screen.getByTestId('retake-quiz'));
         expect(screen.getByTestId('personality-quiz-card')).toBeInTheDocument();
         expect(
-            within(screen.getByTestId('personality-quiz-card')).getByText(
-                PERSONALITY_QUESTIONS[0].prompt,
-            ),
+            within(screen.getByTestId('personality-quiz-card')).getByRole('heading', {
+                level: 2,
+                name: PERSONALITY_QUESTIONS[0].prompt,
+            }),
         ).toBeInTheDocument();
     });
 
@@ -211,6 +216,61 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
         expect(screen.queryByTestId('garden-backdrop')).toBeNull();
     });
 
+    it('pins the answers block position: the header, context and prompt rows reserve their longest copy', () => {
+        render(<PersonalityQuizPage initialAtmosphere="daylight" />);
+
+        const card = screen.getByTestId('personality-quiz-card');
+        const pinned = [
+            'quiz-row-sizer-header',
+            'quiz-row-sizer-context',
+            'quiz-row-sizer-prompt',
+        ].map((id) => within(card).getByTestId(id));
+
+        for (const row of pinned) {
+            expect(row).toHaveAttribute('aria-hidden', 'true');
+            expect(row).toHaveAttribute('inert');
+            expect(row).toHaveClass('invisible', 'col-start-1', 'row-start-1');
+            // The hidden reservation and the live row share one grid cell, so the
+            // row is always as tall as the longest copy it can ever show.
+            const cell = row.parentElement as HTMLElement;
+            expect(cell.children).toHaveLength(2);
+            expect(cell.children[1]).toHaveClass('col-start-1', 'row-start-1');
+        }
+
+        const [headerRow, contextRow, promptRow] = pinned;
+        expect(promptRow.textContent).toBe(QUIZ_WORST_CASE.prompt);
+        expect(headerRow.textContent).toContain(QUIZ_WORST_CASE.actTitle);
+        expect(contextRow.textContent).toContain(QUIZ_WORST_CASE.context);
+        expect(contextRow.textContent).toContain(`/ ${String(PERSONALITY_QUESTIONS.length)}`);
+
+        // The reservation must be an upper bound for every question and act, or a
+        // new/longer string would silently re-introduce the jump it exists to stop.
+        for (const question of PERSONALITY_QUESTIONS) {
+            expect(QUIZ_WORST_CASE.prompt.length).toBeGreaterThanOrEqual(question.prompt.length);
+            expect(QUIZ_WORST_CASE.context.length).toBeGreaterThanOrEqual(question.context.length);
+            question.options.forEach((option, slot) => {
+                const reservation = QUIZ_WORST_CASE.options[slot];
+                expect(option.label.length).toBeLessThanOrEqual(reservation.label.length);
+                expect(option.detail.length).toBeLessThanOrEqual(reservation.detail.length);
+            });
+        }
+        for (const act of QUIZ_ACTS) {
+            expect(QUIZ_WORST_CASE.actTitle.length).toBeGreaterThanOrEqual(act.title.length);
+        }
+
+        // The act checkpoint reuses the same reserved header so the divider and
+        // footer stay where the question card put them.
+        for (let i = 0; i < 4; i += 1) {
+            fireEvent.click(
+                screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[i].options[0].id}`),
+            );
+        }
+        const plaque = screen.getByTestId('act-checkpoint');
+        const plaqueHeader = within(plaque).getByTestId('quiz-row-sizer-header');
+        expect(plaqueHeader).toHaveAttribute('aria-hidden', 'true');
+        expect(plaqueHeader.textContent).toContain(QUIZ_WORST_CASE.actTitle);
+    });
+
     it('hydrates shared ?archetype= links directly with Cedar backdrop and zero nested cards', () => {
         render(<PersonalityQuizPage initialArchetype="contrarian-diver" />);
 
@@ -235,9 +295,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
             screen.getByTestId(`quiz-option-${PERSONALITY_QUESTIONS[0].options[0].id}`),
         );
         expect(
-            within(screen.getByTestId('personality-quiz-card')).getByText(
-                PERSONALITY_QUESTIONS[1].prompt,
-            ),
+            within(screen.getByTestId('personality-quiz-card')).getByRole('heading', {
+                level: 2,
+                name: PERSONALITY_QUESTIONS[1].prompt,
+            }),
         ).toBeInTheDocument();
 
         rerender(<PersonalityQuizPage initialArchetype="news-surfer" />);
@@ -316,9 +377,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
             if ((index + 1) % 4 === 0) fireEvent.click(screen.getByTestId('continue-act'));
         }
         expect(
-            within(screen.getByTestId('personality-quiz-card')).getByText(
-                PERSONALITY_QUESTIONS[11].prompt,
-            ),
+            within(screen.getByTestId('personality-quiz-card')).getByRole('heading', {
+                level: 2,
+                name: PERSONALITY_QUESTIONS[11].prompt,
+            }),
         ).toBeInTheDocument();
         expect(screen.queryByTestId('quiz-self-description')).toBeNull();
 
@@ -380,9 +442,10 @@ describe('PersonalityQuizPage (16-question diagnostic & Cedar Sanctuary SceneSta
 
         expect(screen.queryByTestId('resume-quiz')).toBeNull();
         expect(
-            within(screen.getByTestId('personality-quiz-card')).getByText(
-                PERSONALITY_QUESTIONS[3].prompt,
-            ),
+            within(screen.getByTestId('personality-quiz-card')).getByRole('heading', {
+                level: 2,
+                name: PERSONALITY_QUESTIONS[3].prompt,
+            }),
         ).toBeInTheDocument();
     });
 

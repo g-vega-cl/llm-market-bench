@@ -1,4 +1,5 @@
 import { Button } from '@llm-market-bench/ui-design-system';
+import { QuizHeaderRowSizer, QuizPinnedRow } from './quiz-card-rows';
 
 export interface ActCheckpointPlaqueProps {
     actTitle: string;
@@ -37,14 +38,19 @@ export function ActCheckpointPlaque({
             data-testid="act-checkpoint"
             className="scene-scrim voxel-card col-start-1 row-start-1 flex h-full w-full max-w-2xl min-w-0 flex-col gap-4 rounded-none p-6"
         >
-            <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-1 border-b-2 border-voxel-bevel-hi pb-3">
-                <h2 className="min-w-0 whitespace-nowrap text-sm font-bold text-voxel-ink">
-                    {`Act ${String(actIndex + 1)} of ${String(totalActs)} complete`}
-                </h2>
-                <span className="min-w-0 break-words text-xs font-normal text-voxel-muted">
-                    {actTitle}
-                </span>
-            </div>
+            <QuizPinnedRow
+                testId="quiz-row-sizer-header"
+                sizer={<QuizHeaderRowSizer totalActs={totalActs} />}
+            >
+                <div className="flex min-w-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-1 border-b-2 border-voxel-bevel-hi pb-3">
+                    <h2 className="min-w-0 whitespace-nowrap text-sm font-bold text-voxel-ink">
+                        {`Act ${String(actIndex + 1)} of ${String(totalActs)} complete`}
+                    </h2>
+                    <span className="min-w-0 break-words text-xs font-normal text-voxel-muted">
+                        {actTitle}
+                    </span>
+                </div>
+            </QuizPinnedRow>
 
             <div className="flex flex-col gap-4">
                 <p className="text-sm font-bold text-accent">{`${letter} — ${poleLabel}`}</p>

@@ -1,18 +1,17 @@
 import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import type { QuizQuestion } from './personality-questions';
-
-export const QUIZ_CARD_BASE_CLASS =
-    'col-start-1 row-start-1 flex w-full max-w-2xl min-w-0 flex-col gap-4 rounded-none p-6';
-export const QUIZ_HEADER_CLASS =
-    'flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-b-2 border-voxel-bevel-hi pb-3';
-export const QUIZ_CONTEXT_ROW_CLASS =
-    'flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 text-xs font-normal text-voxel-muted';
-export const QUIZ_PROMPT_CLASS =
-    'font-display min-h-10 min-w-0 break-words text-sm font-bold leading-snug text-voxel-ink';
-export const QUIZ_OPTION_BUTTON_CLASS =
-    'h-auto w-full min-w-0 justify-start px-4 py-3 text-left whitespace-normal';
-export const QUIZ_FOOTER_CLASS =
-    'mt-auto flex min-w-0 flex-wrap items-center justify-between gap-x-2 gap-y-1 border-t-2 border-voxel-bevel-hi pt-3';
+import {
+    QUIZ_CARD_BASE_CLASS,
+    QUIZ_CONTEXT_ROW_CLASS,
+    QUIZ_FOOTER_CLASS,
+    QUIZ_HEADER_CLASS,
+    QUIZ_OPTION_BUTTON_CLASS,
+    QUIZ_PROMPT_CLASS,
+    QuizContextRowSizer,
+    QuizHeaderRowSizer,
+    QuizPinnedRow,
+    QuizPromptSizer,
+} from './quiz-card-rows';
 
 export interface PersonalityQuizStepProps {
     question: QuizQuestion;
@@ -91,22 +90,27 @@ export function PersonalityQuizStep({
             data-testid="personality-quiz-card"
             className={`scene-scrim voxel-card h-full ${QUIZ_CARD_BASE_CLASS}`}
         >
-            <div className={QUIZ_HEADER_CLASS}>
-                <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <Badge colorScheme="accent" variant="soft" size="sm">
-                        {`Act ${actIndex + 1} of ${totalActs}`}
-                    </Badge>
-                    <span className="min-w-0 break-words text-sm font-bold text-voxel-ink">
-                        {actTitle}
+            <QuizPinnedRow
+                testId="quiz-row-sizer-header"
+                sizer={<QuizHeaderRowSizer totalActs={totalActs} />}
+            >
+                <div className={QUIZ_HEADER_CLASS}>
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <Badge colorScheme="accent" variant="soft" size="sm">
+                            {`Act ${actIndex + 1} of ${totalActs}`}
+                        </Badge>
+                        <span className="min-w-0 break-words text-sm font-bold text-voxel-ink">
+                            {actTitle}
+                        </span>
+                    </div>
+                    <span
+                        data-testid="quiz-live-world-hint"
+                        className="min-w-0 whitespace-nowrap text-xs font-normal text-voxel-muted"
+                    >
+                        {liveHint || 'Scoring 4 trading axes'}
                     </span>
                 </div>
-                <span
-                    data-testid="quiz-live-world-hint"
-                    className="min-w-0 whitespace-nowrap text-xs font-normal text-voxel-muted"
-                >
-                    {liveHint || 'Scoring 4 trading axes'}
-                </span>
-            </div>
+            </QuizPinnedRow>
 
             <div
                 role="progressbar"
@@ -122,34 +126,41 @@ export function PersonalityQuizStep({
                 />
             </div>
 
-            <div className={QUIZ_CONTEXT_ROW_CLASS}>
-                <div
-                    data-testid="quiz-act-track"
-                    aria-hidden="true"
-                    className="flex items-center gap-2"
-                >
-                    {Array.from({ length: totalActs }, (_, i) => (
-                        <span
-                            key={`act-pip-${String(i)}`}
-                            className={
-                                i < actIndex
-                                    ? 'h-2 w-4 border-2 border-voxel-bevel-lo bg-accent'
-                                    : i === actIndex
-                                      ? 'h-2 w-4 border-2 border-accent bg-voxel-elevated'
-                                      : 'h-2 w-4 border-2 border-voxel-bevel-lo bg-voxel-trough'
-                            }
-                        />
-                    ))}
-                </div>
-                <span className="flex min-w-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-1">
-                    <span className="min-w-0 break-words">{question.context}</span>
-                    <span className="whitespace-nowrap">
-                        {`Question ${String(stepIndex + 1).padStart(2, '0')} / ${totalQuestions}`}
+            <QuizPinnedRow
+                testId="quiz-row-sizer-context"
+                sizer={<QuizContextRowSizer totalActs={totalActs} />}
+            >
+                <div className={QUIZ_CONTEXT_ROW_CLASS}>
+                    <div
+                        data-testid="quiz-act-track"
+                        aria-hidden="true"
+                        className="flex items-center gap-2"
+                    >
+                        {Array.from({ length: totalActs }, (_, i) => (
+                            <span
+                                key={`act-pip-${String(i)}`}
+                                className={
+                                    i < actIndex
+                                        ? 'h-2 w-4 border-2 border-voxel-bevel-lo bg-accent'
+                                        : i === actIndex
+                                          ? 'h-2 w-4 border-2 border-accent bg-voxel-elevated'
+                                          : 'h-2 w-4 border-2 border-voxel-bevel-lo bg-voxel-trough'
+                                }
+                            />
+                        ))}
+                    </div>
+                    <span className="flex min-w-0 flex-wrap items-baseline justify-end gap-x-2 gap-y-1">
+                        <span className="min-w-0 break-words">{question.context}</span>
+                        <span className="whitespace-nowrap">
+                            {`Question ${String(stepIndex + 1).padStart(2, '0')} / ${totalQuestions}`}
+                        </span>
                     </span>
-                </span>
-            </div>
+                </div>
+            </QuizPinnedRow>
 
-            <h2 className={QUIZ_PROMPT_CLASS}>{question.prompt}</h2>
+            <QuizPinnedRow testId="quiz-row-sizer-prompt" sizer={<QuizPromptSizer />}>
+                <h2 className={QUIZ_PROMPT_CLASS}>{question.prompt}</h2>
+            </QuizPinnedRow>
 
             <div className="grid grid-cols-1 gap-4">
                 {question.options.map((option, optionIdx) => {

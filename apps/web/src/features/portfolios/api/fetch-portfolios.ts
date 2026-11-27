@@ -232,7 +232,8 @@ export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoni
         .select('*')
         .eq('portfolio_id', portfolioId)
         .order('executed_at', { ascending: false })
-        .limit(50);
+        // Keep the full ledger visible: audit-flagged rows must not fall off the page.
+        .limit(200);
 
     if (tradeError) throw tradeError;
     if (!trades || trades.length === 0) return [];

@@ -25,6 +25,7 @@ import {
     fetchLatestBenchmarkQuote,
     fetchPortfolios,
     fetchPositions,
+    fetchTrades,
 } from './fetch-portfolios';
 
 vi.mock('../lib/config', () => ({
@@ -602,4 +603,21 @@ test('fetchCachedComparisonData caches payload for 4 hours and serves fallback o
 
     vi.useRealTimers();
     clearComparisonPayloadCache();
+});
+
+test('fetchTrades loads the full ledger so audit-flagged rows stay visible', async () => {
+    const limit = vi.fn(() => Promise.resolve({ data: [], error: null }));
+    const chain = {
+        limit,
+        order: vi.fn(() => chain),
+        select: vi.fn(() => chain),
+        eq: vi.fn(() => chain),
+        from: vi.fn(() => chain),
+    };
+    mockSupabaseClient = chain as unknown as MockSupabaseChain;
+
+    const result = await fetchTrades('pid-1');
+
+    expect(result).toEqual([]);
+    expect(limit).toHaveBeenCalledWith(200);
 });

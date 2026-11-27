@@ -1,4 +1,5 @@
 import modelsConfig from '@repo/config/models.json';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getDbBrowserClient } from '~/lib/db';
 import {
@@ -19,13 +20,13 @@ export type ActualsState =
     | { status: 'error'; error: string };
 
 export async function fetchPortfolioPerformanceData(
+    supabase: SupabaseClient,
     portfolioIds: string[],
     weekStart: string,
     weekEnd: string,
     ownerIds?: string[],
 ) {
     if (portfolioIds.length === 0 && (!ownerIds || ownerIds.length === 0)) return null;
-    const supabase = getDbBrowserClient();
     let query = supabase
         .from('portfolio_performance')
         .select('portfolio_id, total_equity, date, portfolios!inner(owner_id)')
@@ -55,7 +56,7 @@ export async function fetchActiveWeekData(
 ) {
     const supabase = getDbBrowserClient();
     const [portfolioRows, spyRes] = await Promise.all([
-        fetchPortfolioPerformanceData(portfolioIds, weekStart, weekEnd, ownerIds),
+        fetchPortfolioPerformanceData(supabase, portfolioIds, weekStart, weekEnd, ownerIds),
         isActive
             ? supabase
                   .from('price_history')

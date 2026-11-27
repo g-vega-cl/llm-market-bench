@@ -62,6 +62,18 @@ describe('useActualReturns', () => {
         expect(result.current.actualsError).toBeNull();
     });
 
+    it('constructs only one Archive DB client per load to avoid duplicate GoTrueClient instances', async () => {
+        mockGetDbBrowserClient.mockImplementation(() =>
+            makeResolvedClient({ portfolioRows: [], spyRows: [] }),
+        );
+        const { result } = renderHook(() =>
+            useActualReturns('2026-06-22', '2026-06-26', { p1: {} as never }, true, null),
+        );
+
+        await waitFor(() => expect(result.current.isLoadingActuals).toBe(false));
+        expect(mockGetDbBrowserClient).toHaveBeenCalledTimes(1);
+    });
+
     it('clears prior experiment returns and spyReturn when switching to an experiment whose fetch fails', async () => {
         const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         mockGetDbBrowserClient.mockImplementation(() =>

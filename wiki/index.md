@@ -89,7 +89,6 @@
 - [[entities/ai-feeling-card]] — AI market sentiment card on the Today dashboard with buy/sell split, confidence bar, and stale detection
 - [[entities/market-barometer-audit]] — S&P 500 Market Health Barometer audit page with constituent-level data browser
 - [[entities/global-background]] — Fixed ambient background with dot grid and glowing orbs for the full application
-- [[entities/shader-background]] — WebGL shader background component with 4 animated visual themes mapped to a PostHog A/B test
 - [[entities/mcp-knowledge-rag]] — Local MCP server for semantic search (RAG) against external Supabase knowledge base via Gemini embeddings
 - [[entities/knowledge-db-sync]] — Incremental sync of external engineering articles to local Markdown with QMD indexing
 - [[entities/academic-paper-seeding]] — Seeds curated empirical asset pricing papers into pgvector memory store for RAG grounding
@@ -114,6 +113,7 @@
 - [[entities/market-calendar]] — authoritative US equity session calendar (Alpaca /v2/clock + /v2/calendar, offline holiday fallback)
 ## Concepts
 
+- [[concepts/retired-experiment-guards]] — source-tree guard that keeps retired PostHog flags and deleted WebGL components from returning
 - [[concepts/intraday-atomic-rpc-execution]] — intraday BUY/SELL fills committed atomically via the execute_portfolio_trade RPC with idempotency keys
 - [[concepts/market-session-consolidation]] — MarketCalendar as the single market-session implementation after MarketSessionManager removal
 - [[concepts/qmd-wiki-skill]] — Pi-runtime skill making QMD search the mandatory first step for project questions

@@ -36,7 +36,7 @@ The `onRefresh` callback is stored in a ref and updated on every render, so the 
 
 When a `posthog` client is supplied, each successful refresh also:
 
-- calls `posthog.reloadFeatureFlags()` so feature-flag evaluation (e.g. the homepage background experiment, see [[entities/shader-background]]) reflects flag changes made while the tab was backgrounded, and
+- calls `posthog.reloadFeatureFlags()` so feature-flag evaluation reflects flag changes made while the tab was backgrounded, and
 - captures the analytics event `window_focus_refreshed` with `{ path: '/' }`.
 
 Either method is optional and invoked defensively, so a partial or missing client never breaks the refresh path. Identity and session lifecycle behavior are documented in [[concepts/posthog-stealth-proxy]].

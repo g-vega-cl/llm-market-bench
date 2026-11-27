@@ -3,14 +3,6 @@ import { describe, expect, it, vi } from 'vitest';
 import type { HomePageData } from './HomePage';
 import { HomePage } from './HomePage';
 
-const mockGetFeatureFlag = vi.fn();
-vi.mock('@posthog/react', () => ({
-    usePostHog: () => ({
-        getFeatureFlag: mockGetFeatureFlag,
-        onFeatureFlags: vi.fn((cb) => cb()),
-    }),
-}));
-
 vi.mock('@tanstack/react-router', () => ({
     Link: ({ children, to }: { children: React.ReactNode; to: string }) => (
         <a href={to}>{children}</a>

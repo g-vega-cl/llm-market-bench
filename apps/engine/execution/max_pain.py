@@ -6,11 +6,11 @@ Handles:
 3. Generating execution rebalance orders with 0.01% (1 bps) friction.
 """
 
-from datetime import UTC, datetime
+import asyncio
 from typing import Any
 from uuid import uuid4
 
-from core.config import logger
+from core.config import FMP_API_KEY, logger
 
 SYS_MAX_PAIN_OWNER_ID = "sys-max-pain"
 DEFAULT_MAX_HOLDINGS = 2  # SPY and QQQ primary daily proxies
@@ -161,20 +161,18 @@ async def reconcile_unliquidated_max_pain_positions(
     client: Any,
     slippage_bps: float = DEFAULT_MAX_PAIN_SLIPPAGE_BPS,
 ) -> dict[str, Any]:
-    """Post-close reconciliation for unliquidated 0DTE positions in sys-max-pain.
+    """Exit unliquidated 0DTE positions through the canonical trade RPC at pass time.
 
-    Evaluates whether the regular trading session high touched the day's verified Max Pain
-    strike (filling at the target strike) or held into the close (filling at RTH close),
-    records BACKFILLED SELL trades, clears open positions, and updates portfolio equity.
+    A live quote is used when available; the day's RTH close is the fallback. No
+    synthetic BACKFILLED rows and no backdated timestamps: the ledger SELL is written
+    now through the same execute_portfolio_trade RPC used by regular exits.
     """
-    from execution.providers.alpaca_max_pain import get_verified_max_pain
     from tasks.evaluate_daily_predictions import fetch_intraday_prices
 
     portfolio_id = str(portfolio_row["id"])
-    current_cash = float(portfolio_row.get("cash_balance") or 0.0)
     slip_factor = slippage_bps / 10000.0
-    freed_cash = 0.0
     exited: list[dict[str, Any]] = []
+    new_equity = float(portfolio_row.get("total_equity") or portfolio_row.get("cash_balance") or 0.0)
 
     for pos in positions:
         ticker = str(pos.get("ticker", "SPY")).upper()
@@ -182,77 +180,76 @@ async def reconcile_unliquidated_max_pain_positions(
         if qty <= 0:
             continue
         cost_basis = float(pos.get("average_cost_basis") or 0.0)
-        raw_ts = str(pos.get("last_updated_at") or "")
-        pos_date = raw_ts[:10] if len(raw_ts) >= 10 else audit_date
 
-        _, high_p, _, close_p = await fetch_intraday_prices(ticker, pos_date)
-        resolved_close = float(close_p) if close_p and float(close_p) > 0 else cost_basis
-        resolved_high = float(high_p) if high_p and float(high_p) > 0 else resolved_close
+        price = 0.0
+        exit_mode = "MODELED_CLOSE"
+        try:
+            import httpx
 
-        verified = await get_verified_max_pain(ticker, expiration_date=pos_date)
-        target_strike = (
-            float(verified["max_pain"])
-            if verified and verified.get("max_pain") and float(verified["max_pain"]) > 0
-            else cost_basis * 1.008
-        )
+            from tasks.max_pain_task import fetch_quote_snapshot
 
-        _, reason = evaluate_max_pain_holding_exit(
-            {"ticker": ticker, "entry_price": cost_basis, "target_strike": target_strike},
-            current_price=resolved_close,
-            session_high=resolved_high,
-            is_market_close_window=True,
-        )
-        raw_exit_p = (
-            max(resolved_close, target_strike)
-            if "pin achieved" in reason.lower() and target_strike > 0
-            else resolved_close
-        )
-        exec_price = raw_exit_p * (1.0 - slip_factor)
-        proceeds = qty * exec_price
-        freed_cash += proceeds
-        realized_pnl = (exec_price - cost_basis) * qty
-        realized_pnl_pct = (((exec_price / cost_basis) - 1.0) * 100.0) if cost_basis > 0 else 0.0
+            with httpx.Client(timeout=15.0) as http:
+                quote = await asyncio.to_thread(fetch_quote_snapshot, http, ticker, FMP_API_KEY)
+            price = float((quote or {}).get("price") or 0.0)
+            if price > 0:
+                exit_mode = "LIVE_QUOTE"
+        except Exception:
+            logger.exception(f"Max Pain live quote unavailable for {ticker}; falling back to RTH close")
 
-        exit_trade = {
-            "id": str(uuid4()),
-            "portfolio_id": portfolio_id,
-            "ticker": ticker,
-            "signal": "SELL",
-            "quantity": qty,
-            "price": exec_price,
-            "total_cost": proceeds,
-            "realized_pnl": realized_pnl,
-            "realized_pnl_pct": realized_pnl_pct,
-            "alpaca_status": "BACKFILLED",
-            "executed_at": f"{pos_date}T20:00:00Z",
+        if price <= 0:
+            _, _, _, close_p = await fetch_intraday_prices(ticker, audit_date)
+            price = float(close_p) if close_p and float(close_p) > 0 else cost_basis
+            exit_mode = "MODELED_CLOSE"
+
+        if price <= 0:
+            logger.error(f"Max Pain exit skipped for {ticker}: no usable price")
+            continue
+
+        exec_price = price * (1.0 - slip_factor)
+        rpc_payload = {
+            "p_portfolio_id": portfolio_id,
+            "p_ticker": ticker,
+            "p_signal": "SELL",
+            "p_quantity": qty,
+            "p_price": exec_price,
+            "p_idempotency_key": str(uuid4()),
+            "p_mark_prices": {ticker: price},
         }
-        client.table("trades").insert(exit_trade).execute()
-        client.table("portfolio_positions").delete().eq("portfolio_id", portfolio_id).eq("ticker", ticker).execute()
-        exited.append({"ticker": ticker, "shares": qty, "exit_price": exec_price, "reason": reason})
+        try:
+            rpc_res = client.rpc("execute_portfolio_trade", rpc_payload).execute()
+            payload = rpc_res.data if isinstance(rpc_res.data, dict) else {}
+            if payload.get("total_equity") is not None:
+                new_equity = float(payload["total_equity"])
+            elif payload.get("cash_balance") is not None:
+                new_equity = float(payload["cash_balance"])
+        except Exception:
+            logger.exception(f"Max Pain exit RPC failed for {ticker}")
+            continue
 
-    new_cash = max(0.0, current_cash + freed_cash)
-    client.table("portfolios").update(
-        {
-            "cash_balance": new_cash,
-            "total_equity": new_cash,
-            "realized": new_cash,
-            "buying_power": new_cash,
-            "excess_liquidity": new_cash,
-            "last_updated_at": datetime.now(UTC).isoformat(),
-        }
-    ).eq("id", portfolio_id).execute()
+        exited.append(
+            {
+                "ticker": ticker,
+                "shares": qty,
+                "exit_price": exec_price,
+                "reason": "Unliquidated 0DTE position exited on next pass",
+                "exit_mode": exit_mode,
+            }
+        )
+        logger.info(f"Max Pain live exit SELL {qty} {ticker} @ ${exec_price:.2f} ({exit_mode})")
 
     client.table("portfolio_performance").upsert(
         {
             "portfolio_id": portfolio_id,
             "date": audit_date,
-            "total_equity": new_cash,
-            "cash_balance": new_cash,
-            "buying_power": new_cash,
+            "total_equity": new_equity,
+            "cash_balance": new_equity,
+            "buying_power": new_equity,
             "sma": 0.0,
-            "realized": new_cash,
+            "realized": new_equity,
         },
         on_conflict="portfolio_id,date",
     ).execute()
 
-    return {"new_equity": new_cash, "exited": exited}
+    modes = {item["exit_mode"] for item in exited}
+    exit_mode = "LIVE_QUOTE" if modes == {"LIVE_QUOTE"} else ("MODELED_CLOSE" if modes else "NONE")
+    return {"new_equity": new_equity, "exited": exited, "exit_mode": exit_mode}

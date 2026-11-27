@@ -7,8 +7,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import asyncio
 import math
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from core.config import is_allowed_daily_spy_owner, is_archived_portfolio, logger
 from core.db import SUPABASE_RETRIES, get_supabase_client, is_transient_supabase_error
@@ -35,6 +36,22 @@ BENCHMARK_TICKERS = [
     "CPER",
 ]
 BENCHMARK_HISTORY_DAYS = 90
+
+MAX_PAIN_EXIT_ET = time(15, 50)
+MAX_PAIN_EXIT_LEAD_MINUTES = 10
+
+
+def _max_pain_exit_deadline(now_et: datetime) -> datetime:
+    """Exit deadline: 15:50 ET, or 10 minutes before the session close on early-close days."""
+    from trading.market_calendar import get_market_calendar
+
+    if now_et.tzinfo is None:
+        now_et = now_et.replace(tzinfo=ZoneInfo("America/New_York"))
+    default = datetime.combine(now_et.date(), MAX_PAIN_EXIT_ET, tzinfo=ZoneInfo("America/New_York"))
+    session = get_market_calendar().session_for(now_et.date())
+    if session is None:
+        return default
+    return min(default, session[1] - timedelta(minutes=MAX_PAIN_EXIT_LEAD_MINUTES))
 
 
 async def initialize_with_retry(owner: str) -> Portfolio:
@@ -111,10 +128,11 @@ async def run_systematic_strategy_hooks(now_et: datetime, dry_run: bool = False)
     try:
         from tasks.max_pain_task import run_max_pain_task
 
-        if now_et.hour > 15 or (now_et.hour == 15 and now_et.minute >= 25):
-            logger.info("Market close liquidation window (3:25+ PM ET) — Executing Max Pain exits...")
+        exit_deadline = _max_pain_exit_deadline(now_et)
+        if now_et >= exit_deadline:
+            logger.info(f"Max Pain exit deadline reached ({exit_deadline:%H:%M} ET) — Executing liquidation pass...")
             await run_max_pain_task(action="exit", dry_run=dry_run)
-        elif 9 <= now_et.hour < 15 or (now_et.hour == 15 and now_et.minute < 25):
+        elif 9 <= now_et.hour < 16:
             logger.info("Intraday trading window — Running Max Pain evaluation/entry...")
             await run_max_pain_task(action="entry", dry_run=dry_run)
     except Exception:

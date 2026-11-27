@@ -8,7 +8,7 @@ Verifies:
 5. Markdown table report generation for CI summary.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
 import pytest
@@ -666,6 +666,9 @@ async def test_portfolio_auditor_detects_and_heals_unliquidated_max_pain_positio
         return mock_t
 
     mock_supabase.table.side_effect = table_router
+    mock_supabase.rpc.return_value.execute.return_value = MagicMock(
+        data={"trade_id": "trade-1", "cash_balance": 2370.0, "total_equity": 10000.0}
+    )
 
     # RTH high (769.20) touched Max Pain strike ($769.00), while RTH close was 764.50
     with (
@@ -677,6 +680,11 @@ async def test_portfolio_auditor_detects_and_heals_unliquidated_max_pain_positio
             "execution.providers.alpaca_max_pain.get_verified_max_pain",
             return_value={"max_pain": 769.0, "expiration": target_date},
         ),
+        patch(
+            "tasks.max_pain_task.fetch_quote_snapshot",
+            return_value={"price": 0.0, "day_high": 0.0, "day_low": 0.0},
+        ),
+        patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock),
     ):
         report = await audit_system_portfolios(
             target_date=target_date,
@@ -688,13 +696,13 @@ async def test_portfolio_auditor_detects_and_heals_unliquidated_max_pain_positio
     assert report["status"] == "healed"
     assert any(a["type"] == "UNLIQUIDATED_MAX_PAIN_POSITION" for a in report["anomalies"])
     assert any(h["owner_id"] == "sys-max-pain" for h in report["healed"])
-    assert len(inserted_trades) == 1
-    exit_trade = inserted_trades[0]
-    assert exit_trade["signal"] == "SELL"
-    assert exit_trade["alpaca_status"] == "BACKFILLED"
-    # Should exit at target strike ($769.00 * (1 - 1bps)) since RTH high touched $769.00
-    assert round(exit_trade["price"], 4) == round(769.0 * (1.0 - 0.0001), 4)
-    assert "portfolio_positions" in deleted_positions
+    assert len(inserted_trades) == 0
+    # Live exit pass is attempted first; the modeled fallback uses the RTH close (764.50)
+    rpc_name, rpc_payload = mock_supabase.rpc.call_args.args
+    assert rpc_name == "execute_portfolio_trade"
+    assert rpc_payload["p_signal"] == "SELL"
+    assert round(rpc_payload["p_price"], 4) == round(764.50 * (1.0 - 0.0001), 4)
+    assert any(h.get("exit_mode") == "MODELED_CLOSE" for h in report["healed"])
 
 
 @pytest.mark.asyncio

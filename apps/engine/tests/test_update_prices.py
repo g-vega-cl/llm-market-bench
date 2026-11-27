@@ -272,19 +272,6 @@ class TestSystematicStrategyHooks:
     """Tests for run_systematic_strategy_hooks in update_prices."""
 
     @pytest.mark.asyncio
-    async def test_hooks_max_pain_exit_in_market_close_window(self):
-        """Should trigger Max Pain liquidation exit at 3:25+ PM ET (catching the 3:30 PM ET cron run)."""
-        from scripts.update_prices import run_systematic_strategy_hooks
-
-        close_time = datetime(2026, 10, 6, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
-        with (
-            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain,
-            patch("execution.sector_horizon_trading.execute_horizon_sector_exits", new_callable=AsyncMock),
-        ):
-            await run_systematic_strategy_hooks(close_time)
-            mock_max_pain.assert_awaited_with(action="exit", dry_run=False)
-
-    @pytest.mark.asyncio
     async def test_hooks_max_pain_entry_and_pead_rebalance_morning(self):
         """Should trigger Max Pain entry and PEAD drift rebalance during morning open."""
         from scripts.update_prices import run_systematic_strategy_hooks
@@ -299,6 +286,56 @@ class TestSystematicStrategyHooks:
             mock_max_pain.assert_awaited_with(action="entry", dry_run=False)
             mock_pead.assert_awaited_once_with(dry_run=False)
             mock_fader.assert_awaited_once_with(dry_run=False)
+
+    @pytest.mark.asyncio
+    async def test_hooks_max_pain_entry_before_1550_deadline(self):
+        """Before 15:50 ET the hook keeps evaluating entries, not forced exits."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        pre_deadline = datetime(2026, 10, 6, 15, 30, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain,
+            patch("execution.sector_horizon_trading.execute_horizon_sector_exits", new_callable=AsyncMock),
+            patch("tasks.sentiment_fader_task.run_sentiment_fader_task", new_callable=AsyncMock),
+        ):
+            await run_systematic_strategy_hooks(pre_deadline)
+            mock_max_pain.assert_awaited_with(action="entry", dry_run=False)
+
+    @pytest.mark.asyncio
+    async def test_hooks_max_pain_exit_at_1550_deadline(self):
+        """At 15:50 ET the hook forces a liquidation pass."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        at_deadline = datetime(2026, 10, 6, 15, 50, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain,
+            patch("execution.sector_horizon_trading.execute_horizon_sector_exits", new_callable=AsyncMock),
+            patch("tasks.sentiment_fader_task.run_sentiment_fader_task", new_callable=AsyncMock),
+        ):
+            await run_systematic_strategy_hooks(at_deadline)
+            mock_max_pain.assert_awaited_with(action="exit", dry_run=False)
+
+    @pytest.mark.asyncio
+    async def test_hooks_max_pain_exit_at_half_day_deadline(self):
+        """Half days exit at close-10 (12:50 for a 13:00 close)."""
+        from scripts.update_prices import run_systematic_strategy_hooks
+
+        half_day = datetime(2026, 11, 27, 12, 50, 0, tzinfo=ZoneInfo("America/New_York"))
+        with (
+            patch("tasks.max_pain_task.run_max_pain_task", new_callable=AsyncMock) as mock_max_pain,
+            patch("tasks.sentiment_fader_task.run_sentiment_fader_task", new_callable=AsyncMock),
+        ):
+            await run_systematic_strategy_hooks(half_day)
+            mock_max_pain.assert_awaited_with(action="exit", dry_run=False)
+
+    def test_max_pain_exit_deadline_calendar_aware(self):
+        """Deadline is 15:50 ET normally and close-10 on early-close days."""
+        from scripts.update_prices import _max_pain_exit_deadline
+
+        regular = datetime(2026, 10, 6, 12, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+        half_day = datetime(2026, 11, 27, 12, 0, 0, tzinfo=ZoneInfo("America/New_York"))
+        assert _max_pain_exit_deadline(regular).strftime("%H:%M") == "15:50"
+        assert _max_pain_exit_deadline(half_day).strftime("%H:%M") == "12:50"
 
     @pytest.mark.asyncio
     async def test_hooks_run_picks_entry_in_morning_window(self):

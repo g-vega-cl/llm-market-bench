@@ -3,6 +3,8 @@
 Hermetic tests with zero external network calls.
 """
 
+import pytest
+
 from execution.max_pain import (
     DEFAULT_MAX_PAIN_SLIPPAGE_BPS,
     SYS_MAX_PAIN_OWNER_ID,
@@ -186,3 +188,45 @@ def test_compute_max_pain_rebalance_orders_uses_close_price_when_pin_not_achieve
     )
     assert len(plan["sales"]) == 1
     assert round(plan["sales"][0]["execution_price"], 4) == round(765.0 * (1.0 - 0.0001), 4)
+
+
+@pytest.mark.asyncio
+async def test_reconcile_unliquidated_exits_via_ledger_rpc_at_pass_time():
+    """Unliquidated 0DTE positions must exit via the canonical trade RPC now, not a backdated BACKFILLED insert."""
+    from unittest.mock import MagicMock, patch
+
+    from execution.max_pain import reconcile_unliquidated_max_pain_positions
+
+    client = MagicMock()
+    exec_result = MagicMock()
+    exec_result.data = {"trade_id": "trade-1", "cash_balance": 1800.0, "total_equity": 9800.0}
+    client.rpc.return_value.execute.return_value = exec_result
+
+    with (
+        patch(
+            "tasks.max_pain_task.fetch_quote_snapshot",
+            return_value={"price": 770.0, "day_high": 770.5, "day_low": 760.0},
+        ),
+        patch(
+            "tasks.evaluate_daily_predictions.fetch_intraday_prices",
+            return_value=(763.0, 769.2, 762.0, 764.5),
+        ),
+    ):
+        result = await reconcile_unliquidated_max_pain_positions(
+            portfolio_row={"id": "p-max-pain", "cash_balance": 1000.0},
+            positions=[{"ticker": "SPY", "quantity": 10, "average_cost_basis": 763.0}],
+            audit_date="2026-10-22",
+            client=client,
+        )
+
+    client.rpc.assert_called_once()
+    rpc_name, rpc_payload = client.rpc.call_args.args
+    assert rpc_name == "execute_portfolio_trade"
+    assert rpc_payload["p_signal"] == "SELL"
+    assert rpc_payload["p_ticker"] == "SPY"
+    assert rpc_payload["p_quantity"] == 10
+    assert round(rpc_payload["p_price"], 4) == round(770.0 * (1.0 - 0.0001), 4)
+    assert result["exit_mode"] == "LIVE_QUOTE"
+    assert result["new_equity"] == 9800.0
+    assert all(call.args[0] != "trades" for call in client.table.call_args_list)
+    assert "2026-10-22T20:00:00Z" not in str(result)

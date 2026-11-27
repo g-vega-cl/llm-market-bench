@@ -12,6 +12,7 @@ A systematic, daily intraday portfolio that captures options dealer gamma pinnin
 - `apps/engine/tasks/max_pain_task.py`: the scheduled daily task orchestrator (`fetch_quote_snapshot`, `has_entered_today`, `fetch_max_pain_snapshot`, `run_max_pain_task`)
 - `apps/engine/execution/providers/alpaca_max_pain.py`: full-chain open-interest Max Pain (see [[concepts/max-pain-data-sources]])
 - `apps/engine/execution/max_pain.py`: holding-exit rules, rebalance order computation (`compute_max_pain_rebalance_orders`), and `reconcile_unliquidated_max_pain_positions` post-close auto-heal
+- `apps/engine/audit/max_pain_auditor.py`: leftover detection and live-first auto-heal island used by [[entities/portfolio-auditor]] (colocated `apps/engine/audit/test_max_pain_auditor.py`)
 - `apps/engine/core/llm/max_pain_prompts.py`: Jev question contract and default qualification criteria
 - `apps/web/src/features/portfolios/components/StrategyExplainer.tsx`: the `sys-max-pain` explainer card
 - `apps/web/src/features/portfolios/pages/PortfoliosPage.tsx`: portfolio dashboard subtitle mapping
@@ -32,17 +33,17 @@ A systematic, daily intraday portfolio that captures options dealer gamma pinnin
 `evaluate_max_pain_holding_exit` returns an exit signal when any trigger fires:
 
 - **Target strike hit (pin achieved)**: Spot price or session high (`dayHigh` from FMP `/stable/quote`) reaches within 0.05% of today's verified Alpaca Max Pain strike. When triggered, the sale fills at the target strike (less 1 bps slippage) rather than a lower pullback price, and same-day idempotency (`has_entered_today`) prevents re-entering the same ticker later in the session.
-- **Session close liquidation (3:25+ PM MOC)**: Mandatory exit window (`>= 15:25 ET`, evaluated by the `live-spy-trader` daemon's 300-second systematic-hooks task) before the 4:00 PM close to guarantee zero overnight holding.
-- **After-the-fact EOD reconciliation**: If an afternoon cron run is skipped and a position remains open after 16:00 ET (or from a prior trading day), `reconcile_unliquidated_max_pain_positions` (invoked by [[entities/portfolio-auditor]] in `--fix` mode) checks the day's RTH high against the verified Max Pain strike and backfills the `SELL` at the target strike (if touched intraday) or at the RTH close price (`alpaca_status = "BACKFILLED"`).
+- **Session close liquidation (15:50 ET MOC / early-close minus 10 min)**: Mandatory exit window evaluated by the `live-spy-trader` daemon's 300-second systematic-hooks task. The deadline is `min(15:50 ET, session_close − 10 min)` via `_max_pain_exit_deadline` (`apps/engine/scripts/update_prices.py`), so half-days (e.g. day after Thanksgiving) liquidate at 12:50 ET instead. Hooks before the deadline evaluate entries; at/after it the hook dispatches `run_max_pain_task(action="exit")`. Any position still open after the exit pass logs `UNLIQUIDATED_MAX_PAIN_AFTER_EXIT_PASS` and retries on the next tick.
+- **After-the-fact reconciliation**: If every exit pass is skipped and a position remains open after 16:00 ET (or carried from a prior trading day), `reconcile_unliquidated_max_pain_positions` (invoked by [[entities/portfolio-auditor]] in `--fix` mode) first attempts one live exit pass; only when that fails to liquidate the book does it fall back to a modeled exit at the target strike (if the RTH high touched it) or the RTH close price. Exits are written through the canonical `execute_portfolio_trade` RPC at pass time — never backfilled and never backdated to 20:00 UTC. `alpaca_status = "BACKFILLED"` is reserved for post-market reconstructed Daily SPY fills per [[concepts/backfilled-trades]], never for Max Pain exits.
 - **Adverse stop loss**: Current price drops >1.0% below entry price (indicating gamma support breakdown).
 
 ## Post-Close Reconciliation
 
-`reconcile_unliquidated_max_pain_positions(portfolio_row, positions, audit_date, client, slippage_bps=1.0)` in `apps/engine/execution/max_pain.py` is the auto-heal path for leftovers:
+`reconcile_unliquidated_max_pain_positions(portfolio_row, positions, audit_date, client, slippage_bps=1.0)` in `apps/engine/execution/max_pain.py` is the modeled auto-heal fallback for leftovers that a live exit pass could not liquidate:
 
-- Resolves the day's RTH high/low/close via `fetch_intraday_prices` and the verified Alpaca Max Pain strike via `get_verified_max_pain` (falling back to `cost_basis * 1.008` when unavailable).
-- Re-runs `evaluate_max_pain_holding_exit` with `is_market_close_window=True` and the session high, filling at `max(close, target_strike)` (less slippage) on a pin-achieved reason, otherwise at the RTH close.
-- Inserts a `SELL` trade tagged `alpaca_status = "BACKFILLED"` (executed at 20:00 UTC), deletes the open `portfolio_positions` row, and rewrites portfolio cash, equity, realized, buying power, and excess liquidity, plus a `portfolio_performance` upsert for the audit date.
+- Resolves the day's RTH close via `fetch_intraday_prices` (falling back to `cost_basis`) and prices the exit at `close × (1 − slippage_bps)` with 1 bps friction.
+- Exits via the canonical `execute_portfolio_trade` RPC (`SELL`) at pass time with an idempotency key; records `exit_mode: "LIVE_QUOTE"` when a live quote was available, otherwise `"MODELED_CLOSE"`; upserts `portfolio_performance` for the audit date.
+- Positions are cleared through the RPC's internal ledger sync — no separate `trades` insert, no `T20:00:00Z` backdating, and no `BACKFILLED` tag.
 
 ## Sizing and Defaults
 

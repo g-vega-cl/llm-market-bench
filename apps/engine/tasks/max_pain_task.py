@@ -438,6 +438,14 @@ async def run_max_pain_task(
                 f"Max Pain Executed BUY {shares} {ticker} @ {exec_p:.2f} (Target Strike: ${buy['target_strike']:.2f})"
             )
 
+        if action == "exit" and not dry_run:
+            leftovers = [ticker for ticker, pos in portfolio.positions.items() if int(pos.quantity or 0) > 0]
+            if leftovers:
+                logger.warning(
+                    f"UNLIQUIDATED_MAX_PAIN_AFTER_EXIT_PASS: {leftovers} still open after the exit pass; "
+                    f"will retry on next hook tick."
+                )
+
         # Upsert portfolio performance and persist metrics
         try:
             portfolio.calculate_reg_t_metrics(current_prices)

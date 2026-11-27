@@ -14,6 +14,7 @@ from datetime import date, datetime, timedelta
 from typing import Any
 from uuid import UUID
 
+from audit.max_pain_auditor import audit_max_pain_portfolio
 from core.config import logger, resolve_daily_spy_owners
 from core.db import get_supabase_client
 from execution.daily_bond_trading import (
@@ -399,78 +400,6 @@ def _audit_weekly_sector_portfolios(
     return anomalies, flagged
 
 
-async def _audit_max_pain_portfolio(
-    client: Any,
-    port_by_owner: dict[str, Any],
-    target_date: str | None,
-    dates_to_check: list[str],
-    now_ny: datetime,
-    auto_heal: bool,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
-    from execution.max_pain import SYS_MAX_PAIN_OWNER_ID, reconcile_unliquidated_max_pain_positions
-
-    anomalies: list[dict[str, Any]] = []
-    healed: list[dict[str, Any]] = []
-    flagged: list[dict[str, Any]] = []
-
-    mp_port = port_by_owner.get(SYS_MAX_PAIN_OWNER_ID)
-    if not mp_port:
-        return anomalies, healed, flagged
-
-    mp_pid = mp_port["id"]
-    mp_pos_res = (
-        client.table("portfolio_positions")
-        .select("ticker, quantity, average_cost_basis, last_updated_at")
-        .eq("portfolio_id", mp_pid)
-        .execute()
-    )
-    mp_positions = [pos for pos in (mp_pos_res.data or []) if int(pos.get("quantity") or 0) > 0]
-    if not mp_positions:
-        return anomalies, healed, flagged
-
-    today_ny_str = now_ny.date().isoformat()
-    is_after_daily_close = (
-        now_ny.hour >= 16
-        or now_ny.weekday() in (5, 6)
-        or now_ny.hour < 9
-        or (now_ny.hour == 9 and now_ny.minute < 30)
-        or bool(target_date and target_date < today_ny_str)
-        or any(str(pos.get("last_updated_at") or "")[:10] < today_ny_str for pos in mp_positions)
-    )
-    if is_after_daily_close:
-        mp_audit_date = target_date or (dates_to_check[-1] if dates_to_check else today_ny_str)
-        anomaly = {
-            "date": mp_audit_date,
-            "portfolio_id": mp_pid,
-            "owner_id": SYS_MAX_PAIN_OWNER_ID,
-            "type": "UNLIQUIDATED_MAX_PAIN_POSITION",
-            "details": f"Max Pain portfolio holds {len(mp_positions)} unliquidated 0DTE position(s) after session close: {[x['ticker'] for x in mp_positions]}",
-        }
-        anomalies.append(anomaly)
-        if auto_heal:
-            rec = await reconcile_unliquidated_max_pain_positions(
-                portfolio_row=mp_port,
-                positions=mp_positions,
-                audit_date=mp_audit_date,
-                client=client,
-            )
-            healed.append(
-                {
-                    "date": mp_audit_date,
-                    "portfolio_id": mp_pid,
-                    "owner_id": SYS_MAX_PAIN_OWNER_ID,
-                    "type": "UNLIQUIDATED_MAX_PAIN_POSITION",
-                    "action": "AUTO_HEALED_MAX_PAIN_EXIT",
-                    "new_equity": rec.get("new_equity"),
-                    "alpaca_status": "BACKFILLED",
-                }
-            )
-        else:
-            flagged.append(anomaly)
-
-    return anomalies, healed, flagged
-
-
 def _reconcile_picks_performance(
     client: Any,
     portfolio: dict[str, Any],
@@ -731,7 +660,7 @@ async def audit_system_portfolios(
     anomalies.extend(w_anom)
     flagged_for_review.extend(w_flag)
 
-    mp_anom, mp_heal, mp_flag = await _audit_max_pain_portfolio(
+    mp_anom, mp_heal, mp_flag = await audit_max_pain_portfolio(
         client, port_by_owner, target_date, dates_to_check, now_ny, auto_heal
     )
     anomalies.extend(mp_anom)

@@ -17,6 +17,7 @@ import { type ReactNode, useEffect, useRef } from 'react';
 import { DefaultCatchBoundary } from '~/components/ui/DefaultCatchBoundary';
 import { NotFound } from '~/components/ui/NotFound';
 import { SiteFooter } from '~/features/legal/SiteFooter';
+import { ensureWeeklyTokensFn } from '~/features/recipes/api/token-ledger';
 import { getAuthServerClient, getPublicAuthConfig } from '~/lib/auth';
 import { setRuntimeAuthConfig } from '~/lib/auth-client';
 import { getPublicArchiveDbConfig, setRuntimeArchiveDbConfig } from '~/lib/db';
@@ -379,6 +380,29 @@ export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } =
     const user = userProp !== undefined ? userProp : routeContext?.user;
     const posthog = usePostHog();
     const prevUserIdRef = useRef<string | null>(null);
+
+    // Weekly token top-up. The archive DB has no auth users to cron over, so an
+    // authenticated load refills itself; the RPC is idempotent inside the week.
+    useEffect(() => {
+        if (!user?.id) return;
+        const key = 'benchify:tokens-synced';
+        try {
+            if (window.sessionStorage.getItem(key) === user.id) return;
+        } catch {
+            return;
+        }
+        void ensureWeeklyTokensFn()
+            .then(() => {
+                try {
+                    window.sessionStorage.setItem(key, user.id);
+                } catch {
+                    // Session storage unavailable: the RPC is idempotent anyway.
+                }
+            })
+            .catch((error) => {
+                console.error('Weekly token refill failed', error);
+            });
+    }, [user?.id]);
 
     useEffect(() => {
         if (!posthog) return;

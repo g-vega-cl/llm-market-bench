@@ -1,3 +1,5 @@
+import { createServerFn } from '@tanstack/react-start';
+import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient } from '~/lib/db';
 
 /**
@@ -71,3 +73,26 @@ export async function refundToken(ref: string, outcome: 'failed' | 'expired'): P
     const row = firstRow(data);
     return row?.refunded === true;
 }
+
+/**
+ * Refills the signed-in owner for the current ET week. The archive DB holds no
+ * auth users (Supabase Cloud owns auth), so there is no user list to cron over:
+ * each authenticated load tops itself up, and the RPC is idempotent per week.
+ */
+export const ensureWeeklyTokensFn = createServerFn({ method: 'POST' }).handler(async () => {
+    const auth = getAuthServerClient();
+    const {
+        data: { user },
+    } = await auth.auth.getUser();
+    if (!user?.id) return null;
+
+    const db = getDbAdminClient();
+    const { data, error } = await db.rpc('refill_this_week', {
+        p_owner: `user:${user.id}`,
+        p_amount: 15,
+    });
+    if (error) throw new Error(`Could not refill tokens: ${error.message}`);
+
+    const row = firstRow(data);
+    return { balance: Number(row?.balance ?? 0), applied: row?.applied === true };
+});

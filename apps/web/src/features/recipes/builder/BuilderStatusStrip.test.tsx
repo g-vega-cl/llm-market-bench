@@ -23,12 +23,11 @@ describe('BuilderStatusStrip', () => {
         expect(clock).toHaveTextContent('3s');
     });
 
-    it('admits the provider is slow once the wait passes the threshold', () => {
+    it('keeps the compiling line stable while the clock keeps ticking', () => {
         render(<BuilderStatusStrip phase="compiling" elapsedMs={14000} />);
 
         const live = screen.getByTestId('builder-status-text');
-        expect(live).toHaveTextContent(/the model is slow right now/i);
-        expect(live).not.toHaveTextContent(/\bfree\b/i);
+        expect(live).toHaveTextContent(/^asking the model, then validating the recipe$/);
         expect(screen.getByTestId('builder-status-clock')).toHaveTextContent('14s');
     });
 

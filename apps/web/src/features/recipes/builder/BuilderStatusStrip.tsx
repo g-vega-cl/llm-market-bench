@@ -8,10 +8,7 @@ interface StatusView {
     tone: StatusTone;
 }
 
-/** Past this mark the copy admits the provider is slow (one announcement, not a tick). */
-const SLOW_AFTER_MS = 12_000;
-
-function describe(phase: BuilderPhase, elapsedMs: number, detail?: string): StatusView {
+function describe(phase: BuilderPhase, detail?: string): StatusView {
     switch (phase) {
         case 'queued':
             return {
@@ -24,11 +21,7 @@ function describe(phase: BuilderPhase, elapsedMs: number, detail?: string): Stat
         case 'compiling':
             return {
                 label: 'COMPILING',
-                text:
-                    detail ??
-                    (elapsedMs >= SLOW_AFTER_MS
-                        ? 'the model is slow right now — still trying, and it falls back to a working template if it misses the deadline'
-                        : 'asking the model, then validating the recipe'),
+                text: detail ?? 'asking the model, then validating the recipe',
                 tone: 'accent',
             };
         case 'signed-out':
@@ -105,7 +98,7 @@ export function BuilderStatusStrip({
     tone,
     action,
 }: BuilderStatusStripProps) {
-    const defaults = describe(phase, elapsedMs, detail);
+    const defaults = describe(phase, detail);
     const view: StatusView = {
         label: label ?? defaults.label,
         text: detail ?? defaults.text,

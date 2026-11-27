@@ -135,6 +135,8 @@ export interface LLMLeaderboardRow {
     trading_performance_score: number;
     reasoning_quality_score: number | null;
     consistency_score: number;
+    up_days: number;
+    active_days: number;
     composite_score: number;
     rank?: number;
 }

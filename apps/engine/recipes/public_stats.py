@@ -557,6 +557,8 @@ def build_bot_leaderboard_window_rows(
                 "win_rate": win_rate,
                 "total_trades": closed_total,
                 "consistency_score": consistency,
+                "up_days": pos_days,
+                "active_days": active_days,
                 "trading_activity_rate": activity_rate,
                 "has_activity": has_activity,
                 "updated_at": updated_at,

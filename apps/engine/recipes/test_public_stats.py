@@ -244,6 +244,9 @@ def test_build_bot_leaderboard_window_rows_computes_all_four_windows_and_laplace
     assert w30["total_trades"] == 1
     # 2 positive return days (10100 > 9950, 10400 > 10100) -> Laplace (2+2)/(2+4) = 66.67%
     assert w30["consistency_score"] == 66.67
+    # The raw counts behind consistency must be exposed so the UI can show "2/2".
+    assert w30["up_days"] == 2
+    assert w30["active_days"] == 2
     assert w30["has_activity"] is True
 
     # All-Time (0): includes older Oct 1 trade (-50.0): 1 win + 1 loss closed + 1 open win = 2/3 = 66.67%

@@ -155,3 +155,27 @@ export function formatWinRate(winRate: number | null | undefined): string {
     }
     return `${winRate.toFixed(1)}%`;
 }
+
+/**
+ * Consistency is a Laplace-smoothed up-day rate, so the bare percentage hides
+ * its sample size. Render the counts next to it (`9/10 · 78.6%`) so the column
+ * reads as "how often did the equity line close green", not "how stable is it".
+ */
+export function formatUpDays(
+    upDays: number | null | undefined,
+    activeDays: number | null | undefined,
+    consistencyScore: number,
+): string {
+    const percent = `${consistencyScore.toFixed(1)}%`;
+    if (
+        upDays === null ||
+        upDays === undefined ||
+        activeDays === null ||
+        activeDays === undefined ||
+        !Number.isFinite(upDays) ||
+        !Number.isFinite(activeDays)
+    ) {
+        return percent;
+    }
+    return `${upDays}/${activeDays} · ${percent}`;
+}

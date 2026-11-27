@@ -29,6 +29,7 @@ The leaderboard system ranks active LLM models, systematic portfolios (`sys-*`),
 
 #### C. Consistency (20% LLM / 30% System & User Bot)
 * **Laplace-Smoothed Daily Return Consistency**: `((pos_days + 2) * 100) / (active_return_days + 4)` over active return sessions in the window where closing equity changed vs. the prior session (`portfolio_performance` or daily-collapsed `paper_equity_curve`), preventing single-day `100%` cliffs and defaulting to `50.0%` when `active_return_days = 0`.
+* **Surfaced as Up Days**: both RPCs return the raw counts as `up_days` / `active_days`, and the UI renders them beside the smoothed rate (`9/10 · 78.6%`) with an in-flow legend on `/leaderboard`. A bare percentage read as return stability or a pass-rate, so the counts carry the meaning: sessions the equity line closed green, out of sessions it moved at all (flat days are dropped). No tooltip — the [[entities/design-system]] rules forbid floating explanations.
 
 #### D. Composite Score (0–100%)
 * **LLMs**: `(0.5 * Performance) + (0.3 * Conviction) + (0.2 * Consistency)`
@@ -41,9 +42,11 @@ The leaderboard system ranks active LLM models, systematic portfolios (`sys-*`),
 * `supabase/migrations/20261125000000_unified_leaderboard_and_public_bots.sql` — Makes all non-archived user bots public by default, adds safe ISO date parser `public._safe_iso_date(TEXT)`, updates `get_llm_leaderboard_metrics` to remove verifier scoring, fix win_rate/consistency, and include sys portfolios + user bots.
 * `supabase/migrations/20261125010000_create_user_bot_leaderboard_stats.sql` — Creates `public.user_bot_leaderboard_stats` with RLS/grants and one-time backfill for existing public non-archived single-stage user bots (7d, 30d, 90d, 0=All-Time windows).
 * `supabase/migrations/20261125020000_materialize_leaderboard_rpc.sql` — Adds `decisions` indexes, updates `get_llm_leaderboard_metrics` to read pre-materialized `user_bot_leaderboard_stats`, includes open SHORT lots in open positions, aligns `total_trades` to closed round-trip exits, returns NULL conviction/confidence for non-LLMs, adds `get_leaderboard_page` (STABLE, GET-routable) for server-side category filtering, sorting, 10-row pagination, counts, and Top 3 podium.
+* `supabase/migrations/20261127120000_leaderboard_up_days_columns.sql` — Adds `up_days` / `active_days` to `user_bot_leaderboard_stats` and backfills them from the daily-collapsed paper equity curves (kept out of the RPC file so request-path SQL never unpacks JSONB).
+* `supabase/migrations/20261127120100_leaderboard_up_days_rpc.sql` — Redefines `get_llm_leaderboard_metrics` and `get_leaderboard_page` to return `up_days` / `active_days` for portfolios (`portfolio_performance` positives) and user bots (materialised stats row). Scoring weights and pagination unchanged; the UI formats the pair itself.
 
 #### Engine Materializer (`apps/engine/recipes/public_stats.py`)
-* `build_bot_leaderboard_window_rows` — Computes pre-materialized 7d/30d/90d/All-Time rows for one public user bot from `paper_cash`, `paper_positions`, `paper_trades`, `paper_equity_curve`.
+* `build_bot_leaderboard_window_rows` — Computes pre-materialized 7d/30d/90d/All-Time rows for one public user bot from `paper_cash`, `paper_positions`, `paper_trades`, `paper_equity_curve`, including the `up_days` / `active_days` counts behind `consistency_score`.
 * `refresh_user_bot_leaderboard_stats` — Fetches all public non-archived single-stage user bots (paginated), builds window rows, upserts into `user_bot_leaderboard_stats` on `(recipe_id, time_window_days)`.
 * Called from `refresh_public_stats` after recipe stats refresh.
 
@@ -65,7 +68,7 @@ The leaderboard system ranks active LLM models, systematic portfolios (`sys-*`),
 * Category filter tabs: **All**, **LLMs**, **System**, **User Bots** (with counts from RPC).
 * Timeframe switcher: 7d, 30d, 60d, 90d, All.
 * Top 3 podium (`LeaderboardPodium`) with athletic 2nd/1st/3rd visual order.
-* Server-paginated table (`LeaderboardTable`) — max 10 per page, sortable columns (Score, Return, Win Rate, Consistency), category-aware pagination.
+* Server-paginated table (`LeaderboardTable`) — max 10 per page, sortable columns (Score, Return, Win Rate, Up Days), category-aware pagination. The Up Days cell renders `up/active · smoothed %` (e.g. `9/10 · 78.6%`) via `formatUpDays` in `apps/web/src/features/leaderboard/lib/model-helper.ts`; the page header carries a one-line definition because the design system bans tooltips.
 * Side-by-side comparison (`ModelComparison`) for up to 2 selected competitors.
 * Living backdrop with atmosphere/motion HUD controls.
 

@@ -11,7 +11,7 @@ The **Unified Leaderboard & Screening Tool** ranks active LLMs, active systemati
 
 ## 🎯 Architecture & Metrics Computation
 
-User-bot window metrics (`7`, `30`, `90`, `0` for All-Time) are pre-materialized by `apps/engine/recipes/public_stats.py` into `public.user_bot_leaderboard_stats` (`supabase/migrations/20261125010000_create_user_bot_leaderboard_stats.sql`). Read requests call the `STABLE` `GET`-routable RPCs (`get_leaderboard_page` and `get_llm_leaderboard_metrics` in `supabase/migrations/20261125020000_materialize_leaderboard_rpc.sql`) via PostgREST HTTP `GET`, keeping reads fast on the MiniPC read replica with zero JSONB unpacking and zero frontend compute ([[concepts/zero-frontend-compute]]).
+User-bot window metrics (`7`, `30`, `90`, `0` for All-Time) are pre-materialized by `apps/engine/recipes/public_stats.py` into `public.user_bot_leaderboard_stats` (`supabase/migrations/20261125010000_create_user_bot_leaderboard_stats.sql`). Read requests call the `STABLE` `GET`-routable RPCs (`get_leaderboard_page` and `get_llm_leaderboard_metrics`, redefined in `supabase/migrations/20261127120100_leaderboard_up_days_rpc.sql`) via PostgREST HTTP `GET`, keeping reads fast on the MiniPC read replica with zero JSONB unpacking and zero frontend compute ([[concepts/zero-frontend-compute]]).
 
 ### 1. Unified Competitor Population
 * **Active LLMs**: Enforced in SQL against the active models in `packages/config/models.json` (`gpt-6-luna`, `claude-haiku-5-5`, `gemini-3.5-flash-lite`, `deepseek-flash`, `MiniMax-M3.1-Flash`).
@@ -34,6 +34,7 @@ User-bot window metrics (`7`, `30`, `90`, `0` for All-Time) are pre-materialized
 
 #### C. Consistency (20% LLM / 30% System & User Bot)
 * **Laplace-Smoothed Daily Return Consistency**: `((pos_days + 2) * 100) / (active_return_days + 4)` over active return sessions in the window where closing equity changed vs. the prior session (`portfolio_performance` or daily-collapsed `paper_equity_curve`), preventing single-day `100%` cliffs and defaulting to `50.0%` when `active_return_days = 0`.
+* **Surfaced as Up Days**: the RPCs return `up_days` / `active_days` so `/leaderboard` can show `9/10 · 78.6%` with a one-line in-flow legend instead of a bare percentage (`supabase/migrations/20261127120100_leaderboard_up_days_rpc.sql`).
 
 #### D. Composite Score (0–100%)
 * **LLMs**: `(0.5 * Performance) + (0.3 * Conviction) + (0.2 * Consistency)`
@@ -48,6 +49,8 @@ User-bot window metrics (`7`, `30`, `90`, `0` for All-Time) are pre-materialized
 * `supabase/migrations/20261125000000_unified_leaderboard_and_public_bots.sql` — Makes all non-archived user bots public by default, adds safe ISO date parser `public._safe_iso_date(TEXT)`, updates `get_llm_leaderboard_metrics` to remove verifier scoring, fix win_rate/consistency, and include sys portfolios + user bots.
 * `supabase/migrations/20261125010000_create_user_bot_leaderboard_stats.sql` — Creates `public.user_bot_leaderboard_stats` with RLS/grants and one-time backfill for existing public non-archived single-stage user bots (7d, 30d, 90d, 0=All-Time windows).
 * `supabase/migrations/20261125020000_materialize_leaderboard_rpc.sql` — Adds `decisions` indexes, updates `get_llm_leaderboard_metrics` to read pre-materialized `user_bot_leaderboard_stats`, includes open SHORT lots in open positions, aligns `total_trades` to closed round-trip exits, returns NULL conviction/confidence for non-LLMs, adds `get_leaderboard_page` (STABLE, GET-routable) for server-side category filtering, sorting, 10-row pagination, counts, and Top 3 podium.
+* `supabase/migrations/20261127120000_leaderboard_up_days_columns.sql` — Adds `up_days` / `active_days` to `user_bot_leaderboard_stats` and backfills them from the paper equity curves.
+* `supabase/migrations/20261127120100_leaderboard_up_days_rpc.sql` — Returns `up_days` / `active_days` from both leaderboard RPCs so the UI can show the counts behind the smoothed consistency rate.
 
 ### Engine Materializer (`apps/engine/recipes/public_stats.py`)
 * `build_bot_leaderboard_window_rows` — Computes pre-materialized 7d/30d/90d/All-Time rows for one public user bot from `paper_cash`, `paper_positions`, `paper_trades`, `paper_equity_curve`.
@@ -72,7 +75,7 @@ User-bot window metrics (`7`, `30`, `90`, `0` for All-Time) are pre-materialized
 * Category filter tabs: **All**, **LLMs**, **System**, **User Bots** (with counts from RPC).
 * Timeframe switcher: 7d, 30d, 60d, 90d, All.
 * Top 3 podium (`LeaderboardPodium`) with athletic 2nd/1st/3rd visual order.
-* Server-paginated table (`LeaderboardTable`) — max 10 per page, sortable columns (Score, Return, Win Rate, Consistency), category-aware pagination.
+* Server-paginated table (`LeaderboardTable`) — max 10 per page, sortable columns (Score, Return, Win Rate, Up Days), category-aware pagination; the Up Days cell renders `up/active · smoothed %`.
 * Side-by-side comparison (`ModelComparison`) for up to 2 selected competitors.
 * Living backdrop with atmosphere/motion HUD controls.
 

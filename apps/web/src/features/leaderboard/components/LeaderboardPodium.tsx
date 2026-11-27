@@ -1,7 +1,7 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
 import { Badge, Card } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
-import { formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
+import { formatUpDays, formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
 
 interface LeaderboardPodiumProps {
     models: LLMLeaderboardRow[];
@@ -109,10 +109,10 @@ function PodiumCard({ model, place }: PodiumCardProps) {
                 </div>
                 <div className="flex justify-between items-center gap-2">
                     <span className="text-voxel-muted uppercase tracking-wider text-xs font-normal">
-                        Consistency
+                        Up Days
                     </span>
-                    <span className="text-voxel-ink text-sm font-bold tabular-nums">
-                        {model.consistency_score.toFixed(1)}%
+                    <span className="text-voxel-ink text-sm font-bold tabular-nums whitespace-nowrap">
+                        {formatUpDays(model.up_days, model.active_days, model.consistency_score)}
                     </span>
                 </div>
             </div>

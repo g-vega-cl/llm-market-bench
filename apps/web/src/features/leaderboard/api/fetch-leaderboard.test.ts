@@ -32,6 +32,8 @@ test('fetchLeaderboardPage calls STABLE GET get_leaderboard_page RPC and parses 
         trading_performance_score: 85.2,
         reasoning_quality_score: 62.5,
         consistency_score: 64.0,
+        up_days: 7,
+        active_days: 10,
         composite_score: 89.5,
         rank: 1,
         total_count: 14,
@@ -128,6 +130,8 @@ test('fetchLeaderboard calls STABLE GET get_llm_leaderboard_metrics RPC directly
             trading_performance_score: 85.2,
             reasoning_quality_score: 62.5,
             consistency_score: 64.0,
+            up_days: 7,
+            active_days: 10,
             composite_score: 89.5,
         },
     ];

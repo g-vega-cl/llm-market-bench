@@ -311,6 +311,8 @@ describe('Design Standardization: Typography & Box Sizing', () => {
                     max_drawdown: 0.05,
                     return_pct: 15.2,
                     consistency_score: 85.0,
+                    up_days: 10,
+                    active_days: 10,
                 },
                 {
                     model_name: 'openai/gpt-4o',
@@ -322,6 +324,8 @@ describe('Design Standardization: Typography & Box Sizing', () => {
                     max_drawdown: 0.06,
                     return_pct: 11.4,
                     consistency_score: 82.0,
+                    up_days: 9,
+                    active_days: 10,
                 },
                 {
                     model_name: 'deepseek/deepseek-chat',
@@ -333,6 +337,8 @@ describe('Design Standardization: Typography & Box Sizing', () => {
                     max_drawdown: 0.07,
                     return_pct: 8.7,
                     consistency_score: 79.0,
+                    up_days: 9,
+                    active_days: 10,
                 },
             ];
             const { container } = render(

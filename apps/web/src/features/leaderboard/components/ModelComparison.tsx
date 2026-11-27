@@ -1,6 +1,6 @@
 import type { LLMLeaderboardRow } from '@llm-market-bench/database';
 import { Badge, Button, Card, SectionHeading } from '@llm-market-bench/ui-design-system';
-import { formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
+import { formatUpDays, formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
 
 interface ModelComparisonProps {
     modelA: LLMLeaderboardRow;
@@ -60,11 +60,11 @@ export function ModelComparison({ modelA, modelB, onClear }: ModelComparisonProp
             isHigherBetter: null,
         },
         {
-            label: 'Consistency',
+            label: 'Up Days',
             valA: modelA.consistency_score,
             valB: modelB.consistency_score,
-            formattedA: `${modelA.consistency_score.toFixed(1)}%`,
-            formattedB: `${modelB.consistency_score.toFixed(1)}%`,
+            formattedA: formatUpDays(modelA.up_days, modelA.active_days, modelA.consistency_score),
+            formattedB: formatUpDays(modelB.up_days, modelB.active_days, modelB.consistency_score),
             isHigherBetter: true,
         },
         {

@@ -12,7 +12,7 @@ import {
 } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import type { LeaderboardSortDir, LeaderboardSortField } from '../api/fetch-leaderboard';
-import { formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
+import { formatUpDays, formatWinRate, getLeaderboardDisplayInfo } from '../lib/model-helper';
 
 export const LEADERBOARD_PAGE_SIZE = 10;
 
@@ -101,7 +101,7 @@ export function LeaderboardTable({
                             className="cursor-pointer select-none hover:text-voxel-ink"
                             onClick={() => onSortChange('consistency_score')}
                         >
-                            Consistency {renderSortIndicator('consistency_score')}
+                            Up Days {renderSortIndicator('consistency_score')}
                         </TableHead>
                     </TableRow>
                 </TableHeader>
@@ -281,8 +281,12 @@ function LeaderboardTableRow({
             <TableCell align="right" tone="muted" className="font-mono tabular-nums">
                 {formatWinRate(model.win_rate)}
             </TableCell>
-            <TableCell align="right" tone="muted" className="font-mono tabular-nums">
-                {model.consistency_score.toFixed(1)}%
+            <TableCell
+                align="right"
+                tone="muted"
+                className="font-mono tabular-nums whitespace-nowrap"
+            >
+                {formatUpDays(model.up_days, model.active_days, model.consistency_score)}
             </TableCell>
         </TableRow>
     );

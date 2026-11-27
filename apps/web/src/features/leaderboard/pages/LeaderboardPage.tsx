@@ -160,6 +160,12 @@ export function LeaderboardPage({ initialData, initialAtmosphere }: LeaderboardP
                                 Unified rankings across LLMs, systematic portfolios, and public user
                                 bots — scored on return, win rate, and daily return consistency.
                             </p>
+                            <p className="text-xs font-normal text-voxel-muted leading-relaxed">
+                                Up Days counts sessions where closing equity rose, out of sessions
+                                where it moved at all — flat days are dropped. The rate is smoothed
+                                (+2 up, +4 sessions), so thin samples sit near 50%. It weighs 20% of
+                                an LLM's score and 30% of a System or User Bot's.
+                            </p>
                         </div>
 
                         <div className="flex flex-wrap items-center gap-2">

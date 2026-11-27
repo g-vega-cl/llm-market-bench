@@ -114,9 +114,30 @@ def test_latest_leaderboard_removes_verifier_and_fixes_win_rate_consistency_and_
         f"{filename} must read pre-materialized user_bot_leaderboard_stats instead of unpacking JSONB"
     )
     assert "jsonb_array_elements" not in sql, f"{filename} must not unpack JSONB arrays on request path"
-    assert "signal = 'short'" in sql, f"{filename} must include open SHORT lots in open-position win rate"
+    assert "upper(t.signal) = 'short'" in sql, f"{filename} must include open SHORT lots in open-position win rate"
     assert "get_leaderboard_page" in sql, f"{filename} must expose STABLE server-side get_leaderboard_page RPC"
     assert "create index if not exists idx_decisions_created_at" in sql, f"{filename} must index decisions(created_at)"
+
+
+def test_leaderboard_exposes_up_day_counts_behind_consistency():
+    """Consistency is a smoothed up-day rate; the raw counts must be exposed for the UI."""
+    filename, content = _latest_leaderboard_definition()
+    sql = _normalise(content)
+
+    assert "up_days bigint" in sql, f"{filename} must return up_days"
+    assert "active_days bigint" in sql, f"{filename} must return active_days"
+    assert "pos_days" in sql, f"{filename} must count positive equity sessions for up_days"
+    assert "get_leaderboard_page" in sql, f"{filename} must redefine get_leaderboard_page"
+    assert re.search(r"o\.up_days", sql), f"{filename} must pass up_days through the page RPC"
+    assert re.search(r"o\.active_days", sql), f"{filename} must pass active_days through the page RPC"
+
+    stats_sql = _normalise(
+        "\n".join(content for _, content in _migration_files() if "user_bot_leaderboard_stats" in content)
+    )
+    assert "add column if not exists up_days" in stats_sql, "user_bot_leaderboard_stats must store up_days"
+    assert "add column if not exists active_days" in stats_sql, (
+        "user_bot_leaderboard_stats must store active_days"
+    )
 
 
 def test_strategy_recipes_default_public_migration_exists():

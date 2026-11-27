@@ -90,6 +90,8 @@ const mockRows: LLMLeaderboardRow[] = [
         trading_performance_score: 85.2,
         reasoning_quality_score: 62.5,
         consistency_score: 64.0,
+        up_days: 7,
+        active_days: 10,
         composite_score: 89.5,
         rank: 1,
     },
@@ -112,6 +114,8 @@ const mockRows: LLMLeaderboardRow[] = [
         trading_performance_score: 80.0,
         reasoning_quality_score: 51.0,
         consistency_score: 58.0,
+        up_days: 6,
+        active_days: 10,
         composite_score: 85.0,
         rank: 2,
     },
@@ -134,6 +138,8 @@ const mockRows: LLMLeaderboardRow[] = [
         trading_performance_score: 79.5,
         reasoning_quality_score: null,
         consistency_score: 55.5,
+        up_days: 6,
+        active_days: 10,
         composite_score: 84.2,
         rank: 3,
     },
@@ -156,6 +162,8 @@ const mockRows: LLMLeaderboardRow[] = [
         trading_performance_score: 65.0,
         reasoning_quality_score: null,
         consistency_score: 54.0,
+        up_days: 6,
+        active_days: 10,
         composite_score: 72.1,
         rank: 4,
     },
@@ -194,6 +202,8 @@ function makeManyRows(count: number): LLMLeaderboardRow[] {
         trading_performance_score: 75 - idx,
         reasoning_quality_score: idx < 3 ? 55 : null,
         consistency_score: 60 - idx,
+        up_days: 6,
+        active_days: 10,
         composite_score: 90 - idx,
         rank: idx + 1,
     }));
@@ -225,6 +235,12 @@ describe('LeaderboardPage', () => {
 
         expect(screen.queryByText(/Approval/i)).toBeNull();
         expect(screen.getAllByText('—').length).toBeGreaterThan(0);
+
+        // Consistency is surfaced as up-days out of active sessions, not a bare percentage.
+        expect(screen.getAllByText('Up Days').length).toBeGreaterThan(0);
+        expect(screen.getAllByText('7/10 · 64.0%').length).toBeGreaterThan(0);
+        expect(screen.queryByText('Consistency')).toBeNull();
+        expect(screen.getByText(/flat days are dropped/i)).toBeDefined();
 
         const checkbox = screen.getByRole('checkbox', {
             name: /select deepseek \(flash\) for comparison/i,

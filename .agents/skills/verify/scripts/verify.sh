@@ -66,28 +66,34 @@ echo "--> Synchronizing Wiki (hotspots, indexes, and integrity)..."
 ./apps/engine/.venv/bin/python3 apps/engine/hotspots.py --since "60 days ago" --top 15 --write-wiki
 ./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --fix
 
-# Strict Wiki & Config Parity Linting (MANDATORY)
+# Strict Wiki & Config Parity Linting + Reverse Code-to-Wiki Lookup (MANDATORY)
 echo "--> Verifying strict Wiki integrity and config parity..."
 ./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py
 
-# Auto-Wiki Pre-Commit Simulation (if non-doc code changes are staged)
-STAGED_NON_DOC=$(git diff --cached --name-only 2>/dev/null | grep -vE '^(wiki/|raw/|docs/|scripts/auto-wiki|\.husky/)' || true)
-if [ -n "$STAGED_NON_DOC" ]; then
-  echo "--> Staged code changes detected; emulating auto-wiki pre-commit..."
-  DIFF_FILE="$(mktemp /tmp/verify-auto-wiki-diff.XXXXXX)"
-  git diff --cached > "$DIFF_FILE"
-  if [ -s "$DIFF_FILE" ]; then
-    ./apps/engine/.venv/bin/python3 apps/engine/auto_wiki.py --diff-file "$DIFF_FILE" --dry-run || {
-      echo "ERROR: auto_wiki dry-run simulation failed on staged code changes!" >&2
-      rm -f "$DIFF_FILE"
-      exit 1
-    }
-  fi
-  rm -f "$DIFF_FILE"
+BASE_REF="$(git merge-base HEAD main 2>/dev/null || echo HEAD)"
+CHANGED_SRC=$(git diff --name-only "$BASE_REF" 2>/dev/null | grep -vE '^(wiki/|raw/)' || true)
+if [ -n "$CHANGED_SRC" ]; then
+  echo "--> Checking reverse code-to-wiki graph for impacted documentation..."
+  # shellcheck disable=SC2086
+  ./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py --affected-by $CHANGED_SRC || true
 fi
 
-# Re-index and embed QMD vector search if available
-if command -v qmd >/dev/null 2>&1; then
+# Protected Red-Line Scorer & Diff-Size Coaching Gates (covers both committed branch changes vs main and working tree)
+REDLINE_TOUCHED=$(git diff --name-only "$BASE_REF" -- apps/engine/autoresearch/evaluator.py apps/engine/local_autoresearch/single_prompt_ratchet.py 2>/dev/null || true)
+if [ -n "$REDLINE_TOUCHED" ] && [ "${ALLOW_REDLINE_EDIT:-0}" != "1" ]; then
+  echo "ERROR [RED-LINE PROTECTED SCORER]: Unapproved modification to protected evaluator file(s):" >&2
+  echo "$REDLINE_TOUCHED" >&2
+  echo "REMEDIATION: Revert scorer edits or obtain explicit user sign-off and re-run with ALLOW_REDLINE_EDIT=1." >&2
+  exit 1
+fi
+
+NON_TEST_DIFF_LINES=$(git diff --numstat "$BASE_REF" -- 'apps/' 'packages/' ':!*test*' ':!*.lock' ':!*pnpm-lock*' 2>/dev/null | awk '{s += $1 + $2} END {print s + 0}')
+if [ "${NON_TEST_DIFF_LINES:-0}" -gt 300 ]; then
+  echo "WARNING [DIFF SIZE > 300 LINES]: $NON_TEST_DIFF_LINES non-test lines changed. AI review recall drops sharply past 150-300 lines; ensure Cold Reviewer inspects 100% of touched files."
+fi
+
+# Re-index and embed QMD vector search if available (skip inside sandboxed ~/.config read-only sessions)
+if command -v qmd >/dev/null 2>&1 && [ -w "${HOME:-/nonexistent}/.config" ]; then
   echo "--> Updating QMD vector index and embeddings..."
   qmd update
   EMBED_OUT="$(mktemp /tmp/verify-qmd-embed.XXXXXX)"
@@ -132,8 +138,8 @@ if [ "$ENGINE" = true ] || [ "$FAST" = true ]; then
   echo "--> Running Ruff format check..."
   ./apps/engine/.venv/bin/ruff format --check apps/engine/
 
-  # Check McCabe cyclomatic complexity on modified Python files (Diff-scoped check)
-  MODIFIED_PY=$(git diff --name-only HEAD -- 'apps/engine/**/*.py' 'apps/engine/*.py' 2>/dev/null || true)
+  # Check McCabe cyclomatic complexity on modified Python files (branch + working-tree diff)
+  MODIFIED_PY=$(git diff --name-only "$BASE_REF" -- 'apps/engine/**/*.py' 'apps/engine/*.py' 2>/dev/null || true)
   if [ -n "$MODIFIED_PY" ]; then
     echo "--> Auditing McCabe Cyclomatic Complexity (C901 <= 15) on modified Python files..."
     ./apps/engine/.venv/bin/ruff check $MODIFIED_PY --select C901 --config "lint.mccabe.max-complexity = 15" || \
@@ -150,7 +156,7 @@ if [ "$ENGINE" = true ] || [ "$FAST" = true ]; then
   fi
 
   echo "--> Checking for shotgun surgery (production files blast radius)..."
-  TOUCHED_PROD=$(git diff --name-only HEAD -- 'apps/' 'packages/' 2>/dev/null | grep -vE 'test|/tests/|__tests__|\.test\.|\.spec\.' || true)
+  TOUCHED_PROD=$(git diff --name-only "$BASE_REF" -- 'apps/' 'packages/' 2>/dev/null | grep -vE 'test|/tests/|__tests__|\.test\.|\.spec\.' || true)
   TOUCHED_COUNT=$(echo "$TOUCHED_PROD" | grep -c . || true)
   if [ "$TOUCHED_COUNT" -gt 10 ]; then
     echo "WARNING [SHOTGUN SURGERY]: Diff modifies $TOUCHED_COUNT production files (>10). Tier 7 review MUST audit for leaky abstractions or coupling debt."
@@ -192,6 +198,8 @@ if [ "$FAST" = false ]; then
       echo "--> Running Hermetic Engine tests with coverage (4 workers, matching CI working-directory: apps/engine)..."
       (cd apps/engine && "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest -n 4 --cov=. --cov-config=.coveragerc)
     fi
+    echo "--> Running Hermetic Free LLM Proxy tests..."
+    (cd apps/free_llm_proxy && PYTHONPATH=../.. "$REPO_ROOT/apps/engine/.venv/bin/python3" -m pytest tests/ -q)
   fi
 
   if [ "$WEB" = true ]; then

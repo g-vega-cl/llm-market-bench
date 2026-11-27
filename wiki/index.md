@@ -114,6 +114,7 @@
 - [[entities/last30days-research-skill]] — third-party agent skill for 30-day multi-source research (Reddit, X, YouTube, HN, arXiv, web), installed for Hermes, Pi, and Antigravity
 ## Concepts
 
+- [[concepts/agentic-worktree-spine]] — 4-layer progressive `AGENTS.md` context, shared `.agents/skills/` spine, isolated git worktrees, and Rendezvous-Hashed proxy sessions across Antigravity CLI, Pi, and Hermes
 - [[concepts/retired-experiment-guards]] — source-tree guard that keeps retired PostHog flags and deleted WebGL components from returning
 - [[concepts/intraday-atomic-rpc-execution]] — intraday BUY/SELL fills committed atomically via the execute_portfolio_trade RPC with idempotency keys
 - [[concepts/market-session-consolidation]] — MarketCalendar as the single market-session implementation after MarketSessionManager removal

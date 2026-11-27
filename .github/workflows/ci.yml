@@ -34,9 +34,23 @@ jobs:
         run: |
           pip install -r requirements.txt
 
-      - name: Run tests
+      - name: Lint and format check engine
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Verify wiki structural integrity and config parity
+        run: |
+          python3 wiki_lint.py
+
+      - name: Run engine tests
         run: |
           python3 -m pytest -n auto
+
+      - name: Run free-llm-proxy tests
+        run: |
+          pip install fastapi==0.115.11
+          cd ../free_llm_proxy && PYTHONPATH=../.. python3 -m pytest tests/ -q
 
   test-web:
     name: Test & Build Web

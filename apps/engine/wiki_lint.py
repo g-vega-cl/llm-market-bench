@@ -1,12 +1,5 @@
 #!/usr/bin/env python3
-"""Structural lint for wiki/ — checks frontmatter, orphans, broken links, index gaps.
-
-Usage:
-    python apps/engine/wiki_lint.py          # check everything
-    python apps/engine/wiki_lint.py --quiet  # only print errors
-
-Exit code 0 = clean, 1 = issues found.
-"""
+"""Structural lint for wiki/ (frontmatter, orphans, broken links, index & graph parity)."""
 
 import argparse
 import json
@@ -19,14 +12,27 @@ import yaml
 
 try:
     from apps.engine.secret_scanner import scan_text
+    from apps.engine.wiki_graph import (
+        SCAFFOLD_FILES,
+        format_topic_map,
+        resolve_affected_pages,
+    )
+    from apps.engine.wiki_graph import (
+        build_code_to_wiki_map as _build_map,
+    )
 except ImportError:
     from secret_scanner import scan_text
+    from wiki_graph import (
+        SCAFFOLD_FILES,
+        format_topic_map,
+        resolve_affected_pages,
+    )
+    from wiki_graph import (
+        build_code_to_wiki_map as _build_map,
+    )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 WIKI_DIR = REPO_ROOT / "wiki"
-
-# Files that are scaffold — don't flag as orphans
-SCAFFOLD_FILES = {"SCHEMA.md", "index.md"}
 
 # Matches strings starting with key project directories inside backticks or links
 PATH_RE = re.compile(
@@ -48,13 +54,15 @@ def validate_codebase_references(content: str, repo_root: Path, file_rel: str) -
         relative_path = f"{prefix}/{subpath}"
         cleaned_path = relative_path.rstrip(".,;")
 
-        # Skip paths that contain uppercase variables/placeholders, nonexistent/temp-broken tests, or runtime env files (.env, .venv)
+        # Skip placeholders, temp-broken test fixtures, runtime env files, or git-ignored dist outputs
         if (
             "YYYY-MM" in cleaned_path
             or "nonexistent" in cleaned_path
             or "temp-broken" in cleaned_path
             or ".env" in cleaned_path
             or ".venv" in cleaned_path
+            or cleaned_path.endswith("/dist")
+            or "/dist/" in cleaned_path
         ):
             continue
 
@@ -114,11 +122,14 @@ MAX_AGENT_RULE_BYTES = 20_000
 
 
 def validate_agent_rules_budget(repo_root: Path) -> list[str]:
-    """Validates that root and .agents/rules/*.md files stay below the 20KB budget (24KB hard cap)."""
+    """Validates that root, scoped AGENTS.md, PRODUCT.md, and .agents/rules/*.md stay below 20KB."""
     errors = []
     rule_files = [
         repo_root / "GEMINI.md",
         repo_root / "AGENTS.md",
+        repo_root / "PRODUCT.md",
+        repo_root / "apps" / "engine" / "AGENTS.md",
+        repo_root / "apps" / "web" / "AGENTS.md",
     ]
     rules_dir = repo_root / ".agents" / "rules"
     if rules_dir.is_dir():
@@ -159,11 +170,7 @@ INLINE_CODE_RE = re.compile(r"`[^`\n]*`")
 
 
 def strip_code(content: str) -> str:
-    """Remove code spans and fences before link extraction.
-
-    Documentation about wikilink syntax shows literal `[[target]]` examples in
-    backticks; those are not links and must not be reported as broken.
-    """
+    """Remove code spans and fences before link extraction so literal `[[target]]` examples are ignored."""
     return INLINE_CODE_RE.sub("", FENCED_CODE_RE.sub("", content))
 
 
@@ -207,6 +214,28 @@ def build_link_graph(pages: dict[str, Path]) -> dict[str, tuple[set[str], set[st
                     graph[resolved][1].add(rel)
         graph[rel] = (outgoing, graph[rel][1])
     return graph
+
+
+def build_code_to_wiki_map(
+    pages: dict[str, Path] | None = None,
+    repo_root: Path = REPO_ROOT,
+) -> dict[str, list[str]]:
+    """Build deterministic reverse index mapping repo code paths to citing wiki pages."""
+    return _build_map(pages if pages is not None else find_all_pages(), repo_root=repo_root)
+
+
+def affected_wiki_pages(
+    changed_files: list[str],
+    pages: dict[str, Path] | None = None,
+    repo_root: Path = REPO_ROOT,
+) -> dict[str, list[str]]:
+    """Return {changed_file: [wiki_rel_paths]} for exact or parent-package matches."""
+    return resolve_affected_pages(changed_files, build_code_to_wiki_map(pages=pages, repo_root=repo_root))
+
+
+def render_topic_map(pages: dict[str, Path] | None = None, repo_root: Path = REPO_ROOT) -> str:
+    """Render wiki/_meta/topic-map.md grouping code-to-wiki reverse links by subsystem."""
+    return format_topic_map(build_code_to_wiki_map(pages=pages, repo_root=repo_root))
 
 
 def _lint_page_content(
@@ -333,10 +362,22 @@ def lint(fix: bool = False) -> list[str]:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Lint wiki/ structure")
+    parser = argparse.ArgumentParser(description="Lint wiki/ structure and query reverse code-to-wiki map")
     parser.add_argument("--quiet", action="store_true", help="only print errors")
-    parser.add_argument("--fix", action="store_true", help="automatically fix simple issues")
+    parser.add_argument("--fix", action="store_true", help="automatically fix simple index gaps")
+    parser.add_argument("--topic-map", action="store_true", help="print derived code-to-wiki topic map to stdout")
+    parser.add_argument("--affected-by", nargs="+", metavar="PATH", help="print wiki pages citing given repo paths")
     args = parser.parse_args()
+
+    if args.affected_by:
+        impacted = affected_wiki_pages(args.affected_by)
+        for src, docs in impacted.items():
+            print(f"{src}: {', '.join(docs)}")
+        sys.exit(0)
+
+    if args.topic_map:
+        print(render_topic_map(), end="")
+        sys.exit(0)
 
     issues = lint(fix=args.fix)
 

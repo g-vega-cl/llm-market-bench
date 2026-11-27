@@ -1,5 +1,6 @@
 """Routing engine: tier waterfall, round-robin load balancing, and model resolution."""
 
+import hashlib
 import itertools
 from typing import Any
 
@@ -325,13 +326,16 @@ class Router:
         )
 
     def get_candidate_chain(
-        self, requested_model: str, prompt_tokens: int | None = None
+        self,
+        requested_model: str,
+        prompt_tokens: int | None = None,
+        session_id: str | None = None,
     ) -> list[tuple[str, dict]]:
         """Returns ordered list of (provider_id, provider_cfg) to attempt for a request.
 
-        Prioritizes Tier 1 healthy providers (round-robin balanced),
-        then Tier 2 healthy providers. If all are in cooldown, includes
-        cooling-down providers as last resort.
+        Prioritizes Tier 1 healthy providers (session-sticky when ``session_id`` is
+        supplied, otherwise round-robin balanced), then Tier 2 healthy providers.
+        If all are in cooldown, includes cooling-down providers as last resort.
         """
         active = self.get_active_providers()
         if not active:
@@ -384,12 +388,21 @@ class Router:
             )
             buckets.setdefault(tier, []).append((p_id, p_cfg))
 
-        # Rotate healthy candidates within each tier using round-robin offset
+        # Rendezvous Hashing (HRW) for session_id keeps remaining providers cache-pinned
+        # even when prompt_tokens filters out short-context candidates (e.g. groq >8k);
+        # stateless calls keep round-robin load balancing.
         def balance_tier(
             candidates: list[tuple[str, dict]], tier_num: int
         ) -> list[tuple[str, dict]]:
             if not candidates:
                 return []
+            if session_id:
+                return sorted(
+                    candidates,
+                    key=lambda c: hashlib.sha256(
+                        f"{tier_num}:{session_id}:{c[0]}".encode()
+                    ).digest(),
+                )
             counter = self._tier_counters.setdefault(tier_num, itertools.count())
             idx = next(counter) % len(candidates)
             return candidates[idx:] + candidates[:idx]

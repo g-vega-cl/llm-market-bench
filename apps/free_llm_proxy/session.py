@@ -53,3 +53,33 @@ def derive_session_id(
     seed = "\n".join(seed_parts)
     digest = hashlib.sha256(seed.encode("utf-8")).hexdigest()[:32]
     return f"fllm-{digest}"
+
+
+def resolve_routing_session_id(
+    messages: list[Any] | None,
+    client_ip: str,
+    user_agent: str,
+    provided: str | None = None,
+) -> str | None:
+    """Return a sticky routing session ID for multi-turn chats or explicit session headers.
+
+    Single-turn stateless utility calls without ``x-opencode-session`` return ``None``
+    so the router preserves round-robin load balancing across Tier-1 free providers.
+    """
+    sanitized = _sanitize_session_id(provided)
+    if sanitized:
+        return sanitized
+
+    msgs = messages or []
+    non_system_count = 0
+    has_prior_turn = False
+    for msg in msgs:
+        role = msg.get("role") if isinstance(msg, dict) else getattr(msg, "role", None)
+        if role and role not in {"system", "developer"}:
+            non_system_count += 1
+        if role in {"assistant", "tool"}:
+            has_prior_turn = True
+
+    if has_prior_turn or non_system_count > 1:
+        return derive_session_id(msgs, client_ip=client_ip, user_agent=user_agent)
+    return None

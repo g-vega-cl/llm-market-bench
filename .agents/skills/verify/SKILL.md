@@ -36,7 +36,7 @@ Never use unbounded `-n auto` or an unpinned `pnpm test`: the runner and `.husky
 Or run the bundled verification runner:
 
 ```bash
-./.agents/skills/verify/scripts/verify.sh              # Full suite (parallel, -n auto)
+./.agents/skills/verify/scripts/verify.sh              # Full suite (parallel, capped at 4 workers)
 ./.agents/skills/verify/scripts/verify.sh --sequential # Full suite (strictly 1 worker, low CPU/RAM)
 ./.agents/skills/verify/scripts/verify.sh --fast       # Lint, format, types, and wiki (no tests)
 ./.agents/skills/verify/scripts/verify.sh --hotspots   # Hotspot forensics & coupling
@@ -166,9 +166,10 @@ Audit all changed files through these eight tiers. Do not skip any tier.
 Apply a rigorous Principal / Distinguished Engineer / Technical Fellow engineering audit to all changed code. Think counterfactually: **"Could this have been done better?"**, **"Is there a simpler, more robust way?"**, and **"How will this fail?"** See `[[concepts/staff-engineer-verification]]`.
 
 1. **Mandatory Adversarial Subagent Audit**:
-   - To eliminate author bias and conversational sycophancy, the main agent MUST invoke an isolated `research` subagent via `invoke_subagent` on Antigravity or `delegate_task` on Hermes (`Role: "Principal / Distinguished Engineer / Technical Fellow Reviewer"`).
+   - To eliminate author bias and conversational sycophancy, the main agent MUST invoke an isolated `research` subagent via `invoke_subagent` on Antigravity, the `reviewer` subagent profile on Pi, or `delegate_task` on Hermes (`Role: "Principal / Distinguished Engineer / Technical Fellow Reviewer"`), selecting a distinct reviewer model profile per `.agents/reviewer-profiles.json` whenever available so the coder never grades its own weights.
+   - **100% Diff Coverage**: Confirm the cold reviewer inspected every modified production file rather than skimming partial snippets.
    - **Cold Context Mandate**: The prompt to the subagent must contain ONLY the 1-sentence task goal and the git diff (`git diff HEAD~1` or staged/working diff). The main agent is **strictly prohibited from providing justifications or rationalizations** to the reviewer.
-   - **Adversarial Posture**: The subagent assumes the code contains flaws, anti-patterns, or fragility under load, auditing against `GEMINI.md` mandates, SOLID principles, trade idempotency, and scaling limits.
+   - **Adversarial Posture**: The subagent assumes the code contains flaws, anti-patterns, or fragility under load, auditing against `AGENTS.md` mandates, SOLID principles, trade idempotency, and scaling limits.
    - **Triage Protocol**:
      - *Tactical defects* (e.g., swallowed exceptions, unused imports, formatting drift, missing idempotency guards, broken wikilinks, improper imports): Main agent must fix them immediately and re-verify.
      - *User-choice, structural pushback & high-attention items* (e.g., multiple viable counterfactual fixes, behavior/UX tradeoffs, shotgun surgery, primitive obsession, missing domain abstraction, MiniPC migration deploys, CI secret parity, 10x failure risks): Never bury these in prose or ask a vague *"Should I fix these?"* yes/no prompt. Route them through the **Interactive Decision & Attention Triage** below.
@@ -272,8 +273,8 @@ Apply a rigorous Principal / Distinguished Engineer / Technical Fellow engineeri
    - Every `[[page-name]]` cross-reference must resolve to an existing markdown page under `wiki/`.
 9. **Config parity**:
    - New models in `packages/config/models.json` and tools in `packages/config/tools.json` must be documented in the wiki. Run strict `./apps/engine/.venv/bin/python3 apps/engine/wiki_lint.py` to ensure zero undocumented tools or models exist.
-10. **Auto-wiki preservation mandate and pre-commit emulation**:
-   - Staged code changes trigger `.husky/pre-commit` via `scripts/auto-wiki.sh` and `apps/engine/auto_wiki.py`. Ensure existing tools, schemas, and architecture blocks are preserved in related wiki pages. Emulate auto-wiki in dry-run mode (`auto_wiki.py --diff-file <(git diff --cached) --dry-run`) before committing to prevent pre-commit config parity regressions.
+10. **Wiki preservation & reverse code-to-wiki audit**:
+   - Run `apps/engine/wiki_lint.py --affected-by <changed_files>` (invoked automatically by `verify.sh`) to identify every wiki page citing modified code, and preserve existing tool/model definitions (`auto_wiki` config parity) when updating related wiki pages.
 
 ---
 

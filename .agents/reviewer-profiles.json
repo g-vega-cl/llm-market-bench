@@ -1,0 +1,32 @@
+{
+    "description": "Cross-model cold-context reviewer subagent profiles for Antigravity CLI, Pi, and Hermes (/verify Tier 7). Pick a reviewer family distinct from the coding session model whenever available.",
+    "harnesses": {
+        "antigravity": {
+            "tool": "invoke_subagent",
+            "subagentType": "research",
+            "recommendedModelSwitch": "Use 'pro' or switch reviewer family opposite the active coder model; pass strictly the 1-sentence goal and git diff."
+        },
+        "pi": {
+            "agentProfile": "reviewer",
+            "recommendedModels": [
+                "opencode-go/deepseek-v4.1-flash",
+                "gemini/gemini-flash-latest",
+                "nous/qwen/qwen4-max:free",
+                "auto-go"
+            ],
+            "readOnlyTools": ["read", "bash"],
+            "contextRule": "Fresh subagent session with zero authoring transcript; pass strictly the 1-sentence goal and git diff."
+        },
+        "hermes": {
+            "tool": "delegate_task",
+            "recommendedModels": [
+                "claude-haiku-5-5",
+                "deepseek-flash",
+                "gemini-flash-latest",
+                "auto-go"
+            ],
+            "contextRule": "Isolated delegate_task call with cold context containing strictly the 1-sentence goal and git diff."
+        }
+    },
+    "mandatoryCoverageRule": "Reviewer must inspect 100% of modified production files in the diff before returning PASS."
+}

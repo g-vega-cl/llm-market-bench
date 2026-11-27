@@ -14,6 +14,7 @@ in ~20ms with no API cost and is invoked on every commit via a pre-commit hook.
 - **Broken links** — every wiki cross-reference must resolve to a real file.
 - **Orphan pages** — every page needs at least one inbound link.
 - **Index coverage gaps** — pages listed in `index.md` must exist and vice versa.
+- **Reverse code-to-wiki graph (`apps/engine/wiki_graph.py`)** — `--topic-map` renders subsystem reverse links on demand without persisting duplicate files, and `--affected-by <path>` maps modified repository files back to the exact wiki pages citing them.
 
 ## Link Resolution
 

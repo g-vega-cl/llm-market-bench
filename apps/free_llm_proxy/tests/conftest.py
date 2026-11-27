@@ -20,6 +20,7 @@ os.environ["CONNECTOR_ID"] = "test-connector"
 os.environ["GROQ_API_KEY"] = "gsk_test_key"
 os.environ["GEMINI_API_KEY_FREE"] = "gemini_test_key"
 os.environ["OPENROUTER_API_KEY"] = "or_test_key"
+os.environ["NVIDIA_API_KEY"] = "nvapi_test_key"
 
 from apps.free_llm_proxy.server import app  # noqa: E402
 

@@ -9,9 +9,6 @@ ENGINE_RUFF="$REPO_ROOT/apps/engine/.venv/bin/ruff"
 echo "[security] Scanning staged changes for credentials..."
 "$ENGINE_PY" "$REPO_ROOT/apps/engine/secret_scanner.py" --cached || exit 1
 
-# Auto-document code changes in the wiki (BLOCKING)
-"$REPO_ROOT/scripts/auto-wiki.sh"
-
 # Sequential / low-memory toggle
 IS_SEQUENTIAL=false
 WEB_WORKERS=4
@@ -175,10 +172,8 @@ if [ "${#MCP_RAG_FILES[@]}" -gt 0 ]; then
   pnpm --filter @llm-market-bench/mcp-knowledge-rag test --maxWorkers="$WEB_WORKERS"
 fi
 
-# 3. Wiki lint and QMD re-index when wiki/ or raw/ files change
+# 3. Fast structural wiki lint when wiki/ or raw/ files change (QMD embeddings refresh via background timer)
 if [ "$WIKI_OR_RAW_CHANGED" = true ]; then
   echo "[wiki] Running structural lint..."
   "$ENGINE_PY" "$REPO_ROOT/apps/engine/wiki_lint.py" || exit 1
-  echo "[wiki] Re-indexing QMD..."
-  export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24 && qmd update && (qmd embed || echo "[wiki] Warning: qmd embed skipped (GPU busy/OOM)")
 fi

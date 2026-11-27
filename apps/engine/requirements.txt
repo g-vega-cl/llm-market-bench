@@ -21,3 +21,4 @@ requests
 scikit-learn
 alpaca-py
 ruff
+hypothesis>=6.100.0

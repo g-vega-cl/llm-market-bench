@@ -1,5 +1,13 @@
 {
   "mcpServers": {
+    "qmd": {
+      "type": "stdio",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "export NVM_DIR=\"$HOME/.nvm\"; . \"$NVM_DIR/nvm.sh\" >/dev/null 2>&1; nvm use 24 >/dev/null 2>&1; exec qmd mcp"
+      ]
+    },
     "knowledge-rag": {
       "type": "stdio",
       "command": "npx",

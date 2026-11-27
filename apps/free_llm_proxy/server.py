@@ -40,7 +40,11 @@ from apps.free_llm_proxy.request_helpers import (
 )
 from apps.free_llm_proxy.router import Router, estimate_prompt_tokens
 from apps.free_llm_proxy.security import UnauthorizedMonitor
-from apps.free_llm_proxy.session import SESSION_HEADER, derive_session_id
+from apps.free_llm_proxy.session import (
+    SESSION_HEADER,
+    derive_session_id,
+    resolve_routing_session_id,
+)
 from apps.free_llm_proxy.streaming import (
     audited_sse_stream,
     close_stream_source,
@@ -594,7 +598,17 @@ async def chat_completions(
     # Estimate prompt size so providers with a context ceiling below it are
     # excluded from the chain before dispatch (e.g. groq's 413 at >8k tokens).
     prompt_tokens = estimate_prompt_tokens(req.messages)
-    candidate_chain = router.get_candidate_chain(req.model, prompt_tokens=prompt_tokens)
+    routing_session_id = resolve_routing_session_id(
+        raw_body.get("messages"),
+        client_ip=client_ip,
+        user_agent=user_agent,
+        provided=request.headers.get(SESSION_HEADER),
+    )
+    candidate_chain = router.get_candidate_chain(
+        req.model,
+        prompt_tokens=prompt_tokens,
+        session_id=routing_session_id,
+    )
     if not candidate_chain:
         raise HTTPException(
             status_code=503,

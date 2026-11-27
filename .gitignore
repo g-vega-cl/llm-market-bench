@@ -4,6 +4,7 @@ __pycache__/
 __pycache__
 *.py[cod]
 *.pyc
+node_modules
 node_modules/
 dist/
 venv/
@@ -41,6 +42,9 @@ knowledge-db/
 
 # Scratch & Temporary Scripts
 .scratch/
+.worktrees/
+.hypothesis/
+apps/engine/.hypothesis/
 apps/engine/scratch/
 
 # Tournament State

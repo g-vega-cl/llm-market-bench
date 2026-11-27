@@ -5,7 +5,7 @@ category: concept
 
 # QMD Wiki Search Skill (Pi)
 
-**QMD Wiki Search** is the Pi-runtime skill that makes QMD retrieval the mandatory first step before answering any question about this repository. It is registered at `.pi/skills/qmd-wiki/SKILL.md` and backs GEMINI.md Principle 1 (search before answering) with a concrete Pi-side workflow over the `wiki`, `git-history`, and `knowledge-db` collections.
+**QMD Wiki Search** is the shared skill (`.agents/skills/qmd-wiki/SKILL.md`, symlinked at `.pi/skills/qmd-wiki`) that makes QMD retrieval the mandatory first step before answering any question about this repository across Antigravity CLI, Pi, and Hermes over the `wiki`, `git-history`, and `knowledge-db` collections.
 
 ## Why It Exists
 
@@ -13,10 +13,10 @@ Pi is a separate agent runtime from Antigravity/Claude Code, so it needs its own
 
 ## Runtime Wiring
 
-Two files under `.pi/` make the skill usable:
+Pi, Antigravity CLI, and Hermes share the same QMD index and progressive context layout:
 
-- `.pi/APPEND_SYSTEM.md` — a symlink to `../GEMINI.md`, so Pi loads the full project instructions. `AGENTS.md` is only a pointer; the canonical mandates live in `GEMINI.md`.
-- `.pi/mcp.json` — registers the `qmd` MCP server, launched through a bash login shell that activates Node 24 before `exec qmd mcp`:
+- Root `AGENTS.md` (with `GEMINI.md` symlinked to it) plus `apps/engine/AGENTS.md` and `apps/web/AGENTS.md` load project mandates progressively without duplicating the full rule tree on every turn.
+- Root `.mcp.json` and `.pi/mcp.json` register the `qmd` MCP server, launched through a bash login shell that activates Node 24 before `exec qmd mcp`:
 
 ```json
 {
@@ -56,13 +56,13 @@ The `nvm use 24` prefix is not cosmetic — QMD's native module supports Node 22
 - `qmd query` and `qmd vsearch` load `node-llama-cpp` on CUDA and have failed here with `cudaMalloc failed: out of memory`. Use `qmd search` (BM25) or lex-only MCP subqueries first.
 - QMD's native module needs Node 22–25; Node 26+ breaks it. Prefix shell commands with `nvm use 24` — the MCP wrapper already does.
 - Never answer from snippets alone; fetch the page with `get` or `multi-get`.
-- `AGENTS.md` is only a pointer. The full instructions live in `GEMINI.md`, loaded into Pi through `.pi/APPEND_SYSTEM.md`.
+- Root `AGENTS.md` is the canonical root map (`GEMINI.md` symlinks to it), with domain rules loaded progressively from `apps/engine/AGENTS.md` and `apps/web/AGENTS.md`.
 
 ## Verification
 
 - `qmd ls` lists `wiki`, `git-history`, and `knowledge-db`.
 - A lex QMD search returns matching paths and docids.
-- Resolving `.pi/APPEND_SYSTEM.md` reaches the `GEMINI.md` content.
+- Resolving `GEMINI.md` reaches the canonical `AGENTS.md` content.
 
 ## Related
 

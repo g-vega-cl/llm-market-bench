@@ -5,17 +5,15 @@ category: entity
 
 # Agent Rules and Instructions
 
-The canonical source of truth for agent behavior, instructions, and operational commands is `GEMINI.md` at the repository root. `AGENTS.md` acts as an entry pointer directing all coding assistants to `GEMINI.md`.
-
-This wiki page documents the role of `GEMINI.md` in the system architecture and its relationship to other project guidelines.
+The canonical source of truth for agent behavior, instructions, and operational commands is `AGENTS.md` at the repository root (`GEMINI.md` symlinks to `AGENTS.md` for backward compatibility). Antigravity CLI, Pi, and Hermes share this 4-layer progressive context architecture (`[[concepts/agentic-worktree-spine]]`), paired with `apps/engine/AGENTS.md`, `apps/web/AGENTS.md`, `PRODUCT.md`, and `.agents/rules/design-spec.md`.
 
 ## Role and Authority
 
-Root `GEMINI.md` is injected directly into agent context during pair-programming sessions. Its mandates take absolute precedence over default system prompts or autonomous workflows. When instructions conflict, trust the code and repository-root `GEMINI.md`.
+Root `AGENTS.md` (`GEMINI.md` symlinks to it) is injected into agent context at session start. Its mandates take precedence over default system prompts. When instructions conflict, trust the code and repository-root `AGENTS.md`.
 
 ### Precedence Hierarchy
 
-1. **`GEMINI.md`** takes absolute precedence over general assistant defaults and external docs.
+1. **`AGENTS.md` (and `apps/engine/AGENTS.md` / `apps/web/AGENTS.md`)** takes precedence over general assistant defaults and external docs.
 2. **Wiki `SCHEMA.md` and `index.md`** govern documentation conventions.
 3. **Repository code** takes precedence over general framework assumptions.
 
@@ -23,21 +21,23 @@ Root `GEMINI.md` is injected directly into agent context during pair-programming
 
 Empirical research on repository context files (including the 2026 ETH Zurich evaluation of `AGENTS.md` / `CLAUDE.md` and Anthropic's context-hygiene practices) demonstrates that bloated root instruction files increase reasoning token overhead by 20%+ and dilute model attention when irrelevant domain rules are injected into every turn. Furthermore, Antigravity enforces a hard **24,000-byte per-file cap** on rule files, truncating any content past 24 KB.
 
-To prevent silent truncation and minimize per-turn context noise, repository instructions are organized into three layers:
+To prevent silent truncation and minimize per-turn context noise, repository instructions are organized into four layers (`[[concepts/agentic-worktree-spine]]`):
 
-1. **Lean Root Index (`GEMINI.md` and `AGENTS.md`, strictly `< 20,000` bytes)**:
-   - Contains only universal commands, non-discoverable architectural invariants (Principles 1-18), commit conventions, and `qmd` search instructions.
-   - Enforced by `validate_agent_rules_budget` in `apps/engine/wiki_lint.py` and tested in `apps/engine/tests/test_wiki_consistency.py`.
-2. **Glob-Scoped Rules (`.agents/rules/*.md`)**:
-   - `.agents/rules/design-spec.md` declares `trigger: glob` (`globs: "**/*.tsx, **/*.ts, **/*.css"`), loading full Voxel UI, typography, and table specifications only when frontend files are touched.
-   - `.agents/rules/python-execution.md` declares `trigger: glob` (`globs: "**/*.py"`), loading Python virtualenv and scratch-script execution rules when Python files are active.
-3. **Deterministic PreToolUse Lifecycle Hooks (`.agents/hooks.json` & `apps/engine/agent_pre_tool_gate.py`)**:
-   - Hard boundaries are enforced programmatically via `PreToolUse` on `run_command` rather than relying solely on emphatic prose.
-   - `apps/engine/agent_pre_tool_gate.py` deterministically denies blanket git staging (`git add -A`, `git add .`, `git add -u`, `git commit -a`), multiline inline `python3 -c` execution, and direct shell dumps of `.env` files before the command runs. Tested in `apps/engine/tests/test_agent_pre_tool_gate.py`.
+1. **Lean Root Map (`AGENTS.md` and `GEMINI.md` symlink, `< 6,500` bytes; hard budget `< 20,000` bytes)**:
+   - Contains the Plan-Gated Worktree Workflow, Ponytail Minimal-Code Ladder, core commands, universal invariants, and `qmd` search instructions.
+   - Enforced by `validate_agent_rules_budget` in `apps/engine/wiki_lint.py` and tested in `apps/engine/tests/test_wiki_consistency.py` and `apps/engine/tests/test_agentic_context_layout.py`.
+2. **Scoped Domain & Product Rules (`apps/engine/AGENTS.md`, `apps/web/AGENTS.md`, `PRODUCT.md`, `.agents/rules/*.md`)**:
+   - Subdirectory `AGENTS.md` files load progressively as Pi and Hermes enter `apps/engine/` or `apps/web/`.
+   - `.agents/rules/design-spec.md` (`globs: "**/*.tsx, **/*.ts, **/*.css"`) and `.agents/rules/python-execution.md` (`globs: "**/*.py"`) load on matching file globs alongside `PRODUCT.md`.
+3. **Unified Procedural Skills (`.agents/skills/*/SKILL.md` & `.pi/skills/*`)**:
+   - Loaded on demand for `/grill-me`, `/implement`, `/qa`, `/verify`, `/ship`, `wayfinder`, `qmd-wiki`, `last30days`, `unslop`, and `code-hotspots`.
+4. **Deterministic PreToolUse Lifecycle Hooks (`.agents/hooks.json`, `.pi/extensions/bench-gate.ts` & `apps/engine/agent_pre_tool_gate.py`)**:
+   - Hard boundaries are enforced programmatically via fail-closed `PreToolUse` / `tool_call` shims rather than relying solely on prose.
+   - `apps/engine/agent_pre_tool_gate.py` deterministically denies blanket git staging, `--no-verify`, `git push --force`, multiline inline `python3 -c` execution, and direct shell dumps of `.env` files before commands execute. Tested in `apps/engine/tests/test_agent_pre_tool_gate.py`.
 
 ## Core Mandates Summary
 
-The full operational requirements are maintained in root `GEMINI.md`. Key principles link directly to deeper wiki concepts:
+The operational requirements live across `AGENTS.md`, `apps/engine/AGENTS.md`, and `apps/web/AGENTS.md`. Key principles link directly to deeper wiki concepts:
 
 1. **Search First (QMD)**: Query the wiki using `qmd` before writing code or answering design questions.
 2. **Plan First**: Present visual terminal plans (`[[concepts/visual-planning]]`) and wait for explicit approval before changing code.

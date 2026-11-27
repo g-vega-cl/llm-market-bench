@@ -7,6 +7,7 @@ from uuid import uuid4
 from core.config import logger
 from core.db import get_supabase_client
 from execution.sector_horizon_trading import execute_horizon_sector_entries, execute_horizon_sector_exits
+from execution.session_prices import resolve_entry_prices
 from execution.system_portfolios import (
     ALL_SECTOR_LS_OWNER_IDS,
     DEFAULT_SLIPPAGE_BPS,
@@ -706,11 +707,7 @@ async def run_sector_trade(  # noqa: C901 - fail-closed trading-day guard adds o
         for sec_list in resolved_mechanical.values():
             all_tickers.update(sec_list)
 
-        quotes = await mdm.get_quotes(list(all_tickers), force_refresh=True)
-        # Use open price from quote if available, fallback to current price
-        price_map = {}
-        for t, q in quotes.items():
-            price_map[t] = float(q.open if getattr(q, "open", None) and q.open > 0 else q.price)
+        price_map, _unpriced = await resolve_entry_prices(sorted(all_tickers), today_str, client=client)
 
         # 4. Execute consensus entry
         res_consensus = await execute_system_sector_entry(

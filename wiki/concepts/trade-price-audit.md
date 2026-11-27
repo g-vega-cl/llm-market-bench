@@ -35,6 +35,20 @@ Apparent `total_equity` mismatches were **not** a defect: they are exactly the i
 
 This closes the root cause: the old guard only rejected weekends, so Thanksgiving and other exchange holidays produced trades with no market bar.
 
+## Session-Scoped Pricing
+
+`resolve_entry_prices()` in `apps/engine/execution/session_prices.py` is now the entry-price source for `run_picks_trade` and `run_sector_trade`. A live session still uses the quote's `open_price`. A past `target_date` reads the session's `price_history` bar, keyed by `fetched_at::date` so execution and audit use the same date. Tickers without a bar are skipped instead of falling back to a live quote.
+
+That closes the lookahead path behind the five impossible fills: four were picks/sector entries stamped with a past session but priced from whatever quote the backfill run fetched that day. Sector entry also read a nonexistent `open` attribute and silently fell back to `price`; it now uses `open_price`.
+
+## Continuous Audit
+
+`apps/engine/scripts/audit_trade_prices.py` reruns the reconciliation on the last 7 days and is piggybacked as a step in `.github/workflows/audit.yml`. It classifies each unannotated trade against its same-session bar and exits 1 on a new `NON_TRADING_DAY` or `PRICE_OUTSIDE_DAY_RANGE` violation.
+
+Trade sessions use the America/New_York date, so an after-hours fill recorded at 02:36 UTC is matched to the prior ET session. Bar rows are fetched with pagination so a wider lookback cannot silently truncate the comparison set.
+
+The out-of-range threshold is 0.6% of the session close, which covers 5 bps slippage per side plus rounding. Trades on trading days with no cached bar are reported as `NO_BAR` but do not fail the step; they are coverage gaps, not evidence of a bad fill. Rows that already carry an `audit_flag` are counted as annotated and never reported twice. The script only reports, it never annotates or rewrites ledger rows.
+
 ## Annotation Schema
 
 Migration `supabase/migrations/20261127180000_annotate_trade_audit_flags.sql` adds two nullable columns to `trades`:

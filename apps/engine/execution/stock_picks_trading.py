@@ -26,6 +26,7 @@ from zoneinfo import ZoneInfo
 
 from core.config import logger
 from core.db import get_supabase_client
+from execution.session_prices import resolve_entry_prices
 from execution.system_portfolios import DEFAULT_SLIPPAGE_BPS, INITIAL_PORTFOLIO_CASH, get_or_create_system_portfolio
 from trading.market_calendar import is_us_trading_day
 
@@ -677,12 +678,7 @@ async def run_picks_trade(
         tickers = await _picks_entry_tickers(client, session_date)
         if not tickers:
             return {"status": "skipped", "reason": f"No picks to trade for {session_date}"}
-        quotes = await mdm.get_quotes(tickers, force_refresh=True)
-        price_map = {}
-        for ticker, quote in quotes.items():
-            open_price = quote.open_price if getattr(quote, "open_price", None) else quote.price
-            if open_price and open_price > 0:
-                price_map[ticker] = float(open_price)
+        price_map, _unpriced = await resolve_entry_prices(tickers, session_date, client=client)
         return await execute_picks_entries(session_date, price_map, dry_run=dry_run)
 
     if action in ("exit", "close"):

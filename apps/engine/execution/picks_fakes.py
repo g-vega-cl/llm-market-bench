@@ -66,6 +66,14 @@ class _Query:
         self.filters.append(("is", column, value))
         return self
 
+    def gte(self, column, value):
+        self.filters.append(("gte", column, value))
+        return self
+
+    def lte(self, column, value):
+        self.filters.append(("lte", column, value))
+        return self
+
     def match(self, mapping):
         for key, value in mapping.items():
             self.filters.append(("eq", key, value))
@@ -85,6 +93,10 @@ class _Query:
             if op == "in" and cell not in value:
                 return False
             if op == "is" and str(value).lower() == "null" and cell is not None:
+                return False
+            if op == "gte" and str(cell)[:10] < str(value)[:10]:
+                return False
+            if op == "lte" and str(cell)[:10] > str(value)[:10]:
                 return False
         return True
 

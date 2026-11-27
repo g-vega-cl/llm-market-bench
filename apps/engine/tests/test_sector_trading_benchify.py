@@ -56,6 +56,81 @@ async def test_sector_prediction_single_cycle_scoping():
 
 
 @pytest.mark.asyncio
+async def test_sector_live_entry_uses_open_price_field():
+    """TickerData exposes open_price; reading a nonexistent open field silently used price."""
+    from datetime import date
+    from types import SimpleNamespace
+
+    mock_client = MagicMock()
+    mock_chain = MagicMock()
+    for method in ("select", "eq", "lte", "order", "limit"):
+        getattr(mock_chain, method).return_value = mock_chain
+    mock_chain.execute.return_value = MagicMock(
+        data=[{"prediction_date": date.today().isoformat(), "predicted_sector": "XLF", "predicted_worst_sector": None}]
+    )
+    mock_client.table.return_value = mock_chain
+
+    with (
+        patch("execution.sector_trading.get_supabase_client", return_value=mock_client),
+        patch("execution.market_data.MarketDataManager.get_quotes", new_callable=AsyncMock) as mock_quotes,
+        patch("execution.sector_trading.execute_system_sector_entry", new_callable=AsyncMock) as mock_sys_entry,
+        patch("execution.sector_trading.execute_mechanical_sector_entry", new_callable=AsyncMock),
+        patch("execution.sector_trading.execute_horizon_sector_entries", new_callable=AsyncMock),
+    ):
+        mock_quotes.return_value = {"XLF": SimpleNamespace(open_price=100.0, price=83.0)}
+        await run_sector_trade(action="entry", target_date_str=date.today().isoformat())
+
+    price_map = mock_sys_entry.call_args.kwargs["price_map"]
+    assert price_map["XLF"] == 100.0
+
+
+@pytest.mark.asyncio
+async def test_sector_historical_entry_uses_session_bar_not_live_quote():
+    """A weekly sector backfill must price from the seeded session bar, not today's quote."""
+    from types import SimpleNamespace
+
+    def _query(data):
+        chain = MagicMock()
+        for method in ("select", "eq", "lte", "order", "limit", "in_", "gte"):
+            getattr(chain, method).return_value = chain
+        chain.execute.return_value = MagicMock(data=data)
+        return chain
+
+    predictions = [{"prediction_date": "2026-09-20", "predicted_sector": "XLF", "predicted_worst_sector": "XLU"}]
+    bars = [
+        {"ticker": "XLF", "fetched_at": "2026-09-21T13:30:00Z", "open": 100.0, "price": 101.0},
+        {"ticker": "XLU", "fetched_at": "2026-09-21T13:30:00Z", "open": 50.0, "price": 51.0},
+    ]
+    mock_client = MagicMock()
+
+    def _table(name):
+        if name == "sector_predictions":
+            return _query(predictions)
+        if name == "price_history":
+            return _query(bars)
+        return _query([])
+
+    mock_client.table.side_effect = _table
+
+    with (
+        patch("execution.sector_trading.get_supabase_client", return_value=mock_client),
+        patch("execution.market_data.MarketDataManager.get_quotes", new_callable=AsyncMock) as mock_quotes,
+        patch("execution.sector_trading.execute_system_sector_entry", new_callable=AsyncMock) as mock_sys_entry,
+        patch("execution.sector_trading.execute_mechanical_sector_entry", new_callable=AsyncMock),
+        patch("execution.sector_trading.execute_horizon_sector_entries", new_callable=AsyncMock),
+    ):
+        mock_quotes.return_value = {
+            "XLF": SimpleNamespace(open_price=None, price=83.0),
+            "XLU": SimpleNamespace(open_price=None, price=83.0),
+        }
+        await run_sector_trade(action="entry", target_date_str="2026-09-21")
+
+    price_map = mock_sys_entry.call_args.kwargs["price_map"]
+    assert price_map["XLF"] == 100.0
+    assert price_map["XLU"] == 50.0
+
+
+@pytest.mark.asyncio
 async def test_mechanical_entry_deducts_cash_and_submits_alpaca():
     """Verify that mechanical entry updates cash_balance in DB and mirrors BUY limit orders to Alpaca."""
     mock_client = MagicMock()

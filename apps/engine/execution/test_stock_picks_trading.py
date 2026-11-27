@@ -11,7 +11,9 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from execution.picks_fakes import (
+    LONG_TICKERS,
     SESSION,
+    SHORT_TICKERS,
     FakeSupabase,
     open_price_map,
     portfolio_getter,
@@ -41,6 +43,42 @@ def alpaca_mirror(monkeypatch):
 
     monkeypatch.setattr(stock_picks_trading, "_mirror_long_legs_to_alpaca", _record)
     return mirrored
+
+
+@pytest.mark.asyncio
+async def test_run_picks_trade_historical_session_uses_session_bar(alpaca_mirror, monkeypatch):
+    """A backfill stamped with a past session must price off that session's bar."""
+    from execution import stock_picks_trading as spt
+
+    store = seed_session(FakeSupabase())
+    store.rows["price_history"] = [
+        {
+            "ticker": ticker,
+            "fetched_at": f"{SESSION}T14:30:00Z",
+            "open": 100.0,
+            "price": 105.0,
+            "high": 110.0,
+            "low": 90.0,
+            "close": 105.0,
+        }
+        for ticker in LONG_TICKERS + SHORT_TICKERS
+    ]
+    _, getter = portfolio_getter()
+    monkeypatch.setattr(spt, "get_supabase_client", lambda: store)
+    monkeypatch.setattr(spt, "get_or_create_system_portfolio", getter)
+
+    class FakeMarketDataManager:
+        async def get_quotes(self, _tickers, force_refresh=False):
+            raise AssertionError("live quotes must not price a past session")
+
+    monkeypatch.setattr("execution.market_data.MarketDataManager", FakeMarketDataManager)
+
+    result = await spt.run_picks_trade(action="entry", target_date=SESSION)
+
+    assert result["status"] == "success"
+    trades = store.rows["trades"]
+    assert len(trades) == 24
+    assert all(t["price"] in (pytest.approx(100.05), pytest.approx(99.95)) for t in trades)
 
 
 def test_entry_window_bounds():

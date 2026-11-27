@@ -25,6 +25,7 @@ A guest balance is one-time, so a returning visitor must sign up to run again â€
 - `refill_tokens(owner, amount, period)` accepts only the current Monday and 1â€“15 tokens, sets rather than adds, and ledgers the adjustment so `balance == sum(delta)`.
 - `expire_live_bots()` pauses lapsed bots, skipping any bot with a turn whose `COALESCE(heartbeat_at, created_at)` is inside 30 minutes.
 - `mint_guest_tokens(token_hash, ip_hash)` resolves a guest from a hashed signed cookie and grants 5 tokens exactly once.
+- `start_live_week(user, recipe)` spends a `live_week` token and writes `live_expires_at` in the same transaction; re-enabling an already-live bot is free. `switch_live_schedule` delegates its enable step to it, so a refused token rolls the pause back too. The hourly cycle calls `expire_live_bots`.
 
 Contract tests live in `supabase/tests/` (21 assertions across the ledger and the mint) and run against a throwaway Postgres via `scripts/test_token_rpc.sh`, including a two-session race on the last token.
 

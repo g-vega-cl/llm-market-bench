@@ -10,6 +10,7 @@ import type {
 import { canActivateTurboEt, getEtDateString } from '../utils/market-hours';
 import { invalidatePublicRecipeCache } from './recipes-studio-api';
 import { assertNoPrevOutputPlaceholder, assertSingleLlmStage } from './recipes-validators';
+import { tokenErrorMessage } from './token-ledger';
 
 export const BETA_STARTER_LIMITS = {
     tier: 'beta_starter',
@@ -172,11 +173,39 @@ export async function cancelRecipeJob(
     return { id: String((data as { id: string }).id), status: 'cancelled' };
 }
 
+/**
+ * Goes live through the funding RPC: the cap check, the live-week spend and the
+ * expiry all happen in one transaction server-side.
+ */
+async function startLiveWeek(
+    recipeId: string,
+    userId: string,
+): Promise<{ id: string; is_live: boolean; token_balance: number | null }> {
+    const db = getDbAdminClient();
+    const { data, error } = await db.rpc('start_live_week', {
+        p_user_id: userId,
+        p_recipe_id: recipeId,
+    });
+    if (error) throw new Error(tokenErrorMessage(error.message));
+
+    const started = (Array.isArray(data) ? data[0] : data) as {
+        is_live?: boolean;
+        token_balance?: number | null;
+    } | null;
+
+    invalidatePublicRecipeCache(recipeId);
+    return {
+        id: recipeId,
+        is_live: Boolean(started?.is_live),
+        token_balance: started?.token_balance ?? null,
+    };
+}
+
 export async function toggleLiveSchedule(
     recipeId: string,
     isLive: boolean,
     userId: string,
-): Promise<{ id: string; is_live: boolean }> {
+): Promise<{ id: string; is_live: boolean; token_balance?: number | null }> {
     const db = getDbAdminClient();
     const { data: existing, error: fetchErr } = await db
         .from('strategy_recipes')
@@ -207,12 +236,7 @@ export async function toggleLiveSchedule(
     if (isLive) {
         assertSingleLlmStage(row.graph_json);
         assertNoPrevOutputPlaceholder(row.graph_json);
-        const quota = await fetchRecipeQuotaStatus(userId);
-        if (!row.is_live && quota.activeLiveRecipes >= quota.maxLiveRecipes) {
-            throw new Error(
-                `Scheduled live limit reached (${quota.activeLiveRecipes}/${quota.maxLiveRecipes}). Pause your existing live recipe first.`,
-            );
-        }
+        return startLiveWeek(recipeId, userId);
     }
 
     const nowIso = new Date().toISOString();
@@ -250,7 +274,7 @@ export async function toggleLiveSchedule(
     }
 
     invalidatePublicRecipeCache(recipeId);
-    return updated as { id: string; is_live: boolean };
+    return updated as { id: string; is_live: boolean; token_balance?: number | null };
 }
 
 export async function switchLiveSchedule(

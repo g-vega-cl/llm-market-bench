@@ -55,6 +55,14 @@ export async function reserveToken(
     return { balance: Number(row.balance ?? 0) };
 }
 
+/** Refusal codes arrive as `TOKEN:<code>` from the RPC; anything else passes through. */
+export function tokenErrorMessage(message: string): string {
+    const match = /^TOKEN:([a-z_]+)$/.exec(message.trim());
+    if (!match) return message;
+    const code = match[1] as TokenCode;
+    return TOKEN_MESSAGES[code] ?? message;
+}
+
 /** Refunds a failed or timed-out backtest. Idempotent: a second call is a no-op. */
 export async function refundToken(ref: string, outcome: 'failed' | 'expired'): Promise<boolean> {
     const db = getDbAdminClient();

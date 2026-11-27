@@ -257,7 +257,7 @@ describe('recipes-quota-api', () => {
         );
     });
 
-    it('allows a second live bot but enforces the three-bot cap', async () => {
+    it('delegates going live to start_live_week and surfaces a token refusal', async () => {
         mockAdminDb = createQuotaMockDb({
             singleRecipe: {
                 id: 'rec-2',
@@ -265,27 +265,26 @@ describe('recipes-quota-api', () => {
                 is_live: false,
                 graph_json: STARTER_RECIPES[0],
             },
-            recipeRows: [{ id: 'rec-1', user_id: 'user-1', is_live: true }],
+            recipeRows: [],
         }).db;
+        const rpc = vi
+            .fn()
+            .mockResolvedValue({ data: [{ is_live: true, token_balance: 14 }], error: null });
+        (mockAdminDb as { rpc?: unknown }).rpc = rpc;
 
-        await expect(toggleLiveSchedule('rec-2', true, 'user-1')).resolves.toBeDefined();
+        await expect(toggleLiveSchedule('rec-2', true, 'user-1')).resolves.toEqual({
+            id: 'rec-2',
+            is_live: true,
+            token_balance: 14,
+        });
+        expect(rpc).toHaveBeenCalledWith('start_live_week', {
+            p_user_id: 'user-1',
+            p_recipe_id: 'rec-2',
+        });
 
-        mockAdminDb = createQuotaMockDb({
-            singleRecipe: {
-                id: 'rec-4',
-                user_id: 'user-1',
-                is_live: false,
-                graph_json: STARTER_RECIPES[0],
-            },
-            recipeRows: [
-                { id: 'rec-1', user_id: 'user-1', is_live: true },
-                { id: 'rec-2', user_id: 'user-1', is_live: true },
-                { id: 'rec-3', user_id: 'user-1', is_live: true },
-            ],
-        }).db;
-
-        await expect(toggleLiveSchedule('rec-4', true, 'user-1')).rejects.toThrow(
-            'Scheduled live limit reached (3/3)',
+        rpc.mockResolvedValue({ data: null, error: { message: 'TOKEN:no_tokens' } });
+        await expect(toggleLiveSchedule('rec-2', true, 'user-1')).rejects.toThrow(
+            'You are out of tokens',
         );
     });
 

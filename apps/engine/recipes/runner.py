@@ -444,6 +444,20 @@ def enqueue_turbo_recipes(sb_client: Any, *, now_utc: datetime | None = None) ->
     return 0
 
 
+def expire_live_bots(sb_client: Any) -> int:
+    """Pause bots whose token-funded week lapsed.
+
+    Idempotent and transactional server-side; safe to run every cycle. A failure
+    here must not abort the rest of the cycle, so it logs and returns 0.
+    """
+    try:
+        res = sb_client.rpc("expire_live_bots", {}).execute()
+        return int(res.data or 0)
+    except Exception:
+        logger.exception("Live expiry sweep failed; bots stay live until the next cycle")
+        return 0
+
+
 async def run_hourly_cycle(
     sb_client: Any,
     *,
@@ -469,12 +483,14 @@ async def run_hourly_cycle(
         else:
             jobs_failed += 1
     public_stats = refresh_public_stats(sb_client)
+    expired_live = expire_live_bots(sb_client)
     return {
         "news_synced": int(news_stats.get("inserted", 0)),
         "live_enqueued": live_enqueued,
         "jobs_processed": jobs_processed,
         "jobs_failed": jobs_failed,
         "public_stats_rows": int(public_stats.get("rows_written", 0)),
+        "expired_live": expired_live,
     }
 
 

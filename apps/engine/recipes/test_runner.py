@@ -10,6 +10,7 @@ import pytest
 from recipes.push_schema import PushStrategy
 from recipes.runner import (
     enqueue_live_recipes,
+    expire_live_bots,
     load_starter_recipes,
     run_hourly_cycle,
     seed_starter_recipes,
@@ -192,6 +193,7 @@ def test_starter_templates_are_single_llm_stage():
 @pytest.mark.asyncio
 async def test_run_hourly_cycle_syncs_enqueues_and_drains_queue():
     sb = MagicMock()
+    sb.rpc.return_value.execute.return_value.data = 0  # expiry sweep paused nothing
     with (
         patch("recipes.runner.sync_live_news_to_corpus", new=AsyncMock(return_value={"inserted": 4})) as mock_sync,
         patch("recipes.runner.enqueue_live_recipes", return_value=2) as mock_enqueue,
@@ -212,6 +214,7 @@ async def test_run_hourly_cycle_syncs_enqueues_and_drains_queue():
         "jobs_processed": 2,
         "jobs_failed": 1,
         "public_stats_rows": 0,
+        "expired_live": 0,
     }
 
 
@@ -715,3 +718,19 @@ def test_due_trading_slot_stops_at_half_day_close():
     for hour in (13, 14, 15):
         later = datetime(2026, 11, 27, hour, 35, tzinfo=et)
         assert due_trading_slot(later, last_slot_key=None) is None, f"slot fired at {later:%H:%M} on a half day"
+
+
+def test_expire_live_bots_calls_the_sweep_rpc():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = 2
+
+    assert expire_live_bots(client) == 2
+    client.rpc.assert_called_once_with("expire_live_bots", {})
+
+
+def test_expire_live_bots_swallows_a_failed_sweep(caplog):
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = RuntimeError("db down")
+
+    # A sweep failure must not abort the rest of the hourly cycle.
+    assert expire_live_bots(client) == 0

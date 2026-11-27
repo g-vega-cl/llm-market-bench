@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS public.strategy_recipes (
     name TEXT NOT NULL DEFAULT 'stub',
     is_live BOOLEAN NOT NULL DEFAULT FALSE,
     archived_at TIMESTAMPTZ,
+    turbo_expires_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -23,5 +24,12 @@ CREATE TABLE IF NOT EXISTS public.recipe_execution_queue (
     mode TEXT NOT NULL DEFAULT 'backtest',
     status TEXT NOT NULL DEFAULT 'pending',
     heartbeat_at TIMESTAMPTZ,
+    cancelled_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS public.recipe_user_quotas (
+    user_id UUID PRIMARY KEY,
+    max_live_recipes INTEGER NOT NULL DEFAULT 1,
+    daily_backtest_limit INTEGER NOT NULL DEFAULT 2
 );

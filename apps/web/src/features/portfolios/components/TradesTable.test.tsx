@@ -16,6 +16,8 @@ const mockTrades: Trade[] = [
         alpaca_order_id: 'alpaca-order-1',
         alpaca_submitted_at: '2026-01-01T12:00:00Z',
         alpaca_filled_at: '2026-01-01T12:05:00Z',
+        audit_flag: null,
+        audit_note: null,
         realized_pnl: null,
         realized_pnl_pct: null,
         reasoning: 'Bullish momentum breakout.',
@@ -34,6 +36,8 @@ const mockTrades: Trade[] = [
         alpaca_order_id: 'alpaca-order-2',
         alpaca_submitted_at: '2026-01-02T12:00:00Z',
         alpaca_filled_at: null,
+        audit_flag: null,
+        audit_note: null,
         realized_pnl: 100,
         realized_pnl_pct: 2.86,
         reasoning: 'Taking profit at target.',
@@ -143,6 +147,8 @@ describe('TradesTable', () => {
             alpaca_status: 'BACKFILLED',
             alpaca_order_id: null,
             alpaca_filled_at: null,
+            audit_flag: null,
+            audit_note: null,
         };
 
         render(<TradesTable trades={[backfilledTrade]} />);
@@ -172,5 +178,28 @@ describe('TradesTable realized P/L sign', () => {
         expect(screen.getByText('-$64.42')).toBeInTheDocument();
         expect(screen.getByText('-2.24%')).toBeInTheDocument();
         expect(screen.queryByText('+$64.42')).not.toBeInTheDocument();
+    });
+});
+
+describe('TradesTable audit annotations', () => {
+    it('renders a holiday badge for non-trading-day fills', () => {
+        const flagged: Trade = {
+            ...mockTrades[0],
+            audit_flag: 'NON_TRADING_DAY',
+            audit_note: 'Executed 2026-11-26 with no US equity session.',
+        };
+        render(<TradesTable trades={[flagged]} />);
+        expect(screen.getByText('HOLIDAY')).toBeInTheDocument();
+        expect(screen.queryByText('BAD_PRICE')).not.toBeInTheDocument();
+    });
+
+    it('renders a bad-price badge for fills outside the session range', () => {
+        const flagged: Trade = {
+            ...mockTrades[0],
+            audit_flag: 'PRICE_OUTSIDE_DAY_RANGE',
+            audit_note: 'Fill is 9.96% outside the session range.',
+        };
+        render(<TradesTable trades={[flagged]} />);
+        expect(screen.getByText('BAD_PRICE')).toBeInTheDocument();
     });
 });

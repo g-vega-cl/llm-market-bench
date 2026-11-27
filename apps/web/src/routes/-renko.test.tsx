@@ -128,6 +128,8 @@ describe('/renko route with LIN Renko Portfolio', () => {
             alpaca_order_id: 'order-1',
             alpaca_submitted_at: '2026-08-05T14:30:00.000Z',
             alpaca_filled_at: '2026-08-05T14:30:00.000Z',
+            audit_flag: null,
+            audit_note: null,
             realized_pnl: null,
             realized_pnl_pct: null,
             decision_id: 'dec-1',

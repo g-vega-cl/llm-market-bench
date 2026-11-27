@@ -96,53 +96,67 @@ export function TradesTable({ trades }: TradesTableProps) {
                                 </Badge>
                             </TableCell>
                             <TableCell>
-                                {trade.alpaca_status ? (
-                                    trade.alpaca_status === 'BACKFILLED' ? (
-                                        <span
-                                            className="inline-block"
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <Badge
-                                                variant="soft"
-                                                colorScheme="accent"
-                                                size="sm"
-                                                title="Reconstructed post-market via historical session bars"
+                                <div className="flex flex-col items-start gap-1">
+                                    {trade.alpaca_status ? (
+                                        trade.alpaca_status === 'BACKFILLED' ? (
+                                            <span
+                                                className="inline-block"
+                                                onClick={(e) => e.stopPropagation()}
                                             >
-                                                BACKFILLED
-                                            </Badge>
-                                        </span>
-                                    ) : (
-                                        <a
-                                            href="https://paper.alpaca.markets/orders"
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="inline-block transition-opacity hover:opacity-80"
-                                            title={
-                                                trade.alpaca_order_id
-                                                    ? `Order ID: ${trade.alpaca_order_id}`
-                                                    : undefined
-                                            }
-                                            onClick={(e) => e.stopPropagation()}
-                                        >
-                                            <Badge
-                                                variant="soft"
-                                                colorScheme={
-                                                    trade.alpaca_status === 'FILLED'
-                                                        ? 'success'
-                                                        : trade.alpaca_status === 'PENDING' ||
-                                                            trade.alpaca_status === 'SUBMITTED'
-                                                          ? 'warning'
-                                                          : 'danger'
+                                                <Badge
+                                                    variant="soft"
+                                                    colorScheme="accent"
+                                                    size="sm"
+                                                    title="Reconstructed post-market via historical session bars"
+                                                >
+                                                    BACKFILLED
+                                                </Badge>
+                                            </span>
+                                        ) : (
+                                            <a
+                                                href="https://paper.alpaca.markets/orders"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-block transition-opacity hover:opacity-80"
+                                                title={
+                                                    trade.alpaca_order_id
+                                                        ? `Order ID: ${trade.alpaca_order_id}`
+                                                        : undefined
                                                 }
-                                                size="sm"
+                                                onClick={(e) => e.stopPropagation()}
                                             >
-                                                {trade.alpaca_status}
-                                            </Badge>
-                                        </a>
-                                    )
-                                ) : (
-                                    <span className="text-voxel-muted">—</span>
-                                )}
+                                                <Badge
+                                                    variant="soft"
+                                                    colorScheme={
+                                                        trade.alpaca_status === 'FILLED'
+                                                            ? 'success'
+                                                            : trade.alpaca_status === 'PENDING' ||
+                                                                trade.alpaca_status === 'SUBMITTED'
+                                                              ? 'warning'
+                                                              : 'danger'
+                                                    }
+                                                    size="sm"
+                                                >
+                                                    {trade.alpaca_status}
+                                                </Badge>
+                                            </a>
+                                        )
+                                    ) : (
+                                        <span className="text-voxel-muted">—</span>
+                                    )}
+                                    {trade.audit_flag ? (
+                                        <Badge
+                                            variant="soft"
+                                            colorScheme="warning"
+                                            size="xs"
+                                            title={trade.audit_note ?? undefined}
+                                        >
+                                            {trade.audit_flag === 'NON_TRADING_DAY'
+                                                ? 'HOLIDAY'
+                                                : 'BAD_PRICE'}
+                                        </Badge>
+                                    ) : null}
+                                </div>
                             </TableCell>
                             <TableCell align="right">{trade.quantity}</TableCell>
                             <TableCell align="right">

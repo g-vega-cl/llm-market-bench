@@ -1714,6 +1714,8 @@ export type Database = {
                     alpaca_order_id: string | null;
                     alpaca_status: string | null;
                     alpaca_submitted_at: string | null;
+                    audit_flag: string | null;
+                    audit_note: string | null;
                     decision_id: string | null;
                     executed_at: string | null;
                     id: string;
@@ -1732,6 +1734,8 @@ export type Database = {
                     alpaca_order_id?: string | null;
                     alpaca_status?: string | null;
                     alpaca_submitted_at?: string | null;
+                    audit_flag?: string | null;
+                    audit_note?: string | null;
                     decision_id?: string | null;
                     executed_at?: string | null;
                     id?: string;
@@ -1750,6 +1754,8 @@ export type Database = {
                     alpaca_order_id?: string | null;
                     alpaca_status?: string | null;
                     alpaca_submitted_at?: string | null;
+                    audit_flag?: string | null;
+                    audit_note?: string | null;
                     decision_id?: string | null;
                     executed_at?: string | null;
                     id?: string;

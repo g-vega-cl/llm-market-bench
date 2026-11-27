@@ -41,6 +41,8 @@ const makeTrade = (signal: 'BUY' | 'SELL', id = '1'): TradeWithMeta => ({
     decision_id: null,
     executed_at: '2025-06-24T09:30:00Z',
     alpaca_filled_at: null,
+    audit_flag: null,
+    audit_note: null,
     alpaca_order_id: null,
     alpaca_status: null,
     alpaca_submitted_at: null,

@@ -207,6 +207,7 @@
 - [[concepts/dependency-resolver]] — `resolve_dep` test seam that keeps decomposed pipeline stages patchable via `main.<symbol>`
 - [[concepts/tool-domain-decomposition]] — decomposition of monolithic tools.py into domain modules with barrel re-exports, O(1) table dispatch, and mock-compat bridge
 - [[concepts/backfilled-trades]] — post-market reconstructed trades marked `alpaca_status = "BACKFILLED"`
+- [[concepts/trade-price-audit]] — immutable trade-ledger annotations for non-trading-day and out-of-range fills, plus the US trading-day guard
 - [[concepts/laya-decisions-model]] — Auto-indexed page
 - [[concepts/daily-spy-live-trading]] — live intraday MOO entry, target limit, and close-exit lifecycle for daily SPY systematic portfolios
 - [[concepts/defensive-tool-dispatch]] — resilient tool-argument resolution, validation, and error boundary around every LLM tool call

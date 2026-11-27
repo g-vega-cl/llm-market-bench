@@ -45,7 +45,7 @@ A recessed `.voxel-trough` callout explains what signing in actually unlocks for
 
 | Return path | Title | Body |
 |---|---|---|
-| `/recipes`, `/recipes/*` | `Strategy Recipe Studio — Free Beta Access` | Sign in with Google to get 2 free 2-week backtests/day (strata-auto-go) and 3 live paper turns/day (auto-go). |
+| `/recipes`, `/recipes/*` | `Strategy Recipe Studio — Free Beta Access` | Sign in with Google to get 2 free 2-week backtests/day (strata-auto-go) and live paper turns every 30 minutes (auto-go). |
 | `/build?starter=<name>` | `Starter recipe selected — sign in to open` | Sign in to load this starter bot directly in Strategy Recipe Studio with 2 free paper backtests/day and 3 live paper bots. |
 | `/build` (no `starter`) | `Your draft stays saved in this browser` | After signing in, you'll return directly to the builder to align your strategy and run up to 2 free paper backtests/day. |
 | anything else | — (no callout) | — |

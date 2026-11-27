@@ -110,7 +110,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
         });
     });
 
-    it('renders quota status strip and toggles Live 3x/day ET', async () => {
+    it('renders quota status strip and toggles Live 30m ET', async () => {
         vi.mocked(saveRecipeFn).mockResolvedValue({
             id: 'rec-sched-1',
             name: 'Live Scheduler Test',

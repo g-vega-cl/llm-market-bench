@@ -678,7 +678,9 @@ async def run_picks_trade(
         tickers = await _picks_entry_tickers(client, session_date)
         if not tickers:
             return {"status": "skipped", "reason": f"No picks to trade for {session_date}"}
-        price_map, _unpriced = await resolve_entry_prices(tickers, session_date, client=client)
+        price_map, _unpriced = await resolve_entry_prices(
+            tickers, session_date, client=client, today=now_et.date().isoformat()
+        )
         return await execute_picks_entries(session_date, price_map, dry_run=dry_run)
 
     if action in ("exit", "close"):

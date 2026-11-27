@@ -23,6 +23,15 @@ ISOLATED_FROM_AUTORESEARCH = {
 # Standalone root-invokable CLI utilities in apps/engine/*.py that guard `try: from apps.engine... except ImportError:`
 DUAL_ENTRYPOINT_SCRIPTS = {"apps/engine/wiki_lint.py", "apps/engine/sync_knowledge_db.py"}
 
+# Local virtualenvs, vendored site-packages, caches, and scratch trees are not
+# first-party engine code and may contain non-UTF-8 or generated files.
+_VENDOR_PARTS = {".venv", "market", "__pycache__", "scratch"}
+
+
+def _is_vendored_or_generated(path: Path) -> bool:
+    """True when a path lives under a local venv, vendored tree, cache, or scratch dir."""
+    return any(part in _VENDOR_PARTS for part in path.parts)
+
 # Ratchet caps on preexisting >800 LOC legacy files so none can grow and zero new >800 LOC files can land.
 LEGACY_ENGINE_LOC_CAPS: dict[str, int] = {
     "apps/engine/tests/test_autoresearch.py": 2460,
@@ -111,7 +120,7 @@ def test_engine_import_boundaries_hold():
     """All dynamically discovered production engine modules must obey import-root and slice boundaries."""
     violations: list[str] = []
     for py_file in sorted(ENGINE_ROOT.rglob("*.py")):
-        if any(part in {".venv", "__pycache__", "tests", "scratch", "market"} for part in py_file.parts):
+        if _is_vendored_or_generated(py_file) or "tests" in py_file.parts:
             continue
         if py_file.name.startswith("test_") or py_file.name.endswith("_test.py"):
             continue
@@ -124,7 +133,7 @@ def test_zero_skipped_tests_in_engine():
     """Engine test files must not add @pytest.mark.skip or pytest.skip()."""
     violations: list[str] = []
     for py_file in sorted(ENGINE_ROOT.rglob("*.py")):
-        if ".venv" in py_file.parts:
+        if _is_vendored_or_generated(py_file):
             continue
         if py_file.name.startswith("test_") or py_file.name.endswith("_test.py"):
             rel = str(py_file.relative_to(REPO_ROOT))
@@ -136,7 +145,7 @@ def test_engine_800_loc_hard_ceiling():
     """No new Python file in apps/engine may exceed 800 LOC, and legacy files may not grow past their cap."""
     violations: list[str] = []
     for py_file in sorted(ENGINE_ROOT.rglob("*.py")):
-        if ".venv" in py_file.parts:
+        if _is_vendored_or_generated(py_file):
             continue
         rel = str(py_file.relative_to(REPO_ROOT))
         lines = len(py_file.read_text().splitlines())
@@ -147,6 +156,15 @@ def test_engine_800_loc_hard_ceiling():
                 "REMEDIATION: Extract a cohesive vertical slice helper module to stay under the 400/800 LOC budget."
             )
     assert not violations, "File size ceiling violations:\n" + "\n".join(violations)
+
+
+def test_vendored_paths_are_excluded_from_fitness_scans():
+    """Vendored/non-first-party trees must be skipped without hiding engine test files."""
+    assert _is_vendored_or_generated(Path("apps/engine/market/lib/python3.13/site-packages/joblib/test/x.py"))
+    assert _is_vendored_or_generated(Path("apps/engine/.venv/lib/python3.13/site-packages/x.py"))
+    assert _is_vendored_or_generated(Path("apps/engine/__pycache__/x.py"))
+    assert not _is_vendored_or_generated(Path("apps/engine/execution/portfolio.py"))
+    assert not _is_vendored_or_generated(Path("apps/engine/tests/test_portfolio.py"))
 
 
 def test_scanners_emit_coaching_remediation_messages():

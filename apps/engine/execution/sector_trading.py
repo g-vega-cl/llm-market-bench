@@ -645,7 +645,6 @@ async def run_sector_trade(  # noqa: C901 - fail-closed trading-day guard adds o
 
     if action != "status" and not is_us_trading_day(today):
         return {"status": "skipped", "reason": f"Not a US trading day: {today_str}"}
-
     client = get_supabase_client()
 
     if action == "status":

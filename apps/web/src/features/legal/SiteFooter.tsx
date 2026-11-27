@@ -1,9 +1,15 @@
 import { Link } from '@tanstack/react-router';
 import { FinancialDisclaimer } from './FinancialDisclaimer';
 
+/**
+ * `relative z-10` is load-bearing: page-mode scene worlds mount a `fixed z-0`
+ * layer, which paints over static content. Without this the footer — including
+ * the legal and analytics notices — is rendered under the world on routes such
+ * as /leaderboard and the bot detail pages.
+ */
 export function SiteFooter() {
     return (
-        <footer className="mt-auto border-t-2 border-voxel-bevel-lo bg-voxel-surface px-6 py-8 text-voxel-muted">
+        <footer className="relative z-10 mt-auto border-t-2 border-voxel-bevel-lo bg-voxel-surface px-6 py-8 text-voxel-muted">
             <div className="mx-auto grid w-full max-w-7xl grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-8 items-start">
                 <div className="flex max-w-xl flex-col gap-3">
                     <p className="text-sm font-bold uppercase tracking-wider text-voxel-ink">

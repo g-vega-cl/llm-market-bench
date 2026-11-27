@@ -57,6 +57,17 @@ describe('SceneStage', () => {
         expect(world.className).toContain('scene-atmosphere-after-hours');
         expect(screen.getByTestId('page-world')).toBeInTheDocument();
 
+        // The world must be sized against the LARGE viewport, never the layout
+        // viewport: a mobile browser hides its bottom bar mid-scroll, which
+        // changes the layout viewport height, and a fixed `inset-0` layer
+        // rescales with it — every %-anchored plane then jumps.
+        expect(world.className).toContain('h-lvh');
+        expect(world.className).toContain('top-0');
+        expect(world.className).toContain('right-0');
+        expect(world.className).toContain('left-0');
+        expect(world.className).not.toContain('inset-0');
+        expect(world.className).not.toContain('bottom-0');
+
         const controls = container.querySelector('[data-slot="scene-controls"]') as HTMLElement;
         expect(controls.className).toContain('justify-end');
         expect(controls.className).not.toContain('fixed');

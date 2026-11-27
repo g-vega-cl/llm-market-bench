@@ -200,5 +200,25 @@ describe('Viewport sizing avoids dynamic viewport units (dvh) to prevent mobile 
 
             expect(violations).toEqual([]);
         });
+
+        // A mobile browser hides its bottom toolbar mid-scroll, which changes the
+        // layout viewport height. A `fixed inset-0` world layer tracks that height,
+        // so every %-anchored plane rescales and the background jumps under the
+        // thumb. The layer must instead be pinned to the LARGE viewport, which is
+        // stable per device and always at least as tall as the visible viewport —
+        // `svh` would be stable too but leaves an uncovered band once the bar hides.
+        it('pins the page-mode world layer to the large viewport instead of inset-0', () => {
+            const source = stripComments(
+                readFileSync(join(DESIGN_SYSTEM, 'layouts', 'SceneStage.tsx'), 'utf8'),
+            );
+            const marker = 'scene-backdrop pointer-events-none fixed';
+            const start = source.indexOf(marker);
+            expect(start).toBeGreaterThan(-1);
+            const layer = source.slice(start, start + 240);
+
+            expect(layer).toContain('h-lvh');
+            expect(layer).not.toContain('inset-0');
+            expect(layer).not.toContain('bottom-0');
+        });
     });
 });

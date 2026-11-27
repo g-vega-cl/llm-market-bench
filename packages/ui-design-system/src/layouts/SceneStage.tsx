@@ -136,7 +136,13 @@ export function SceneStage({
                         data-slot="scene-backdrop"
                         aria-hidden="true"
                         className={cn(
-                            'scene-backdrop pointer-events-none fixed inset-0 z-0 overflow-hidden',
+                            // Pinned to the LARGE viewport, never `inset-0`: a fixed
+                            // layer tracks the layout viewport, so a mobile browser
+                            // hiding its bottom bar mid-scroll rescaled the whole world
+                            // and every %-anchored plane jumped under the thumb. `lvh`
+                            // is stable per device and always at least as tall as the
+                            // visible viewport, so it covers without a seam.
+                            'scene-backdrop pointer-events-none fixed top-0 right-0 left-0 h-lvh z-0 overflow-hidden',
                             atmosphereClassMap[atmosphere],
                         )}
                     >

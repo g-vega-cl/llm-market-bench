@@ -204,6 +204,7 @@ class TestValidationNoPriceDeviation:
             instance = mock_mgr.return_value
             instance.get_quote = AsyncMock(return_value=mock_data)
             instance.is_market_open = AsyncMock(return_value=True)
+            instance.is_trading_day = AsyncMock(return_value=True)
             result = await validate_decision("AAPL")
             assert result.status.value == "PASSED"
 
@@ -220,6 +221,7 @@ class TestValidationNoPriceDeviation:
             instance = mock_mgr.return_value
             instance.get_quote = AsyncMock(return_value=mock_data)
             instance.is_market_open = AsyncMock(return_value=True)
+            instance.is_trading_day = AsyncMock(return_value=True)
             result = await validate_decision("AAPL")
             assert result.status.value == "PASSED"
 

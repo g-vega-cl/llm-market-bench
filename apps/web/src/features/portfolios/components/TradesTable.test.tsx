@@ -157,3 +157,20 @@ describe('TradesTable', () => {
         expect(badge.closest('a')).toBeNull();
     });
 });
+
+describe('TradesTable realized P/L sign', () => {
+    it('renders a negative dollar P/L with a leading minus sign', () => {
+        const losingTrade: Trade = {
+            ...mockTrades[0],
+            id: 't-loss',
+            ticker: 'SPY',
+            signal: 'SELL',
+            realized_pnl: -64.42,
+            realized_pnl_pct: -2.24,
+        };
+        render(<TradesTable trades={[losingTrade]} />);
+        expect(screen.getByText('-$64.42')).toBeInTheDocument();
+        expect(screen.getByText('-2.24%')).toBeInTheDocument();
+        expect(screen.queryByText('+$64.42')).not.toBeInTheDocument();
+    });
+});

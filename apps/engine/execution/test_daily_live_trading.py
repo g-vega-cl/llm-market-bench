@@ -607,3 +607,35 @@ async def test_execute_daily_moo_entries_skips_non_spy_arena_models(mock_supabas
         "sys-daily-spy-close-deepseek-flash",
     }
     assert all("gpt-6-luna" not in e["owner_id"] for e in result["entries"])
+
+
+@pytest.mark.asyncio
+async def test_execute_daily_moo_entries_skips_market_holiday(monkeypatch):
+    """Thanksgiving 2026-11-26 must not create MOO entries."""
+    from execution import daily_live_trading, daily_trading
+
+    def _forbid_db():
+        raise AssertionError("database must not be touched on a market holiday")
+
+    monkeypatch.setattr(daily_trading, "get_supabase_client", _forbid_db)
+
+    result = await daily_live_trading.execute_daily_moo_entries(target_date="2026-11-26")
+
+    assert result["status"] == "skipped"
+    assert "trading day" in result["reason"].lower()
+
+
+@pytest.mark.asyncio
+async def test_execute_daily_close_exits_skips_market_holiday(monkeypatch):
+    """Thanksgiving 2026-11-26 must not liquidate positions."""
+    from execution import daily_live_trading, daily_trading
+
+    def _forbid_db():
+        raise AssertionError("database must not be touched on a market holiday")
+
+    monkeypatch.setattr(daily_trading, "get_supabase_client", _forbid_db)
+
+    result = await daily_live_trading.execute_daily_close_exits(target_date="2026-11-26")
+
+    assert result["status"] == "skipped"
+    assert "trading day" in result["reason"].lower()

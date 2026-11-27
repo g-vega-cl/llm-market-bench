@@ -22,6 +22,7 @@ async def test_validate_decision_pass():
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
         mock_manager.is_market_open = AsyncMock(return_value=True)
+        mock_manager.is_trading_day = AsyncMock(return_value=True)
 
         result = await validate_decision("AAPL")
 
@@ -36,6 +37,7 @@ async def test_validate_decision_hallucination():
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=None)
         mock_manager.is_market_open = AsyncMock(return_value=True)
+        mock_manager.is_trading_day = AsyncMock(return_value=True)
 
         result = await validate_decision("FAKE")
 
@@ -57,6 +59,7 @@ async def test_validate_decision_liquidity():
         mock_manager = mock_manager_cls.return_value
         mock_manager.get_quote = AsyncMock(return_value=mock_data)
         mock_manager.is_market_open = AsyncMock(return_value=True)
+        mock_manager.is_trading_day = AsyncMock(return_value=True)
 
         result = await validate_decision("PENY")
 

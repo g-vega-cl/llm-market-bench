@@ -405,3 +405,37 @@ async def test_picks_exit_with_later_open_session_snapshots_true_historical_equi
     pf_row = next(r for r in store.rows["portfolios"] if r["id"] == consensus_pf.id)
     assert pf_row["cash_balance"] == pytest.approx(expected_1119_eq - later_long_cost)
     assert pf_row["total_equity"] == pytest.approx(expected_1119_eq)
+
+
+def test_run_picks_trade_skips_market_holiday(monkeypatch):
+    """Thanksgiving 2026-11-26 is a US market holiday: no DB access, no trades."""
+    import asyncio
+
+    from execution import stock_picks_trading as spt
+
+    def _forbid_db():
+        raise AssertionError("database must not be touched on a market holiday")
+
+    monkeypatch.setattr(spt, "get_supabase_client", _forbid_db)
+
+    result = asyncio.run(spt.run_picks_trade(action="entry", target_date="2026-11-26"))
+
+    assert result["status"] == "skipped"
+    assert "trading day" in result["reason"].lower()
+
+
+def test_run_picks_trade_skips_weekend(monkeypatch):
+    """Sunday 2026-11-22 is not a trading day: no DB access, no trades."""
+    import asyncio
+
+    from execution import stock_picks_trading as spt
+
+    def _forbid_db():
+        raise AssertionError("database must not be touched on a weekend")
+
+    monkeypatch.setattr(spt, "get_supabase_client", _forbid_db)
+
+    result = asyncio.run(spt.run_picks_trade(action="entry", target_date="2026-11-22"))
+
+    assert result["status"] == "skipped"
+    assert "trading day" in result["reason"].lower()

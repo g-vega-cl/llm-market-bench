@@ -61,6 +61,14 @@ async def validate_decision(ticker: str) -> ValidationResult:
             reason="Market is currently closed. Trading is only allowed during US market hours (09:30-16:00 ET, Mon-Fri, non-holidays).",
         )
 
+    # Guardrail 0b: Trading Day (weekend/holiday, fail-closed)
+    if not await manager.is_trading_day():
+        return ValidationResult(
+            ticker=ticker,
+            status=ValidationStatus.REJECTED_MARKET_CLOSED,
+            reason="Not a US trading day (weekend or market holiday).",
+        )
+
     try:
         data = await manager.get_quote(ticker)
     except Exception as e:

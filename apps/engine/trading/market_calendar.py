@@ -145,6 +145,17 @@ def _local_is_session_day(day: date) -> bool:
     return day.weekday() < 5 and not is_known_us_market_holiday(day)
 
 
+def is_us_trading_day(day: date) -> bool:
+    """Fail-closed weekday/holiday check for live execution entry points.
+
+    Deterministic and I/O-free so it is safe in hermetic tests and never blocks on
+    a calendar API. The Alpaca calendar remains authoritative for early closes;
+    this is the minimum guard that stops holiday/weekend fills when the calendar
+    client is unavailable or stale.
+    """
+    return _local_is_session_day(day)
+
+
 def _local_is_open(now_dt: datetime) -> bool:
     """Weekday + regular-hours arithmetic with the offline holiday rules."""
     weekday = now_dt.weekday() if callable(getattr(now_dt, "weekday", None)) else getattr(now_dt, "weekday", 0)

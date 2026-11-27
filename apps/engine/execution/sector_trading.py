@@ -18,6 +18,7 @@ from execution.system_portfolios import (
     resolve_mechanical_sectors,
     resolve_sector_predictions,
 )
+from trading.market_calendar import is_us_trading_day
 
 
 def _enter_sector_legs(
@@ -633,7 +634,7 @@ async def get_sector_portfolios_status() -> dict[str, Any]:
     return status_summary
 
 
-async def run_sector_trade(
+async def run_sector_trade(  # noqa: C901 - fail-closed trading-day guard adds one branch
     action: str = "entry",
     target_date_str: str | None = None,
     dry_run: bool = False,
@@ -641,6 +642,10 @@ async def run_sector_trade(
     """Orchestrate live sector portfolio entry, exit, or status across all 5 weekly portfolios."""
     today = date.today() if target_date_str is None else date.fromisoformat(target_date_str)
     today_str = today.isoformat()
+
+    if action != "status" and not is_us_trading_day(today):
+        return {"status": "skipped", "reason": f"Not a US trading day: {today_str}"}
+
     client = get_supabase_client()
 
     if action == "status":

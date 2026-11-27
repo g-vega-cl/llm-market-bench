@@ -27,6 +27,7 @@ from zoneinfo import ZoneInfo
 from core.config import logger
 from core.db import get_supabase_client
 from execution.system_portfolios import DEFAULT_SLIPPAGE_BPS, INITIAL_PORTFOLIO_CASH, get_or_create_system_portfolio
+from trading.market_calendar import is_us_trading_day
 
 SYS_PICKS_OWNER_PREFIX = "sys-picks-"
 PICKS_MODEL_TRACKS = ("deepseek-flash", "MiniMax-M3.1-Flash", "gpt-6-luna", "consensus")
@@ -661,6 +662,9 @@ async def run_picks_trade(
     session_date = target_date or now_et.date().isoformat()
     if session_date < SYS_PICKS_START_DATE:
         return {"status": "skipped", "reason": f"Before start date {SYS_PICKS_START_DATE}"}
+
+    if not is_us_trading_day(date.fromisoformat(session_date[:10])):
+        return {"status": "skipped", "reason": f"Not a US trading day: {session_date}"}
 
     from execution.market_data import MarketDataManager
 

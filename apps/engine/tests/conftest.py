@@ -160,6 +160,7 @@ def fully_mocked_main():
         mock_mdm_instance.get_quotes = AsyncMock(return_value={})
         mock_mdm_instance.get_history = AsyncMock(return_value=[])
         mock_mdm_instance.is_market_open = AsyncMock(return_value=True)
+        mock_mdm_instance.is_trading_day = AsyncMock(return_value=True)
 
         # Setup MarketDataManager mock for core.utils (used by is_market_open_with_logging)
         mock_mdm_utils_instance = MagicMock()

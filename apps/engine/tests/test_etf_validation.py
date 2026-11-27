@@ -18,6 +18,7 @@ async def test_etf_liquidity_fix():
         instance = MockManager.return_value
         instance.get_quote = AsyncMock(return_value=mock_data)
         instance.is_market_open = AsyncMock(return_value=True)
+        instance.is_trading_day = AsyncMock(return_value=True)
 
         # Test ETF with 0 market cap (should PASS now)
         result = await validate_decision("XLE")
@@ -41,6 +42,7 @@ async def test_small_cap_rejection_still_works():
         instance = MockManager.return_value
         instance.get_quote = AsyncMock(return_value=mock_data)
         instance.is_market_open = AsyncMock(return_value=True)
+        instance.is_trading_day = AsyncMock(return_value=True)
 
         # Test small cap with $0.1B (should be REJECTED, threshold is $2B)
         result = await validate_decision("SMALL")

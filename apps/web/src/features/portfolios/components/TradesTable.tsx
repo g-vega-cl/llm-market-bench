@@ -165,7 +165,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                         <span
                                             className={`font-bold ${trade.realized_pnl >= 0 ? 'text-success' : 'text-danger'}`}
                                         >
-                                            {trade.realized_pnl >= 0 ? '+' : ''}$
+                                            {trade.realized_pnl >= 0 ? '+' : '-'}$
                                             {Math.abs(trade.realized_pnl).toLocaleString('en-US', {
                                                 minimumFractionDigits: 2,
                                                 maximumFractionDigits: 2,

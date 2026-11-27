@@ -25,6 +25,7 @@ from execution.daily_reconciliation import (
     get_daily_session_open_price,
     reconcile_daily_open_trades,
 )
+from trading.market_calendar import is_us_trading_day
 
 
 async def _execute_single_moo_portfolio_entry(
@@ -136,8 +137,11 @@ async def execute_daily_moo_entries(target_date: str | None = None, dry_run: boo
     """
     import execution.daily_trading as dt
 
-    client = dt.get_supabase_client()
     target_date_str = target_date or date.today().isoformat()
+    if not is_us_trading_day(date.fromisoformat(target_date_str[:10])):
+        return {"status": "skipped", "reason": f"Not a US trading day: {target_date_str}"}
+
+    client = dt.get_supabase_client()
 
     res = client.table("daily_predictions").select("*").eq("target_date", target_date_str).eq("ticker", "SPY").execute()
     predictions = res.data or []
@@ -290,8 +294,11 @@ async def execute_daily_close_exits(target_date: str | None = None, dry_run: boo
     """
     import execution.daily_trading as dt
 
-    client = dt.get_supabase_client()
     target_date_str = target_date or date.today().isoformat()
+    if not is_us_trading_day(date.fromisoformat(target_date_str[:10])):
+        return {"status": "skipped", "reason": f"Not a US trading day: {target_date_str}"}
+
+    client = dt.get_supabase_client()
 
     # Reconcile entry trades to official open price before closing
     session_open = await get_daily_session_open_price("SPY", target_date_str, client=client)

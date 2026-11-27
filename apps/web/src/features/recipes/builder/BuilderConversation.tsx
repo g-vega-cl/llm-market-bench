@@ -94,7 +94,10 @@ function QuestionOptions({
         return null;
     }
     return (
-        <div className="flex flex-wrap gap-2">
+        <div
+            data-testid="builder-question-options"
+            className="grid grid-cols-2 sm:grid-cols-4 gap-2 items-stretch"
+        >
             {reply.options.map((option) => (
                 <Button
                     key={option}
@@ -102,8 +105,11 @@ function QuestionOptions({
                     size="sm"
                     disabled={disabled}
                     onClick={() => onSend(option)}
+                    className="relative h-14 w-full min-w-0 text-center"
                 >
-                    {option}
+                    <span className="min-w-0 break-words text-xs font-normal leading-snug line-clamp-2">
+                        {option}
+                    </span>
                 </Button>
             ))}
         </div>

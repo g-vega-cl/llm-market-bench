@@ -175,9 +175,19 @@ describe('parseCompilerReply', () => {
                 status: 'align',
                 intro: 'Let us align on a few details.',
                 questions: [
-                    { id: 'q1', question: 'Which sector?', options: ['Semis', 'Cloud'] },
+                    {
+                        id: 'q1',
+                        question: 'Which sector?',
+                        recommended: 2,
+                        options: ['Semis', 'Cloud'],
+                    },
                     { id: 'q2', question: 'Entry trigger?', options: ['Earnings', 'RSI < 35'] },
-                    { id: 'q3', question: 'Exit rule?', options: ['Target hit', 'Thesis break'] },
+                    {
+                        id: 'q3',
+                        question: 'Exit rule?',
+                        recommended: 9,
+                        options: ['Target hit', 'Thesis break'],
+                    },
                 ],
             }),
         );
@@ -185,11 +195,80 @@ describe('parseCompilerReply', () => {
             status: 'align',
             intro: 'Let us align on a few details.',
             questions: [
-                { id: 'q1', question: 'Which sector?', options: ['Semis', 'Cloud'] },
-                { id: 'q2', question: 'Entry trigger?', options: ['Earnings', 'RSI < 35'] },
-                { id: 'q3', question: 'Exit rule?', options: ['Target hit', 'Thesis break'] },
+                {
+                    id: 'q1',
+                    question: 'Which sector?',
+                    recommended: 1,
+                    options: ['Cloud', 'Semis'],
+                },
+                {
+                    id: 'q2',
+                    question: 'Entry trigger?',
+                    recommended: 1,
+                    options: ['Earnings', 'RSI < 35'],
+                },
+                {
+                    id: 'q3',
+                    question: 'Exit rule?',
+                    recommended: 1,
+                    options: ['Target hit', 'Thesis break'],
+                },
             ],
         });
+    });
+
+    it('always resolves one recommendation per question, even when the pick is unusable', () => {
+        const reply = parseCompilerReply(
+            JSON.stringify({
+                status: 'align',
+                questions: [
+                    {
+                        id: 'q1',
+                        question: 'Which sector?',
+                        recommended: '2',
+                        options: ['Semis', 'Cloud'],
+                    },
+                    {
+                        id: 'q2',
+                        question: 'Deduped options?',
+                        recommended: 3,
+                        options: ['Semis', 'Semis', 'Cloud'],
+                    },
+                    {
+                        id: 'q3',
+                        question: 'Nonsense pick?',
+                        recommended: 'best',
+                        options: ['Semis', 'Cloud'],
+                    },
+                ],
+            }),
+        );
+        if (reply.status !== 'align') throw new Error('expected an align reply');
+        expect(reply.questions.map((q) => q.recommended)).toEqual([1, 1, 1]);
+        // The pick leads its row; the deduped list keeps its own order.
+        expect(reply.questions[0].options).toEqual(['Cloud', 'Semis']);
+        expect(reply.questions[1].options).toEqual(['Cloud', 'Semis']);
+    });
+
+    it('resolves the pick against the model’s own list before dedupe shifts it', () => {
+        const reply = parseCompilerReply(
+            JSON.stringify({
+                status: 'align',
+                questions: [
+                    {
+                        id: 'q1',
+                        question: 'Duplicate before the pick?',
+                        recommended: 3,
+                        options: ['A', 'B', 'B', 'C'],
+                    },
+                ],
+            }),
+        );
+        if (reply.status !== 'align') throw new Error('expected an align reply');
+        // Index 3 is the model's second "B"; dedupe leaves ['A','B','C'] and the
+        // mark must still land on B, not on C.
+        expect(reply.questions[0].options).toEqual(['B', 'A', 'C']);
+        expect(reply.questions[0].recommended).toBe(1);
     });
 
     it('parses a clarifying question with options', () => {

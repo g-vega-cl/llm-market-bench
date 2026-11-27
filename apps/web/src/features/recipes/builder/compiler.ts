@@ -11,6 +11,12 @@ import { coerceStageBlocks } from '../utils/stage-blocks';
 export interface AlignmentQuestion {
     id: string;
     question: string;
+    /**
+     * 1-based index into `options` for the choice the compiler recommends.
+     * `parseAlignReply` moves that option to the front, so this is always `1`;
+     * an absent or out-of-range pick falls back to the first option.
+     */
+    recommended: number;
     options: string[];
 }
 
@@ -91,12 +97,12 @@ export function compilerSystemPrompt(): string {
         `- If the input is not a stock-trading strategy idea, reply immediately with: {"status":"declined","reason":"${REFUSAL_REASON}","closest":"${REFUSAL_CLOSEST}"}`,
         '',
         'Reply shapes:',
-        '{"status":"align","intro":"<one short sentence framing these quick alignment choices>","questions":[{"id":"q1","question":"<short tailored question>","options":["<choice>","<choice>","<choice>"]}]}',
+        '{"status":"align","intro":"<one short sentence framing these quick alignment choices>","questions":[{"id":"q1","question":"<short tailored question>","recommended":1,"options":["<choice>","<choice>","<choice>"]}]}',
         '{"status":"ok","summary":"<one sentence describing the bot>","warning":"<optional 1-2 sentence warning if requested data needs Live mode or was adapted>","strategy":{"version":"2.0-push","name":"<max 40 chars>","description":"<one line>","cadence":"3h","stages":[{"id":"s1","blocks":[{"id":"b1","type":"prompt","text":"<clear step-by-step trading instructions>"},...,{"id":"bN","type":"output_format"}],"selected_tools":["get_stock_quote"]}]}}',
         `{"status":"declined","reason":"${REFUSAL_REASON}","closest":"${REFUSAL_CLOSEST}"}`,
         '',
         'CONVERSATION FLOW:',
-        '1. On the user’s first trading idea (no prior assistant turn and user did not ask to skip alignment), ask ONE round of 3 to 5 tailored multiple-choice alignment questions using status "align". Each question must have 2 to 4 concise options covering real design choices (universe/sectors, entry signal, confirmation filter, exit/profit rule, risk selectivity).',
+        '1. On the user’s first trading idea (no prior assistant turn and user did not ask to skip alignment), ask ONE round of 3 to 5 tailored multiple-choice alignment questions using status "align". Each question must have 2 to 4 concise options of at most 40 characters covering real design choices (universe/sectors, entry signal, confirmation filter, exit/profit rule, risk selectivity), and "recommended" must be the 1-based index of the single option you would ship for that question.',
         '2. Once the user submits alignment answers or asks to skip alignment, return status "ok" immediately. NEVER ask a second round of questions.',
         '3. Every "ok" strategy MUST have a detailed, non-empty "prompt" block as blocks[0] synthesized from the user’s instructions and choices, and "output_format" as the last block.',
         '4. NEVER return "declined" for a trading strategy idea. If the idea needs [LIVE ONLY] tools (such as get_congress_trades, get_insider_trades, get_whale_holdings, get_government_fiscal_and_spending, get_market_moving_news, run_stock_screener), select them and set "warning" noting those tools are skipped in offline backtests and require Live (30m) mode. If the idea asks for unsupported mechanics (shorts, options, leverage, intraday triggers) or unavailable data (super PAC donations, web_search), build the closest long-only Push v2 recipe using available tools and set "warning" honestly explaining what was adapted or omitted while noting that Live (30m) runs on current market data. Reserve "declined" strictly for non-trading inputs per SECURITY & SCOPE BOUNDARIES.',
@@ -295,39 +301,65 @@ export function isCompilerReply(value: unknown): value is CompilerReply {
     );
 }
 
+/** Coerce a model-supplied pick to a number without trusting its type. */
+function coerceIndexValue(value: unknown): number {
+    if (typeof value === 'number') return value;
+    if (typeof value === 'string' && value.trim()) return Number(value.trim());
+    return Number.NaN;
+}
+
+/** Resolve a model-supplied 1-based pick against the list the model itself sent. */
+function resolveRecommendedOption(value: unknown, rawOptions: string[]): string | undefined {
+    const raw = coerceIndexValue(value);
+    return Number.isInteger(raw) && raw >= 1 && raw <= rawOptions.length
+        ? rawOptions[raw - 1]
+        : undefined;
+}
+
+function parseAlignmentQuestion(
+    item: unknown,
+    idx: number,
+    usedIds: Set<string>,
+): AlignmentQuestion {
+    const record = item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
+    const question = String(record.question || '')
+        .trim()
+        .slice(0, MAX_QUESTION_CHARS);
+    // The pick is resolved against the model's OWN list, before dedupe and
+    // capping shift it — otherwise `['A','B','B','C']` + pick 3 marks `C`.
+    const rawOptions = Array.isArray(record.options)
+        ? record.options
+              .map((option) => String(option).trim().slice(0, MAX_OPTION_CHARS))
+              .filter(Boolean)
+        : [];
+    const options = Array.from(new Set(rawOptions)).slice(0, MAX_OPTIONS);
+    const picked = resolveRecommendedOption(record.recommended, rawOptions);
+    const chosen = picked && options.includes(picked) ? picked : options[0];
+
+    const baseId =
+        typeof record.id === 'string' && record.id.trim()
+            ? record.id.trim().slice(0, 24)
+            : `q${idx + 1}`;
+    let id = baseId;
+    let suffix = 2;
+    while (usedIds.has(id)) {
+        id = `${baseId}-${suffix}`;
+        suffix += 1;
+    }
+    usedIds.add(id);
+
+    // The recommended option always leads the row, so the card is predictable to
+    // scan and `recommended` is a constant 1 downstream.
+    const ordered = chosen ? [chosen, ...options.filter((option) => option !== chosen)] : options;
+    return { id, question, recommended: 1, options: ordered };
+}
+
 function parseAlignReply(parsed: Record<string, unknown>): CompilerReply {
     const rawQuestions = Array.isArray(parsed.questions) ? parsed.questions : [];
     const usedIds = new Set<string>();
     const questions: AlignmentQuestion[] = rawQuestions
         .slice(0, MAX_ALIGN_QUESTIONS)
-        .map((item, idx) => {
-            const record =
-                item && typeof item === 'object' ? (item as Record<string, unknown>) : {};
-            const question = String(record.question || '')
-                .trim()
-                .slice(0, MAX_QUESTION_CHARS);
-            const options = Array.isArray(record.options)
-                ? Array.from(
-                      new Set(
-                          record.options
-                              .map((option) => String(option).trim().slice(0, MAX_OPTION_CHARS))
-                              .filter(Boolean),
-                      ),
-                  ).slice(0, MAX_OPTIONS)
-                : [];
-            const baseId =
-                typeof record.id === 'string' && record.id.trim()
-                    ? record.id.trim().slice(0, 24)
-                    : `q${idx + 1}`;
-            let id = baseId;
-            let suffix = 2;
-            while (usedIds.has(id)) {
-                id = `${baseId}-${suffix}`;
-                suffix += 1;
-            }
-            usedIds.add(id);
-            return { id, question, options };
-        })
+        .map((item, idx) => parseAlignmentQuestion(item, idx, usedIds))
         .filter((q) => q.question.length > 0 && q.options.length > 0);
 
     if (questions.length === 0) {

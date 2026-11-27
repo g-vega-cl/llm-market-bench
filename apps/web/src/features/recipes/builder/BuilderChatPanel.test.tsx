@@ -179,16 +179,19 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
                             {
                                 id: 'q1',
                                 question: 'Ticker focus?',
+                                recommended: 2,
                                 options: ['NVDA/AMD', 'Broad semis'],
                             },
                             {
                                 id: 'q2',
                                 question: 'Entry filter?',
+                                recommended: 1,
                                 options: ['RSI < 65', 'MACD > 0'],
                             },
                             {
                                 id: 'q3',
                                 question: 'Exit rule?',
+                                recommended: 1,
                                 options: ['Thesis break', 'RSI > 80'],
                             },
                         ],
@@ -223,6 +226,9 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
 
         const alignCard = await screen.findByTestId('builder-alignment-card');
         expect(alignCard).toBeInTheDocument();
+        expect(screen.getByRole('button', { name: /Broad semis/ })).toHaveAccessibleName(
+            /, recommended$/,
+        );
         const alignStepper = screen.getByTestId('builder-stepper');
         expect(alignStepper.querySelector('[data-step-number="2"]')).toHaveAttribute(
             'data-step-state',
@@ -236,8 +242,8 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
         expect(buildFinalBtn).toBeDisabled();
 
         fireEvent.click(screen.getByRole('button', { name: 'NVDA/AMD' }));
-        fireEvent.click(screen.getByRole('button', { name: 'RSI < 65' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Thesis break' }));
+        fireEvent.click(screen.getByRole('button', { name: /RSI < 65/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Thesis break/ }));
 
         expect(buildFinalBtn).toBeEnabled();
         fireEvent.click(buildFinalBtn);
@@ -286,8 +292,8 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
         fireEvent.change(customInput, { target: { value: 'NVDA' } });
         expect(customInput).toHaveValue('NVDA');
 
-        fireEvent.click(screen.getByRole('button', { name: 'RSI < 65' }));
-        fireEvent.click(screen.getByRole('button', { name: 'Thesis break' }));
+        fireEvent.click(screen.getByRole('button', { name: /RSI < 65/ }));
+        fireEvent.click(screen.getByRole('button', { name: /Thesis break/ }));
         fireEvent.click(screen.getByRole('button', { name: /build final bot/i }));
 
         expect(await screen.findByRole('alert')).toHaveTextContent('Worker busy');
@@ -353,6 +359,10 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
         fireEvent.click(screen.getByRole('button', { name: /continue to alignment/i }));
 
         const optionBtn = await screen.findByRole('button', { name: 'S&P 500' });
+        // The follow-up question's chips share the alignment grid and sizing.
+        const optionRow = screen.getByTestId('builder-question-options');
+        expect(optionRow).toHaveClass('grid', 'grid-cols-2', 'sm:grid-cols-4', 'items-stretch');
+        expect(optionBtn).toHaveClass('h-14', 'w-full', 'min-w-0');
         const followUpInput = screen.getByLabelText('Describe your trading bot');
         const historyRows = screen.getAllByTestId('builder-message-row');
         const userTurnRow = historyRows.find((el) =>

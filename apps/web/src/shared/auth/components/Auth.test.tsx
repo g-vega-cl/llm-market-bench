@@ -37,6 +37,15 @@ describe('Auth — layout and disclaimers', () => {
             '/recipes-demo',
         );
     });
+
+    it('promises real-time bot execution in the login subtitle', () => {
+        render(<Auth />);
+        expect(
+            screen.getByText(
+                'Sign in with Google to run backtests, save trading bots, and run your bots in real time.',
+            ),
+        ).toBeInTheDocument();
+    });
 });
 
 describe('Auth — recipe beta panel', () => {

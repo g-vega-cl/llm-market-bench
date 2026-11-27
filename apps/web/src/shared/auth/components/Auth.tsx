@@ -49,7 +49,7 @@ function resolveAuthSubtitle(isSignup: boolean, isRecipesGate: boolean): string 
     }
     return isRecipesGate
         ? 'Sign in with Google to run backtests and live paper sessions in Strategy Recipe Studio.'
-        : 'Sign in with Google to run backtests, save trading bots, and track live paper results.';
+        : 'Sign in with Google to run backtests, save trading bots, and run your bots in real time.';
 }
 
 function GoogleIcon() {

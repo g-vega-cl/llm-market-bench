@@ -244,6 +244,20 @@ def _record_job_failure(sb: Any, job: dict[str, Any], exc: Exception) -> None:
         ).eq("id", job["job_id"]).execute()
     except Exception:
         logger.exception("Failed to record error state on queue job")
+        return
+
+    # A failed run must not cost the user a token. Compiles, previews and live
+    # turns never spend, so they are skipped rather than issuing a no-op refund.
+    mode = job.get("job_mode") or job.get("mode")
+    if mode in ("compile", "preview", "live_turn"):
+        return
+    try:
+        sb.rpc(
+            "settle_token",
+            {"p_ref": job["job_id"], "p_outcome": "failed"},
+        ).execute()
+    except Exception:
+        logger.exception("Failed to refund the token for queue job %s", job["job_id"])
 
 
 def _sanitize_compile_payload(payload: dict[str, Any]) -> dict[str, Any]:

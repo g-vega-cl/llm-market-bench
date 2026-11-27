@@ -18,14 +18,21 @@ A guest balance is one-time, so a returning visitor must sign up to run again â€
 
 ## Enforcement
 
-`supabase/migrations/20261127190000_token_architecture.sql` adds `token_balances`, `token_ledger` (append-only, unique on `(owner_key, kind, ref_id)`), `guest_sessions`, `guest_budget_daily`, `feedback_requests`, and `strategy_recipes.live_expires_at`.
+`supabase/migrations/20261127190000_token_architecture.sql` adds `token_balances`, `token_ledger` (append-only, unique on `(owner_key, kind, ref_id)`, and a second unique index on `(kind, ref_id)` so a ref can never belong to two owners), `guest_sessions`, `guest_budget_daily`, `feedback_requests`, and `strategy_recipes.live_expires_at`. `20261127191000_guest_mint.sql` adds the guest mint.
 
-- `reserve_token(owner, kind, ref)` locks the balance row, refuses at zero, charges the guest daily budget, and is idempotent per ref.
-- `settle_token(ref, outcome)` refunds a failed or expired backtest exactly once. A paused live week is never refunded.
-- `refill_tokens(owner, amount, period)` sets rather than adds, so a missed cron week cannot stack.
-- `expire_live_bots()` pauses lapsed bots and skips any bot with a turn in flight.
+- `reserve_token(owner, kind, ref)` locks the balance row, refuses at zero, charges the guest daily budget, and is idempotent per ref. A refunded ref is terminal.
+- `settle_token(ref, outcome)` refunds a failed or expired backtest exactly once. A paused live week is never refunded. If the balance row is missing it is rebuilt from `sum(delta)`, never from zero.
+- `refill_tokens(owner, amount, period)` accepts only the current Monday and 1â€“15 tokens, sets rather than adds, and ledgers the adjustment so `balance == sum(delta)`.
+- `expire_live_bots()` pauses lapsed bots, skipping any bot with a turn whose `COALESCE(heartbeat_at, created_at)` is inside 30 minutes.
+- `mint_guest_tokens(token_hash, ip_hash)` resolves a guest from a hashed signed cookie and grants 5 tokens exactly once.
 
-Contract tests live in `supabase/tests/000_token_rpc_test.sql` and run against a throwaway Postgres via `scripts/test_token_rpc.sh`, including a two-session race on the last token.
+Contract tests live in `supabase/tests/` (21 assertions across the ledger and the mint) and run against a throwaway Postgres via `scripts/test_token_rpc.sh`, including a two-session race on the last token.
+
+## Spend path
+
+`apps/web/src/shared/auth/guest-cookie.ts` signs the cookie (HMAC) and hashes it; `clientIpFrom` reads only `CF-Connecting-IP`, never the spoofable leftmost `X-Forwarded-For`. `guest-session.ts` mints and resolves the balance.
+
+`enqueueRecipeJob` spends only after every validation has passed, using the queue row id as the ref, so a refund always names a row that exists; an insert failure refunds immediately. Guest runs use `startGuestBacktestFn` under the sentinel user `00000000-0000-0000-0000-000000000000`, which the queue accepts because `user_id` has no foreign key. The engine refunds in `_record_job_failure`, skipping compile/preview/live-turn rows and returning early when the status write itself failed.
 
 ## Accepted non-goals
 

@@ -8,7 +8,11 @@ import httpx
 import pytest
 
 from recipes.push_schema import PushStrategy
-from recipes.worker import STALE_COMPILE_MESSAGE, process_next_recipe_job
+from recipes.worker import (
+    STALE_COMPILE_MESSAGE,
+    _record_job_failure,
+    process_next_recipe_job,
+)
 
 
 def _make_mock_supabase():
@@ -756,3 +760,25 @@ def test_failure_recording_falls_back_to_the_exception_type():
     _record_job_failure(client, {"job_id": "job-weird"}, RuntimeError(""))
 
     assert queue_table.update.call_args[0][0]["error_message"] == "RuntimeError: the job stopped without a message."
+
+
+def test_record_job_failure_refunds_the_token():
+    client, queue_table, _, _ = _make_mock_supabase()
+
+    _record_job_failure(client, {"job_id": "job-refund-1"}, RuntimeError("boom"))
+
+    # A failed run must not cost the user a token.
+    client.rpc.assert_called_once_with(
+        "settle_token",
+        {"p_ref": "job-refund-1", "p_outcome": "failed"},
+    )
+    assert queue_table.update.call_args[0][0]["status"] == "failed"
+
+
+def test_record_job_failure_refunds_nothing_when_the_status_write_fails():
+    client, queue_table, _, _ = _make_mock_supabase()
+    queue_table.update.return_value.eq.return_value.execute.side_effect = RuntimeError("db down")
+
+    _record_job_failure(client, {"job_id": "job-refund-2"}, RuntimeError("boom"))
+
+    client.rpc.assert_not_called()

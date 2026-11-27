@@ -9,6 +9,7 @@ import {
     assertSingleLlmStage,
     normalizeRecipeName,
 } from './recipes-validators';
+import { refundToken, reserveToken } from './token-ledger';
 
 /**
  * Job and run reads live in their own slice; re-exported here because every
@@ -223,11 +224,42 @@ export const fetchRecipeByIdFn = createServerFn({ method: 'GET' })
         return fetchRecipeById(recipeId, user.id);
     });
 
+/**
+ * Inserts the queue row and owns the token spend around it: reserve after every
+ * validation has passed, refund if the insert itself fails. Kept out of
+ * `enqueueRecipeJob` so the validation ladder stays under the complexity ceiling.
+ */
+async function insertQueueRow(
+    db: ReturnType<typeof getDbAdminClient>,
+    payload: Record<string, unknown>,
+    spend?: { ownerKey: string; jobId: string },
+) {
+    if (spend) await reserveToken(spend.ownerKey, 'backtest', spend.jobId);
+
+    const { data, error } = await db
+        .from('recipe_execution_queue')
+        .insert(payload)
+        .select('*')
+        .single();
+
+    if (!error) return data;
+
+    if (spend) {
+        try {
+            await refundToken(spend.jobId, 'failed');
+        } catch (refundError) {
+            console.error('Token refund failed after enqueue error', refundError);
+        }
+    }
+    throw new Error(error.message);
+}
+
 export async function enqueueRecipeJob(
     recipeId: string,
     mode: 'backtest',
     userId: string,
     weeksRequested: string[] = [],
+    spend?: { ownerKey: string; jobId: string },
 ) {
     const db = getDbAdminClient();
 
@@ -261,7 +293,10 @@ export async function enqueueRecipeJob(
     assertSingleLlmStage(graph);
     assertNoPrevOutputPlaceholder(graph);
 
-    await assertQuotaAllowsJob(userId, mode);
+    // Tokens replace the legacy 2/day backtest cap: when a spend is attached the
+    // balance and the guest daily budget are the bounds, so the old quota is
+    // skipped. Callers without a spend (internal/legacy paths) keep the check.
+    if (!spend) await assertQuotaAllowsJob(userId, mode);
 
     // First run jumps the queue but never preempts a running backtest: priority
     // only reorders pending jobs (pop_next_recipe_job orders priority ASC).
@@ -273,6 +308,7 @@ export async function enqueueRecipeJob(
         .eq('status', 'completed');
 
     const payload = {
+        ...(spend ? { id: spend.jobId } : {}),
         recipe_id: recipeId,
         user_id: userId,
         mode,
@@ -284,14 +320,9 @@ export async function enqueueRecipeJob(
         progress_pct: 0,
     };
 
-    const { data, error } = await db
-        .from('recipe_execution_queue')
-        .insert(payload)
-        .select('*')
-        .single();
-
-    if (error) throw new Error(error.message);
-    return data;
+    // Spend only after every validation passed, and always against the queue id
+    // so a refund can name a row that really exists.
+    return insertQueueRow(db, payload, spend);
 }
 
 export const enqueueRecipeJobFn = createServerFn({ method: 'POST' })
@@ -304,5 +335,31 @@ export const enqueueRecipeJobFn = createServerFn({ method: 'POST' })
         if (!user?.id) {
             throw new Error('Unauthorized: please sign in to run Strategy Recipes');
         }
-        return enqueueRecipeJob(recipeId, mode, user.id, weeksRequested);
+        return enqueueRecipeJob(recipeId, mode, user.id, weeksRequested, {
+            ownerKey: `user:${user.id}`,
+            jobId: crypto.randomUUID(),
+        });
+    });
+
+/**
+ * Sentinel owner for guest queue rows. The queue's user_id has no foreign key to
+ * auth.users, so a logged-out run can be queued without inventing an account;
+ * the guest's identity lives in the signed cookie and the token ledger.
+ */
+export const ANONYMOUS_USER_ID = '00000000-0000-0000-0000-000000000000';
+
+/**
+ * Runs a public or template recipe for a logged-out visitor, spending one of
+ * their five guest tokens. The module is imported dynamically so node:crypto and
+ * the server cookie helpers stay out of the client bundle.
+ */
+export const startGuestBacktestFn = createServerFn({ method: 'POST' })
+    .validator((d: { recipeId: string; weeksRequested?: string[] }) => d)
+    .handler(async ({ data: { recipeId, weeksRequested = [] } }) => {
+        const { ensureGuestSession } = await import('~/shared/auth/guest-session');
+        const guest = await ensureGuestSession();
+        return enqueueRecipeJob(recipeId, 'backtest', ANONYMOUS_USER_ID, weeksRequested, {
+            ownerKey: guest.ownerKey,
+            jobId: crypto.randomUUID(),
+        });
     });

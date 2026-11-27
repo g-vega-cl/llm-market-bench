@@ -7,8 +7,10 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MIGRATION="$ROOT/supabase/migrations/20261127190000_token_architecture.sql"
+MINT_MIGRATION="$ROOT/supabase/migrations/20261127191000_guest_mint.sql"
 STUB="$ROOT/supabase/tests/000_stub_schema.sql"
 CONTRACTS="$ROOT/supabase/tests/000_token_rpc_test.sql"
+MINT_CONTRACTS="$ROOT/supabase/tests/001_guest_mint_test.sql"
 CID="bfy-token-test-$$"
 TMP="$(mktemp -d)"
 PASS="token_test"
@@ -19,8 +21,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [[ ! -f "$MIGRATION" ]]; then
-    echo "FAIL: migration not found: $MIGRATION" >&2
+if [[ ! -f "$MIGRATION" || ! -f "$MINT_MIGRATION" ]]; then
+    echo "FAIL: migration not found: $MIGRATION / $MINT_MIGRATION" >&2
     exit 1
 fi
 
@@ -44,10 +46,13 @@ psql_() { docker exec -i "$CID" psql -U postgres -d token_test -v ON_ERROR_STOP=
 
 psql_ -q -f - < "$STUB"
 psql_ -q -f - < "$MIGRATION"
+psql_ -q -f - < "$MINT_MIGRATION"
 if [[ "${APPLY_TWICE:-0}" == "1" ]]; then
     psql_ -q -f - < "$MIGRATION"
+    psql_ -q -f - < "$MINT_MIGRATION"
 fi
 psql_ -q -f - < "$CONTRACTS"
+psql_ -q -f - < "$MINT_CONTRACTS"
 
 # Two sessions, one token: the second must block on the row lock and then
 # find the balance empty. Exactly one reservation may succeed.

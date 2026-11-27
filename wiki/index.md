@@ -111,6 +111,7 @@
 - [[entities/agent-rules]] — Canonical agent instructions, precedence directives, and GEMINI.md pointer
 
 - [[entities/market-calendar]] — authoritative US equity session calendar (Alpaca /v2/clock + /v2/calendar, offline holiday fallback)
+- [[entities/last30days-research-skill]] — third-party agent skill for 30-day multi-source research (Reddit, X, YouTube, HN, arXiv, web), installed for Hermes, Pi, and Antigravity
 ## Concepts
 
 - [[concepts/retired-experiment-guards]] — source-tree guard that keeps retired PostHog flags and deleted WebGL components from returning

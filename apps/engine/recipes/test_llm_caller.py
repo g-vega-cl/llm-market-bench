@@ -257,9 +257,7 @@ def test_recipe_call_log_records_direct_lanes(tmp_path, monkeypatch):
 
     conn = sqlite3.connect(db_file)
     try:
-        rows = conn.execute(
-            "SELECT routed_provider, billing FROM call_logs ORDER BY rowid"
-        ).fetchall()
+        rows = conn.execute("SELECT routed_provider, billing FROM call_logs ORDER BY rowid").fetchall()
     finally:
         conn.close()
 

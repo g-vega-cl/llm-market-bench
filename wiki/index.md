@@ -121,6 +121,7 @@
 - [[concepts/qmd-wiki-skill]] — Pi-runtime skill making QMD search the mandatory first step for project questions
 - [[concepts/privacy-policy]] — platform privacy policy governing data collection, storage, and user rights
 - [[concepts/atomic-live-schedule-switch]] — single-transaction `switch_live_schedule` RPC that pauses one live bot and enables another
+- [[concepts/token-economy]] — one token = one backtest or one live-bot week; guest (5, one-time, cookie-keyed) and account (15/week) lanes, ledger RPCs, and the recorded non-goals
 - [[concepts/google-only-auth]] — Google OAuth is the sole sign-in path, with sanitised return paths and a single `auth_completed` event
 - [[concepts/page-surface-conventions]] — PageLayout padding opt-out (`withPadding={false}`) and action-vs-browse page title rules, enforced by `page-surface-conventions.test.tsx`
 - [[concepts/starter-recipes]] — catalog of pre-built recipe templates in packages/config/starter-recipes.json

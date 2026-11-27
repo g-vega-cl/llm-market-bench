@@ -55,6 +55,8 @@ describe('capability manifest', () => {
         expect(manifest).toContain('Exactly one stage');
         expect(manifest).toContain('get_congress_trades');
         expect(manifest).toContain('[LIVE ONLY');
+        expect(manifest).toContain('US-listed stocks only');
+        expect(manifest).toContain('NSE');
         expect(compilerSystemPrompt()).toContain('NEVER return "declined" for a trading strategy');
         expect(compilerSystemPrompt().length).toBeLessThanOrEqual(8000);
     });

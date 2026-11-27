@@ -37,5 +37,8 @@ describe('RecipeGuideAndQuotaBlock', () => {
         expect(screen.getByText('How To Read This Backtest')).toBeInTheDocument();
         expect(screen.getByText('Point-in-Time Intraday Slots')).toBeInTheDocument();
         expect(screen.getByText('Open Positions vs Closed Trades')).toBeInTheDocument();
+        expect(screen.getByText('Data Coverage')).toBeInTheDocument();
+        expect(screen.getByText(/US-listed stocks only/i)).toBeInTheDocument();
+        expect(screen.getByText(/NSE\/Nifty 100/i)).toBeInTheDocument();
     });
 });

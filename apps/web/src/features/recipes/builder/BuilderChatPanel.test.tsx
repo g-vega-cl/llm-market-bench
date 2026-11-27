@@ -141,6 +141,15 @@ describe('BuilderChatPanel (SceneStage, Starter Chips, 3-Step Flow & Alignment C
         expect(textarea).toHaveValue('');
     });
 
+    it('shows the US-only data coverage note before compiling', () => {
+        renderWithQuery(<BuilderChatPanel userId="user-1" />);
+
+        const note = screen.getByTestId('data-coverage-note');
+        expect(note).toHaveTextContent(/US-listed stocks only/i);
+        expect(note).toHaveTextContent(/NSE\/Nifty 100/i);
+        expect(note).not.toHaveClass('fixed');
+    });
+
     it('places the primary Continue to Alignment CTA below the textarea and supports Ctrl/Cmd+Enter submit', async () => {
         renderWithQuery(<BuilderChatPanel userId="user-1" />);
 

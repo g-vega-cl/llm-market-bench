@@ -30,6 +30,7 @@ async def test_execute_tool_invalid_ticker():
     """Verify that invalid tickers are blocked early in execute_tool (Fix #5)."""
     res = await execute_tool("get_stock_quote", {"ticker": "USSHORT"}, "test-model")
     assert "not a valid stock ticker" in res
+    assert "US-listed stocks only" in res
 
 
 def test_discovery_agent_parse_json_list():

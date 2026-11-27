@@ -9,6 +9,7 @@ import type {
 } from '../types';
 import { isQuotaLimitMessage } from '../utils/live-studio-helpers';
 import { isTurboActive } from '../utils/market-hours';
+import { US_DATA_COVERAGE_COPY } from './DataCoverageNote';
 
 export function resolveBacktestButtonLabel(
     isStarting: boolean,
@@ -214,6 +215,15 @@ export function BacktestMethodologyBlock() {
                     <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Spread &amp; Slippage Net deducts 5 bps (0.05%) on every entry and exit.
                         Toggle Midpoint to inspect raw price movement before execution friction.
+                    </span>
+                </div>
+                <div
+                    data-testid="backtest-data-coverage"
+                    className="border border-voxel-bevel-lo bg-voxel-surface p-3 flex flex-col gap-1 min-w-0"
+                >
+                    <span className="text-sm font-bold text-voxel-ink">Data Coverage</span>
+                    <span className="text-xs font-normal text-voxel-muted leading-relaxed">
+                        {US_DATA_COVERAGE_COPY}
                     </span>
                 </div>
             </div>

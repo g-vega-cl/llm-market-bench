@@ -1,5 +1,6 @@
 import { Button } from '@llm-market-bench/ui-design-system';
 import type { KeyboardEvent, RefObject } from 'react';
+import { DataCoverageNote } from '../components/DataCoverageNote';
 import { BuilderActivePrompt, BuilderMessageHistory } from './BuilderConversation';
 import { MAX_TURN_CHARS } from './compiler';
 import type { BuilderChat } from './use-builder-chat';
@@ -221,6 +222,8 @@ export function BuilderDescribeStep({
             {isInitialStep && !chat.pendingIdea ? (
                 <BuilderStarterChips disabled={chat.isCompiling} onSelect={onSelectChip} />
             ) : null}
+
+            {isInitialStep && !chat.pendingIdea ? <DataCoverageNote /> : null}
 
             <BuilderMessageHistory
                 messages={chat.messages}

@@ -82,6 +82,14 @@ beforeEach(() => {
 describe('CompiledBotWorkspace', () => {
     const strategy = STARTER_RECIPES[0];
 
+    it('keeps the US-only data coverage note visible on the compiled workspace', () => {
+        renderWithQuery(<CompiledBotWorkspace initialStrategy={{ ...strategy, id: undefined }} />);
+
+        const note = screen.getByTestId('data-coverage-note');
+        expect(note).toHaveTextContent(/US-listed stocks only/i);
+        expect(note).toHaveTextContent(/NSE\/Nifty 100/i);
+    });
+
     it('renders hero summary with a single status badge, Step 3 stepper, and defaults lower tab to Blocks & Tools', () => {
         const { container } = renderWithQuery(
             <CompiledBotWorkspace initialStrategy={{ ...strategy, id: undefined }} />,

@@ -78,6 +78,7 @@ export function capabilityManifest(): string {
         '',
         'HARD CONSTRAINTS:',
         '- Long only. BUY or EXIT a held ticker, or [] to hold. No shorts, no options, no intraday triggers.',
+        '- Universe: US-listed stocks only (tickers 1-5 characters). NSE/BSE symbols and other non-US markets have no price history; adapt the idea to a US-listed universe or set a warning.',
         '- Exactly one stage. One LLM call per run.',
         '- cadence is "3h" (the scheduler runs 09:30, 12:30, 15:30 ET); 5m and 1d are accepted but not honoured.',
         '- Never use web_search. Offline backtests are point-in-time and skip [LIVE ONLY] tools; Live mode (30m) runs on current market data and supports [LIVE ONLY] tools.',

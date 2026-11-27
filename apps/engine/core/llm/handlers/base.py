@@ -345,6 +345,7 @@ async def _dispatch_tool(name: str, args: dict, model_name: str, **kwargs) -> st
     if ticker and not _is_valid_ticker(ticker):
         return (
             f"Error: '{ticker}' is not a valid stock ticker. "
+            "Benchify has US-listed stocks only. "
             "Tickers must be 1 to 5 alphanumeric characters (A-Z, 0-9) and can optionally contain a single period or hyphen."
         )
 

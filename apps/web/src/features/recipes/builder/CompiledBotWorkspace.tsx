@@ -7,6 +7,7 @@ import { assertServerFnResult } from '~/lib/server-fn';
 import { enqueueRecipeJobFn, saveRecipeFn } from '../api/recipes-api';
 import { fetchRecipeQuotaStatusFn } from '../api/recipes-quota-api';
 import { previewStrategyPromptFn, submitWaitlistPledgeFn } from '../api/recipes-studio-api';
+import { DataCoverageNote } from '../components/DataCoverageNote';
 import { LiveSwitchConfirmation } from '../components/LiveSwitchConfirmation';
 import {
     resolveBacktestButtonLabel,
@@ -311,6 +312,8 @@ export function CompiledBotWorkspace({
                             show={workspaceStatus.showLiveWarning}
                             message={liveWarningMessage}
                         />
+
+                        <DataCoverageNote />
 
                         <CompiledBotSummaryCard
                             strategy={strategy}

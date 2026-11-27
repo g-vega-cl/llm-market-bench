@@ -138,6 +138,12 @@ The Bot Overview surface renders deterministic behavioral telemetry computed ser
 - Blocks: `output_format` (immutable, rendered last), `prompt` (required, rendered first), `news`, `memories`, `technicals`
 - Starter templates in `packages/config/starter-recipes.json`
 
+## 5a. Data Coverage Disclosure
+
+Benchify's market data covers **US-listed stocks only**. `_is_valid_ticker()` in `apps/engine/core/llm/handlers/base.py` accepts 1–5 character US tickers; longer NSE/BSE symbols are rejected before any tool call, and shorter ones have no point-in-time price history. A non-US universe therefore produces zero signals, zero trades, and flat equity even when the run completes successfully.
+
+The studio discloses this before a backtest is spent: `apps/web/src/features/recipes/components/DataCoverageNote.tsx` renders an in-flow `.voxel-trough` note in the `/build` describe step and the compiled workspace, and `BacktestMethodologyBlock` adds a "Data Coverage" tile to the backtest page. `capabilityManifest()` also states the US-only universe so generated prompts do not invent foreign markets. This is deliberately **not** a "run live" warning: live runs use the same US-only data feed.
+
 ## 6. My Strategies: Soft-Hide (Never Delete)
 - Removal = `archived_at` stamp + `is_live: false` + `turbo_expires_at: null` + cancel pending queue rows; `invalidatePublicRecipeCache(recipeId)` drops the public read caches
 - `fetchUserRecipes` filters `.is('archived_at', null)`

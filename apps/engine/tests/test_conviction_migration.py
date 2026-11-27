@@ -135,9 +135,7 @@ def test_leaderboard_exposes_up_day_counts_behind_consistency():
         "\n".join(content for _, content in _migration_files() if "user_bot_leaderboard_stats" in content)
     )
     assert "add column if not exists up_days" in stats_sql, "user_bot_leaderboard_stats must store up_days"
-    assert "add column if not exists active_days" in stats_sql, (
-        "user_bot_leaderboard_stats must store active_days"
-    )
+    assert "add column if not exists active_days" in stats_sql, "user_bot_leaderboard_stats must store active_days"
 
 
 def test_strategy_recipes_default_public_migration_exists():

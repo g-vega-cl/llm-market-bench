@@ -32,6 +32,7 @@ def _is_vendored_or_generated(path: Path) -> bool:
     """True when a path lives under a local venv, vendored tree, cache, or scratch dir."""
     return any(part in _VENDOR_PARTS for part in path.parts)
 
+
 # Ratchet caps on preexisting >800 LOC legacy files so none can grow and zero new >800 LOC files can land.
 LEGACY_ENGINE_LOC_CAPS: dict[str, int] = {
     "apps/engine/tests/test_autoresearch.py": 2460,

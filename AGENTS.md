@@ -5,10 +5,10 @@
 ## Plan-Gated Worktree Workflow (MANDATORY)
 
 1. **Search First (QMD)**: Query the compiled wiki via QMD (`qmd` MCP or CLI below) before answering questions or planning code changes. When docs and code disagree, trust the code.
-2. **Plan-Gated Sign-Off**: Never jump straight into editing code. Present a compact visual terminal plan (`[[concepts/visual-planning]]`) including a failing reproduction test case, then wait for explicit user approval on CLI or Telegram:
-   - **Localized bug fixes**: Inline chat plan with exact files and failing test.
+2. **Plan-Gated Sign-Off**: Never jump straight into editing code. Present a compact plan naming exact files to touch, key invariants, and the failing reproduction test case, then wait for explicit user approval on CLI or Telegram:
+   - **Localized bug fixes**: Short inline chat plan with exact files and failing test.
    - **Multi-file features, DB migrations, API contracts, or trading/risk logic**: Write a 1-page `specs/<task>/SPEC.md` with mechanical acceptance criteria, permitted paths, and verification commands.
-3. **Uninterrupted Worktree Execution**: Once the user approves the plan, execute end-to-end inside an isolated git worktree (`.worktrees/<slug>`, via `/implement`) without stopping on routine sub-steps: Red test -> Green minimal code -> Refactor -> `/verify` + cold reviewer subagent.
+3. **Uninterrupted Worktree Execution**: Once the user approves the plan, execute end-to-end inside an isolated git worktree (`.worktrees/<slug>`, via `/implement`) without stopping on routine sub-steps: Red test -> Green minimal code -> Refactor -> `/verify` + cold reviewer subagent. If the same check stalls twice, revert the failed attempt, write a 2-line summary of what broke, and rethink or escalate.
 4. **Hold Until `/ship`**: Leave verified worktree branches ready and report completion. Do not merge/push to `main` or trigger production deploys until the user explicitly runs `/ship` or merges a PR. Pause mid-run only on unapproved Red-Line events (unexpected DB migrations, protected evaluator edits, missing credentials, or a 2-round verification stall).
 
 ## Minimal-Code Ladder (Ponytail Discipline)
@@ -33,6 +33,7 @@ Climb this ladder in order before writing new abstractions:
 ## Universal Invariants
 
 - **Hermetic TDD & Zero Sleep**: Write a failing test first. Unit/integration tests must run in `< 100ms` with zero outbound network/DNS (`conftest.py` blocks sockets) and zero unmocked sleep or retry backoff (`[[concepts/test-latency-guards]]`). Mock external I/O boundaries only, never the module under test.
+- **Zero Overclaiming**: Never report a file as inspected or a check/test as passing unless you read or ran it after the final edit.
 - **Observability**: Log tracebacks with `logger.exception("Context")` in `except` blocks; never swallow exceptions silently.
 - **Targeted Git Staging & Commits**: Stage only task-specific files (`git add path/a path/b`). Blanket staging (`git add .`, `-A`, `-u`, `git commit -a`), `--no-verify`, and `git push --force` are blocked by user-space guardrails (`apps/engine/agent_pre_tool_gate.py`). Commit format: `<type>(<scope>): <subject>` (`<= 72` chars), plus a blank line and body (`>= 15` chars) for `feat`, `fix`, `perf`, and `refactor`.
 - **File-Based Python Execution**: Never run multiline `python3 -c`. Write temporary scripts to `.scratch/<name>.py` and run `./apps/engine/.venv/bin/python3 .scratch/<name>.py` (`.agents/rules/python-execution.md`).

@@ -9,7 +9,7 @@ Use this skill after receiving explicit user approval on an inline chat plan or 
 
 ## 1. Pre-flight contract check
 
-1. Confirm explicit plan sign-off exists in the session or ticket. If missing, present a compact visual plan (`[[concepts/visual-planning]]`) and wait for approval first.
+1. Confirm explicit plan sign-off exists in the session or ticket. If missing, present a compact plan (exact files, invariants, and failing TDD test case) and wait for approval first.
 2. For multi-file features, database migrations, API changes, or trading/risk logic, verify `specs/<slug>/SPEC.md` exists (keep it to 1 page: Objective, Mechanical Acceptance Criteria in `WHEN ... THE SYSTEM SHALL ...` form, Permitted Paths, Forbidden Red-Line Paths, and Exact Verification Commands). Localized bug fixes need only the approved chat plan and failing test case.
 
 ## 2. Isolated git worktree setup

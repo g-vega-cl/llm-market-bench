@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient } from '~/lib/db';
-import { userOwnerKey } from '~/shared/auth/guest-cookie';
+import { userOwnerKey } from '~/shared/auth/owner-keys';
 import type {
     RecipeJobRecord,
     RecipeRunDetail,

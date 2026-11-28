@@ -64,13 +64,7 @@ export function clientIpFrom(headers: { get(name: string): string | null }): str
     return cf || null;
 }
 
-export function guestOwnerKey(id: string): string {
-    return `guest:${id}`;
-}
-
-export function userOwnerKey(id: string): string {
-    return `user:${id}`;
-}
+export { guestOwnerKey, userOwnerKey } from './owner-keys';
 
 /**
  * Postgres bytea literal for a hex digest.

@@ -365,6 +365,15 @@ export const startGuestBacktestFn = createServerFn({ method: 'POST' })
     });
 
 /**
+ * How many guest runs the caller has left. Read-only: it never mints, so a
+ * crawler loading the demo does not create a session row.
+ */
+export const fetchGuestBalanceFn = createServerFn({ method: 'POST' }).handler(async () => {
+    const { readGuestBalance } = await import('~/shared/auth/guest-session');
+    return readGuestBalance();
+});
+
+/**
  * Status read for a guest run. The caller has no account, so the unguessable
  * job id is the whole handle; this returns progress and an error string only,
  * never the result payload or the owner.

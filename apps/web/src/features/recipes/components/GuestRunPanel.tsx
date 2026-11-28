@@ -1,7 +1,7 @@
 import { Badge, Button } from '@llm-market-bench/ui-design-system';
 import { Link } from '@tanstack/react-router';
 import { useCallback, useEffect, useState } from 'react';
-import { fetchGuestJobFn, startGuestBacktestFn } from '../api/recipes-api';
+import { fetchGuestBalanceFn, fetchGuestJobFn, startGuestBacktestFn } from '../api/recipes-api';
 
 type Phase =
     | { kind: 'idle' }
@@ -40,6 +40,32 @@ export function GuestRunPanel({
     pollMs?: number;
 }) {
     const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+    // null until the first read lands: the panel starts from the grant, which
+    // is what a brand-new visitor actually has.
+    const [balance, setBalance] = useState<number | null>(null);
+    const [grant, setGrant] = useState(5);
+
+    const refreshBalance = useCallback(async () => {
+        try {
+            const next = await fetchGuestBalanceFn();
+            setBalance(next.balance);
+            setGrant(next.grant);
+        } catch {
+            // Keep the last known number; the click path is authoritative.
+        }
+    }, []);
+
+    useEffect(() => {
+        void refreshBalance();
+    }, [refreshBalance]);
+
+    // A finished run spent a token; a failed one was refunded by the worker.
+    useEffect(() => {
+        if (phase.kind === 'done' || phase.kind === 'failed') void refreshBalance();
+    }, [phase.kind, refreshBalance]);
+
+    const remaining = balance ?? grant;
+    const exhausted = balance === 0;
 
     const start = useCallback(async () => {
         setPhase({ kind: 'starting' });
@@ -84,13 +110,18 @@ export function GuestRunPanel({
         >
             <div className="flex flex-col gap-1 min-w-0">
                 <span className="flex items-center gap-2 text-xs font-bold text-voxel-ink">
-                    <Badge variant="soft" colorScheme="accent" size="xs">
-                        5 FREE TOKENS
+                    <Badge variant="soft" colorScheme={exhausted ? 'warning' : 'accent'} size="xs">
+                        {remaining === grant
+                            ? `${grant} FREE TOKENS`
+                            : `${remaining} OF ${grant} LEFT`}
                     </Badge>
                     Run this one yourself
                 </span>
                 <span className="text-xs font-normal text-voxel-muted" role="status">
-                    {phase.kind === 'idle' && 'One token buys one backtest. No account needed.'}
+                    {phase.kind === 'idle' &&
+                        (exhausted
+                            ? `All ${grant} free runs are used. Sign in for 15 a week.`
+                            : 'One token buys one backtest. No account needed.')}
                     {phase.kind === 'starting' && 'Spending one token and queueing the run…'}
                     {phase.kind === 'queued' && 'Queued. Waiting for a worker…'}
                     {phase.kind === 'running' && `Running: ${phase.pct}%`}
@@ -115,12 +146,17 @@ export function GuestRunPanel({
                         variant="solid"
                         onClick={start}
                         disabled={
+                            exhausted ||
                             phase.kind === 'starting' ||
                             phase.kind === 'queued' ||
                             phase.kind === 'running'
                         }
                     >
-                        {phase.kind === 'starting' ? 'Starting…' : 'Run this one (1 token)'}
+                        {exhausted
+                            ? 'Out of tokens'
+                            : phase.kind === 'starting'
+                              ? 'Starting…'
+                              : 'Run this one (1 token)'}
                     </Button>
                 )}
                 <Link

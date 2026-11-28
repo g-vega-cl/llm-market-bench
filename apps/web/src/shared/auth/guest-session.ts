@@ -90,3 +90,40 @@ export async function ensureGuestSession(): Promise<GuestSession> {
 }
 
 export { GUEST_TOKEN_GRANT };
+
+export interface GuestBalance {
+    balance: number;
+    grant: number;
+}
+
+/**
+ * Read-only sibling of ensureGuestSession: the balance the caller's own cookie
+ * has left, without minting anything. Minting on page view would write a
+ * session row for every crawler that opens the demo, and the panel only needs
+ * to tell a returning visitor how many runs they have left.
+ */
+export async function readGuestBalance(): Promise<GuestBalance> {
+    try {
+        const guestId = verifyGuestCookie(getCookies()[GUEST_COOKIE], cookieSecret());
+        if (!guestId) return { balance: GUEST_TOKEN_GRANT, grant: GUEST_TOKEN_GRANT };
+
+        const db = getDbAdminClient();
+        const { data, error } = await db
+            .from('token_balances')
+            .select('balance')
+            .eq('owner_key', guestOwnerKey(guestId))
+            .maybeSingle();
+        if (error) throw new Error(`Could not read the guest balance: ${error.message}`);
+
+        // A signed cookie with no row means the mint never ran; the grant is
+        // still owed, so show it rather than a zero the visitor cannot spend.
+        return {
+            balance: Number(data?.balance ?? GUEST_TOKEN_GRANT),
+            grant: GUEST_TOKEN_GRANT,
+        };
+    } catch {
+        // Unreachable or unconfigured: the click path is the authority and will
+        // refuse with a real message, so do not block the page on this.
+        return { balance: GUEST_TOKEN_GRANT, grant: GUEST_TOKEN_GRANT };
+    }
+}

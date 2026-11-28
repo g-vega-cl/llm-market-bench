@@ -94,6 +94,7 @@ export { GUEST_TOKEN_GRANT };
 export interface GuestBalance {
     balance: number;
     grant: number;
+    source: 'cookie' | 'no-cookie' | 'read-failed';
 }
 
 /**
@@ -103,27 +104,45 @@ export interface GuestBalance {
  * to tell a returning visitor how many runs they have left.
  */
 export async function readGuestBalance(): Promise<GuestBalance> {
+    const grant = GUEST_TOKEN_GRANT;
     try {
-        const guestId = verifyGuestCookie(getCookies()[GUEST_COOKIE], cookieSecret());
-        if (!guestId) return { balance: GUEST_TOKEN_GRANT, grant: GUEST_TOKEN_GRANT };
+        const raw = getCookies()[GUEST_COOKIE];
+        if (!verifyGuestCookie(raw, cookieSecret()))
+            return { balance: grant, grant, source: 'no-cookie' };
 
         const db = getDbAdminClient();
+        // The balance is keyed on the *session* id, which the mint generates; the
+        // uuid inside the cookie is only a signing nonce. Resolve through the
+        // token hash, exactly as mint_guest_tokens does, or every guest reads as
+        // untouched.
+        const tokenHash = hashCookieValue(raw as string).toString('hex');
+        const { data: session, error: sessionError } = await db
+            .from('guest_sessions')
+            .select('id')
+            .eq('token_hash', tokenHash)
+            .maybeSingle();
+        if (sessionError)
+            throw new Error(`Could not read the guest session: ${sessionError.message}`);
+
+        // Signed but never minted (nobody has clicked yet): the grant is owed.
+        if (!session?.id) return { balance: grant, grant, source: 'cookie' };
+
         const { data, error } = await db
             .from('token_balances')
             .select('balance')
-            .eq('owner_key', guestOwnerKey(guestId))
+            .eq('owner_key', guestOwnerKey(session.id as string))
             .maybeSingle();
         if (error) throw new Error(`Could not read the guest balance: ${error.message}`);
 
-        // A signed cookie with no row means the mint never ran; the grant is
-        // still owed, so show it rather than a zero the visitor cannot spend.
         return {
-            balance: Number(data?.balance ?? GUEST_TOKEN_GRANT),
-            grant: GUEST_TOKEN_GRANT,
+            balance: Number(data?.balance ?? grant),
+            grant,
+            source: 'cookie',
         };
-    } catch {
-        // Unreachable or unconfigured: the click path is the authority and will
-        // refuse with a real message, so do not block the page on this.
-        return { balance: GUEST_TOKEN_GRANT, grant: GUEST_TOKEN_GRANT };
+    } catch (error) {
+        // A silent fallback here once made a spent balance look untouched, so
+        // say why in the log while still rendering something usable.
+        console.error('[guest] balance read failed, falling back to the grant', error);
+        return { balance: grant, grant, source: 'read-failed' };
     }
 }

@@ -79,7 +79,7 @@ function resolveGateCallout(returnPath: string): { title: string; body: string }
     if (isRecipesPath(returnPath)) {
         return {
             title: 'Strategy Recipe Studio — Free Beta Access',
-            body: 'Sign in with Google to get 2 free 2-week backtests/day (strata-auto-go) and live paper turns every 30 minutes (auto-go).',
+            body: 'Sign in with Google to get 15 tokens a week (strata-auto-go) for 2-week paper backtests, and live paper turns every 30 minutes (auto-go).',
         };
     }
     if (!isBuildPath(returnPath)) {
@@ -88,12 +88,12 @@ function resolveGateCallout(returnPath: string): { title: string; body: string }
     if (hasStarterParam(returnPath)) {
         return {
             title: 'Starter recipe selected — sign in to open',
-            body: 'Sign in with Google to load this starter bot directly in Strategy Recipe Studio with 2 free paper backtests/day and 3 live paper bots.',
+            body: 'Sign in with Google to load this starter bot directly in Strategy Recipe Studio with 15 tokens a week — one buys a paper backtest or a week of live paper trading.',
         };
     }
     return {
         title: 'Your draft stays saved in this browser',
-        body: "After signing in, you'll return directly to the builder to align your strategy and run up to 2 free paper backtests/day.",
+        body: "After signing in, you'll return directly to the builder to align your strategy and run 2-week paper backtests — 15 tokens a week, one per backtest or per live bot week.",
     };
 }
 

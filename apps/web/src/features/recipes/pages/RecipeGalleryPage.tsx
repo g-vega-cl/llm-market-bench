@@ -124,7 +124,8 @@ export function RecipeGalleryPage({ templates = STARTER_RECIPES }: RecipeGallery
                 </div>
 
                 <p className="text-xs font-normal text-voxel-muted">
-                    Two free backtests a day, three live bots. Paper only, no brokerage account.
+                    15 tokens a week: one runs a paper backtest, or keeps a bot live for 7 days.
+                    Paper only, no brokerage account.
                 </p>
             </PageLayout>
         </div>

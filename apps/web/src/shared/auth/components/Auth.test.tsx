@@ -57,7 +57,7 @@ describe('Auth — recipe beta panel', () => {
         render(<Auth {...panelProps} redirectPath="/recipes?recipeId=rec-1" />);
 
         expect(screen.getByText('Strategy Recipe Studio — Free Beta Access')).toBeInTheDocument();
-        expect(screen.getByText(/2 free 2-week backtests\/day/i)).toBeInTheDocument();
+        expect(screen.getByText(/15 tokens a week/i)).toBeInTheDocument();
         expect(
             screen.getByText(/live paper turns every 30 minutes \(auto-go\)/i),
         ).toBeInTheDocument();

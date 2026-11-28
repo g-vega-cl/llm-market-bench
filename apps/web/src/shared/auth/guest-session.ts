@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { getCookies, getRequest, setCookie } from '@tanstack/react-start/server';
 import { getDbAdminClient } from '~/lib/db';
 import {
+    byteaHex,
     clientIpFrom,
     GUEST_COOKIE,
     GUEST_COOKIE_MAX_AGE,
@@ -115,7 +116,9 @@ export async function readGuestBalance(): Promise<GuestBalance> {
         // uuid inside the cookie is only a signing nonce. Resolve through the
         // token hash, exactly as mint_guest_tokens does, or every guest reads as
         // untouched.
-        const tokenHash = hashCookieValue(raw as string).toString('hex');
+        // token_hash is BYTEA, so the filter needs Postgres's bytea input form;
+        // a bare hex string compares as text and silently matches nothing.
+        const tokenHash = byteaHex(hashCookieValue(raw as string).toString('hex'));
         const { data: session, error: sessionError } = await db
             .from('guest_sessions')
             .select('id')

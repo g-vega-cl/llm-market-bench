@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { hashCookieValue, signGuestId } from './guest-cookie';
+import { byteaHex, hashCookieValue, signGuestId } from './guest-cookie';
 
 const SECRET = 'test-secret';
 const COOKIE_UUID = '11111111-1111-1111-1111-111111111111';
@@ -25,7 +25,9 @@ vi.mock('~/lib/db', () => ({
                         if (table === 'guest_sessions') {
                             // The lookup must be keyed on the cookie hash, not on
                             // the uuid the cookie carries.
-                            const expected = hashCookieValue(cookies.bfy_guest).toString('hex');
+                            const expected = byteaHex(
+                                hashCookieValue(cookies.bfy_guest).toString('hex'),
+                            );
                             return value === expected ? sessionLookup : { data: null, error: null };
                         }
                         return value === `guest:${SESSION_UUID}`
@@ -74,5 +76,14 @@ describe('readGuestBalance', () => {
         expect(await readGuestBalance()).toEqual({ balance: 5, grant: 5, source: 'read-failed' });
         expect(consoleError).toHaveBeenCalled();
         consoleError.mockRestore();
+    });
+});
+
+describe('byteaHex', () => {
+    it('produces Postgres bytea input syntax, not a bare hex string', () => {
+        const literal = byteaHex('ab12');
+        expect(literal.charCodeAt(0)).toBe(92); // backslash
+        expect(literal.slice(1)).toBe('xab12');
+        expect(literal).not.toBe('ab12');
     });
 });

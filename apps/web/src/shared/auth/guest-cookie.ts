@@ -71,3 +71,15 @@ export function guestOwnerKey(id: string): string {
 export function userOwnerKey(id: string): string {
     return `user:${id}`;
 }
+
+/**
+ * Postgres bytea literal for a hex digest.
+ *
+ * PostgREST filters compare a BYTEA column against Postgres's bytea input
+ * syntax, so a bare hex string is compared as text and matches nothing — a
+ * silent empty result, not an error. Built from a char code so this file
+ * contains no backslash literal to miscount.
+ */
+export function byteaHex(hex: string): string {
+    return `${String.fromCharCode(92)}x${hex}`;
+}

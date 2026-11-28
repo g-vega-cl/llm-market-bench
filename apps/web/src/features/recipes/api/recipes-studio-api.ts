@@ -251,6 +251,7 @@ interface RecipePortfolioRow {
     cadence?: RecipeCadence | null;
     is_live?: boolean | null;
     turbo_expires_at?: string | null;
+    live_expires_at?: string | null;
     is_public: boolean;
     is_template: boolean;
     archived_at?: string | null;
@@ -575,7 +576,7 @@ export async function fetchRecipeOverview(
     const { data: recipeRow, error: recipeErr } = await db
         .from('strategy_recipes')
         .select(
-            'id, user_id, name, description, cadence, is_public, is_template, is_live, turbo_expires_at, archived_at, graph_json, paper_cash, paper_positions, paper_trades, paper_equity_curve',
+            'id, user_id, name, description, cadence, is_public, is_template, is_live, turbo_expires_at, live_expires_at, archived_at, graph_json, paper_cash, paper_positions, paper_trades, paper_equity_curve',
         )
         .eq('id', recipeId)
         .single();
@@ -621,6 +622,7 @@ export async function fetchRecipeOverview(
         isTemplate: Boolean(row.is_template),
         isLive: Boolean(row.is_live),
         turboExpiresAt: row.turbo_expires_at ?? null,
+        liveExpiresAt: row.live_expires_at ?? null,
         turboUsedToday,
         portfolio,
         recentLiveRuns: slimLiveRunsForOverview(recentLiveRuns),

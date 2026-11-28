@@ -2,6 +2,7 @@ import type { AtmospherePhase } from '@llm-market-bench/ui-design-system';
 import { useMemo } from 'react';
 import { BotStageHeader } from '../components/BotStageHeader';
 import { BotSummaryStrip } from '../components/BotSummaryStrip';
+import { LiveWeekBanner } from '../components/LiveWeekBanner';
 import { WaitlistPledgeModal } from '../components/WaitlistPledgeModal';
 import type { RecipeOverviewData, RecipeSummaryItem, RecipeUserQuotaStatus } from '../types';
 import { deriveOverviewMetrics } from '../utils/overview-metrics';
@@ -105,6 +106,13 @@ export function RecipeOverviewPage({
                 onActivateTurbo={actions.handleActivateTurbo}
                 onRequestCapacity={() => actions.setShowPledgeModal(true)}
             >
+                <LiveWeekBanner
+                    isOwner={data.isOwner}
+                    isLive={actions.isLive}
+                    liveExpiresAt={data.liveExpiresAt ?? null}
+                    onRenew={actions.handleToggleLive}
+                    busy={actions.liveControl.isBusy}
+                />
                 <BotSummaryStrip
                     items={[
                         {

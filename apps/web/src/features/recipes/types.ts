@@ -413,6 +413,8 @@ export interface RecipeOverviewData {
     isTemplate: boolean;
     isLive: boolean;
     turboExpiresAt: string | null;
+    /** Deadline of the token-funded live week; kept after expiry as pause evidence. */
+    liveExpiresAt?: string | null;
     turboUsedToday: boolean;
     portfolio: LivePortfolioSnapshot;
     recentLiveRuns: RecipeJobRecord[];

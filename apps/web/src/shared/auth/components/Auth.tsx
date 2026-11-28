@@ -79,7 +79,7 @@ function resolveGateCallout(returnPath: string): { title: string; body: string }
     if (isRecipesPath(returnPath)) {
         return {
             title: 'Strategy Recipe Studio — Free Beta Access',
-            body: 'Sign in with Google to get 15 tokens a week (strata-auto-go) for 2-week paper backtests, and live paper turns every 30 minutes (auto-go).',
+            body: 'Sign in with Google to get 15 tokens a week for 2-week paper backtests, and live paper turns every 30 minutes.',
         };
     }
     if (!isBuildPath(returnPath)) {

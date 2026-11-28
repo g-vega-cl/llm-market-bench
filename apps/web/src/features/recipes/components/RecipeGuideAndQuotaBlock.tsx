@@ -159,7 +159,7 @@ export function RecipeGuideAndQuotaBlock({ quotaStatus }: RecipeGuideAndQuotaBlo
             <div className="voxel-trough bg-voxel-trough p-4 grid grid-cols-[repeat(auto-fit,minmax(min(100%,18rem),1fr))] gap-4 min-w-0">
                 <div className="flex flex-col gap-1 min-w-0">
                     <span className="text-sm font-bold text-voxel-ink">
-                        How 2-Week PIT Backtests Work (strata-auto-go)
+                        How 2-Week PIT Backtests Work
                     </span>
                     <span className="text-xs font-normal text-voxel-muted leading-relaxed">
                         Simulates a random 10-trading-day window (30 slots at 09:30 / 12:30 / 15:30

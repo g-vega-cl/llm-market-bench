@@ -189,7 +189,7 @@ function BacktestHeader({
             >
                 <span className="whitespace-nowrap">Window: {windowLabel}</span>
                 <span className="whitespace-nowrap">
-                    • Model: {job.model || job.provider || 'strata-auto-go'}
+                    • Model: {job.model || job.provider || 'auto'}
                 </span>
                 <span className="min-w-0 break-all">
                     <span className="whitespace-nowrap">• Job:</span>{' '}

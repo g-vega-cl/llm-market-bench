@@ -237,9 +237,8 @@ export function BacktestTimelineBlock({
                                 : 'Waiting for recipe worker to pick a 2-week historical window...'}
                         </span>
                         <span className="text-xs font-normal text-voxel-muted">
-                            Single-GPU Strata runs 1 backtest globally at a time (strata-auto-go)
-                            while streaming each 3x/day ET session here. You can safely close this
-                            tab or cancel anytime.
+                            Backtests run one at a time while streaming each 3x/day ET session here.
+                            You can safely close this tab or cancel anytime.
                         </span>
                     </div>
                 ) : (

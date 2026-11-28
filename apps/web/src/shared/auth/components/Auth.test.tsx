@@ -58,9 +58,7 @@ describe('Auth — recipe beta panel', () => {
 
         expect(screen.getByText('Strategy Recipe Studio — Free Beta Access')).toBeInTheDocument();
         expect(screen.getByText(/15 tokens a week/i)).toBeInTheDocument();
-        expect(
-            screen.getByText(/live paper turns every 30 minutes \(auto-go\)/i),
-        ).toBeInTheDocument();
+        expect(screen.getByText(/live paper turns every 30 minutes/i)).toBeInTheDocument();
         expect(screen.queryByText(/3 live paper turns\/day/i)).not.toBeInTheDocument();
         expect(screen.getByRole('link', { name: /public sample backtest/i })).toHaveAttribute(
             'href',

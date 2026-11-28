@@ -51,6 +51,7 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
         { data: userActiveBacktestRows },
         { data: globalActiveRows },
         { data: liveRecipeRows },
+        { data: tokenRow },
     ] = await Promise.all([
         db
             .from('recipe_user_quotas')
@@ -86,6 +87,7 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
             .eq('user_id', userId)
             .eq('is_live', true)
             .limit(25),
+        db.from('token_balances').select('balance').eq('owner_key', `user:${userId}`).maybeSingle(),
     ]);
 
     const override = (overrideData || {}) as QuotaOverrideRow;
@@ -122,6 +124,9 @@ export async function fetchRecipeQuotaStatus(userId: string): Promise<RecipeUser
         globalQueueCap: BETA_STARTER_LIMITS.globalQueueCap,
         lastTurboEtDate,
         turboUsedToday: lastTurboEtDate === todayEt,
+        tokenBalance: Number((tokenRow as { balance?: number } | null)?.balance ?? 0),
+        tokenGrant: 15,
+        tokenRefillLabel: 'refills Monday 09:30 ET',
     };
 }
 

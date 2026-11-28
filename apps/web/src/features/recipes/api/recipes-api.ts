@@ -363,3 +363,28 @@ export const startGuestBacktestFn = createServerFn({ method: 'POST' })
             jobId: crypto.randomUUID(),
         });
     });
+
+/**
+ * Status read for a guest run. The caller has no account, so the unguessable
+ * job id is the whole handle; this returns progress and an error string only,
+ * never the result payload or the owner.
+ */
+export const fetchGuestJobFn = createServerFn({ method: 'POST' })
+    .validator((d: { jobId: string }) => d)
+    .handler(async ({ data: { jobId } }) => {
+        const db = getDbAdminClient();
+        const { data, error } = await db
+            .from('recipe_execution_queue')
+            .select('id, recipe_id, status, progress_pct, error_message')
+            .eq('id', jobId)
+            .maybeSingle();
+
+        if (error) throw new Error(error.message);
+        return data as {
+            id: string;
+            recipe_id: string;
+            status: string;
+            progress_pct: number | null;
+            error_message: string | null;
+        } | null;
+    });

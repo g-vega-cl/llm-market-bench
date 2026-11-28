@@ -23,7 +23,7 @@ describe('RecipeGuideAndQuotaBlock', () => {
         );
 
         expect(screen.getByText('FREE BETA STARTER')).toBeInTheDocument();
-        expect(screen.getByText(/Backtests: 1\/2 left today/i)).toBeInTheDocument();
+        expect(screen.getByTestId('token-balance').textContent).toContain('Tokens:');
         // Live turns are unbounded: the strip shows the live-bot cap instead.
         expect(screen.getByText(/Live bots: 1\/3/i)).toBeInTheDocument();
         expect(screen.queryByText(/Live Turns: /)).not.toBeInTheDocument();

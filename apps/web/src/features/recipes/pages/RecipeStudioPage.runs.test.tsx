@@ -152,7 +152,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
             />,
         );
 
-        expect(screen.getByText(/Backtests: 2\/2 left today/i)).toBeInTheDocument();
+        expect(screen.getByTestId('token-balance').textContent).toContain('Tokens:');
         fireEvent.click(screen.getByRole('button', { name: /Enable Live \(30m\)/i }));
 
         await waitFor(() => {

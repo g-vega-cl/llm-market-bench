@@ -1,6 +1,7 @@
 import { Card, PageLayout } from '@llm-market-bench/ui-design-system';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { fetchPublicShowcaseBacktestFn } from '~/features/recipes/api/recipes-quota-api';
+import { GuestRunPanel } from '~/features/recipes/components/GuestRunPanel';
 import { RecipeBacktestPage } from '~/features/recipes/pages/RecipeBacktestPage';
 import { seo } from '~/lib/seo';
 
@@ -54,11 +55,18 @@ function RouteComponent() {
     }
 
     return (
-        <RecipeBacktestPage
-            key={showcase.job.id}
-            jobId={showcase.job.id}
-            initialData={showcase}
-            readOnlyShowcase
-        />
+        <div className="flex flex-col gap-4">
+            {showcase.job.recipe_id ? (
+                <PageLayout maxWidth="xl">
+                    <GuestRunPanel recipeId={showcase.job.recipe_id} />
+                </PageLayout>
+            ) : null}
+            <RecipeBacktestPage
+                key={showcase.job.id}
+                jobId={showcase.job.id}
+                initialData={showcase}
+                readOnlyShowcase
+            />
+        </div>
     );
 }

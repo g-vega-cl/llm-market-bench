@@ -337,6 +337,10 @@ export interface RecipeUserQuotaStatus {
     globalQueueCap: number;
     turboUsedToday?: boolean;
     lastTurboEtDate?: string | null;
+    /** Token balance is the spend meter now; the daily counters are legacy context. */
+    tokenBalance?: number;
+    tokenGrant?: number;
+    tokenRefillLabel?: string;
 }
 
 export interface RecipeSummaryItem {

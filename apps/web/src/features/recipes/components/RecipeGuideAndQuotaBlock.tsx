@@ -19,6 +19,11 @@ export function resolveBacktestButtonLabel(
     if (quotaStatus && quotaStatus.activeBacktests >= quotaStatus.maxConcurrentBacktests) {
         return `Backtest (${quotaStatus.activeBacktests} Active)`;
     }
+    // Tokens are the spend meter; show the price of the click before it happens.
+    if (typeof quotaStatus?.tokenBalance === 'number') {
+        if (quotaStatus.tokenBalance <= 0) return 'Backtest (0 tokens left)';
+        return '▶ Backtest (1 token)';
+    }
     if (quotaStatus && quotaStatus.backtestsLast24h >= quotaStatus.dailyBacktestLimit) {
         return `Backtest (0/${quotaStatus.dailyBacktestLimit} Left)`;
     }
@@ -100,10 +105,6 @@ interface RecipeQuotaStripProps {
 
 /** Compact 1-line quota summary strip for the dashboard and studio. */
 export function RecipeQuotaStrip({ quotaStatus, onRequestCapacity }: RecipeQuotaStripProps) {
-    const btLeft = quotaStatus
-        ? Math.max(0, quotaStatus.dailyBacktestLimit - quotaStatus.backtestsLast24h)
-        : 2;
-
     return (
         <div
             data-testid="recipe-quota-strip"
@@ -116,11 +117,14 @@ export function RecipeQuotaStrip({ quotaStatus, onRequestCapacity }: RecipeQuota
                         : quotaStatus.tier.toUpperCase()}
                 </Badge>
                 <span className="flex flex-wrap items-baseline gap-1 min-w-0">
-                    <span className="whitespace-nowrap">
-                        Backtests: {btLeft}/{quotaStatus?.dailyBacktestLimit ?? 2} left today
+                    <span
+                        data-testid="token-balance"
+                        className="whitespace-nowrap font-mono tabular-nums text-voxel-ink"
+                    >
+                        Tokens: {quotaStatus?.tokenBalance ?? 0} of {quotaStatus?.tokenGrant ?? 15}
                     </span>
                     <span className="whitespace-nowrap">
-                        (max {quotaStatus?.maxConcurrentBacktests ?? 1} active)
+                        ({quotaStatus?.tokenRefillLabel ?? 'refills weekly'})
                     </span>
                 </span>
                 <span className="whitespace-nowrap font-mono tabular-nums text-voxel-ink">

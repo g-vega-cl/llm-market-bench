@@ -214,6 +214,9 @@ describe('recipes-quota-api', () => {
             maxLiveRecipes: 3,
             globalPendingBacktests: 1,
             globalQueueCap: 20,
+            tokenBalance: 0,
+            tokenGrant: 15,
+            tokenRefillLabel: 'refills Monday 09:30 ET',
             lastTurboEtDate: null,
             turboUsedToday: false,
         });

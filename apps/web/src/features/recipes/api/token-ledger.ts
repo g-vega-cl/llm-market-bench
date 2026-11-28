@@ -72,12 +72,18 @@ export async function reserveToken(
     return { balance: Number(row.balance ?? 0) };
 }
 
-/** Refusal codes arrive as `TOKEN:<code>` from the RPC; anything else passes through. */
-export function tokenErrorMessage(message: string): string {
+/**
+ * Refusal codes arrive as `TOKEN:<code>` from the RPC; anything else passes
+ * through untouched. Pass the owner key so the same code speaks to the right
+ * audience — an account is waiting for a refill, a guest is being asked to sign
+ * up. Without it, the account copy is assumed.
+ */
+export function tokenErrorMessage(message: string, ownerKey = 'user:'): string {
     const match = /^TOKEN:([a-z_]+)$/.exec(message.trim());
     if (!match) return message;
     const code = match[1] as TokenCode;
-    return TOKEN_MESSAGES[code] ?? message;
+    if (!(code in TOKEN_MESSAGES)) return message;
+    return tokenMessage(code, ownerKey);
 }
 
 /** Refunds a failed or timed-out backtest. Idempotent: a second call is a no-op. */

@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { getAuthServerClient } from '~/lib/auth';
 import { getDbAdminClient } from '~/lib/db';
+import { userOwnerKey } from '~/shared/auth/guest-cookie';
 import type {
     RecipeJobRecord,
     RecipeRunDetail,
@@ -191,7 +192,7 @@ async function startLiveWeek(
         p_user_id: userId,
         p_recipe_id: recipeId,
     });
-    if (error) throw new Error(tokenErrorMessage(error.message));
+    if (error) throw new Error(tokenErrorMessage(error.message, userOwnerKey(userId)));
 
     const started = (Array.isArray(data) ? data[0] : data) as {
         is_live?: boolean;

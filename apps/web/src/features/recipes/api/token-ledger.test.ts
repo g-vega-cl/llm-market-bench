@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { refundToken, reserveToken, TokenError } from './token-ledger';
+import { refundToken, reserveToken, TokenError, tokenErrorMessage } from './token-ledger';
 
 const mockRpc = vi.fn();
 
@@ -92,5 +92,24 @@ describe('refundToken', () => {
     it('reports an already-settled run as not refunded', async () => {
         mockRpc.mockResolvedValue({ data: [{ refunded: false }], error: null });
         await expect(refundToken(JOB, 'expired')).resolves.toBe(false);
+    });
+});
+
+describe('tokenErrorMessage', () => {
+    it('speaks to an account by default', () => {
+        expect(tokenErrorMessage('TOKEN:no_tokens')).toBe(
+            'You are out of tokens. They refill Monday 09:30 ET.',
+        );
+    });
+
+    it('speaks to a guest when given the guest owner key', () => {
+        expect(tokenErrorMessage('TOKEN:no_tokens', 'guest:abc')).toBe(
+            'You are out of guest tokens. Sign up for 15 a week.',
+        );
+    });
+
+    it('passes through messages that are not refusal codes', () => {
+        expect(tokenErrorMessage('connection reset')).toBe('connection reset');
+        expect(tokenErrorMessage('TOKEN:not_a_real_code')).toBe('TOKEN:not_a_real_code');
     });
 });

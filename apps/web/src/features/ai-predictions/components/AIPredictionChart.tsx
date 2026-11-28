@@ -238,9 +238,7 @@ export function AIPredictionChart({ data }: { data: SectorPrediction[] }) {
                 style={{ minHeight: '300px' }}
                 role="img"
                 aria-label="AI Prediction Chart"
-            >
-                <title>AI Prediction Chart</title>
-            </svg>
+            ></svg>
         </div>
     );
 }

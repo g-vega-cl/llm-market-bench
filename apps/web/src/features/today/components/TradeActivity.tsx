@@ -278,8 +278,8 @@ export function TradeActivity({ trades, decisions }: TradeActivityProps) {
                                                         strokeLinecap="round"
                                                         strokeLinejoin="round"
                                                         className="text-zinc-300 group-hover:text-zinc-400 transition-colors"
+                                                        aria-hidden="true"
                                                     >
-                                                        <title>SVG</title>
                                                         <path d="m6 9 6 6 6-6" />
                                                     </svg>
                                                 </div>

@@ -1,6 +1,7 @@
 import type { TradeWithReasoning } from '@llm-market-bench/database';
 import {
     Badge,
+    Button,
     Table,
     TableBody,
     TableCell,
@@ -71,8 +72,8 @@ export function TradesTable({ trades }: TradesTableProps) {
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
+                                            aria-hidden="true"
                                         >
-                                            <title>SVG</title>
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
@@ -96,7 +97,7 @@ export function TradesTable({ trades }: TradesTableProps) {
                                 </Badge>
                             </TableCell>
                             <TableCell>
-                                <div className="flex flex-col items-start gap-1">
+                                <div className="flex flex-col items-start gap-2">
                                     {trade.alpaca_status ? (
                                         trade.alpaca_status === 'BACKFILLED' ? (
                                             <span
@@ -107,7 +108,6 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                     variant="soft"
                                                     colorScheme="accent"
                                                     size="sm"
-                                                    title="Reconstructed post-market via historical session bars"
                                                 >
                                                     BACKFILLED
                                                 </Badge>
@@ -118,10 +118,10 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 className="inline-block transition-opacity hover:opacity-80"
-                                                title={
+                                                aria-label={
                                                     trade.alpaca_order_id
-                                                        ? `Order ID: ${trade.alpaca_order_id}`
-                                                        : undefined
+                                                        ? `Alpaca order ${trade.alpaca_order_id}`
+                                                        : 'Alpaca orders'
                                                 }
                                                 onClick={(e) => e.stopPropagation()}
                                             >
@@ -145,17 +145,28 @@ export function TradesTable({ trades }: TradesTableProps) {
                                         <span className="text-voxel-muted">—</span>
                                     )}
                                     {trade.audit_flag ? (
-                                        <Badge
-                                            variant="soft"
-                                            colorScheme="warning"
-                                            size="xs"
-                                            title={trade.audit_note ?? undefined}
-                                        >
+                                        <Badge variant="soft" colorScheme="warning" size="xs">
                                             {trade.audit_flag === 'NON_TRADING_DAY'
                                                 ? 'HOLIDAY'
                                                 : 'BAD_PRICE'}
                                         </Badge>
                                     ) : null}
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        colorScheme="neutral"
+                                        size="sm"
+                                        aria-label={`Inspect ${trade.ticker} trade`}
+                                        aria-expanded={expandedId === trade.id}
+                                        onClick={(event) => {
+                                            event.stopPropagation();
+                                            setExpandedId(
+                                                expandedId === trade.id ? null : trade.id,
+                                            );
+                                        }}
+                                    >
+                                        Inspect
+                                    </Button>
                                 </div>
                             </TableCell>
                             <TableCell align="right">{trade.quantity}</TableCell>
@@ -263,6 +274,27 @@ export function TradesTable({ trades }: TradesTableProps) {
                                                 </div>
                                             )}
                                         </div>
+                                        {(trade.audit_flag ||
+                                            trade.alpaca_status === 'BACKFILLED') && (
+                                            <div className="voxel-trough flex flex-col gap-2 p-4 rounded-none">
+                                                {trade.audit_flag && (
+                                                    <>
+                                                        <span className="text-xs font-normal uppercase tracking-wider text-warning">
+                                                            AUDIT EVIDENCE
+                                                        </span>
+                                                        <p className="text-xs font-normal text-voxel-ink whitespace-pre-wrap break-words">
+                                                            {trade.audit_note || trade.audit_flag}
+                                                        </p>
+                                                    </>
+                                                )}
+                                                {trade.alpaca_status === 'BACKFILLED' && (
+                                                    <p className="text-xs font-normal text-voxel-muted whitespace-pre-wrap break-words">
+                                                        Reconstructed post-market via historical
+                                                        session bars
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
                                         <h4 className="flex items-center gap-2 text-sm font-bold text-voxel-ink uppercase tracking-tight">
                                             <span className="w-1.5 h-1.5 rounded-none bg-blue-500 animate-pulse" />
                                             Thinking Process

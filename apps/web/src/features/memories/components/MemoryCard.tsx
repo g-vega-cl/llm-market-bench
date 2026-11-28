@@ -375,8 +375,8 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
+                            aria-hidden="true"
                         >
-                            <title>SVG</title>
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -937,8 +937,8 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
+                            aria-hidden="true"
                         >
-                            <title>SVG</title>
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
@@ -991,14 +991,15 @@ export function MemoryCard({ memory }: MemoryCardProps) {
                                 colorScheme="neutral"
                                 size="sm"
                                 onClick={() => setSelectedAsset(null)}
+                                aria-label="Close asset details"
                             >
                                 <svg
                                     className="w-4 h-4 text-voxel-muted"
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
+                                    aria-hidden="true"
                                 >
-                                    <title>SVG</title>
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"

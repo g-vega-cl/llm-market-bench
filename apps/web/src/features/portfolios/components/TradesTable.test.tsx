@@ -139,7 +139,7 @@ describe('TradesTable', () => {
         }
     });
 
-    it('renders BACKFILLED badge with explanatory tooltip for reconstructed trades', () => {
+    it('renders BACKFILLED provenance in the expanded row instead of a tooltip', () => {
         const backfilledTrade: Trade = {
             ...mockTrades[0],
             id: 't-backfill',
@@ -154,13 +154,13 @@ describe('TradesTable', () => {
         render(<TradesTable trades={[backfilledTrade]} />);
         const badge = screen.getByText('BACKFILLED');
         expect(badge).toBeInTheDocument();
-        expect(badge).toHaveAttribute(
-            'title',
-            'Reconstructed post-market via historical session bars',
-        );
-
-        // Ensure it is not an anchor link to Alpaca
+        expect(badge).not.toHaveAttribute('title');
         expect(badge.closest('a')).toBeNull();
+
+        fireEvent.click(screen.getByRole('button', { name: 'Inspect SPY trade' }));
+        expect(
+            screen.getByText('Reconstructed post-market via historical session bars'),
+        ).toBeInTheDocument();
     });
 });
 
@@ -201,5 +201,28 @@ describe('TradesTable audit annotations', () => {
         };
         render(<TradesTable trades={[flagged]} />);
         expect(screen.getByText('BAD_PRICE')).toBeInTheDocument();
+    });
+
+    it('exposes audit evidence in flow through a keyboard-reachable inspect control', () => {
+        const flagged: Trade = {
+            ...mockTrades[0],
+            audit_flag: 'PRICE_OUTSIDE_DAY_RANGE',
+            audit_note: 'Fill is 9.96% outside the session range.',
+        };
+        render(<TradesTable trades={[flagged]} />);
+
+        const note = flagged.audit_note ?? '';
+        const badge = screen.getByText('BAD_PRICE');
+        expect(badge).not.toHaveAttribute('title');
+        const inspect = screen.getByRole('button', { name: 'Inspect AAPL trade' });
+        expect(inspect).toHaveAttribute('aria-expanded', 'false');
+        expect(screen.queryByText(note)).not.toBeInTheDocument();
+
+        fireEvent.click(inspect);
+
+        expect(inspect).toHaveAttribute('aria-expanded', 'true');
+        expect(screen.getByText('AUDIT EVIDENCE')).toBeInTheDocument();
+        expect(screen.getByText(note)).toBeInTheDocument();
+        expect(document.querySelector('[title]')).toBeNull();
     });
 });

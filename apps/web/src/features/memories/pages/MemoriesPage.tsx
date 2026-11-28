@@ -386,8 +386,8 @@ export function MemoriesPage({
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
+                                aria-hidden="true"
                             >
-                                <title>Search Icon</title>
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
@@ -403,6 +403,7 @@ export function MemoriesPage({
                                 colorScheme="neutral"
                                 size="sm"
                                 onClick={handleSearchClear}
+                                aria-label="Clear search"
                                 className="absolute right-2 top-1.5"
                             >
                                 <svg
@@ -410,8 +411,8 @@ export function MemoriesPage({
                                     fill="none"
                                     stroke="currentColor"
                                     viewBox="0 0 24 24"
+                                    aria-hidden="true"
                                 >
-                                    <title>Clear Icon</title>
                                     <path
                                         strokeLinecap="round"
                                         strokeLinejoin="round"

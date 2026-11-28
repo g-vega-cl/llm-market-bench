@@ -97,10 +97,7 @@ function SentimentSection({
                     </Badge>
                 )}
                 {isStale && hasFeeling && (
-                    <span
-                        className="text-sm font-bold px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-none"
-                        title="Data is older than 4 hours"
-                    >
+                    <span className="text-sm font-bold px-1.5 py-0.5 bg-amber-500/20 text-amber-400 rounded-none whitespace-nowrap">
                         ⚠ STALE
                     </span>
                 )}

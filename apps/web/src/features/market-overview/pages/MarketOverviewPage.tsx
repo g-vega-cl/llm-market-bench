@@ -281,11 +281,8 @@ function MarketOverviewHero({ marketFeeling }: { marketFeeling: MarketFeeling | 
                                     {marketFeeling?.sentiment_emoji || '🤔'}
                                 </span>
                                 {isStale && marketFeeling && (
-                                    <span
-                                        className="text-sm px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none font-bold"
-                                        title="Data is older than 4 hours"
-                                    >
-                                        ⚠
+                                    <span className="text-sm px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none font-bold whitespace-nowrap">
+                                        ⚠ STALE
                                     </span>
                                 )}
                             </div>

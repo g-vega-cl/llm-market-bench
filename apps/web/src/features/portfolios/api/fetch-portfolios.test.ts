@@ -605,19 +605,31 @@ test('fetchCachedComparisonData caches payload for 4 hours and serves fallback o
     clearComparisonPayloadCache();
 });
 
-test('fetchTrades loads the full ledger so audit-flagged rows stay visible', async () => {
-    const limit = vi.fn(() => Promise.resolve({ data: [], error: null }));
+test('fetchTrades pages through the whole ledger so no audit flag is hidden', async () => {
+    const ledger = Array.from({ length: 501 }, (_, i) => ({
+        id: `trade-${i}`,
+        portfolio_id: 'pid-1',
+        ticker: 'SPY',
+        executed_at: `2026-11-2${String(i % 10).padStart(2, '0')}T14:30:00Z`,
+    }));
+    const range = vi.fn((from: number, to: number) =>
+        Promise.resolve({ data: ledger.slice(from, to + 1), error: null }),
+    );
     const chain = {
-        limit,
+        range,
         order: vi.fn(() => chain),
         select: vi.fn(() => chain),
         eq: vi.fn(() => chain),
+        in: vi.fn(() => chain),
+        limit: vi.fn(() => Promise.resolve({ data: [], error: null })),
         from: vi.fn(() => chain),
     };
     mockSupabaseClient = chain as unknown as MockSupabaseChain;
 
     const result = await fetchTrades('pid-1');
 
-    expect(result).toEqual([]);
-    expect(limit).toHaveBeenCalledWith(200);
+    expect(result).toHaveLength(501);
+    expect(range).toHaveBeenCalledTimes(2);
+    expect(range).toHaveBeenNthCalledWith(1, 0, 499);
+    expect(range).toHaveBeenNthCalledWith(2, 500, 999);
 });

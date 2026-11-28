@@ -202,8 +202,8 @@ export function PositionsTable({ positions, themes, trades }: PositionsTableProp
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
+                                            aria-hidden="true"
                                         >
-                                            <title>SVG</title>
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"

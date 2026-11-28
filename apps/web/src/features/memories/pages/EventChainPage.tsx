@@ -121,6 +121,7 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                     <div className="flex items-center gap-3">
                         <Link
                             to="/memories"
+                            aria-label="Back to Memories"
                             className="p-1.5 rounded-none hover:bg-voxel-elevated transition-colors"
                         >
                             <svg
@@ -128,8 +129,8 @@ export function EventChainPage({ memoryId, initialData, fetchFn }: EventChainPag
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
+                                aria-hidden="true"
                             >
-                                <title>Back to Memories</title>
                                 <path
                                     strokeLinecap="round"
                                     strokeLinejoin="round"

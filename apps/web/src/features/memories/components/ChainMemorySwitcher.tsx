@@ -112,8 +112,8 @@ export function ChainMemorySwitcher({ currentMemoryId, searchFn }: ChainMemorySw
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
+                            aria-hidden="true"
                         >
-                            <title>Search Icon</title>
                             <path
                                 strokeLinecap="round"
                                 strokeLinejoin="round"

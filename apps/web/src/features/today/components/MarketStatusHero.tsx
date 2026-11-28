@@ -142,11 +142,8 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                             <div className="flex items-center gap-2">
                                 <span className="text-sm">{fallbackSentiment.emoji}</span>
                                 {isStale && marketFeeling && (
-                                    <span
-                                        className="text-sm font-bold px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none"
-                                        title="Data is older than 4 hours"
-                                    >
-                                        ⚠
+                                    <span className="text-sm font-bold px-2 py-0.5 bg-amber-500/20 text-amber-300 rounded-none whitespace-nowrap">
+                                        ⚠ STALE
                                     </span>
                                 )}
                             </div>
@@ -251,8 +248,8 @@ export function MarketStatusHero({ data }: MarketStatusHeroProps) {
                                     strokeWidth="2"
                                     strokeLinecap="round"
                                     strokeLinejoin="round"
+                                    aria-hidden="true"
                                 >
-                                    <title>SVG</title>
                                     <path d="M5 12h14M12 5l7 7-7 7" />
                                 </svg>
                             </a>

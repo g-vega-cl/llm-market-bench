@@ -224,19 +224,34 @@ export async function fetchPositions(portfolioId: string): Promise<PositionWithR
     return combinedPositions.sort((a, b) => (a.ticker || '').localeCompare(b.ticker || ''));
 }
 
+export const TRADE_PAGE_SIZE = 500;
+
+type FetchedTrade = Omit<TradeWithReasoning, 'executed_at'> & { executed_at: string };
+
 export async function fetchTrades(portfolioId: string): Promise<TradeWithReasoning[]> {
     const supabase = getDbServerClient();
 
-    const { data: trades, error: tradeError } = await supabase
-        .from('trades')
-        .select('*')
-        .eq('portfolio_id', portfolioId)
-        .order('executed_at', { ascending: false })
-        // Keep the full ledger visible: audit-flagged rows must not fall off the page.
-        .limit(200);
+    // Page the whole ledger server-side: a row cap would hide audit flags on older trades.
+    const trades: FetchedTrade[] = [];
+    let from = 0;
+    while (true) {
+        const { data: page, error: pageError } = await supabase
+            .from('trades')
+            .select('*')
+            .eq('portfolio_id', portfolioId)
+            .order('executed_at', { ascending: false })
+            .order('id', { ascending: false })
+            .range(from, from + TRADE_PAGE_SIZE - 1);
 
-    if (tradeError) throw tradeError;
-    if (!trades || trades.length === 0) return [];
+        if (pageError) throw pageError;
+        if (!page || page.length === 0) break;
+
+        trades.push(...(page as FetchedTrade[]));
+        if (page.length < TRADE_PAGE_SIZE) break;
+        from += TRADE_PAGE_SIZE;
+    }
+
+    if (trades.length === 0) return [];
 
     const tickers = Array.from(new Set(trades.map((t) => t.ticker)));
     const { data: decisions, error: decError } = await supabase

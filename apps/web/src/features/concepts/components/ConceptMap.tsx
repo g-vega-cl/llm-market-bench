@@ -307,8 +307,8 @@ export function ConceptMap({
                                             fill="none"
                                             viewBox="0 0 24 24"
                                             stroke="currentColor"
+                                            aria-hidden="true"
                                         >
-                                            <title>Arrow</title>
                                             <path
                                                 strokeLinecap="round"
                                                 strokeLinejoin="round"
@@ -421,8 +421,8 @@ export function ConceptMap({
                                                         fill="none"
                                                         viewBox="0 0 24 24"
                                                         stroke="currentColor"
+                                                        aria-hidden="true"
                                                     >
-                                                        <title>Arrow</title>
                                                         <path
                                                             strokeLinecap="round"
                                                             strokeLinejoin="round"

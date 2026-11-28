@@ -342,10 +342,7 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
 
                     {/* Asset A return */}
                     <div className="flex flex-col gap-1">
-                        <span
-                            className="text-sm font-bold uppercase tracking-wider text-voxel-muted truncate"
-                            title={`${tickerA} (${etfDescriptions[tickerA] || 'ETF'})`}
-                        >
+                        <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted truncate">
                             {tickerA} ({etfDescriptions[tickerA] || 'ETF'})
                         </span>
                         <span
@@ -362,10 +359,7 @@ export function PairProgressionChart({ data, tickerA, tickerB }: PairProgression
 
                     {/* Asset B return */}
                     <div className="flex flex-col gap-1">
-                        <span
-                            className="text-sm font-bold uppercase tracking-wider text-voxel-muted truncate"
-                            title={`${tickerB} (${etfDescriptions[tickerB] || 'ETF'})`}
-                        >
+                        <span className="text-sm font-bold uppercase tracking-wider text-voxel-muted truncate">
                             {tickerB} ({etfDescriptions[tickerB] || 'ETF'})
                         </span>
                         <span

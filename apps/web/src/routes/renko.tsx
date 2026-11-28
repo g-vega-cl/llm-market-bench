@@ -6,6 +6,7 @@ import type {
 } from '@llm-market-bench/database';
 import {
     Badge,
+    Button,
     Card,
     MetricTile,
     PageLayout,
@@ -140,6 +141,7 @@ export function RenkoAgentPageView({
     benchmarkFetchFn,
 }: RenkoAgentPageViewProps) {
     const [selectedModel] = useState('deepseek-flash');
+    const [selectedBrickId, setSelectedBrickId] = useState<number | null>(null);
 
     const { data } = useSuspenseQuery({
         ...portfolioQueries.detail({
@@ -172,6 +174,7 @@ export function RenkoAgentPageView({
     const minPrice = 475.0;
     const maxPrice = 550.0;
     const priceRange = maxPrice - minPrice;
+    const selectedBrick = REAL_HISTORICAL_LIN_BRICKS.find((brick) => brick.id === selectedBrickId);
 
     // Derived portfolio metrics
     const totalEquity = Number(portfolio?.total_equity || 10000);
@@ -235,7 +238,10 @@ export function RenkoAgentPageView({
 
                             return (
                                 <div key={brick.id} className="relative flex-none w-7 h-full">
-                                    <div
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        colorScheme="neutral"
                                         className={`absolute w-full rounded-none border flex items-center justify-center text-sm font-bold shadow ${
                                             brick.direction === 'UP'
                                                 ? 'bg-success border-success text-voxel-trough'
@@ -245,14 +251,38 @@ export function RenkoAgentPageView({
                                             bottom: `${bottomPct}%`,
                                             height: `${heightPct}%`,
                                         }}
-                                        title={`Brick #${brick.id} (${brick.timestamp}): ${brick.direction} [${brick.openPrice.toFixed(2)} -> ${brick.closePrice.toFixed(2)}]`}
+                                        aria-label={`Inspect brick #${brick.id}`}
+                                        aria-pressed={selectedBrickId === brick.id}
+                                        onClick={() =>
+                                            setSelectedBrickId(
+                                                selectedBrickId === brick.id ? null : brick.id,
+                                            )
+                                        }
                                     >
                                         ${brick.closePrice.toFixed(0)}
-                                    </div>
+                                    </Button>
                                 </div>
                             );
                         })}
                     </div>
+
+                    {selectedBrick && (
+                        <div className="voxel-trough flex flex-wrap items-baseline gap-2 p-3 rounded-none">
+                            <span className="text-xs font-normal uppercase tracking-wider text-voxel-ink whitespace-nowrap">
+                                BRICK #{selectedBrick.id}
+                            </span>
+                            <span className="text-xs font-normal text-voxel-muted whitespace-nowrap">
+                                {selectedBrick.timestamp}
+                            </span>
+                            <span className="text-xs font-normal text-voxel-ink whitespace-nowrap">
+                                {selectedBrick.direction}
+                            </span>
+                            <span className="text-xs font-normal font-mono text-voxel-ink whitespace-nowrap">
+                                ${selectedBrick.openPrice.toFixed(2)} → $
+                                {selectedBrick.closePrice.toFixed(2)}
+                            </span>
+                        </div>
+                    )}
 
                     <div className="text-xs font-normal text-amber-400 bg-amber-950/30 p-3 rounded-none border border-amber-800/60 shadow-sm">
                         ⚠️ <strong>2-Brick Reversal Trigger Threshold:</strong> $480.87 (Price must

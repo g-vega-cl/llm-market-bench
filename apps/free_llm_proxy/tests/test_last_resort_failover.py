@@ -160,9 +160,8 @@ def test_free_aliases_never_get_a_paid_candidate(monkeypatch):
         ]
         assert paid == [], f"{alias} admitted a paid provider: {paid}"
 
-    for alias in ("auto-go", "auto-strata-go", "strata-auto-go"):
-        chain = [p_id for p_id, _ in router.get_candidate_chain(alias)]
-        assert "opencode-go" in chain
+    chain = [p_id for p_id, _ in router.get_candidate_chain("auto-go")]
+    assert "opencode-go" in chain
 
 
 # --------------------------------------------------------------------------- #

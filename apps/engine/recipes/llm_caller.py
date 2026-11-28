@@ -88,7 +88,10 @@ def _build_assistant_history_entry(msg: Any, tool_calls: list[Any]) -> dict[str,
 
 
 _LIVE_PROXY_ONLY_ALIASES = frozenset({"auto-go", "free-auto", "free-fast", "free-reasoning"})
-_PROXY_ROUTER_ALIASES = frozenset({"strata-auto-go", "auto-strata-go", "strata-auto"})
+# Retired with the Strata-first lane. Queue rows and recipes written before that
+# still carry these strings, so they resolve to the alias that replaced them
+# rather than 404ing at the proxy.
+_RETIRED_ALIASES = {"strata-auto-go": "auto-go", "auto-strata-go": "auto-go"}
 
 
 def _provider_for(base_url: str) -> str:
@@ -132,25 +135,18 @@ def _log_endpoint_call(
 
 def llm_endpoints(openrouter_key: str | None, model: str) -> list[tuple[str, str, str]]:
     """Resolve prioritized (base_url, api_key, model_id) endpoints for direct or free-proxy routing."""
+    model = _RETIRED_ALIASES.get((model or "").strip().lower(), model)
     if openrouter_key:
-        model_id = "deepseek/deepseek-chat" if model in {"auto-strata", "strata-auto-go", "auto-go"} else model
+        model_id = "deepseek/deepseek-chat" if model in {"auto-strata", "auto-go"} else model
         return [("https://openrouter.ai/api/v1", openrouter_key, model_id)]
     proxy_key = os.getenv("FREE_PROXY_MASTER_KEY") or os.getenv("STRATA_API_KEY", "local")
     strata_url = os.getenv("STRATA_BASE_URL", "").strip()
     proxy_url = os.getenv("FREE_LLM_PROXY_URL", "https://llm.clvg.uk/v1").strip()
-    model_lower = (model or "auto-strata").strip().lower()
+    model_lower = (model or "auto-go").strip().lower()
 
     if model_lower in _LIVE_PROXY_ONLY_ALIASES:
         # Exclude raw local Strata so live auto-go turns never contend with single-GPU backtests.
         return [(proxy_url or "https://llm.clvg.uk/v1", proxy_key, model)]
-
-    if model_lower in _PROXY_ROUTER_ALIASES:
-        endpoints: list[tuple[str, str, str]] = []
-        if proxy_url:
-            endpoints.append((proxy_url, proxy_key, model))
-        if strata_url and strata_url != proxy_url:
-            endpoints.append((strata_url, proxy_key, "strata"))
-        return endpoints or [("https://llm.clvg.uk/v1", proxy_key, model)]
 
     endpoints = []
     if strata_url:
@@ -320,7 +316,7 @@ async def default_llm_caller(
     selected_tools: list[str],
     cutoff_date: str | None = None,
     openrouter_key: str | None = None,
-    model: str = "auto-strata",
+    model: str = "auto-go",
     as_of_utc: str | None = None,
 ) -> dict[str, Any]:
     """Execute a single Stage with OpenAI-compatible tool calling and Strata->Proxy failover."""

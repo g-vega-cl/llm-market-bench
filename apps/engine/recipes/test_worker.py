@@ -404,7 +404,7 @@ def test_process_push_backtest_does_not_overwrite_cancelled_job():
             "job_user_id": "usr-1",
             "job_mode": "backtest",
             "job_priority": 10,
-            "job_model": "strata-auto-go",
+            "job_model": "auto-go",
         }
     ]
     strategy = _sample_push_strategy()

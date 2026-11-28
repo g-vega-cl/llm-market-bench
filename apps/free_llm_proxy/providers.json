@@ -139,7 +139,7 @@
       "env_key": "OPENCODE_GO_API_KEY",
       "tier": 3,
       "billing": "paid",
-      "auto_aliases": ["auto-go", "auto-strata-go", "strata-auto-go"],
+      "auto_aliases": ["auto-go"],
       "requires_auth": true,
       "models_endpoint": "/models",
       "max_output_tokens": 65536,
@@ -163,8 +163,6 @@
     "strata-auto": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
     "auto-strata": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
     "auto-go": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
-    "auto-strata-go": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
-    "strata-auto-go": ["*120b*", "*70b*", "*flash*", "*27b*", "*"],
     "strata": ["*"],
     "free-fast": ["*-20b*", "*:20b*", "*8b*", "*flash-lite*", "*7b*", "*"],
     "free-reasoning": ["*r1*", "*reasoning*", "*flint*", "*beam*", "*"]

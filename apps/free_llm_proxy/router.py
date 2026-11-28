@@ -351,13 +351,12 @@ class Router:
 
         include_strata_in_auto = model_lower in {
             "auto-strata",
-            "auto-strata-go",
             "free-auto-strata",
             "default",
             "auto",
             "",
         }
-        is_strata_primary = model_lower in {"strata-auto", "strata-auto-go"}
+        is_strata_primary = model_lower in {"strata-auto"}
 
         # If client explicitly specified a provider (e.g. 'groq/qwen...' or 'openrouter')
         explicit_provider = _resolve_explicit_provider(

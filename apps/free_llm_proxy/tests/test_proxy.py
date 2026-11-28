@@ -1115,93 +1115,18 @@ def test_auto_go_includes_go_as_last_resort_and_excludes_strata(monkeypatch):
     assert "strata" not in chain
 
 
-def test_auto_strata_go_includes_strata_and_go_last(monkeypatch):
-    """auto-strata-go must include Strata in Tier 1 and OpenCode Go as the last resort."""
+def test_strata_auto_go_alias_is_retired(monkeypatch):
+    """The Strata-first lane is gone: auto-go is the only route to paid Go."""
     monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
     router = Router()
 
-    chain = [p[0] for p in router.get_candidate_chain("auto-strata-go")]
-
-    assert "strata" in chain
-    assert "opencode-go" in chain
-    assert chain[-1] == "opencode-go"
-    assert chain.index("strata") < chain.index("opencode-go")
-
-
-def test_strata_auto_go_uses_strata_first_and_go_last(monkeypatch):
-    """strata-auto-go must put Strata first, then the free pool, then paid Go."""
-    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
-    router = Router()
-
-    chain = [p[0] for p in router.get_candidate_chain("strata-auto-go")]
-
-    assert chain[0] == "strata"
-    assert chain[-1] == "opencode-go"
-    assert chain.count("strata") == 1
-    assert chain.count("opencode-go") == 1
-    assert len(chain) > 2
-
-
-def test_strata_auto_go_end_to_end_fails_over_strata_then_free_then_go(
-    client, monkeypatch
-):
-    """strata-auto-go must fail over from Strata through free providers to Go."""
-    monkeypatch.setenv("OPENCODE_GO_API_KEY", "go_test_key")
-    attempted: list[str] = []
-
-    async def mock_fetch(provider_id, base_url, headers):
-        return ["test-model"]
-
-    async def mock_execute(provider_cfg, payload, stream=False):
-        name = provider_cfg.get("name")
-        attempted.append(name)
-        if name == "OpenCode Go":
-            return (
-                200,
-                {
-                    "id": "chatcmpl-strata-auto-go",
-                    "object": "chat.completion",
-                    "created": 1700000000,
-                    "model": payload.get("model"),
-                    "choices": [
-                        {
-                            "index": 0,
-                            "message": {
-                                "role": "assistant",
-                                "content": "Served by OpenCode Go",
-                            },
-                            "finish_reason": "stop",
-                        }
-                    ],
-                    "usage": {
-                        "prompt_tokens": 3,
-                        "completion_tokens": 4,
-                        "total_tokens": 7,
-                    },
-                },
-                {},
-            )
-        return 429, {"error": {"message": "rate limited"}}, {"retry-after": "1"}
-
-    monkeypatch.setattr(
-        "apps.free_llm_proxy.server.discovery.fetch_live_models", mock_fetch
-    )
-    monkeypatch.setattr("apps.free_llm_proxy.server.execute_completion", mock_execute)
-
-    resp = client.post(
-        "/v1/chat/completions",
-        headers={"Authorization": "Bearer sk-test-master-key"},
-        json={
-            "model": "strata-auto-go",
-            "messages": [{"role": "user", "content": "hi"}],
-        },
-    )
-
-    assert resp.status_code == 200
-    assert resp.json()["choices"][0]["message"]["content"] == "Served by OpenCode Go"
-    assert attempted[0] == "Strata (Local)"
-    assert attempted[-1] == "OpenCode Go"
-    assert attempted.count("OpenCode Go") == 1
+    assert "strata-auto-go" not in router.virtual_aliases
+    assert "auto-strata-go" not in router.virtual_aliases
+    for p_cfg in router.providers.values():
+        aliases = p_cfg.get("auto_aliases", [])
+        assert "strata-auto-go" not in aliases
+        assert "auto-strata-go" not in aliases
+    assert router.providers["opencode-go"]["auto_aliases"] == ["auto-go"]
 
 
 def test_free_aliases_never_include_opencode_go(monkeypatch):
@@ -1246,14 +1171,6 @@ def test_opencode_go_resolves_alias_against_discovered_catalog(monkeypatch):
 
     assert (
         router.resolve_model_for_provider("opencode-go", "auto-go", catalog)
-        == "deepseek-v4.1-flash"
-    )
-    assert (
-        router.resolve_model_for_provider("opencode-go", "auto-strata-go", catalog)
-        == "deepseek-v4.1-flash"
-    )
-    assert (
-        router.resolve_model_for_provider("opencode-go", "strata-auto-go", catalog)
         == "deepseek-v4.1-flash"
     )
     assert (

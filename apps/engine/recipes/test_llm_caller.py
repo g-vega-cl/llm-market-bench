@@ -196,9 +196,10 @@ def test_llm_endpoints_routes_proxy_aliases_to_free_proxy_and_skips_raw_strata_f
     live_endpoints = llm_endpoints(None, "auto-go")
     assert live_endpoints == [("https://llm.clvg.uk/v1", "test-key", "auto-go")]
 
-    bt_endpoints = llm_endpoints(None, "strata-auto-go")
-    assert bt_endpoints[0] == ("https://llm.clvg.uk/v1", "test-key", "strata-auto-go")
-    assert bt_endpoints[1] == ("http://primary-workstation:3001/strata/v1", "test-key", "strata")
+    # Retired aliases still appear on old queue rows, so they resolve to auto-go
+    # instead of failing at the proxy. No direct Strata endpoint any more either.
+    for retired in ("strata-auto-go", "auto-strata-go"):
+        assert llm_endpoints(None, retired) == [("https://llm.clvg.uk/v1", "test-key", "auto-go")]
 
 
 @pytest.mark.asyncio

@@ -109,8 +109,6 @@ print(response.choices[0].message.content)
 | **`strata-auto`** | Prioritizes local Strata (localhost:8080); fails over cleanly to auto pool when offline | Local live model / Orcarouter ➔ Auto pool fallback |
 | **`auto-strata`** | Adds Strata into the standard Tier 1 round-robin auto rotation pool | Local Strata + Tier 1 providers |
 | **`auto-go`** | Free auto pool with OpenCode Go as a last-resort paid fallback (Strata excluded) | Tier 1+2 free providers ➔ OpenCode Go |
-| **`auto-strata-go`** | Same as `auto-go`, but Strata joins the Tier 1 rotation | Local Strata + Tier 1+2 free providers ➔ OpenCode Go |
-| **`strata-auto-go`** | Strata primary; on failure falls over the free pool, then paid OpenCode Go | Local Strata ➔ Tier 1+2 free providers ➔ OpenCode Go |
 | **`strata`** | Strictly targets local Strata; fails fast with error if offline (zero silent cloud fallback) | Whichever model is live on localhost:8080 |
 | **`free-fast`** | Sub-second ultra-low latency models | 20B / 8B / Flash-Lite models |
 | **`free-reasoning`** | Deep reasoning / thinking models | DeepSeek-R1, Flint, Beam, QwQ |

@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
+import recipes.runner as runner_module
 from recipes.push_schema import PushStrategy
 from recipes.runner import (
     enqueue_live_recipes,
@@ -14,6 +16,7 @@ from recipes.runner import (
     load_starter_recipes,
     refill_weekly_tokens,
     run_hourly_cycle,
+    run_maintenance_sweeps,
     seed_starter_recipes,
 )
 
@@ -753,3 +756,40 @@ def test_refill_weekly_tokens_swallows_a_failed_sweep(caplog):
     # The on-load refill still covers visitors, so a failed sweep is not fatal.
     assert refill_weekly_tokens(client) == 0
     assert "Weekly token refill failed" in caplog.text
+
+
+def test_run_maintenance_sweeps_refills_then_expires():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = 3
+
+    stats = run_maintenance_sweeps(client)
+
+    assert stats == {"refills_applied": 3, "expired_live": 3}
+    assert [call.args[0] for call in client.rpc.call_args_list] == [
+        "refill_all_accounts",
+        "expire_live_bots",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_maintenance_loop_survives_a_failed_sweep(monkeypatch):
+    """The daemon never calls run_hourly_cycle, so this loop is the only caller."""
+    calls: list[int] = []
+
+    def fake_sweep(_client):
+        calls.append(1)
+        if len(calls) == 1:
+            raise RuntimeError("db down")
+        return {"refills_applied": 0, "expired_live": 0}
+
+    monkeypatch.setattr(runner_module, "run_maintenance_sweeps", fake_sweep)
+    monkeypatch.setattr(runner_module, "MAINTENANCE_INTERVAL_SECONDS", 0.01)
+
+    task = asyncio.create_task(runner_module._maintenance_loop(MagicMock()))
+    await asyncio.sleep(0.1)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    # A failed sweep must not kill the loop: it retries on the next interval.
+    assert len(calls) >= 2

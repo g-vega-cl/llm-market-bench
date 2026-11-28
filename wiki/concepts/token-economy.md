@@ -23,11 +23,18 @@ A guest balance is one-time, so a returning visitor must sign up to run again �
 - `reserve_token(owner, kind, ref)` locks the balance row, refuses at zero, charges the guest daily budget, and is idempotent per ref. A refunded ref is terminal.
 - `settle_token(ref, outcome)` refunds a failed or expired backtest exactly once. A paused live week is never refunded. If the balance row is missing it is rebuilt from `sum(delta)`, never from zero.
 - `refill_tokens(owner, amount, period)` accepts only the current Monday and 1–15 tokens, sets rather than adds, and ledgers the adjustment so `balance == sum(delta)`.
+- `refill_all_accounts()` is the weekly sweep: it hands every account whose `period_start` is behind the current ET week to `refill_tokens`, so the amount check, the period check and the ledger row live in one place. Guests are excluded by the tier predicate, and a second run inside the week returns 0.
 - `expire_live_bots()` pauses lapsed bots, skipping any bot with a turn whose `COALESCE(heartbeat_at, created_at)` is inside 30 minutes.
 - `mint_guest_tokens(token_hash, ip_hash)` resolves a guest from a hashed signed cookie and grants 5 tokens exactly once.
-- `start_live_week(user, recipe)` spends a `live_week` token and writes `live_expires_at` in the same transaction; re-enabling an already-live bot is free. `switch_live_schedule` delegates its enable step to it, so a refused token rolls the pause back too. The hourly cycle calls `expire_live_bots`.
+- `start_live_week(user, recipe)` spends a `live_week` token and writes `live_expires_at` in the same transaction; re-enabling an already-live bot is free. `switch_live_schedule` delegates its enable step to it, so a refused token rolls the pause back too.
 
-Contract tests live in `supabase/tests/` (21 assertions across the ledger and the mint) and run against a throwaway Postgres via `scripts/test_token_rpc.sh`, including a two-session race on the last token.
+## Who runs the sweeps
+
+The production worker starts with `--loop`, which runs the three queue lanes and never calls `run_hourly_cycle`. Refills and live expiry therefore live in `_maintenance_loop` — a fourth lane on a 300s cadence — because anything reachable only from `run_hourly_cycle` silently never runs in production. Both RPCs are idempotent, so every worker may run them and two workers racing cannot double-grant.
+
+The on-load `refill_this_week` call stays as the fallback for when the engine is down, and the client re-syncs on window focus with a once-per-day storage guard, refetching the router only when a grant actually landed.
+
+Contract tests live in `supabase/tests/` (28 SQL contracts plus a two-session race on the last token) and run against a throwaway Postgres via `scripts/test_token_rpc.sh`, which applies every token migration in order.
 
 ## Spend path
 

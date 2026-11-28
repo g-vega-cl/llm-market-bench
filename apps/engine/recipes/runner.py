@@ -50,6 +50,7 @@ TURBO_POLL_INTERVAL_SECONDS = 30  # Poll active Turbo bots at most once every 30
 NEWS_SYNC_MIN_INTERVAL_SECONDS = 300
 PUBLIC_STATS_MIN_INTERVAL_SECONDS = 60
 POLL_INTERVAL_SECONDS = 5
+MAINTENANCE_INTERVAL_SECONDS = 300  # refill + live-expiry sweep cadence
 MAX_JOBS_PER_CYCLE = 25
 LIVE_TURN_CONCURRENCY = int(os.environ.get("RECIPE_LIVE_CONCURRENCY", "10"))
 # Backtests are no longer pinned to local Strata (they run on the free-llm proxy
@@ -475,6 +476,38 @@ def refill_weekly_tokens(sb_client: Any) -> int:
         return 0
 
 
+def run_maintenance_sweeps(sb_client: Any) -> dict[str, int]:
+    """Weekly token refill plus live-week expiry.
+
+    Both are idempotent server-side: a second refill inside the week returns 0,
+    and expiry only touches bots past their deadline. That is what lets every
+    worker run them on a short interval without coordinating.
+    """
+    stats = {
+        "refills_applied": refill_weekly_tokens(sb_client),
+        "expired_live": expire_live_bots(sb_client),
+    }
+    if stats["refills_applied"] or stats["expired_live"]:
+        logger.info("Maintenance sweeps: %s", stats)
+    return stats
+
+
+async def _maintenance_loop(sb_client: Any) -> None:
+    """Run the sweeps the daemon would otherwise never perform.
+
+    The production worker starts in --loop mode, which runs the three queue
+    lanes and never calls run_hourly_cycle — so anything living only in that
+    function (refills, live expiry) would silently never happen.
+    """
+    logger.info("Maintenance loop started (refill + expiry every %ss)", MAINTENANCE_INTERVAL_SECONDS)
+    while True:
+        try:
+            await asyncio.to_thread(run_maintenance_sweeps, sb_client)
+        except Exception:
+            logger.exception("Maintenance sweeps failed; retrying next interval")
+        await asyncio.sleep(MAINTENANCE_INTERVAL_SECONDS)
+
+
 async def run_hourly_cycle(
     sb_client: Any,
     *,
@@ -728,6 +761,7 @@ async def _async_daemon_loop(sb_client: Any) -> None:
         _live_lane_loop(sb_client),
         _backtest_lane_loop(sb_client),
         _compile_lane_loop(sb_client),
+        _maintenance_loop(sb_client),
     )
 
 

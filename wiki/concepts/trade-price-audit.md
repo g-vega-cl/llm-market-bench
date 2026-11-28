@@ -68,6 +68,7 @@ The migration backfills exactly 103 rows (98 + 5). Generated types in `packages/
 - A flag is evidence-backed: there must be a concrete session-calendar or OHLC-range violation.
 - Intentional model slippage within ±0.5% is not a bad trade.
 - The guard blocks future bad fills at the orchestration boundary, not in legacy rows.
+- A flagged row still counts toward cash, positions, realized P/L, and leaderboard equity. `HOLIDAY` and `BAD_PRICE` warn about the recorded price; they do not exclude the row from performance.
 
 ## Verification
 

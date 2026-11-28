@@ -26,6 +26,7 @@ That is the whole job of the mirror. It is not bookkeeping, not risk management,
 
 - Sizing, cash, positions and leaderboard equity come from the ledger, never from Alpaca.
 - A failed mirror never rolls back a ledger trade and is never retried: replaying a market order minutes later would create a fill at a price the book never recorded.
+- Audit flags behave the same way. `NON_TRADING_DAY` and `PRICE_OUTSIDE_DAY_RANGE` annotate evidence on a trade row; they never reverse its cash, position, or P/L effect.
 - The bridge between ledger and account starts with an exact, non-editable `client_order_id` (`<agent_id>__<ticker>__<signal>__<trade_id>`). Everything else hangs off it: `trades.alpaca_order_id`, `trades.alpaca_status`, and the reconciliation in `apps/engine/scripts/sync_alpaca_orders.py`.
 
 ## The invariant

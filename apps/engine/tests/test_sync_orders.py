@@ -147,6 +147,54 @@ def test_sync_orders_updates_terminal_and_skips_non_terminal():
     assert mock_table.update.call_count == 2
 
 
+def test_rejected_status_write_never_changes_portfolio_accounting():
+    """Broker status is attestation only; a rejection must not reverse ledger cash or positions."""
+    mock_supabase = MagicMock()
+    mock_alpaca = MagicMock()
+    trades_table = MagicMock()
+    portfolios_table = MagicMock()
+    positions_table = MagicMock()
+    mock_supabase.table.side_effect = lambda name: {
+        "trades": trades_table,
+        "portfolios": portfolios_table,
+        "portfolio_positions": positions_table,
+    }.get(name, MagicMock())
+
+    submitted = trades_table.select.return_value.eq.return_value.not_.is_.return_value.gte.return_value
+    submitted.execute.return_value = MagicMock(
+        data=[{"id": "trade-reject", "alpaca_order_id": "order-reject", "alpaca_status": "SUBMITTED"}]
+    )
+    trades_table.select.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    trades_table.select.return_value.filter.return_value.is_.return_value.gte.return_value.order.return_value.limit.return_value.execute.return_value = MagicMock(
+        data=[]
+    )
+    trades_table.update.return_value.eq.return_value.eq.return_value.execute.return_value = MagicMock(
+        data=[{"id": "trade-reject"}]
+    )
+
+    order = MagicMock()
+    order.status = OrderStatus.REJECTED.value
+    mock_alpaca.get_order_by_id.return_value = order
+
+    with (
+        patch("scripts.sync_alpaca_orders.ALPACA_API_KEY", "mock-key"),
+        patch("scripts.sync_alpaca_orders.ALPACA_SECRET_KEY", "mock-secret"),
+        patch("scripts.sync_alpaca_orders.get_supabase_client", return_value=mock_supabase),
+        patch("scripts.sync_alpaca_orders.TradingClient", return_value=mock_alpaca),
+    ):
+        result = sync_orders()
+
+    assert result["rejected"] == 1
+    trades_table.update.assert_called_once_with({"alpaca_status": "REJECTED"})
+    for table in (portfolios_table, positions_table):
+        assert not table.insert.called
+        assert not table.update.called
+        assert not table.upsert.called
+        assert not table.delete.called
+
+
 def test_sync_repairs_trade_missing_its_order_id():
     """A NULL alpaca_order_id is re-attached via the deterministic client_order_id."""
     mock_supabase = MagicMock()

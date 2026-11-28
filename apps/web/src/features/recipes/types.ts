@@ -327,6 +327,12 @@ export interface RecipeUserQuotaStatus {
     tier: string;
     activeBacktests: number;
     maxConcurrentBacktests: number;
+    /**
+     * Retained for admin overrides and display context only. The daily counters
+     * no longer gate anything: one backtest costs one token, and a token refusal
+     * is the only thing that stops a run. Do not reintroduce a limit check
+     * against these fields.
+     */
     backtestsLast24h: number;
     dailyBacktestLimit: number;
     liveTurnsLast24h: number;

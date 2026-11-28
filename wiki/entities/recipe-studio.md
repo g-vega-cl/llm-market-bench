@@ -56,7 +56,7 @@ The **Recipe Studio** is a multi-surface experience built around a shared living
 - `public.strategy_recipes`: Push v2 strategy configurations (`graph_json` with `version: "2.0-push"`, single `stages` item), cadence (default `3h`), `turbo_expires_at`, `is_public` (NOT NULL, default `TRUE`), concurrency limits, isolated paper ledgers
 - `public.recipe_intraday_bars`: Cached intraday bars for backtesting and live snapshots
 - `public.recipe_execution_queue`: Priority queue with counted dual-lane dequeue (`pop_next_recipe_job`), 3 concurrent backtests, 1 open live turn per recipe
-- `public.recipe_user_quotas`: Per-user quotas (2 backtests/day, 3 live bots, 1 Turbo/day via `activate_recipe_turbo`)
+- `public.recipe_user_quotas`: Admin overrides and concurrency/turbo context — `tier`, `max_concurrent_backtests`, `max_live_recipes`, per-ET-day turbo (`last_turbo_et_date`, spent via `activate_recipe_turbo`). The `daily_backtest_limit` / `daily_live_turn_limit` columns are retained for overrides and display only: spend is metered in `token_balances` (one token per backtest or per live-bot week), so no row here can stop a run.
 - `public.recipe_alerts_inbox`, `public.recipe_waitlist_pledges`, `public.recipe_showcase`
 - `public.recipe_public_stats` / `public.recipe_desk_summary` / `public.recipe_desk_feed`: Runner-materialised board
 - `public.recipe_builder_usage` + `consume_builder_compile`: Atomic 25 compiles/day metering

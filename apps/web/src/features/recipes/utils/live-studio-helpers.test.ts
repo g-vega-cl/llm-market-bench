@@ -115,3 +115,22 @@ describe('upsertSavedRecipeSummary', () => {
         expect(updated?.is_live).toBe(true);
     });
 });
+
+describe('isQuotaLimitMessage — token refusals', () => {
+    it.each([
+        ['a zero balance', 'You are out of tokens. Sign up to get 15 every week.'],
+        ['an exhausted guest budget', "Today's guest runs are used up. Sign up to keep building."],
+        [
+            'the retired daily cap, still emitted by old clients',
+            'Daily backtest limit reached (2/2 in 24h).',
+        ],
+        ['a full queue', 'Global queue is currently full. Try again shortly.'],
+    ])('treats %s as a quota failure', (_label, message) => {
+        expect(isQuotaLimitMessage(message)).toBe(true);
+    });
+
+    it('does not swallow unrelated execution errors', () => {
+        expect(isQuotaLimitMessage('Could not reserve a token: empty response')).toBe(false);
+        expect(isQuotaLimitMessage('Navigation aborted')).toBe(false);
+    });
+});

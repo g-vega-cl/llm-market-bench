@@ -1,7 +1,15 @@
 import type { BacktestError, RecipeSummaryItem, StrategyRecipeRecord } from '../types';
 
+/**
+ * Token refusals are the quota failure now: a run stops because the balance hit
+ * zero or the guest budget is spent, not because a daily counter ran out. Both
+ * must surface with the capacity CTA, so both classify as quota.
+ */
+const QUOTA_LIMIT_PATTERN =
+    /limit reached|queue is currently full|out of tokens|guest runs are used up/i;
+
 export function isQuotaLimitMessage(message: string): boolean {
-    return /limit reached|queue is currently full/i.test(message);
+    return QUOTA_LIMIT_PATTERN.test(message);
 }
 
 /**

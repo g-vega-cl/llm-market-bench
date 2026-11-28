@@ -24,9 +24,6 @@ export function resolveBacktestButtonLabel(
         if (quotaStatus.tokenBalance <= 0) return 'Backtest (0 tokens left)';
         return '▶ Backtest (1 token)';
     }
-    if (quotaStatus && quotaStatus.backtestsLast24h >= quotaStatus.dailyBacktestLimit) {
-        return `Backtest (0/${quotaStatus.dailyBacktestLimit} Left)`;
-    }
     return '▶ Backtest (Random 2W)';
 }
 

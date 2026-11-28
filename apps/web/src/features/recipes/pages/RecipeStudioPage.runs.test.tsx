@@ -312,9 +312,7 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
         const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
         vi.mocked(saveRecipeFn).mockResolvedValue({ id: 'rec-quota-1' } as never);
         vi.mocked(enqueueRecipeJobFn).mockRejectedValue(
-            new Error(
-                'Daily backtest limit reached (2/2 in 24h). Come back tomorrow or request higher capacity via Waitlist.',
-            ),
+            new Error('You are out of tokens. Refills Monday 09:30 ET.'),
         );
 
         render(
@@ -331,16 +329,19 @@ describe('RecipeStudioPage > runs, quota, and scheduling', () => {
                     maxLiveRecipes: 1,
                     globalPendingBacktests: 0,
                     globalQueueCap: 20,
+                    tokenBalance: 0,
+                    tokenGrant: 15,
+                    tokenRefillLabel: 'refills Monday 09:30 ET',
                 }}
             />,
         );
 
-        const backtestBtn = screen.getByRole('button', { name: /Backtest \(0\/2 Left\)/i });
+        const backtestBtn = screen.getByRole('button', { name: /Backtest \(0 tokens left\)/i });
         fireEvent.click(backtestBtn);
 
         await waitFor(() => {
             const alert = screen.getByRole('alert');
-            expect(alert).toHaveTextContent(/Daily backtest limit reached \(2\/2 in 24h\)/i);
+            expect(alert).toHaveTextContent(/out of tokens/i);
             expect(alert.className).toContain('border-danger');
             expect(alert.className).toContain('text-danger');
             const quotaStrip = screen.getByTestId('recipe-quota-strip');

@@ -63,7 +63,11 @@ services:
     ports:
       - "8086:8086"
     env_file:
-      - ../../apps/free_llm_proxy/.env
+      # Optional: the proxy also runs with only `environment:` below, and this
+      # file is absent on both the workstation and the mini PC. Declaring it
+      # required made `docker compose up` abort the whole secondary deploy.
+      - path: ../../apps/free_llm_proxy/.env
+        required: false
     environment:
       STRATA_BASE_URL: ${STRATA_BASE_URL:-http://primary-workstation:3001/strata/v1}
       CONNECTOR_ID: secondary

@@ -35,7 +35,6 @@ describe('reserveToken', () => {
     });
 
     it.each([
-        ['no_tokens', 'You are out of tokens. Sign up to get 15 every week.'],
         ['guest_budget', "Today's guest runs are used up. Sign up to keep building."],
         ['refunded', 'That run was already refunded. Start a new one.'],
     ])('surfaces %s as a typed refusal', async (code, message) => {
@@ -45,6 +44,28 @@ describe('reserveToken', () => {
         expect(error).toBeInstanceOf(TokenError);
         expect(error.code).toBe(code);
         expect(error.message).toBe(message);
+    });
+
+    it('tells an account when the balance comes back', async () => {
+        mockRpc.mockResolvedValue({
+            data: [{ ok: false, balance: 0, code: 'no_tokens' }],
+            error: null,
+        });
+
+        const error = await reserveToken('user:abc', 'backtest', JOB).catch((e) => e);
+        expect(error).toBeInstanceOf(TokenError);
+        expect(error.message).toBe('You are out of tokens. They refill Monday 09:30 ET.');
+    });
+
+    it('tells a guest to sign up, because a refill will never reach them', async () => {
+        mockRpc.mockResolvedValue({
+            data: [{ ok: false, balance: 0, code: 'no_tokens' }],
+            error: null,
+        });
+
+        const error = await reserveToken('guest:abc', 'backtest', JOB).catch((e) => e);
+        expect(error.code).toBe('no_tokens');
+        expect(error.message).toBe('You are out of guest tokens. Sign up for 15 a week.');
     });
 
     it('fails loudly when the RPC itself errors', async () => {

@@ -12,20 +12,32 @@ export type TokenCode = 'no_tokens' | 'guest_budget' | 'refunded' | 'bad_kind' |
 export class TokenError extends Error {
     readonly code: TokenCode;
 
-    constructor(code: TokenCode) {
-        super(TOKEN_MESSAGES[code] ?? 'This run could not be started.');
+    /** `message` overrides the shared copy when the audience changes it. */
+    constructor(code: TokenCode, message?: string) {
+        super(message ?? TOKEN_MESSAGES[code] ?? 'This run could not be started.');
         this.name = 'TokenError';
         this.code = code;
     }
 }
 
 export const TOKEN_MESSAGES: Record<TokenCode, string> = {
-    no_tokens: 'You are out of tokens. Sign up to get 15 every week.',
+    no_tokens: 'You are out of tokens. They refill Monday 09:30 ET.',
     guest_budget: "Today's guest runs are used up. Sign up to keep building.",
     refunded: 'That run was already refunded. Start a new one.',
     bad_kind: 'That is not a token-spendable job.',
     already_reserved: 'That run was already started.',
 };
+
+/**
+ * A visitor with no account cannot wait for the weekly refill — the only way
+ * out is to sign up — so the same refusal code needs different copy.
+ */
+export function tokenMessage(code: TokenCode, ownerKey: string): string {
+    if (code === 'no_tokens' && ownerKey.startsWith('guest:')) {
+        return 'You are out of guest tokens. Sign up for 15 a week.';
+    }
+    return TOKEN_MESSAGES[code] ?? 'This run could not be started.';
+}
 
 export interface TokenBalance {
     balance: number;
@@ -52,7 +64,10 @@ export async function reserveToken(
 
     const row = firstRow(data);
     if (!row) throw new Error('Could not reserve a token: empty response');
-    if (row.ok !== true) throw new TokenError((row.code as TokenCode) ?? 'no_tokens');
+    if (row.ok !== true) {
+        const code = (row.code as TokenCode) ?? 'no_tokens';
+        throw new TokenError(code, tokenMessage(code, ownerKey));
+    }
 
     return { balance: Number(row.balance ?? 0) };
 }

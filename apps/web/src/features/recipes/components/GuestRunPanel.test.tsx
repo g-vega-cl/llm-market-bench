@@ -35,14 +35,16 @@ describe('GuestRunPanel', () => {
 
     it('shows the refusal message when the guest has no tokens left', async () => {
         startGuestBacktestFn.mockRejectedValue(
-            new Error('You are out of tokens. Sign up to get 15 every week.'),
+            new Error('You are out of guest tokens. Sign up for 15 a week.'),
         );
         render(<GuestRunPanel recipeId="rec-1" />);
 
         fireEvent.click(screen.getByText('Run this one (1 token)'));
 
         await waitFor(() => {
-            expect(screen.getByRole('status').textContent).toContain('You are out of tokens');
+            expect(screen.getByRole('status').textContent).toContain(
+                'You are out of guest tokens. Sign up for 15 a week.',
+            );
         });
         // A refusal must not leave the button spinning.
         expect(screen.getByText('Run this one (1 token)')).toBeTruthy();

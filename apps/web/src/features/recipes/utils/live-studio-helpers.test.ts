@@ -118,7 +118,7 @@ describe('upsertSavedRecipeSummary', () => {
 
 describe('isQuotaLimitMessage — token refusals', () => {
     it.each([
-        ['a zero balance', 'You are out of tokens. Sign up to get 15 every week.'],
+        ['a zero balance', 'You are out of tokens. They refill Monday 09:30 ET.'],
         ['an exhausted guest budget', "Today's guest runs are used up. Sign up to keep building."],
         [
             'the retired daily cap, still emitted by old clients',

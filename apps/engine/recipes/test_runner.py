@@ -12,6 +12,7 @@ from recipes.runner import (
     enqueue_live_recipes,
     expire_live_bots,
     load_starter_recipes,
+    refill_weekly_tokens,
     run_hourly_cycle,
     seed_starter_recipes,
 )
@@ -214,6 +215,7 @@ async def test_run_hourly_cycle_syncs_enqueues_and_drains_queue():
         "jobs_processed": 2,
         "jobs_failed": 1,
         "public_stats_rows": 0,
+        "refills_applied": 0,
         "expired_live": 0,
     }
 
@@ -734,3 +736,20 @@ def test_expire_live_bots_swallows_a_failed_sweep(caplog):
 
     # A sweep failure must not abort the rest of the hourly cycle.
     assert expire_live_bots(client) == 0
+
+
+def test_refill_weekly_tokens_calls_the_sweep_rpc():
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = 3
+
+    assert refill_weekly_tokens(client) == 3
+    client.rpc.assert_called_once_with("refill_all_accounts", {})
+
+
+def test_refill_weekly_tokens_swallows_a_failed_sweep(caplog):
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = RuntimeError("db down")
+
+    # The on-load refill still covers visitors, so a failed sweep is not fatal.
+    assert refill_weekly_tokens(client) == 0
+    assert "Weekly token refill failed" in caplog.text

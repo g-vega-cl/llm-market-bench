@@ -375,34 +375,52 @@ function capturePendingGoogleAuth(posthog: {
     posthog.capture('auth_completed', { provider });
 }
 
+type TokenSyncRouter = { invalidate: () => Promise<void> };
+
+/**
+ * One idempotent weekly refill per tab per day, and a router refetch only when a
+ * grant actually landed — a no-op refill must not re-run every loader.
+ */
+async function syncWeeklyTokens(userId: string, router: TokenSyncRouter): Promise<void> {
+    const key = `benchify:tokens-synced:${userId}:${new Date().toISOString().slice(0, 10)}`;
+    try {
+        if (window.sessionStorage.getItem(key) === '1') return;
+    } catch {
+        // Storage unavailable: fall through, the RPC decides.
+    }
+    try {
+        const result = await ensureWeeklyTokensFn();
+        try {
+            window.sessionStorage.setItem(key, '1');
+        } catch {
+            // Session storage unavailable: the RPC is idempotent anyway.
+        }
+        if (result?.applied) await router.invalidate();
+    } catch (error) {
+        console.error('Weekly token refill failed', error);
+    }
+}
+
 export function PostHogAuthSync({ user: userProp }: { user?: AuthUser | null } = {}) {
     const routeContext = Route.useRouteContext();
     const user = userProp !== undefined ? userProp : routeContext?.user;
     const posthog = usePostHog();
     const prevUserIdRef = useRef<string | null>(null);
 
-    // Weekly token top-up. The archive DB has no auth users to cron over, so an
-    // authenticated load refills itself; the RPC is idempotent inside the week.
+    // Weekly token top-up. The engine sweeps every account on Monday, but a tab
+    // left open across the week boundary never re-runs a load-time refill, so
+    // re-sync when the tab regains focus as well.
+    const router = useRouter();
     useEffect(() => {
         if (!user?.id) return;
-        const key = 'benchify:tokens-synced';
-        try {
-            if (window.sessionStorage.getItem(key) === user.id) return;
-        } catch {
-            return;
-        }
-        void ensureWeeklyTokensFn()
-            .then(() => {
-                try {
-                    window.sessionStorage.setItem(key, user.id);
-                } catch {
-                    // Session storage unavailable: the RPC is idempotent anyway.
-                }
-            })
-            .catch((error) => {
-                console.error('Weekly token refill failed', error);
-            });
-    }, [user?.id]);
+        const userId = user.id;
+        const run = () => {
+            void syncWeeklyTokens(userId, router);
+        };
+        run();
+        window.addEventListener('focus', run);
+        return () => window.removeEventListener('focus', run);
+    }, [user?.id, router]);
 
     useEffect(() => {
         if (!posthog) return;

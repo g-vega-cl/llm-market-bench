@@ -458,6 +458,23 @@ def expire_live_bots(sb_client: Any) -> int:
         return 0
 
 
+def refill_weekly_tokens(sb_client: Any) -> int:
+    """Top every account up for the current ET week.
+
+    The ledger is the user list: anyone who has ever loaded the app has a
+    balance row, so no auth.users scan is needed. Idempotent server-side — a
+    second call inside the same week returns 0 — which is what makes it safe to
+    run every cycle and on both workers. A failure here must not abort the rest
+    of the cycle: the on-load refill still covers anyone who visits.
+    """
+    try:
+        res = sb_client.rpc("refill_all_accounts", {}).execute()
+        return int(res.data or 0)
+    except Exception:
+        logger.exception("Weekly token refill failed; visitors still refill on load")
+        return 0
+
+
 async def run_hourly_cycle(
     sb_client: Any,
     *,
@@ -483,6 +500,7 @@ async def run_hourly_cycle(
         else:
             jobs_failed += 1
     public_stats = refresh_public_stats(sb_client)
+    refills_applied = refill_weekly_tokens(sb_client)
     expired_live = expire_live_bots(sb_client)
     return {
         "news_synced": int(news_stats.get("inserted", 0)),
@@ -490,6 +508,7 @@ async def run_hourly_cycle(
         "jobs_processed": jobs_processed,
         "jobs_failed": jobs_failed,
         "public_stats_rows": int(public_stats.get("rows_written", 0)),
+        "refills_applied": refills_applied,
         "expired_live": expired_live,
     }
 

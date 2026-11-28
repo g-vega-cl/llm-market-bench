@@ -6,9 +6,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-MIGRATION="$ROOT/supabase/migrations/20261127190000_token_architecture.sql"
-MINT_MIGRATION="$ROOT/supabase/migrations/20261127191000_guest_mint.sql"
-LIVE_MIGRATION="$ROOT/supabase/migrations/20261127192000_live_week_funding.sql"
+# Every token migration, in order. Keep this list in sync when adding one:
+# the harness is the only place these RPCs get executed before production.
+MIGRATIONS=(
+    "$ROOT/supabase/migrations/20261127190000_token_architecture.sql"
+    "$ROOT/supabase/migrations/20261127191000_guest_mint.sql"
+    "$ROOT/supabase/migrations/20261127192000_live_week_funding.sql"
+    "$ROOT/supabase/migrations/20261127193000_refill_this_week.sql"
+    "$ROOT/supabase/migrations/20261127210000_refill_all_accounts.sql"
+)
 STUB="$ROOT/supabase/tests/000_stub_schema.sql"
 CONTRACTS="$ROOT/supabase/tests/000_token_rpc_test.sql"
 MINT_CONTRACTS="$ROOT/supabase/tests/001_guest_mint_test.sql"
@@ -23,10 +29,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-if [[ ! -f "$MIGRATION" || ! -f "$MINT_MIGRATION" || ! -f "$LIVE_MIGRATION" ]]; then
+if [[ ! -f "${MIGRATIONS[0]}" ]]; then
     echo "FAIL: migration not found under $ROOT/supabase/migrations" >&2
     exit 1
 fi
+for m in "${MIGRATIONS[@]}"; do
+    if [[ ! -f "$m" ]]; then
+        echo "FAIL: migration not found: $m" >&2
+        exit 1
+    fi
+done
 
 docker run -d --name "$CID" -e POSTGRES_PASSWORD="$PASS" -e POSTGRES_DB=token_test postgres:16 >/dev/null
 
@@ -47,13 +59,13 @@ fi
 psql_() { docker exec -i "$CID" psql -U postgres -d token_test -v ON_ERROR_STOP=1 "$@"; }
 
 psql_ -q -f - < "$STUB"
-psql_ -q -f - < "$MIGRATION"
-psql_ -q -f - < "$MINT_MIGRATION"
-psql_ -q -f - < "$LIVE_MIGRATION"
+for m in "${MIGRATIONS[@]}"; do
+    psql_ -q -f - < "$m"
+done
 if [[ "${APPLY_TWICE:-0}" == "1" ]]; then
-    psql_ -q -f - < "$MIGRATION"
-    psql_ -q -f - < "$MINT_MIGRATION"
-    psql_ -q -f - < "$LIVE_MIGRATION"
+    for m in "${MIGRATIONS[@]}"; do
+        psql_ -q -f - < "$m"
+    done
 fi
 psql_ -q -f - < "$CONTRACTS"
 psql_ -q -f - < "$MINT_CONTRACTS"

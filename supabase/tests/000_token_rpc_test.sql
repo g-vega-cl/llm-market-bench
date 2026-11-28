@@ -389,3 +389,57 @@ BEGIN
         RAISE NOTICE 'PASS 16 ledger delta contract';
     END;
 END $$;
+
+-- 18. the weekly sweep refills stale accounts only -----------------------------
+DO $$
+DECLARE
+    v_first  INTEGER;
+    v_second INTEGER;
+    v_bal    INTEGER;
+    v_period DATE;
+    v_delta  INTEGER;
+    v_rows   INTEGER;
+    v_week   DATE := public.token_week();
+BEGIN
+    DELETE FROM public.token_ledger;
+    DELETE FROM public.token_balances;
+    INSERT INTO public.token_balances (owner_key, tier, balance, period_start)
+    VALUES ('user:sweep-stale', 'account', 0, v_week - 7),
+           ('user:sweep-current', 'account', 9, v_week),
+           ('guest:sweep', 'guest', 3, v_week - 7);
+
+    v_first := public.refill_all_accounts();
+
+    SELECT balance, period_start INTO v_bal, v_period
+      FROM public.token_balances WHERE owner_key = 'user:sweep-stale';
+    IF v_first <> 1 OR v_bal <> 15 OR v_period <> v_week THEN
+        RAISE EXCEPTION 'sweep refilled stale account: count=% balance=% period=%',
+            v_first, v_bal, v_period;
+    END IF;
+
+    -- The ledger has to reconcile with the balance it just moved.
+    SELECT COALESCE(sum(delta), 0), count(*) INTO v_delta, v_rows
+      FROM public.token_ledger WHERE owner_key = 'user:sweep-stale';
+    IF v_delta <> 15 OR v_rows <> 1 THEN
+        RAISE EXCEPTION 'sweep ledger row wrong: delta=% rows=%', v_delta, v_rows;
+    END IF;
+
+    -- A current-week account keeps its balance: the sweep is not a free top-up.
+    SELECT balance INTO v_bal FROM public.token_balances WHERE owner_key = 'user:sweep-current';
+    IF v_bal <> 9 THEN
+        RAISE EXCEPTION 'sweep touched a current account: balance=%', v_bal;
+    END IF;
+
+    -- Guests are granted once at mint and must never be swept.
+    SELECT balance INTO v_bal FROM public.token_balances WHERE owner_key = 'guest:sweep';
+    IF v_bal <> 3 THEN
+        RAISE EXCEPTION 'sweep refilled a guest: balance=%', v_bal;
+    END IF;
+
+    v_second := public.refill_all_accounts();
+    IF v_second <> 0 THEN
+        RAISE EXCEPTION 'second sweep in the same week refilled % accounts', v_second;
+    END IF;
+
+    RAISE NOTICE 'PASS 18 weekly sweep refills stale accounts only';
+END $$;

@@ -31,6 +31,7 @@ rsync -avz --delete \
     "${SCRIPT_DIR}/bootstrap_replica.sh" \
     "${SCRIPT_DIR}/promote_to_primary.sh" \
     "${SCRIPT_DIR}/Dockerfile.trader" \
+    "${SCRIPT_DIR}/nginx.web.secondary.conf" \
     "${TARGET_HOST}:${REMOTE_DIR}/docker/archive/"
 
 # Routing config is failover state, not code: a promotion rewrites nginx.secondary.conf in place and
@@ -91,7 +92,7 @@ echo "=== [4/6] Setting execution permissions on remote helper scripts ==="
 ssh "${TARGET_HOST}" "chmod +x ${REMOTE_DIR}/docker/archive/*.sh"
 
 echo "=== [5/6] Rebuilding, launching Docker containers, and reloading PostgREST schema cache on ${TARGET_HOST} ==="
-ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && bash ensure_proxy_config.sh --validate-only docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && docker compose -f docker-compose.secondary.yml up -d --build && bash ensure_proxy_config.sh docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && docker compose -f docker-compose.secondary.yml restart archive-postgrest && docker compose -f docker-compose.secondary.yml ps"
+ssh "${TARGET_HOST}" "cd ${REMOTE_DIR}/docker/archive && bash ensure_proxy_config.sh --validate-only docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && docker compose -f docker-compose.secondary.yml up -d --build && bash ensure_proxy_config.sh docker-compose.secondary.yml archive-proxy market-bench-archive-proxy-replica nginx.secondary.conf && bash ensure_proxy_config.sh docker-compose.secondary.yml web-proxy market-bench-web-proxy-secondary nginx.web.secondary.conf && docker compose -f docker-compose.secondary.yml restart archive-postgrest && docker compose -f docker-compose.secondary.yml ps"
 
 echo "=== [6/6] Verifying local read replica endpoint health on ${TARGET_HOST} ==="
 if ! ssh "${TARGET_HOST}" "curl -s -f -o /dev/null http://localhost:3001/rest/v1/"; then

@@ -164,8 +164,12 @@ services:
       - archive-proxy
     ports:
       - "${WEB_BIND_ADDRESS:-0.0.0.0}:3005:80"
+    # The proxy targets the primary first so both tunnel connectors answer with
+    # the same build; the local web-app is only a fallback.
+    extra_hosts:
+      - "primary-workstation:${PRIMARY_WORKSTATION_IP:-127.0.0.1}"
     volumes:
-      - ./nginx.web.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx.web.secondary.conf:/etc/nginx/nginx.conf:ro
 
 volumes:
   archive_pgdata_replica:

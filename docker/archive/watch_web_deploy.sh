@@ -48,6 +48,7 @@ if git diff --quiet "${LAST_SHA}" "${REMOTE_SHA}" -- \
     packages/ui-design-system \
     docker/archive/Dockerfile.web \
     docker/archive/nginx.web.conf \
+    docker/archive/nginx.web.secondary.conf \
     docker/archive/docker-compose.yml \
     docker/archive/docker-compose.secondary.yml \
     docker/archive/deploy_web.sh \
